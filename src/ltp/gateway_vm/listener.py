@@ -22,11 +22,13 @@ class EventListener:
         fetch_logs: Callable[[int, int], list[dict]],
         get_block_number: Callable[[], int],
         start_block: int = 0,
+        finality_depth: int = 0,
     ) -> None:
         self._source_chain_id = source_chain_id
         self._fetch_logs = fetch_logs
         self._get_block_number = get_block_number
         self._cursor = start_block
+        self._finality_depth = finality_depth
 
     @property
     def cursor(self) -> int:
@@ -40,10 +42,14 @@ class EventListener:
         cursor past the highest block seen.
         """
         current_block = self._get_block_number()
-        if self._cursor > current_block:
+        # Only scan up to (current - finality_depth) so we never fetch
+        # events that the validator will reject for insufficient finality.
+        # This prevents the cursor from advancing past un-final events.
+        safe_block = current_block - self._finality_depth
+        if self._cursor > safe_block:
             return []
 
-        raw_logs = self._fetch_logs(self._cursor, current_block)
+        raw_logs = self._fetch_logs(self._cursor, safe_block)
         events = []
         max_block = self._cursor
 

@@ -63,8 +63,28 @@ def main() -> None:
     w3_source = Web3(Web3.HTTPProvider(config.source_rpc_url))
     _bridge_addr = Web3.to_checksum_address(config.source_bridge_contract)
 
-    # Alchemy free-tier limits eth_getLogs to small block ranges (~5 blocks).
-    # Chunk large ranges to stay within the limit.
+    # BridgeEmitter ABI — only the BridgeTransfer event for log decoding.
+    _BRIDGE_ABI = [
+        {
+            "anonymous": False,
+            "type": "event",
+            "name": "BridgeTransfer",
+            "inputs": [
+                {"name": "sender", "type": "address", "indexed": True},
+                {"name": "recipient", "type": "address", "indexed": True},
+                {"name": "payloadHash", "type": "string", "indexed": False},
+                {"name": "amount", "type": "uint256", "indexed": False},
+                {"name": "nonce", "type": "uint256", "indexed": False},
+            ],
+        }
+    ]
+    _bridge_contract = w3_source.eth.contract(
+        address=_bridge_addr, abi=_BRIDGE_ABI
+    )
+    _bridge_transfer_event = _bridge_contract.events.BridgeTransfer()
+
+    # Alchemy limits eth_getLogs to small block ranges.
+    # Chunk large ranges to stay within provider limits.
     _LOG_CHUNK_SIZE = 5
 
     def fetch_logs(from_block: int, to_block: int) -> list[dict]:
@@ -72,14 +92,29 @@ def main() -> None:
         cursor = from_block
         while cursor <= to_block:
             chunk_end = min(cursor + _LOG_CHUNK_SIZE - 1, to_block)
-            logs = w3_source.eth.get_logs(
+            raw_logs = w3_source.eth.get_logs(
                 {
                     "fromBlock": cursor,
                     "toBlock": chunk_end,
                     "address": _bridge_addr,
                 }
             )
-            all_logs.extend(logs)
+            for raw in raw_logs:
+                try:
+                    decoded = _bridge_transfer_event.process_log(raw)
+                    all_logs.append(
+                        {
+                            "address": decoded["address"],
+                            "transactionHash": decoded["transactionHash"].hex(),
+                            "blockNumber": decoded["blockNumber"],
+                            "logIndex": decoded["logIndex"],
+                            "event": decoded["event"],
+                            "args": dict(decoded["args"]),
+                        }
+                    )
+                except Exception:
+                    # Skip logs that don't match BridgeTransfer ABI
+                    pass
             cursor = chunk_end + 1
         return all_logs
 
@@ -96,7 +131,26 @@ def main() -> None:
     anchor_client = DevnetAnchorClient.from_gateway_config(config, operator_key)
 
     # --- Operator keypair (ML-DSA-65 for attestation signing) ---
-    keypair = KeyPair.generate(config.gateway_id)
+    # Load a pre-generated keypair if available (stable vkHash across restarts),
+    # otherwise generate a fresh one (development/testing only).
+    import json
+    import base64
+
+    keypair_path = os.environ.get("ETP_GATEWAY_VM_KEYPAIR_PATH", "")
+    if keypair_path and os.path.exists(keypair_path):
+        with open(keypair_path) as f:
+            kp_data = json.load(f)
+        keypair = KeyPair(
+            ek=base64.b64decode(kp_data["ek"]),
+            dk=base64.b64decode(kp_data["dk"]),
+            vk=base64.b64decode(kp_data["vk"]),
+            sk=base64.b64decode(kp_data["sk"]),
+            label=kp_data.get("label", config.gateway_id),
+        )
+        print(f"  Keypair:     loaded from {keypair_path}")
+    else:
+        keypair = KeyPair.generate(config.gateway_id)
+        print("  Keypair:     generated fresh (not persistent)")
 
     # --- Seed listener near chain tip (avoid scanning entire chain history) ---
     # Use a small window — Alchemy free-tier limits eth_getLogs to ~5 blocks.

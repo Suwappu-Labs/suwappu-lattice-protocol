@@ -14,6 +14,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env.gateway
+    volumes:
+      - ./gateway_keypair.json:/app/keypair/gateway_keypair.json:ro
     ports:
       - "${ETP_GATEWAY_PORT:-8000}:8000"
       - "${ETP_GATEWAY_VM_METRICS_PORT:-9090}:9090"

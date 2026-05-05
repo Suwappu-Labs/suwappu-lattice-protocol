@@ -81,6 +81,7 @@ class GatewayVMService:
             fetch_logs=fetch_logs,
             get_block_number=get_source_block_number,
             start_block=start_block,
+            finality_depth=config.finality_depth,
         )
         self._replay_db = ReplayDB(config.replay_db_path)
         self._validator = EventValidator(
