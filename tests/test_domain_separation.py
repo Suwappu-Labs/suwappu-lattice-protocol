@@ -45,7 +45,7 @@ class TestTagRegistry:
             assert b":v" in tag, f"{name} missing version marker"
 
     def test_tag_count(self):
-        assert len(_ALL_TAGS) == 27
+        assert len(_ALL_TAGS) == 29
 
 
 class TestDomainHash:
