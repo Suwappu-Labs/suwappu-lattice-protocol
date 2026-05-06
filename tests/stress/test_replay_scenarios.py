@@ -21,7 +21,9 @@ class TestScenario1_DuplicateEvents:
 
     def test_100_duplicates_all_rejected(self, stress_kp):
         log = make_raw_log("0xdup100", 100, 0)
-        svc = make_service(stress_kp, raw_logs=[log])
+        # current_block must be high enough that safe_block (current - finality_depth)
+        # stays ahead of the cursor for 100+ ticks.
+        svc = make_service(stress_kp, raw_logs=[log], current_block=1000)
 
         svc.tick()  # first: accepted
         for i in range(100):

@@ -127,9 +127,6 @@ def main() -> None:
     def get_dest_block_number() -> int:
         return w3_dest.eth.block_number
 
-    # --- Anchor client ---
-    anchor_client = DevnetAnchorClient.from_gateway_config(config, operator_key)
-
     # --- Operator keypair (ML-DSA-65 for attestation signing) ---
     # Load a pre-generated keypair if available (stable vkHash across restarts),
     # otherwise generate a fresh one (development/testing only).
@@ -152,10 +149,19 @@ def main() -> None:
         keypair = KeyPair.generate(config.gateway_id)
         print("  Keypair:     generated fresh (not persistent)")
 
+    # --- Anchor client (needs vkHash for on-chain sequence query) ---
+    from ..domain import signer_fingerprint
+
+    vk_hash = signer_fingerprint(keypair.vk)
+    anchor_client = DevnetAnchorClient.from_gateway_config(
+        config, operator_key, signer_vk_hash=vk_hash
+    )
+
     # --- Seed listener near chain tip (avoid scanning entire chain history) ---
-    # Use a small window — Alchemy free-tier limits eth_getLogs to ~5 blocks.
+    # Cursor must start behind safe_block (current - finality_depth) so the
+    # listener has a scannable range on its first tick.
     current_source_block = get_source_block_number()
-    start_block = max(0, current_source_block - 5)
+    start_block = max(0, current_source_block - config.finality_depth - 5)
 
     # --- Build service ---
     tracker = GatewayTracker()

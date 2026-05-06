@@ -64,28 +64,35 @@ class TestScenario7_DelayedFinality:
             replay_db_path=":memory:",
         )
 
+        # Realistic mock: only return logs when they fall within the queried range
+        def realistic_fetch(from_block, to_block):
+            if from_block <= 100 <= to_block:
+                return [log]
+            return []
+
         anchor_fn = MagicMock(return_value="0xtx")
         svc = GatewayVMService(
             config=config,
             operator_keypair=stress_kp,
-            fetch_logs=lambda fb, tb: [log],
+            fetch_logs=realistic_fetch,
             get_source_block_number=lambda: block_head[0],
             get_dest_block_number=lambda: 999,
             anchor_fn=anchor_fn,
             is_signer_authorized=lambda: True,
         )
 
-        # Tick 1: insufficient finality
+        # Tick 1: safe_block = 105-12 = 93. Event at 100 is outside scan range.
+        # No events observed (listener caps at safe_block).
         r1 = svc.tick()
-        assert r1.events_rejected == 1
+        assert r1.events_observed == 0
         assert anchor_fn.call_count == 0
 
-        # Chain advances to 108 — still not enough
+        # Chain advances to 108 — safe_block = 96. Still can't see event at 100.
         block_head[0] = 108
         r2 = svc.tick()
-        assert r2.events_rejected == 1
+        assert r2.events_observed == 0
 
-        # Chain reaches 112 — exactly 12 blocks, now final
+        # Chain reaches 112 — safe_block = 100. Event at 100 now in range and final.
         block_head[0] = 112
         r3 = svc.tick()
         assert r3.events_accepted == 1

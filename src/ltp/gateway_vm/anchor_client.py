@@ -136,16 +136,20 @@ class DevnetAnchorClient:
         submit_fn: Callable[[AnchorSubmission], str],
         circuit_breaker: Optional[CircuitBreaker] = None,
         rate_limiter: Optional[TokenBucketRateLimiter] = None,
+        initial_sequence: int = 0,
     ) -> None:
         self._submit_fn = submit_fn
         self._circuit_breaker = circuit_breaker
         self._rate_limiter = rate_limiter
+        self._sequence_lock = threading.Lock()
+        self._next_sequence = initial_sequence + 1
 
     @classmethod
     def from_gateway_config(
         cls,
         config: GatewayVMConfig,
         operator_private_key: str,
+        signer_vk_hash: bytes = b"",
     ) -> DevnetAnchorClient:
         """Create from gateway config with a real AnchorClient backend."""
         if not config.dest_rpc_url:
@@ -161,11 +165,28 @@ class DevnetAnchorClient:
             private_key=operator_private_key,
             chain_id=config.dest_chain_id,
         )
+
+        # Query on-chain sequence to resume monotonically
+        initial_sequence = 0
+        if signer_vk_hash:
+            try:
+                initial_sequence = client.signer_sequence(signer_vk_hash)
+            except Exception:
+                pass
+
         return cls(
             submit_fn=client.anchor,
             circuit_breaker=CircuitBreaker(),
             rate_limiter=TokenBucketRateLimiter(),
+            initial_sequence=initial_sequence,
         )
+
+    def _next_seq(self) -> int:
+        """Atomically get and increment the sequence counter."""
+        with self._sequence_lock:
+            seq = self._next_sequence
+            self._next_sequence += 1
+            return seq
 
     def submit_attestation(self, attestation: GatewayAttestation) -> str:
         """Convert attestation to AnchorSubmission and submit. Returns tx hash."""
@@ -175,7 +196,8 @@ class DevnetAnchorClient:
         if self._rate_limiter is not None and not self._rate_limiter.acquire():
             raise RateLimitedError("anchor submission rate limit exceeded")
 
-        submission = _attestation_to_submission(attestation)
+        seq = self._next_seq()
+        submission = _attestation_to_submission(attestation, seq)
         try:
             result = self._submit_fn(submission)
         except Exception:
@@ -192,7 +214,9 @@ class DevnetAnchorClient:
         return self.submit_attestation
 
 
-def _attestation_to_submission(attestation: GatewayAttestation) -> AnchorSubmission:
+def _attestation_to_submission(
+    attestation: GatewayAttestation, sequence: int
+) -> AnchorSubmission:
     """Map gateway attestation fields to AnchorSubmission fields."""
     digest = attestation.digest
     # Ensure exactly 32 bytes — truncate or pad
@@ -213,7 +237,7 @@ def _attestation_to_submission(attestation: GatewayAttestation) -> AnchorSubmiss
         merkle_root=merkle_root,
         policy_hash=policy_hash,
         signer_vk_hash=attestation.signer_vk_fingerprint,
-        sequence=0,
+        sequence=sequence,
         valid_until=int(time.time()) + 86400,
         target_chain_id=attestation.dest_chain_id,
         receipt_type=_RECEIPT_TYPE,

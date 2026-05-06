@@ -77,4 +77,7 @@ class EventListener:
         # Advance cursor past the highest block processed
         if events:
             self._cursor = max_block + 1
+        else:
+            # No events found — advance cursor to avoid re-scanning
+            self._cursor = safe_block + 1
         return events
