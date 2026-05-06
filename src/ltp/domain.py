@@ -37,6 +37,8 @@ __all__ = [
     "DOMAIN_PEER_GOSSIP",
     "DOMAIN_GATEWAY_ATTEST",
     "DOMAIN_EXTERNAL_EVENT",
+    "DOMAIN_MULTI_VM_STATE_ROOT",
+    "DOMAIN_MULTI_VM_ATTEST",
     # Functions
     "domain_hash",
     "domain_hash_bytes",
@@ -76,6 +78,8 @@ DOMAIN_PEER_GOSSIP      = b"GSX-LTP:peer-gossip:v1\x00"
 DOMAIN_ZK_TRANSFER      = b"GSX-LTP:zk-transfer:v1\x00"
 DOMAIN_GATEWAY_ATTEST   = b"GSX-LTP:gateway-attest:v1\x00"
 DOMAIN_EXTERNAL_EVENT   = b"GSX-LTP:external-event:v1\x00"
+DOMAIN_MULTI_VM_STATE_ROOT = b"GSX-LTP:multi-vm-state-root:v1\x00"
+DOMAIN_MULTI_VM_ATTEST     = b"GSX-LTP:multi-vm-attest:v1\x00"
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +114,8 @@ _ALL_TAGS: dict[str, bytes] = {
     "DOMAIN_ZK_TRANSFER": DOMAIN_ZK_TRANSFER,
     "DOMAIN_GATEWAY_ATTEST": DOMAIN_GATEWAY_ATTEST,
     "DOMAIN_EXTERNAL_EVENT": DOMAIN_EXTERNAL_EVENT,
+    "DOMAIN_MULTI_VM_STATE_ROOT": DOMAIN_MULTI_VM_STATE_ROOT,
+    "DOMAIN_MULTI_VM_ATTEST": DOMAIN_MULTI_VM_ATTEST,
 }
 
 # Verify no byte-level collisions at import time
