@@ -1,0 +1,91 @@
+// ETP Multi-VM Execution Layer — gRPC Service Definitions
+// Used by: MysticetiAdapter (Python client) ↔ etp-mysticeti-sidecar (Rust server)
+
+syntax = "proto3";
+package etp.execution.v1;
+
+// ConsensusIngress — how consensus pushes ordered batches to ETP
+service ConsensusIngress {
+    // Server-streaming: consensus pushes committed batches
+    rpc StreamCommits(StreamCommitsRequest) returns (stream OrderedBatchProto);
+
+    // Submit a transaction to consensus for ordering
+    rpc SubmitTransaction(SubmitTxRequest) returns (SubmitTxResponse);
+
+    // Query consensus status
+    rpc GetConsensusStatus(ConsensusStatusRequest) returns (ConsensusStatusResponse);
+}
+
+// MoveExecution — how ETP delegates Move tx execution to the sidecar
+service MoveExecution {
+    // Execute a single Move transaction
+    rpc ExecuteTransaction(ExecuteTxRequest) returns (ExecuteTxResponse);
+
+    // Query Move object state
+    rpc QueryState(QueryStateRequest) returns (QueryStateResponse);
+
+    // Get current Move state root
+    rpc GetStateRoot(StateRootRequest) returns (StateRootResponse);
+}
+
+// --- ConsensusIngress messages ---
+
+message StreamCommitsRequest {
+    uint64 start_round = 1;  // Resume from this round (0 = from beginning)
+}
+
+message OrderedBatchProto {
+    uint64 round = 1;
+    uint64 epoch = 2;
+    repeated bytes transactions = 3;
+    uint32 leader_authority = 4;
+    uint64 timestamp_ms = 5;
+    string consensus_type = 6;
+}
+
+message SubmitTxRequest {
+    bytes tx_bytes = 1;
+}
+
+message SubmitTxResponse {
+    bool accepted = 1;
+    string tx_id = 2;
+}
+
+message ConsensusStatusRequest {}
+
+message ConsensusStatusResponse {
+    uint64 current_round = 1;
+    uint64 current_epoch = 2;
+    string consensus_type = 3;
+    uint32 committee_size = 4;
+    bool healthy = 5;
+}
+
+// --- MoveExecution messages ---
+
+message ExecuteTxRequest {
+    bytes tx_bytes = 1;
+}
+
+message ExecuteTxResponse {
+    bool success = 1;
+    bytes new_state_root = 2;
+    string error = 3;
+    bytes return_data = 4;
+}
+
+message QueryStateRequest {
+    bytes key = 1;
+}
+
+message QueryStateResponse {
+    bool found = 1;
+    bytes data = 2;
+}
+
+message StateRootRequest {}
+
+message StateRootResponse {
+    bytes state_root = 1;
+}
