@@ -1,7 +1,5 @@
 """Tests for BLS12-381 crypto backend (Spec C1 §2)."""
 
-import os
-import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 

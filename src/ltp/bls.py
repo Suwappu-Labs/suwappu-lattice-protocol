@@ -12,6 +12,14 @@ from __future__ import annotations
 
 import os
 
+__all__ = [
+    "BLS",
+    "_blst_available",
+    "_py_ecc_bls_available",
+    "assert_bls_crypto",
+    "assert_bls_production",
+]
+
 # ---------------------------------------------------------------------------
 # Backend detection (same pattern as primitives.py)
 # ---------------------------------------------------------------------------
