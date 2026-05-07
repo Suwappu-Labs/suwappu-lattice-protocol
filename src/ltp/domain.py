@@ -39,12 +39,18 @@ __all__ = [
     "DOMAIN_EXTERNAL_EVENT",
     "DOMAIN_MULTI_VM_STATE_ROOT",
     "DOMAIN_MULTI_VM_ATTEST",
+    "DOMAIN_BLS_SIGN",
+    "DOMAIN_BLS_ATTEST",
     # Functions
     "domain_hash",
     "domain_hash_bytes",
     "domain_sign",
     "domain_verify",
     "signer_fingerprint",
+    "bls_domain_sign",
+    "bls_domain_verify",
+    "bls_aggregate_sigs",
+    "bls_aggregate_verify",
 ]
 
 # ---------------------------------------------------------------------------
@@ -80,6 +86,8 @@ DOMAIN_GATEWAY_ATTEST   = b"GSX-LTP:gateway-attest:v1\x00"
 DOMAIN_EXTERNAL_EVENT   = b"GSX-LTP:external-event:v1\x00"
 DOMAIN_MULTI_VM_STATE_ROOT = b"GSX-LTP:multi-vm-state-root:v1\x00"
 DOMAIN_MULTI_VM_ATTEST     = b"GSX-LTP:multi-vm-attest:v1\x00"
+DOMAIN_BLS_SIGN            = b"GSX-LTP:bls-sign:v1\x00"
+DOMAIN_BLS_ATTEST          = b"GSX-LTP:bls-attest:v1\x00"
 
 
 # ---------------------------------------------------------------------------
@@ -116,6 +124,8 @@ _ALL_TAGS: dict[str, bytes] = {
     "DOMAIN_EXTERNAL_EVENT": DOMAIN_EXTERNAL_EVENT,
     "DOMAIN_MULTI_VM_STATE_ROOT": DOMAIN_MULTI_VM_STATE_ROOT,
     "DOMAIN_MULTI_VM_ATTEST": DOMAIN_MULTI_VM_ATTEST,
+    "DOMAIN_BLS_SIGN": DOMAIN_BLS_SIGN,
+    "DOMAIN_BLS_ATTEST": DOMAIN_BLS_ATTEST,
 }
 
 # Verify no byte-level collisions at import time
@@ -184,3 +194,34 @@ def signer_fingerprint(vk: bytes) -> bytes:
       - COSE kid-equivalent field in SignedEnvelope
     """
     return canonical_hash_bytes(vk)
+
+
+# ---------------------------------------------------------------------------
+# Domain-separated BLS signing (Spec C1 §4)
+# ---------------------------------------------------------------------------
+
+def bls_domain_sign(domain: bytes, sk: bytes, data: bytes) -> bytes:
+    """Sign domain-separated data with BLS: BLS.sign(sk, domain || data)."""
+    from .bls import BLS
+    return BLS.sign(sk, domain + data)
+
+
+def bls_domain_verify(domain: bytes, pk: bytes, data: bytes, sig: bytes) -> bool:
+    """Verify domain-separated BLS signature: BLS.verify(pk, domain || data, sig)."""
+    from .bls import BLS
+    return BLS.verify(pk, domain + data, sig)
+
+
+def bls_aggregate_sigs(sigs: list[bytes]) -> bytes:
+    """Aggregate multiple BLS signatures into one 96-byte signature."""
+    from .bls import BLS
+    return BLS.aggregate_signatures(sigs)
+
+
+def bls_aggregate_verify(domain: bytes, pks: list[bytes], data: bytes, agg_sig: bytes) -> bool:
+    """Verify aggregate BLS signature (same-message fast path).
+
+    All signers must have signed domain || data.
+    """
+    from .bls import BLS
+    return BLS.aggregate_verify_same_message(pks, domain + data, agg_sig)
