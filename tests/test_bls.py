@@ -168,3 +168,15 @@ class TestBLSAggregate:
         agg = BLS.aggregate_signatures(sigs)
         pks = [pk for pk, sk in keys]
         assert BLS.aggregate_verify_same_message(pks, msg, agg) is True
+
+
+class TestPrimitivesExport:
+    """Verify BLS availability flags are exported from primitives."""
+
+    def test_blst_flag_exported(self):
+        from src.ltp.primitives import _blst_available
+        assert isinstance(_blst_available, bool)
+
+    def test_py_ecc_bls_flag_exported(self):
+        from src.ltp.primitives import _py_ecc_bls_available
+        assert isinstance(_py_ecc_bls_available, bool)

@@ -112,6 +112,9 @@ try:
 except ImportError:
     pass
 
+# BLS12-381 availability (delegated to bls.py for implementation)
+from .bls import _blst_available, _py_ecc_bls_available
+
 
 __all__ = [
     "SecurityProfile", "HashFunction", "CryptoLane",
@@ -124,6 +127,8 @@ __all__ = [
     "_pqcrypto_kem_available", "_pqcrypto_kem5_available",
     "_pqcrypto_sign_available", "_pqcrypto_sign5_available",
     "_pynacl_available",
+    "_blst_available",
+    "_py_ecc_bls_available",
     "assert_real_crypto",
 ]
 
