@@ -109,9 +109,11 @@ class KeyPair:
     expires_at: float = 0.0        # Unix timestamp of expiry (0 = never)
     predecessor_vk_hash: str = ""  # H(previous vk) for key chain verification
     state: KeyState = KeyState.ACTIVE  # Lifecycle state (default ACTIVE for backward compat)
+    bls_pk: Optional[bytes] = None   # BLS12-381 public key (48 bytes, optional)
+    bls_sk: Optional[bytes] = None   # BLS12-381 signing key (32 bytes, optional)
 
     @classmethod
-    def generate(cls, label: str = "", hsm=None) -> 'KeyPair':
+    def generate(cls, label: str = "", hsm=None, with_bls: bool = False) -> 'KeyPair':
         """
         Generate a fresh post-quantum keypair (sizes per active SecurityProfile).
 
@@ -143,8 +145,13 @@ class KeyPair:
             return kp
         ek, dk = MLKEM.keygen()
         vk, sk = MLDSA.keygen()
+        bls_pk = None
+        bls_sk = None
+        if with_bls:
+            from .bls import BLS as _BLS
+            bls_pk, bls_sk = _BLS.keygen()
         return cls(ek=ek, dk=dk, vk=vk, sk=sk, label=label,
-                   created_at=_time.time())
+                   created_at=_time.time(), bls_pk=bls_pk, bls_sk=bls_sk)
 
     @property
     def is_hsm_backed(self) -> bool:
@@ -178,6 +185,26 @@ class KeyPair:
     def public_key(self) -> bytes:
         """ML-KEM encapsulation key (for sealing to this recipient)."""
         return self.ek
+
+    def to_bls_identity(self):
+        """Convert composite KeyPair to BLSIdentity (Spec C1 §3.4).
+
+        Raises ValueError if this KeyPair has no BLS keys.
+        """
+        if self.bls_pk is None or self.bls_sk is None:
+            raise ValueError(
+                f"KeyPair '{self.label}' has no BLS keys — "
+                "generate with KeyPair.generate(label, with_bls=True)"
+            )
+        from .bls_keys import BLSIdentity, bls_fingerprint
+        sk_bytes = self.bls_sk
+        return BLSIdentity(
+            pk=self.bls_pk,
+            sk_accessor=lambda: sk_bytes,
+            fingerprint=bls_fingerprint(self.bls_pk),
+            mode="composite",
+            label=self.label,
+        )
 
 
 # ---------------------------------------------------------------------------
