@@ -124,8 +124,10 @@ from .domain import (
     DOMAIN_STH_SIGN, DOMAIN_SHARD_NONCE, DOMAIN_APPROVAL_RECEIPT,
     DOMAIN_ANCHOR_DIGEST, DOMAIN_SIGNED_ENVELOPE, DOMAIN_SIGNER_POLICY,
     DOMAIN_LATTICE_KEY, DOMAIN_BRIDGE_MSG, DOMAIN_NODE_HANDSHAKE,
+    DOMAIN_BLS_SIGN, DOMAIN_BLS_ATTEST,
     domain_hash, domain_hash_bytes, domain_sign, domain_verify,
     signer_fingerprint,
+    bls_domain_sign, bls_domain_verify, bls_aggregate_sigs, bls_aggregate_verify,
 )
 from .envelope import SignedEnvelope
 from .receipt import ReceiptType, ApprovalReceipt
@@ -263,8 +265,10 @@ __all__ = [
     "DOMAIN_STH_SIGN", "DOMAIN_SHARD_NONCE", "DOMAIN_APPROVAL_RECEIPT",
     "DOMAIN_ANCHOR_DIGEST", "DOMAIN_SIGNED_ENVELOPE", "DOMAIN_SIGNER_POLICY",
     "DOMAIN_LATTICE_KEY", "DOMAIN_BRIDGE_MSG", "DOMAIN_NODE_HANDSHAKE",
+    "DOMAIN_BLS_SIGN", "DOMAIN_BLS_ATTEST",
     "domain_hash", "domain_hash_bytes", "domain_sign", "domain_verify",
     "signer_fingerprint",
+    "bls_domain_sign", "bls_domain_verify", "bls_aggregate_sigs", "bls_aggregate_verify",
     "SignedEnvelope",
     "ReceiptType", "ApprovalReceipt",
     "SequenceTracker",

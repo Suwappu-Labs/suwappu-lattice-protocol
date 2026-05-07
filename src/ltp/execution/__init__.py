@@ -15,7 +15,7 @@ from .router import TransactionRouter, ExecutorUnavailable
 from .state_root import MultiVMStateRoot
 from .precompile import CrossVMPrecompile, PrecompileResult
 from .consensus import ConsensusAdapter, FakeConsensusAdapter
-from .attestation import AttestationEngine, MultiVMAttestation
+from .attestation import AttestationEngine, MultiVMAttestation, AttestationAggregator
 
 __all__ = [
     "OrderedBatch", "BatchResult", "TxResult", "StateQuery", "StateResult",
@@ -31,5 +31,5 @@ __all__ = [
     "MultiVMStateRoot",
     "CrossVMPrecompile", "PrecompileResult",
     "ConsensusAdapter", "FakeConsensusAdapter",
-    "AttestationEngine", "MultiVMAttestation",
+    "AttestationEngine", "MultiVMAttestation", "AttestationAggregator",
 ]
