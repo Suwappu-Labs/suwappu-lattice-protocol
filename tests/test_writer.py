@@ -346,3 +346,36 @@ class TestWriterRecord:
         record.transition_log.append(entry)
         assert len(record.transition_log) == 1
         assert record.transition_log[0] == entry
+
+
+# ---------------------------------------------------------------------------
+# RegistryConfig + ProbationModifiers (Task 2)
+# ---------------------------------------------------------------------------
+
+class TestRegistryConfig:
+    def test_defaults(self):
+        from src.ltp.execution.writer_config import RegistryConfig
+        cfg = RegistryConfig()
+        assert cfg.sponsor_threshold == 2
+        assert cfg.probation_epochs == 10
+        assert cfg.default_expiry_epochs == 0
+
+    def test_custom_config(self):
+        from src.ltp.execution.writer_config import RegistryConfig
+        cfg = RegistryConfig(sponsor_threshold=3, probation_epochs=20, default_expiry_epochs=100)
+        assert cfg.sponsor_threshold == 3
+        assert cfg.probation_epochs == 20
+        assert cfg.default_expiry_epochs == 100
+
+    def test_probation_modifiers_defaults(self):
+        from src.ltp.execution.writer_config import ProbationModifiers
+        mods = ProbationModifiers()
+        assert mods.rate_limit_divisor == 2
+        assert mods.fee_multiplier_factor == 2.0
+        assert mods.blocked_operations == frozenset({"deploy"})
+
+    def test_config_has_probation_modifiers(self):
+        from src.ltp.execution.writer_config import RegistryConfig
+        cfg = RegistryConfig()
+        assert cfg.probation_modifiers is not None
+        assert cfg.probation_modifiers.rate_limit_divisor == 2
