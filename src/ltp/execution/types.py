@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 
 
 @dataclass(frozen=True)
@@ -62,3 +63,12 @@ class BatchResult:
     round: int
     tx_results: list[TxResult] = field(default_factory=list)
     state_root: object = None  # MultiVMStateRoot, set by router
+
+
+class OperationType(Enum):
+    """Types of operations a writer can perform on a VM (Spec C2 §6.1)."""
+    TRANSFER    = "transfer"
+    DEPLOY      = "deploy"
+    CALL        = "call"
+    STATE_MODIFY = "state_modify"
+    STATE_READ  = "state_read"
