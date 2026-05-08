@@ -21,7 +21,6 @@ Reference: ETP Spec C2 §2 (Writer Identity), §3 (Writer Lifecycle)
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional

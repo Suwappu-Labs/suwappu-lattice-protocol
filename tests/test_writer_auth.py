@@ -38,7 +38,7 @@ def _fake_record() -> WriterRecord:
         identity=identity,
         state=WriterState.ACTIVE,
         approval_path=ApprovalPath.ADMIN,
-        enrolled_at=time.time(),
+        enrolled_at=1_000_000,
     )
 
 

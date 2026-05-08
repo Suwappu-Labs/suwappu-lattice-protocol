@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional, Protocol, runtime_checkable
+from typing import Any, Optional, Protocol, runtime_checkable
 from .types import OperationType
 from .writer import WriterRecord, WriterState
 
@@ -15,7 +15,7 @@ class AuthorizationResult:
     allowed: bool
     reason: Optional[str] = None
     fee_multiplier: float = 1.0
-    metadata: Optional[dict] = None
+    metadata: Optional[dict[str, Any]] = None
 
 
 @dataclass(frozen=True)

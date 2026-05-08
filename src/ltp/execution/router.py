@@ -7,11 +7,10 @@ from typing import Optional, TYPE_CHECKING
 from .registry import VMRegistry
 from .state_root import MultiVMStateRoot
 from .types import BatchResult, OperationType, OrderedBatch, TxResult
+from .writer_gate import WRITER_FP_SIZE
 
 if TYPE_CHECKING:
     from .writer_gate import WriterGate
-
-_WRITER_FP_SIZE = 32
 
 
 class ExecutorUnavailable(RuntimeError):
@@ -54,7 +53,7 @@ class TransactionRouter:
                 continue
 
             if self._gate is not None:
-                result = self._execute_gated(tx_bytes)
+                result = self._execute_gated(tx_bytes, batch.epoch)
             else:
                 result = self._execute_ungated(tx_bytes)
 
@@ -98,7 +97,7 @@ class TransactionRouter:
         except Exception as exc:
             return TxResult.failed(f"execution_error:{exc}")
 
-    def _execute_gated(self, tx_bytes: bytes) -> TxResult:
+    def _execute_gated(self, tx_bytes: bytes, epoch: int) -> TxResult:
         """Gate-enforced dispatch — writer fingerprint prefix expected."""
         assert self._gate is not None  # guaranteed by caller
 
@@ -108,8 +107,8 @@ class TransactionRouter:
             return TxResult.rejected(f"writer_gate:{decision.reason}")
 
         # Strip the writer fingerprint prefix to reach vm_tag + payload
-        tag = tx_bytes[_WRITER_FP_SIZE]
-        payload = tx_bytes[_WRITER_FP_SIZE + 1:]
+        tag = tx_bytes[WRITER_FP_SIZE]
+        payload = tx_bytes[WRITER_FP_SIZE + 1:]
 
         executor = self._registry.get(tag)
         if executor is None:
@@ -129,7 +128,7 @@ class TransactionRouter:
 
         # Increment epoch counter on successful dispatch
         if result.success:
-            writer_fp = tx_bytes[:_WRITER_FP_SIZE]
-            self._gate._epoch.increment(writer_fp, tag, 0)
+            writer_fp = tx_bytes[:WRITER_FP_SIZE]
+            self._gate.record_dispatch(writer_fp, tag, epoch)
 
         return result

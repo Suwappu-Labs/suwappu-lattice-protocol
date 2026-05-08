@@ -24,6 +24,8 @@ class EpochTracker:
         return self._counts.get((writer_fp, vm_tag), 0)
 
     def advance_epoch(self, new_epoch: int) -> None:
+        if new_epoch <= self._current_epoch:
+            return  # ignore stale or duplicate epoch signals
         self._counts.clear()
         self._current_epoch = new_epoch
 

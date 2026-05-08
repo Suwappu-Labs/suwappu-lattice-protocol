@@ -16,6 +16,14 @@ WRITER_FP_SIZE = 32
 
 
 class WriterGate:
+    """Two-phase writer authorization gate (Spec C2 §9).
+
+    Phase 1 (pre_dispatch): universal checks — tx length, registry frozen,
+    writer state, VM frozen.
+    Phase 2 (vm_authorize): per-VM — custom WriterAuthorizer or declarative
+    PolicyEngine evaluation.
+    """
+
     def __init__(self, registry: WriterRegistry,
                  emergency: Optional[EmergencyState] = None,
                  epoch_tracker: Optional[EpochTracker] = None,
@@ -28,6 +36,10 @@ class WriterGate:
 
     def set_policy(self, vm_tag: int, policy: VMWriterPolicy) -> None:
         self._policies[vm_tag] = policy
+
+    def record_dispatch(self, writer_fp: bytes, vm_tag: int, epoch: int) -> None:
+        """Increment the per-writer, per-VM tx counter after a successful dispatch."""
+        self._epoch.increment(writer_fp, vm_tag, epoch)
 
     def pre_dispatch(self, tx_bytes: bytes) -> DispatchDecision:
         """Universal checks."""
