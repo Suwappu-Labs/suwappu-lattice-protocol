@@ -1,6 +1,6 @@
 """Multi-VM execution layer (Gate 4, Specs B + C2)."""
 
-from .types import OrderedBatch, BatchResult, TxResult, StateQuery, StateResult, OperationType
+from .types import OrderedBatch, BatchResult, TxResult, StateQuery, StateResult, OperationType, infer_operation_type
 from .model import (
     ExecutionModel, family_from_tag,
     VM_TAG_EVM, VM_TAG_TVM, VM_TAG_MOVE, VM_TAG_SVM,

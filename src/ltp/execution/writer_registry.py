@@ -363,23 +363,25 @@ class WriterRegistry:
         Returns:
             List of fingerprints that were newly transitioned to EXPIRED.
         """
-        expired: list[bytes] = []
-        for fp, record in self._records.items():
+        # Collect first, then mutate — safe against future dict-size changes
+        to_expire = [
+            fp for fp, record in self._records.items()
             if (
                 record.state == WriterState.ACTIVE
                 and record.expires_at is not None
                 and record.expires_at > 0
                 and current_epoch >= record.expires_at
-            ):
-                self._transition(
-                    fingerprint=fp,
-                    target=WriterState.EXPIRED,
-                    actor_fp=fp,  # self-actor (system-driven)
-                    reason=f"credential expired at epoch {record.expires_at}",
-                    timestamp=current_epoch,
-                )
-                expired.append(fp)
-        return expired
+            )
+        ]
+        for fp in to_expire:
+            self._transition(
+                fingerprint=fp,
+                target=WriterState.EXPIRED,
+                actor_fp=fp,  # self-actor (system-driven)
+                reason=f"credential expired at epoch {self._records[fp].expires_at}",
+                timestamp=current_epoch,
+            )
+        return to_expire
 
     def active_writers(self) -> list[WriterRecord]:
         """Return all writers in ACTIVE or PROBATION state.

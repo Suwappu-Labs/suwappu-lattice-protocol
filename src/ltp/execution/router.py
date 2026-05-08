@@ -6,7 +6,7 @@ from typing import Optional, TYPE_CHECKING
 
 from .registry import VMRegistry
 from .state_root import MultiVMStateRoot
-from .types import BatchResult, OperationType, OrderedBatch, TxResult
+from .types import BatchResult, OperationType, OrderedBatch, TxResult, infer_operation_type
 from .writer_gate import WRITER_FP_SIZE
 
 if TYPE_CHECKING:
@@ -115,8 +115,9 @@ class TransactionRouter:
             return TxResult.rejected(f"unknown_vm_tag:0x{tag:02X}")
 
         # Phase 2: per-VM authorization
+        operation = infer_operation_type(payload)
         vm_decision = self._gate.vm_authorize(
-            decision.writer_record, executor, OperationType.TRANSFER, payload
+            decision.writer_record, executor, operation, payload
         )
         if not vm_decision.allowed:
             return TxResult.rejected(f"writer_gate:{vm_decision.reason}")

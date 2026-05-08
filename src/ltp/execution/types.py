@@ -72,3 +72,25 @@ class OperationType(Enum):
     CALL        = "call"
     STATE_MODIFY = "state_modify"
     STATE_READ  = "state_read"
+
+
+# Operation type byte tags for gated transaction format:
+# [writer_fp (32)] [vm_tag (1)] [op_type (1)] [payload]
+# If op_type byte is absent or unrecognized, default to TRANSFER.
+_OP_TYPE_BYTE: dict[int, OperationType] = {
+    0x00: OperationType.TRANSFER,
+    0x01: OperationType.DEPLOY,
+    0x02: OperationType.CALL,
+    0x03: OperationType.STATE_MODIFY,
+    0x04: OperationType.STATE_READ,
+}
+
+
+def infer_operation_type(payload: bytes) -> OperationType:
+    """Infer operation type from the first byte of payload.
+
+    If the payload is empty or the byte is unrecognized, defaults to TRANSFER.
+    """
+    if len(payload) == 0:
+        return OperationType.TRANSFER
+    return _OP_TYPE_BYTE.get(payload[0], OperationType.TRANSFER)

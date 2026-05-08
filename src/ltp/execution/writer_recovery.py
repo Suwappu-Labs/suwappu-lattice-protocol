@@ -32,14 +32,18 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 class EmergencyAction(Enum):
-    """Seven recovery actions available to privileged operators."""
+    """Recovery actions available to privileged operators."""
     FREEZE_REGISTRY    = "freeze_registry"
+    UNFREEZE_REGISTRY  = "unfreeze_registry"
     FREEZE_VM          = "freeze_vm"
+    UNFREEZE_VM        = "unfreeze_vm"
     BYPASS_AUTHORIZER  = "bypass_authorizer"
+    CLEAR_BYPASS       = "clear_bypass"
     FORCE_REVOKE       = "force_revoke"
     ROLLBACK_POLICY    = "rollback_policy"
     ROTATE_OWNER       = "rotate_owner"
     OVERRIDE_DISPATCH  = "override_dispatch"
+    CLEAR_OVERRIDE     = "clear_override"
 
 
 # ---------------------------------------------------------------------------
@@ -72,6 +76,7 @@ class EmergencyState:
         self._registry_frozen: bool = False
         self._frozen_vms: set[int] = set()
         self._bypassed_authorizers: set[int] = set()
+        self._dispatch_overrides: dict[bytes, bool] = {}  # writer_fp → allow/block
         self.interventions: list[EmergencyIntervention] = []
 
     # ------------------------------------------------------------------
@@ -87,6 +92,10 @@ class EmergencyState:
 
     def is_authorizer_bypassed(self, vm_tag: int) -> bool:
         return vm_tag in self._bypassed_authorizers
+
+    def get_dispatch_override(self, writer_fp: bytes) -> Optional[bool]:
+        """Return True (force-allow), False (force-block), or None (no override)."""
+        return self._dispatch_overrides.get(writer_fp)
 
     # ------------------------------------------------------------------
     # Registry freeze / unfreeze
@@ -116,9 +125,9 @@ class EmergencyState:
         self._registry_frozen = False
         self.interventions.append(
             EmergencyIntervention(
-                action=EmergencyAction.FREEZE_REGISTRY,
+                action=EmergencyAction.UNFREEZE_REGISTRY,
                 actor_fp=actor_fp,
-                reason="unfreeze_registry",
+                reason="registry unfrozen",
                 timestamp=timestamp,
             )
         )
@@ -154,9 +163,9 @@ class EmergencyState:
         self._frozen_vms.discard(vm_tag)
         self.interventions.append(
             EmergencyIntervention(
-                action=EmergencyAction.FREEZE_VM,
+                action=EmergencyAction.UNFREEZE_VM,
                 actor_fp=actor_fp,
-                reason="unfreeze_vm",
+                reason="VM unfrozen",
                 timestamp=timestamp,
                 scope=vm_tag,
             )
@@ -193,11 +202,86 @@ class EmergencyState:
         self._bypassed_authorizers.discard(vm_tag)
         self.interventions.append(
             EmergencyIntervention(
-                action=EmergencyAction.BYPASS_AUTHORIZER,
+                action=EmergencyAction.CLEAR_BYPASS,
                 actor_fp=actor_fp,
-                reason="clear_bypass",
+                reason="authorizer bypass cleared",
                 timestamp=timestamp,
                 scope=vm_tag,
+            )
+        )
+
+    # ------------------------------------------------------------------
+    # Force revoke (bypasses normal role checks)
+    # ------------------------------------------------------------------
+
+    def force_revoke(
+        self,
+        writer_fp: bytes,
+        actor_fp:  bytes,
+        reason:    str,
+        timestamp: int,
+        registry:  object,
+    ) -> None:
+        """Force-revoke a writer, bypassing normal RBAC checks.
+
+        Args:
+            writer_fp: Fingerprint of the writer to revoke.
+            actor_fp:  Fingerprint of the emergency operator.
+            reason:    Human-readable justification.
+            timestamp: Time of the action in milliseconds.
+            registry:  A WriterRegistry instance (typed as object to avoid circular import).
+        """
+        # Import here to avoid circular dependency at module level
+        from .writer_registry import WriterRegistry as _WR
+        assert isinstance(registry, _WR)
+        registry.revoke(writer_fp, reason=f"EMERGENCY: {reason}", actor_fp=actor_fp,
+                        timestamp=timestamp)
+        self.interventions.append(
+            EmergencyIntervention(
+                action=EmergencyAction.FORCE_REVOKE,
+                actor_fp=actor_fp,
+                reason=reason,
+                timestamp=timestamp,
+            )
+        )
+
+    # ------------------------------------------------------------------
+    # Dispatch override (per-writer force-allow or force-block)
+    # ------------------------------------------------------------------
+
+    def set_dispatch_override(
+        self,
+        writer_fp: bytes,
+        allow:     bool,
+        actor_fp:  bytes,
+        reason:    str,
+        timestamp: int,
+    ) -> None:
+        """Set a one-shot dispatch override for a specific writer."""
+        self._dispatch_overrides[writer_fp] = allow
+        self.interventions.append(
+            EmergencyIntervention(
+                action=EmergencyAction.OVERRIDE_DISPATCH,
+                actor_fp=actor_fp,
+                reason=reason,
+                timestamp=timestamp,
+            )
+        )
+
+    def clear_dispatch_override(
+        self,
+        writer_fp: bytes,
+        actor_fp:  bytes,
+        timestamp: int,
+    ) -> None:
+        """Remove a dispatch override for a specific writer."""
+        self._dispatch_overrides.pop(writer_fp, None)
+        self.interventions.append(
+            EmergencyIntervention(
+                action=EmergencyAction.CLEAR_OVERRIDE,
+                actor_fp=actor_fp,
+                reason="dispatch override cleared",
+                timestamp=timestamp,
             )
         )
 

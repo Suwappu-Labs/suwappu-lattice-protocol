@@ -27,6 +27,31 @@ from src.ltp.execution.writer import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+class NoDeployAuthorizer:
+    """Rejects DEPLOY; allows everything else. Used across multiple tests."""
+
+    def authorize_writer(
+        self,
+        writer: WriterRecord,
+        operation: OperationType,
+        tx_bytes: bytes,
+    ) -> AuthorizationResult:
+        if operation is OperationType.DEPLOY:
+            return AuthorizationResult(
+                allowed=False,
+                reason="deploy operations are disabled on this VM",
+            )
+        return AuthorizationResult(allowed=True)
+
+    def on_writer_state_change(
+        self,
+        writer: WriterRecord,
+        old_state: WriterState,
+        new_state: WriterState,
+    ) -> None:
+        pass
+
+
 def _fake_record() -> WriterRecord:
     """Build a WriterRecord from fabricated bytes (no real KeyPair required)."""
     identity = WriterIdentity(
@@ -126,46 +151,10 @@ class TestWriterAuthorizerProtocolConforming:
     """A class with both required methods satisfies the runtime-checkable Protocol."""
 
     def test_isinstance_passes(self):
-        class NoDeployAuthorizer:
-            """Rejects DEPLOY; allows everything else."""
-
-            def authorize_writer(
-                self,
-                writer: WriterRecord,
-                operation: OperationType,
-                tx_bytes: bytes,
-            ) -> AuthorizationResult:
-                if operation is OperationType.DEPLOY:
-                    return AuthorizationResult(
-                        allowed=False,
-                        reason="deploy operations are disabled on this VM",
-                    )
-                return AuthorizationResult(allowed=True)
-
-            def on_writer_state_change(
-                self,
-                writer: WriterRecord,
-                old_state: WriterState,
-                new_state: WriterState,
-            ) -> None:
-                pass  # no-op for test
-
         auth = NoDeployAuthorizer()
         assert isinstance(auth, WriterAuthorizer)
 
     def test_rejects_deploy(self):
-        class NoDeployAuthorizer:
-            def authorize_writer(self, writer, operation, tx_bytes):
-                if operation is OperationType.DEPLOY:
-                    return AuthorizationResult(
-                        allowed=False,
-                        reason="deploy operations are disabled on this VM",
-                    )
-                return AuthorizationResult(allowed=True)
-
-            def on_writer_state_change(self, writer, old_state, new_state):
-                pass
-
         auth = NoDeployAuthorizer()
         record = _fake_record()
         result = auth.authorize_writer(record, OperationType.DEPLOY, b"\x00" * 8)
@@ -173,18 +162,6 @@ class TestWriterAuthorizerProtocolConforming:
         assert "deploy" in result.reason.lower()
 
     def test_allows_transfer(self):
-        class NoDeployAuthorizer:
-            def authorize_writer(self, writer, operation, tx_bytes):
-                if operation is OperationType.DEPLOY:
-                    return AuthorizationResult(
-                        allowed=False,
-                        reason="deploy operations are disabled on this VM",
-                    )
-                return AuthorizationResult(allowed=True)
-
-            def on_writer_state_change(self, writer, old_state, new_state):
-                pass
-
         auth = NoDeployAuthorizer()
         record = _fake_record()
         result = auth.authorize_writer(record, OperationType.TRANSFER, b"\xff" * 8)
