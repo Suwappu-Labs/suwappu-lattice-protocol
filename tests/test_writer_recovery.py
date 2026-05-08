@@ -1,8 +1,8 @@
 """Tests for emergency recovery primitives (Spec C2 §8).
 
 Covers:
-  - EmergencyAction enum (7 values)
-  - EmergencyState (freeze / bypass lifecycle + audit trail)
+  - EmergencyAction enum (11 values)
+  - EmergencyState (freeze / bypass / force-revoke / dispatch override lifecycle + audit trail)
   - PolicySnapshotStore (append-only snapshots + rollback)
   - RecoveryQuorum (threshold voting)
 """
@@ -19,6 +19,14 @@ from src.ltp.execution.writer_recovery import (
     RecoveryQuorum,
 )
 from src.ltp.execution.writer_policy import VMWriterPolicy
+from src.ltp.execution.writer import (
+    ApprovalPath,
+    IdentityTier,
+    WriterIdentity,
+    WriterRecord,
+    WriterState,
+)
+from src.ltp.execution.writer_registry import WriterRegistry
 
 
 # ---------------------------------------------------------------------------
@@ -38,19 +46,28 @@ def _policy(vm_tag: int = 1, max_writers: int = 0) -> VMWriterPolicy:
 # ---------------------------------------------------------------------------
 
 class TestEmergencyAction:
-    """All seven enum members must exist with the correct values."""
+    """All eleven enum members must exist with the correct values."""
 
-    def test_seven_actions_exist(self):
-        assert len(EmergencyAction) == 7
+    def test_eleven_actions_exist(self):
+        assert len(EmergencyAction) == 11
 
     def test_freeze_registry(self):
         assert EmergencyAction.FREEZE_REGISTRY.value == "freeze_registry"
 
+    def test_unfreeze_registry(self):
+        assert EmergencyAction.UNFREEZE_REGISTRY.value == "unfreeze_registry"
+
     def test_freeze_vm(self):
         assert EmergencyAction.FREEZE_VM.value == "freeze_vm"
 
+    def test_unfreeze_vm(self):
+        assert EmergencyAction.UNFREEZE_VM.value == "unfreeze_vm"
+
     def test_bypass_authorizer(self):
         assert EmergencyAction.BYPASS_AUTHORIZER.value == "bypass_authorizer"
+
+    def test_clear_bypass(self):
+        assert EmergencyAction.CLEAR_BYPASS.value == "clear_bypass"
 
     def test_force_revoke(self):
         assert EmergencyAction.FORCE_REVOKE.value == "force_revoke"
@@ -63,6 +80,9 @@ class TestEmergencyAction:
 
     def test_override_dispatch(self):
         assert EmergencyAction.OVERRIDE_DISPATCH.value == "override_dispatch"
+
+    def test_clear_override(self):
+        assert EmergencyAction.CLEAR_OVERRIDE.value == "clear_override"
 
 
 # ---------------------------------------------------------------------------
@@ -313,3 +333,138 @@ class TestRecoveryQuorum:
         q = RecoveryQuorum(keys, threshold=1)
         q.add_vote(b"\xca" * 32)
         assert q.is_met() is True
+
+
+# ---------------------------------------------------------------------------
+# Helpers for force_revoke / dispatch override tests
+# ---------------------------------------------------------------------------
+
+_WRITER_FP = b"\x11" * 32
+
+
+def _registry_with_active_writer(fp: bytes = _WRITER_FP) -> WriterRegistry:
+    """Return a WriterRegistry with a single ACTIVE writer at *fp*."""
+    reg = WriterRegistry()
+    identity = WriterIdentity(
+        tier=IdentityTier.MLDSA,
+        fingerprint=fp,
+        mldsa_vk=b"\xcc" * 32,
+    )
+    reg.enroll(identity, timestamp=1_000)
+    reg.approve(fp, admin_fp=_ACTOR, timestamp=2_000)
+    return reg
+
+
+# ---------------------------------------------------------------------------
+# TestEmergencyForceRevoke
+# ---------------------------------------------------------------------------
+
+class TestEmergencyForceRevoke:
+    """EmergencyState.force_revoke bypasses RBAC and revokes a writer."""
+
+    def test_force_revoke_transitions_to_revoked(self):
+        reg = _registry_with_active_writer()
+        state = EmergencyState()
+        state.force_revoke(_WRITER_FP, _ACTOR, "compromised key", _TS, reg)
+        record = reg.lookup(_WRITER_FP)
+        assert record.state is WriterState.REVOKED
+
+    def test_force_revoke_logs_intervention(self):
+        reg = _registry_with_active_writer()
+        state = EmergencyState()
+        state.force_revoke(_WRITER_FP, _ACTOR, "compromised key", _TS, reg)
+        assert len(state.interventions) == 1
+        iv = state.interventions[0]
+        assert iv.action is EmergencyAction.FORCE_REVOKE
+        assert iv.actor_fp == _ACTOR
+        assert iv.reason == "compromised key"
+
+    def test_force_revoke_prefixes_reason_in_registry(self):
+        reg = _registry_with_active_writer()
+        state = EmergencyState()
+        state.force_revoke(_WRITER_FP, _ACTOR, "compromised key", _TS, reg)
+        record = reg.lookup(_WRITER_FP)
+        # The registry transition log should contain the EMERGENCY-prefixed reason
+        last_entry = record.transition_log[-1]
+        assert last_entry.reason.startswith("EMERGENCY:")
+
+    def test_force_revoke_blocks_re_enrollment(self):
+        reg = _registry_with_active_writer()
+        state = EmergencyState()
+        state.force_revoke(_WRITER_FP, _ACTOR, "compromised key", _TS, reg)
+        # Re-enrollment must be permanently blocked
+        new_identity = WriterIdentity(
+            tier=IdentityTier.MLDSA,
+            fingerprint=_WRITER_FP,
+            mldsa_vk=b"\xdd" * 32,
+        )
+        with pytest.raises(ValueError, match="revoked"):
+            reg.enroll(new_identity, timestamp=5_000)
+
+
+# ---------------------------------------------------------------------------
+# TestDispatchOverride
+# ---------------------------------------------------------------------------
+
+class TestDispatchOverride:
+    """EmergencyState dispatch override — per-writer force-allow / force-block."""
+
+    def test_no_override_initially(self):
+        state = EmergencyState()
+        assert state.get_dispatch_override(_WRITER_FP) is None
+
+    def test_set_override_allow(self):
+        state = EmergencyState()
+        state.set_dispatch_override(
+            _WRITER_FP, allow=True, actor_fp=_ACTOR, reason="VIP pass", timestamp=_TS,
+        )
+        assert state.get_dispatch_override(_WRITER_FP) is True
+
+    def test_set_override_block(self):
+        state = EmergencyState()
+        state.set_dispatch_override(
+            _WRITER_FP, allow=False, actor_fp=_ACTOR, reason="quarantine", timestamp=_TS,
+        )
+        assert state.get_dispatch_override(_WRITER_FP) is False
+
+    def test_set_override_logs_intervention(self):
+        state = EmergencyState()
+        state.set_dispatch_override(
+            _WRITER_FP, allow=True, actor_fp=_ACTOR, reason="VIP pass", timestamp=_TS,
+        )
+        assert len(state.interventions) == 1
+        iv = state.interventions[0]
+        assert iv.action is EmergencyAction.OVERRIDE_DISPATCH
+        assert iv.reason == "VIP pass"
+
+    def test_clear_override_removes_it(self):
+        state = EmergencyState()
+        state.set_dispatch_override(
+            _WRITER_FP, allow=False, actor_fp=_ACTOR, reason="quarantine", timestamp=_TS,
+        )
+        state.clear_dispatch_override(_WRITER_FP, _ACTOR, _TS + 100)
+        assert state.get_dispatch_override(_WRITER_FP) is None
+
+    def test_clear_override_logs_intervention(self):
+        state = EmergencyState()
+        state.set_dispatch_override(
+            _WRITER_FP, allow=True, actor_fp=_ACTOR, reason="test", timestamp=_TS,
+        )
+        state.clear_dispatch_override(_WRITER_FP, _ACTOR, _TS + 100)
+        assert len(state.interventions) == 2
+        iv = state.interventions[1]
+        assert iv.action is EmergencyAction.CLEAR_OVERRIDE
+
+    def test_clear_nonexistent_override_is_safe(self):
+        state = EmergencyState()
+        # Should not raise
+        state.clear_dispatch_override(_WRITER_FP, _ACTOR, _TS)
+        assert state.get_dispatch_override(_WRITER_FP) is None
+
+    def test_override_does_not_affect_other_writers(self):
+        state = EmergencyState()
+        other_fp = b"\x22" * 32
+        state.set_dispatch_override(
+            _WRITER_FP, allow=True, actor_fp=_ACTOR, reason="test", timestamp=_TS,
+        )
+        assert state.get_dispatch_override(other_fp) is None

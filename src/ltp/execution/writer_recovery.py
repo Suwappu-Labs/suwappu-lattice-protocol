@@ -2,7 +2,7 @@
 Emergency recovery primitives for the writer layer (Spec C2 §8).
 
 Provides:
-  - EmergencyAction   — 7-value enum of recovery operations
+  - EmergencyAction   — 11-value enum of recovery operations
   - EmergencyIntervention — immutable audit record for each action taken
   - EmergencyState    — mutable state machine tracking active interventions
   - PolicySnapshotStore — append-only, per-VM policy version history

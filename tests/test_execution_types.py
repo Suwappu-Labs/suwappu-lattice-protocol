@@ -81,3 +81,49 @@ class TestStateQuery:
         r = StateResult.not_found()
         assert r.found is False
         assert r.data == b""
+
+
+class TestOperationType:
+    def test_all_five_variants_exist(self):
+        from src.ltp.execution.types import OperationType
+        assert len(OperationType) == 5
+        names = {m.name for m in OperationType}
+        assert names == {"TRANSFER", "DEPLOY", "CALL", "STATE_MODIFY", "STATE_READ"}
+
+
+class TestInferOperationType:
+    """infer_operation_type maps the first payload byte to an OperationType."""
+
+    def test_empty_payload_defaults_to_transfer(self):
+        from src.ltp.execution.types import infer_operation_type, OperationType
+        assert infer_operation_type(b"") is OperationType.TRANSFER
+
+    def test_byte_0x00_is_transfer(self):
+        from src.ltp.execution.types import infer_operation_type, OperationType
+        assert infer_operation_type(b"\x00rest") is OperationType.TRANSFER
+
+    def test_byte_0x01_is_deploy(self):
+        from src.ltp.execution.types import infer_operation_type, OperationType
+        assert infer_operation_type(b"\x01rest") is OperationType.DEPLOY
+
+    def test_byte_0x02_is_call(self):
+        from src.ltp.execution.types import infer_operation_type, OperationType
+        assert infer_operation_type(b"\x02rest") is OperationType.CALL
+
+    def test_byte_0x03_is_state_modify(self):
+        from src.ltp.execution.types import infer_operation_type, OperationType
+        assert infer_operation_type(b"\x03rest") is OperationType.STATE_MODIFY
+
+    def test_byte_0x04_is_state_read(self):
+        from src.ltp.execution.types import infer_operation_type, OperationType
+        assert infer_operation_type(b"\x04rest") is OperationType.STATE_READ
+
+    def test_unknown_byte_defaults_to_transfer(self):
+        from src.ltp.execution.types import infer_operation_type, OperationType
+        assert infer_operation_type(b"\xff") is OperationType.TRANSFER
+        assert infer_operation_type(b"\x05") is OperationType.TRANSFER
+        assert infer_operation_type(b"\x80") is OperationType.TRANSFER
+
+    def test_single_byte_payload(self):
+        from src.ltp.execution.types import infer_operation_type, OperationType
+        assert infer_operation_type(b"\x02") is OperationType.CALL

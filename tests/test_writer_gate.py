@@ -292,3 +292,104 @@ class TestRouterIntegration:
         assert len(result.tx_results) == 1
         assert result.tx_results[0].success is True
         assert result.tx_results[0].gas_used == 21000
+
+
+# ---------------------------------------------------------------------------
+# TestDispatchOverrideInGate
+# ---------------------------------------------------------------------------
+
+class TestDispatchOverrideInGate:
+    """Dispatch overrides in pre_dispatch: force-allow / force-block."""
+
+    def test_force_allow_bypasses_vm_freeze(self):
+        gate, reg, emergency, _ = _make_gate()
+        fp = b"\xaa" * 32
+        _enroll_active(reg, fp=fp)
+        # Freeze the VM
+        emergency.freeze_vm(vm_tag=0x01, actor_fp=ADMIN_FP, reason="incident", timestamp=1)
+        # Set force-allow override for this writer
+        emergency.set_dispatch_override(fp, allow=True, actor_fp=ADMIN_FP,
+                                         reason="VIP", timestamp=2)
+        tx = _make_tx(fp, vm_tag=0x01)
+        decision = gate.pre_dispatch(tx)
+        # Override is checked BEFORE VM freeze, so it should allow
+        assert decision.allowed is True
+
+    def test_force_block_overrides_active_writer(self):
+        gate, reg, emergency, _ = _make_gate()
+        fp = b"\xaa" * 32
+        _enroll_active(reg, fp=fp)
+        emergency.set_dispatch_override(fp, allow=False, actor_fp=ADMIN_FP,
+                                         reason="quarantine", timestamp=1)
+        tx = _make_tx(fp, vm_tag=0x01)
+        decision = gate.pre_dispatch(tx)
+        assert decision.allowed is False
+        assert "dispatch override" in decision.reason
+
+    def test_no_override_falls_through_to_vm_freeze_check(self):
+        gate, reg, emergency, _ = _make_gate()
+        fp = b"\xaa" * 32
+        _enroll_active(reg, fp=fp)
+        emergency.freeze_vm(vm_tag=0x01, actor_fp=ADMIN_FP, reason="incident", timestamp=1)
+        # No dispatch override set
+        tx = _make_tx(fp, vm_tag=0x01)
+        decision = gate.pre_dispatch(tx)
+        assert decision.allowed is False
+        assert "frozen" in decision.reason
+
+    def test_override_cleared_reverts_to_normal(self):
+        gate, reg, emergency, _ = _make_gate()
+        fp = b"\xaa" * 32
+        _enroll_active(reg, fp=fp)
+        emergency.set_dispatch_override(fp, allow=False, actor_fp=ADMIN_FP,
+                                         reason="quarantine", timestamp=1)
+        emergency.clear_dispatch_override(fp, ADMIN_FP, timestamp=2)
+        tx = _make_tx(fp, vm_tag=0x01)
+        decision = gate.pre_dispatch(tx)
+        # No override → normal flow → should allow (active writer, VM not frozen)
+        assert decision.allowed is True
+
+
+# ---------------------------------------------------------------------------
+# TestPolicyRollbackInGate
+# ---------------------------------------------------------------------------
+
+class TestPolicyRollbackInGate:
+    """WriterGate.rollback_policy restores a previous policy snapshot."""
+
+    def test_rollback_restores_previous_policy(self):
+        gate, reg, _, _ = _make_gate()
+
+        # Set initial policy: max_writers=0 (unlimited)
+        p0 = VMWriterPolicy(vm_tag=0x01, max_writers=0)
+        gate.set_policy(0x01, p0)
+
+        # Set restrictive policy: max_writers=5
+        p1 = VMWriterPolicy(vm_tag=0x01, max_writers=5)
+        gate.set_policy(0x01, p1)
+
+        # Rollback to version 0 (the original unlimited policy)
+        restored = gate.rollback_policy(0x01, version=0)
+        assert restored.max_writers == 0
+
+    def test_set_policy_snapshots_automatically(self):
+        from src.ltp.execution.writer_recovery import PolicySnapshotStore
+        store = PolicySnapshotStore()
+        reg = WriterRegistry()
+        gate = WriterGate(registry=reg, snapshot_store=store)
+
+        p0 = VMWriterPolicy(vm_tag=0x01)
+        gate.set_policy(0x01, p0)
+
+        p1 = VMWriterPolicy(vm_tag=0x01, max_writers=50)
+        gate.set_policy(0x01, p1)
+
+        # Store should have two snapshots
+        assert store.version_count(0x01) == 2
+
+    def test_rollback_invalid_version_raises(self):
+        gate, reg, _, _ = _make_gate()
+        p = VMWriterPolicy(vm_tag=0x01)
+        gate.set_policy(0x01, p)
+        with pytest.raises(KeyError):
+            gate.rollback_policy(0x01, version=99)
