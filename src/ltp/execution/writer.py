@@ -134,7 +134,7 @@ class TransitionEntry:
 
     Stored in WriterRecord.transition_log for a complete audit trail.
     """
-    timestamp:    float          # Unix time of the transition
+    timestamp:    int            # Timestamp in milliseconds
     from_state:   WriterState    # State before the transition
     to_state:     WriterState    # State after the transition
     actor_fp:     bytes          # 32-byte fingerprint of the authorising actor

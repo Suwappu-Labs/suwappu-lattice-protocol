@@ -193,7 +193,7 @@ class TestTransitionEntry:
     """TransitionEntry frozen dataclass."""
 
     def test_fields_are_accessible(self):
-        now = time.time()
+        now = int(time.time() * 1000)
         actor = b"\xab" * 32
         entry = TransitionEntry(
             timestamp=now,
@@ -211,7 +211,7 @@ class TestTransitionEntry:
 
     def test_emergency_flag_can_be_set(self):
         entry = TransitionEntry(
-            timestamp=time.time(),
+            timestamp=int(time.time() * 1000),
             from_state=WriterState.ACTIVE,
             to_state=WriterState.SUSPENDED,
             actor_fp=b"\x00" * 32,
@@ -222,7 +222,7 @@ class TestTransitionEntry:
 
     def test_transition_entry_is_frozen(self):
         entry = TransitionEntry(
-            timestamp=time.time(),
+            timestamp=int(time.time() * 1000),
             from_state=WriterState.ACTIVE,
             to_state=WriterState.REVOKED,
             actor_fp=b"\x01" * 32,
@@ -262,7 +262,7 @@ class TestWriterRecord:
 
     def test_create_pending_record(self):
         identity = self._make_identity()
-        now = time.time()
+        now = int(time.time() * 1000)
         record = WriterRecord(
             identity=identity,
             state=WriterState.PENDING,
@@ -283,7 +283,7 @@ class TestWriterRecord:
             identity=identity,
             state=WriterState.ACTIVE,
             approval_path=ApprovalPath.ADMIN,
-            enrolled_at=time.time(),
+            enrolled_at=int(time.time() * 1000),
         )
         assert record.can_transact is True
 
@@ -293,7 +293,7 @@ class TestWriterRecord:
             identity=identity,
             state=WriterState.PROBATION,
             approval_path=ApprovalPath.SPONSOR,
-            enrolled_at=time.time(),
+            enrolled_at=int(time.time() * 1000),
         )
         assert record.can_transact is True
 
@@ -303,7 +303,7 @@ class TestWriterRecord:
             identity=identity,
             state=WriterState.PENDING,
             approval_path=ApprovalPath.SELF,
-            enrolled_at=time.time(),
+            enrolled_at=int(time.time() * 1000),
         )
         assert record.can_transact is False
 
@@ -313,7 +313,7 @@ class TestWriterRecord:
             identity=identity,
             state=WriterState.SUSPENDED,
             approval_path=ApprovalPath.ADMIN,
-            enrolled_at=time.time(),
+            enrolled_at=int(time.time() * 1000),
             suspension_reason="policy breach",
         )
         assert record.can_transact is False
@@ -324,7 +324,7 @@ class TestWriterRecord:
             identity=identity,
             state=WriterState.REVOKED,
             approval_path=ApprovalPath.ADMIN,
-            enrolled_at=time.time(),
+            enrolled_at=int(time.time() * 1000),
         )
         assert record.can_transact is False
 
@@ -334,10 +334,10 @@ class TestWriterRecord:
             identity=identity,
             state=WriterState.ACTIVE,
             approval_path=ApprovalPath.ADMIN,
-            enrolled_at=time.time(),
+            enrolled_at=int(time.time() * 1000),
         )
         entry = TransitionEntry(
-            timestamp=time.time(),
+            timestamp=int(time.time() * 1000),
             from_state=WriterState.PENDING,
             to_state=WriterState.ACTIVE,
             actor_fp=b"\xcc" * 32,
