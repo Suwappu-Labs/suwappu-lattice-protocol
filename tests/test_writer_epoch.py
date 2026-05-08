@@ -69,8 +69,15 @@ def _make_probation_registry(
     reg = WriterRegistry(config=config)
     ident = _make_identity(fp=fp, vk=vk)
     reg.enroll(ident, timestamp=TS)
-    reg.sponsor(ident.fingerprint, sponsor_fp=b"\xc1" * 32, timestamp=TS + 1)
-    reg.sponsor(ident.fingerprint, sponsor_fp=b"\xc2" * 32, timestamp=TS + 2)
+    # Create two ACTIVE sponsors first
+    s1 = _make_identity(fp=b"\xc1" * 32, vk=b"\xd1" * 32)
+    reg.enroll(s1, timestamp=TS - 100)
+    reg.approve(s1.fingerprint, admin_fp=_ADMIN_FP, timestamp=TS - 99)
+    s2 = _make_identity(fp=b"\xc2" * 32, vk=b"\xd2" * 32)
+    reg.enroll(s2, timestamp=TS - 100)
+    reg.approve(s2.fingerprint, admin_fp=_ADMIN_FP, timestamp=TS - 99)
+    reg.sponsor(ident.fingerprint, sponsor_fp=s1.fingerprint, timestamp=TS + 1)
+    reg.sponsor(ident.fingerprint, sponsor_fp=s2.fingerprint, timestamp=TS + 2)
     return reg, ident
 
 

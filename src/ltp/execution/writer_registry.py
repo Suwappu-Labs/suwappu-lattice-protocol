@@ -171,6 +171,13 @@ class WriterRegistry:
                 f"sponsor only operates on PENDING writers; writer is {record.state.value}."
             )
 
+        # Sponsor must be an ACTIVE writer (Spec C2 §4.4)
+        sponsor_record = self._records.get(sponsor_fp)
+        if sponsor_record is None or sponsor_record.state not in TRANSACTABLE_STATES:
+            raise ValueError(
+                f"Sponsor {sponsor_fp.hex()[:16]}… must be an ACTIVE or PROBATION writer."
+            )
+
         # Duplicate sponsor — no-op
         if sponsor_fp in record.sponsors:
             return record

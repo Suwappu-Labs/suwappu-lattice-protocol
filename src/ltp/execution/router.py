@@ -123,6 +123,13 @@ class TransactionRouter:
             return TxResult.rejected(f"writer_gate:{vm_decision.reason}")
 
         try:
-            return executor.execute(payload)
+            result = executor.execute(payload)
         except Exception as exc:
             return TxResult.failed(f"execution_error:{exc}")
+
+        # Increment epoch counter on successful dispatch
+        if result.success:
+            writer_fp = tx_bytes[:_WRITER_FP_SIZE]
+            self._gate._epoch.increment(writer_fp, tag, 0)
+
+        return result

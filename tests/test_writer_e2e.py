@@ -74,12 +74,23 @@ class TestWriterLifecycleE2E:
 
         fp = identity.fingerprint
 
+        # Create two ACTIVE sponsor writers
+        kp_s1 = KeyPair.generate("e2e-sponsor-1")
+        id_s1 = WriterIdentity.from_keypair(kp_s1)
+        registry.enroll(id_s1, timestamp=500)
+        registry.approve(id_s1.fingerprint, admin_fp=b"\x01" * 32, timestamp=600)
+
+        kp_s2 = KeyPair.generate("e2e-sponsor-2")
+        id_s2 = WriterIdentity.from_keypair(kp_s2)
+        registry.enroll(id_s2, timestamp=500)
+        registry.approve(id_s2.fingerprint, admin_fp=b"\x01" * 32, timestamp=600)
+
         # First sponsor — still PENDING (threshold not yet met)
-        registry.sponsor(fp, sponsor_fp=b"\xaa" * 32, timestamp=2000)
+        registry.sponsor(fp, sponsor_fp=id_s1.fingerprint, timestamp=2000)
         assert registry.lookup(fp).state == WriterState.PENDING
 
         # Second sponsor — threshold met, auto-transitions to PROBATION
-        registry.sponsor(fp, sponsor_fp=b"\xbb" * 32, timestamp=2000)
+        registry.sponsor(fp, sponsor_fp=id_s2.fingerprint, timestamp=2000)
         assert registry.lookup(fp).state == WriterState.PROBATION
 
         # probation_until = 2000 + 5 = 2005

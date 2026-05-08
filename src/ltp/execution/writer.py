@@ -236,10 +236,10 @@ class WriterRecord:
     identity:           WriterIdentity
     state:              WriterState
     approval_path:      ApprovalPath
-    enrolled_at:        float                   # Unix timestamp of enrollment
+    enrolled_at:        int                     # Timestamp in milliseconds
 
     # Optional fields set on approval / progression
-    approved_at:        Optional[float]         = None
+    approved_at:        Optional[int]           = None
     approved_by:        Optional[bytes]         = None  # 32-byte actor fingerprint
     sponsors:           list[bytes]             = field(default_factory=list)
 

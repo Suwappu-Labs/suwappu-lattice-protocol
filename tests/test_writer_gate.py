@@ -54,9 +54,16 @@ def _enroll_probation(reg: WriterRegistry, fp: bytes = b"\xbb" * 32) -> WriterRe
         mldsa_vk=b"\x02" * 32,
     )
     reg.enroll(identity, timestamp=1000)
+    # Create two ACTIVE sponsors first
+    s1 = WriterIdentity(tier=IdentityTier.MLDSA, fingerprint=b"\x10" * 32, mldsa_vk=b"\x03" * 32)
+    reg.enroll(s1, timestamp=900)
+    reg.approve(s1.fingerprint, admin_fp=ADMIN_FP, timestamp=901)
+    s2 = WriterIdentity(tier=IdentityTier.MLDSA, fingerprint=b"\x11" * 32, mldsa_vk=b"\x04" * 32)
+    reg.enroll(s2, timestamp=900)
+    reg.approve(s2.fingerprint, admin_fp=ADMIN_FP, timestamp=901)
     # Two sponsors to hit threshold=2
-    reg.sponsor(fp, sponsor_fp=b"\x10" * 32, timestamp=1001)
-    reg.sponsor(fp, sponsor_fp=b"\x11" * 32, timestamp=1002)
+    reg.sponsor(fp, sponsor_fp=s1.fingerprint, timestamp=1001)
+    reg.sponsor(fp, sponsor_fp=s2.fingerprint, timestamp=1002)
     return reg.lookup(fp)
 
 

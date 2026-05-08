@@ -18,11 +18,11 @@ from src.ltp.execution.writer_registry import WriterRegistry
 # Test helpers
 # ---------------------------------------------------------------------------
 
-def _make_mldsa_identity():
+def _make_mldsa_identity(label: str = "reg-test"):
     """Create a fresh ML-DSA writer identity from a generated KeyPair."""
     from src.ltp.execution.writer import WriterIdentity
     from src.ltp.keypair import KeyPair
-    kp = KeyPair.generate("reg-test")
+    kp = KeyPair.generate(label)
     return WriterIdentity.from_keypair(kp)
 
 
@@ -42,6 +42,14 @@ def _registry(sponsor_threshold: int = 2, probation_epochs: int = 10) -> WriterR
         probation_epochs=probation_epochs,
     )
     return WriterRegistry(config=config)
+
+
+def _enroll_active_sponsor(reg: WriterRegistry, label: str, ts: int) -> bytes:
+    """Create, enroll, and approve a sponsor writer. Returns the fingerprint."""
+    ident = _make_mldsa_identity(label)
+    reg.enroll(ident, timestamp=ts)
+    reg.approve(ident.fingerprint, admin_fp=b"\x01" * 32, timestamp=ts + 1)
+    return ident.fingerprint
 
 
 TS = 1_000_000  # A deterministic base timestamp (milliseconds)
@@ -148,29 +156,31 @@ class TestSponsorFlow:
         reg = _registry(sponsor_threshold=2)
         ident = _make_mldsa_identity()
         reg.enroll(ident, timestamp=TS)
-        sponsor_fp = b"\xba" * 32
-        record = reg.sponsor(ident.fingerprint, sponsor_fp=sponsor_fp, timestamp=TS + 1)
+        s1_fp = _enroll_active_sponsor(reg, "sponsor-1", TS - 100)
+        record = reg.sponsor(ident.fingerprint, sponsor_fp=s1_fp, timestamp=TS + 1)
         # Below threshold — still PENDING
         assert record.state == WriterState.PENDING
-        assert sponsor_fp in record.sponsors
+        assert s1_fp in record.sponsors
 
     def test_threshold_met_transitions_to_probation(self):
         reg = _registry(sponsor_threshold=2)
         ident = _make_mldsa_identity()
         reg.enroll(ident, timestamp=TS)
-        reg.sponsor(ident.fingerprint, sponsor_fp=b"\xb1" * 32, timestamp=TS + 1)
-        record = reg.sponsor(ident.fingerprint, sponsor_fp=b"\xb2" * 32, timestamp=TS + 2)
+        s1_fp = _enroll_active_sponsor(reg, "sponsor-t1", TS - 100)
+        s2_fp = _enroll_active_sponsor(reg, "sponsor-t2", TS - 100)
+        reg.sponsor(ident.fingerprint, sponsor_fp=s1_fp, timestamp=TS + 1)
+        record = reg.sponsor(ident.fingerprint, sponsor_fp=s2_fp, timestamp=TS + 2)
         assert record.state == WriterState.PROBATION
 
     def test_duplicate_sponsor_is_silently_ignored(self):
         reg = _registry(sponsor_threshold=3)
         ident = _make_mldsa_identity()
         reg.enroll(ident, timestamp=TS)
-        s1 = b"\xbc" * 32
-        reg.sponsor(ident.fingerprint, sponsor_fp=s1, timestamp=TS + 1)
-        record = reg.sponsor(ident.fingerprint, sponsor_fp=s1, timestamp=TS + 2)
+        s1_fp = _enroll_active_sponsor(reg, "sponsor-dup", TS - 100)
+        reg.sponsor(ident.fingerprint, sponsor_fp=s1_fp, timestamp=TS + 1)
+        record = reg.sponsor(ident.fingerprint, sponsor_fp=s1_fp, timestamp=TS + 2)
         # Still only one unique sponsor
-        assert record.sponsors.count(s1) == 1
+        assert record.sponsors.count(s1_fp) == 1
         assert record.state == WriterState.PENDING
 
     def test_sponsor_on_non_pending_writer_raises_value_error(self):
@@ -179,16 +189,36 @@ class TestSponsorFlow:
         admin_fp = b"\xbe" * 32
         reg.enroll(ident, timestamp=TS)
         reg.approve(ident.fingerprint, admin_fp=admin_fp, timestamp=TS + 5)
+        s1_fp = _enroll_active_sponsor(reg, "sponsor-nonpend", TS - 100)
         with pytest.raises(ValueError, match="PENDING"):
-            reg.sponsor(ident.fingerprint, sponsor_fp=b"\xbf" * 32, timestamp=TS + 10)
+            reg.sponsor(ident.fingerprint, sponsor_fp=s1_fp, timestamp=TS + 10)
 
     def test_probation_until_set_on_sponsor_threshold(self):
         reg = _registry(sponsor_threshold=2, probation_epochs=10)
         ident = _make_mldsa_identity()
         reg.enroll(ident, timestamp=TS)
-        reg.sponsor(ident.fingerprint, sponsor_fp=b"\xca" * 32, timestamp=TS + 1)
-        record = reg.sponsor(ident.fingerprint, sponsor_fp=b"\xcb" * 32, timestamp=TS + 2)
+        s1_fp = _enroll_active_sponsor(reg, "sponsor-p1", TS - 100)
+        s2_fp = _enroll_active_sponsor(reg, "sponsor-p2", TS - 100)
+        reg.sponsor(ident.fingerprint, sponsor_fp=s1_fp, timestamp=TS + 1)
+        record = reg.sponsor(ident.fingerprint, sponsor_fp=s2_fp, timestamp=TS + 2)
         assert record.probation_until == (TS + 2) + 10
+
+    def test_inactive_sponsor_raises_value_error(self):
+        reg = _registry(sponsor_threshold=2)
+        ident = _make_mldsa_identity()
+        reg.enroll(ident, timestamp=TS)
+        # Create a PENDING writer (not ACTIVE) and try to use as sponsor
+        pending_ident = _make_mldsa_identity("pending-sponsor")
+        reg.enroll(pending_ident, timestamp=TS - 50)
+        with pytest.raises(ValueError, match="ACTIVE or PROBATION"):
+            reg.sponsor(ident.fingerprint, sponsor_fp=pending_ident.fingerprint, timestamp=TS + 1)
+
+    def test_unregistered_sponsor_raises_value_error(self):
+        reg = _registry(sponsor_threshold=2)
+        ident = _make_mldsa_identity()
+        reg.enroll(ident, timestamp=TS)
+        with pytest.raises(ValueError, match="ACTIVE or PROBATION"):
+            reg.sponsor(ident.fingerprint, sponsor_fp=b"\xff" * 32, timestamp=TS + 1)
 
 
 # ---------------------------------------------------------------------------
@@ -264,8 +294,10 @@ class TestStateTransitions:
         reg = _registry(sponsor_threshold=2)
         ident = _make_mldsa_identity()
         reg.enroll(ident, timestamp=TS)
-        reg.sponsor(ident.fingerprint, sponsor_fp=b"\xde" * 32, timestamp=TS + 1)
-        reg.sponsor(ident.fingerprint, sponsor_fp=b"\xdf" * 32, timestamp=TS + 2)
+        s1_fp = _enroll_active_sponsor(reg, "promo-s1", TS - 100)
+        s2_fp = _enroll_active_sponsor(reg, "promo-s2", TS - 100)
+        reg.sponsor(ident.fingerprint, sponsor_fp=s1_fp, timestamp=TS + 1)
+        reg.sponsor(ident.fingerprint, sponsor_fp=s2_fp, timestamp=TS + 2)
         record = reg.lookup(ident.fingerprint)
         assert record.state == WriterState.PROBATION
         reg.promote(ident.fingerprint, timestamp=TS + 3)
@@ -276,8 +308,10 @@ class TestStateTransitions:
         ident = _make_mldsa_identity()
         admin_fp = b"\xea" * 32
         reg.enroll(ident, timestamp=TS)
-        reg.sponsor(ident.fingerprint, sponsor_fp=b"\xe1" * 32, timestamp=TS + 1)
-        reg.sponsor(ident.fingerprint, sponsor_fp=b"\xe2" * 32, timestamp=TS + 2)
+        s1_fp = _enroll_active_sponsor(reg, "susp-s1", TS - 100)
+        s2_fp = _enroll_active_sponsor(reg, "susp-s2", TS - 100)
+        reg.sponsor(ident.fingerprint, sponsor_fp=s1_fp, timestamp=TS + 1)
+        reg.sponsor(ident.fingerprint, sponsor_fp=s2_fp, timestamp=TS + 2)
         record = reg.suspend(
             ident.fingerprint,
             reason="probation violation",
@@ -311,9 +345,10 @@ class TestAuditTrail:
         reg = _registry(sponsor_threshold=2)
         ident = _make_mldsa_identity()
         reg.enroll(ident, timestamp=TS)
-        reg.sponsor(ident.fingerprint, sponsor_fp=b"\xfb" * 32, timestamp=TS + 1)
-        s2 = b"\xfc" * 32
-        reg.sponsor(ident.fingerprint, sponsor_fp=s2, timestamp=TS + 2)
+        s1_fp = _enroll_active_sponsor(reg, "audit-s1", TS - 100)
+        s2_fp = _enroll_active_sponsor(reg, "audit-s2", TS - 100)
+        reg.sponsor(ident.fingerprint, sponsor_fp=s1_fp, timestamp=TS + 1)
+        reg.sponsor(ident.fingerprint, sponsor_fp=s2_fp, timestamp=TS + 2)
         record = reg.lookup(ident.fingerprint)
         assert len(record.transition_log) == 1
         entry = record.transition_log[0]
@@ -370,11 +405,14 @@ class TestActiveWriters:
         reg = _registry(sponsor_threshold=2)
         ident = _make_mldsa_identity()
         reg.enroll(ident, timestamp=TS)
-        reg.sponsor(ident.fingerprint, sponsor_fp=b"\x21" * 32, timestamp=TS + 1)
-        reg.sponsor(ident.fingerprint, sponsor_fp=b"\x22" * 32, timestamp=TS + 2)
+        s1_fp = _enroll_active_sponsor(reg, "actw-s1", TS - 100)
+        s2_fp = _enroll_active_sponsor(reg, "actw-s2", TS - 100)
+        reg.sponsor(ident.fingerprint, sponsor_fp=s1_fp, timestamp=TS + 1)
+        reg.sponsor(ident.fingerprint, sponsor_fp=s2_fp, timestamp=TS + 2)
+        # 2 sponsors (ACTIVE) + 1 probation = 3 transactable
         active = reg.active_writers()
-        assert len(active) == 1
-        assert active[0].state == WriterState.PROBATION
+        probation_writers = [w for w in active if w.state == WriterState.PROBATION]
+        assert len(probation_writers) == 1
 
     def test_suspended_and_revoked_writers_excluded(self):
         reg = _registry()
