@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+from typing import Optional, TYPE_CHECKING
+
 from .registry import VMRegistry
 from .state_root import MultiVMStateRoot
-from .types import BatchResult, OrderedBatch, TxResult
+from .types import BatchResult, OperationType, OrderedBatch, TxResult
+
+if TYPE_CHECKING:
+    from .writer_gate import WriterGate
+
+_WRITER_FP_SIZE = 32
 
 
 class ExecutorUnavailable(RuntimeError):
@@ -18,10 +25,24 @@ class TransactionRouter:
     Execution order is sacred — consensus already ordered these
     transactions. The router executes them sequentially in exactly
     that order.
+
+    When a WriterGate is provided, every transaction is expected to carry
+    a 32-byte writer fingerprint prefix followed by the vm_tag byte and
+    payload.  The gate performs two-phase enforcement: pre_dispatch
+    (universal checks) and vm_authorize (per-VM policy).
+
+    When no gate is provided the router behaves exactly as before:
+    tx_bytes[0] is the vm_tag and tx_bytes[1:] is the payload.
     """
 
-    def __init__(self, registry: VMRegistry) -> None:
+    def __init__(self, registry: VMRegistry,
+                 writer_gate: Optional[WriterGate] = None) -> None:
         self._registry = registry
+        self._gate = writer_gate
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
     def execute_batch(self, batch: OrderedBatch) -> BatchResult:
         """Execute all transactions, then compute multi-VM state root."""
@@ -32,18 +53,11 @@ class TransactionRouter:
                 results.append(TxResult.rejected("empty_transaction"))
                 continue
 
-            tag = tx_bytes[0]
-            payload = tx_bytes[1:]
-            executor = self._registry.get(tag)
+            if self._gate is not None:
+                result = self._execute_gated(tx_bytes)
+            else:
+                result = self._execute_ungated(tx_bytes)
 
-            if executor is None:
-                results.append(TxResult.rejected(f"unknown_vm_tag:0x{tag:02X}"))
-                continue
-
-            try:
-                result = executor.execute(payload)
-            except Exception as exc:
-                result = TxResult.failed(f"execution_error:{exc}")
             results.append(result)
 
         # Collect state roots from all registered executors
@@ -65,3 +79,50 @@ class TransactionRouter:
             tx_results=results,
             state_root=state_root,
         )
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _execute_ungated(self, tx_bytes: bytes) -> TxResult:
+        """Original dispatch logic — no gate present."""
+        tag = tx_bytes[0]
+        payload = tx_bytes[1:]
+        executor = self._registry.get(tag)
+
+        if executor is None:
+            return TxResult.rejected(f"unknown_vm_tag:0x{tag:02X}")
+
+        try:
+            return executor.execute(payload)
+        except Exception as exc:
+            return TxResult.failed(f"execution_error:{exc}")
+
+    def _execute_gated(self, tx_bytes: bytes) -> TxResult:
+        """Gate-enforced dispatch — writer fingerprint prefix expected."""
+        assert self._gate is not None  # guaranteed by caller
+
+        # Phase 1: universal checks (size, registry frozen, writer state, VM frozen)
+        decision = self._gate.pre_dispatch(tx_bytes)
+        if not decision.allowed:
+            return TxResult.rejected(f"writer_gate:{decision.reason}")
+
+        # Strip the writer fingerprint prefix to reach vm_tag + payload
+        tag = tx_bytes[_WRITER_FP_SIZE]
+        payload = tx_bytes[_WRITER_FP_SIZE + 1:]
+
+        executor = self._registry.get(tag)
+        if executor is None:
+            return TxResult.rejected(f"unknown_vm_tag:0x{tag:02X}")
+
+        # Phase 2: per-VM authorization
+        vm_decision = self._gate.vm_authorize(
+            decision.writer_record, executor, OperationType.TRANSFER, payload
+        )
+        if not vm_decision.allowed:
+            return TxResult.rejected(f"writer_gate:{vm_decision.reason}")
+
+        try:
+            return executor.execute(payload)
+        except Exception as exc:
+            return TxResult.failed(f"execution_error:{exc}")

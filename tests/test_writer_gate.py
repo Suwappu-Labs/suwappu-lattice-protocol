@@ -203,3 +203,85 @@ class TestVMAuthorize:
         decision = gate.vm_authorize(record, executor, OperationType.TRANSFER, b"tx")
         # Declarative policy with defaults permits MLDSA TRANSFER
         assert decision.allowed is True
+
+
+# ---------------------------------------------------------------------------
+# TestRouterIntegration
+# ---------------------------------------------------------------------------
+
+class FakeEVM:
+    vm_tag = 0x01
+    vm_name = "fake-evm"
+    family = "account"
+
+    def execute(self, tx_bytes):
+        from src.ltp.execution.types import TxResult
+        return TxResult.accepted(gas_used=21000)
+
+    def state_root(self):
+        return b"\xcc" * 32
+
+    def validate_tx(self, tx_bytes):
+        return True
+
+    def query_state(self, query):
+        from src.ltp.execution.types import StateResult
+        return StateResult.not_found()
+
+
+def _make_router(gate=None):
+    from src.ltp.execution.registry import VMRegistry
+    from src.ltp.execution.router import TransactionRouter
+    reg = VMRegistry()
+    reg.register(FakeEVM())
+    return TransactionRouter(reg, writer_gate=gate)
+
+
+def _make_ordered_batch(txs: list[bytes], round_num: int = 1):
+    from src.ltp.execution.types import OrderedBatch
+    return OrderedBatch(
+        round=round_num,
+        epoch=0,
+        transactions=txs,
+        leader_authority=0,
+        timestamp_ms=1000,
+        consensus_type="dag",
+    )
+
+
+class TestRouterIntegration:
+    def test_router_without_gate_passthrough(self):
+        """Original format (tag byte + payload) passes through unchanged when no gate."""
+        router = _make_router(gate=None)
+        batch = _make_ordered_batch([b"\x01hello"])
+        result = router.execute_batch(batch)
+        assert len(result.tx_results) == 1
+        assert result.tx_results[0].success is True
+        assert result.tx_results[0].gas_used == 21000
+
+    def test_router_with_gate_rejects_unauthorized(self):
+        """Gated format (fp + vm_tag + payload) with unknown writer is rejected."""
+        gate, reg, _, _ = _make_gate()
+        # Do NOT enroll any writer — unknown fingerprint
+        router = _make_router(gate=gate)
+        unknown_fp = b"\xde" * 32
+        tx = unknown_fp + bytes([0x01]) + b"payload"
+        batch = _make_ordered_batch([tx])
+        result = router.execute_batch(batch)
+        assert len(result.tx_results) == 1
+        assert result.tx_results[0].success is False
+        assert "writer_gate" in result.tx_results[0].error
+        assert "not found" in result.tx_results[0].error
+
+    def test_router_with_gate_allows_authorized(self):
+        """Gated format with enrolled + approved writer is executed successfully."""
+        gate, reg, _, _ = _make_gate()
+        fp = b"\xaa" * 32
+        _enroll_active(reg, fp=fp)
+        router = _make_router(gate=gate)
+        tx = fp + bytes([0x01]) + b"transfer_data"
+        batch = _make_ordered_batch([tx])
+        result = router.execute_batch(batch)
+        assert len(result.tx_results) == 1
+        assert result.tx_results[0].success is True
+        assert result.tx_results[0].gas_used == 21000
