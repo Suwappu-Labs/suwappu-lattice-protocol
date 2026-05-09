@@ -1,7 +1,7 @@
 """Tests for emergency recovery primitives (Spec C2 §8).
 
 Covers:
-  - EmergencyAction enum (11 values)
+  - EmergencyAction enum (12 values)
   - EmergencyState (freeze / bypass / force-revoke / dispatch override lifecycle + audit trail)
   - PolicySnapshotStore (append-only snapshots + rollback)
   - RecoveryQuorum (threshold voting)
@@ -46,10 +46,10 @@ def _policy(vm_tag: int = 1, max_writers: int = 0) -> VMWriterPolicy:
 # ---------------------------------------------------------------------------
 
 class TestEmergencyAction:
-    """All eleven enum members must exist with the correct values."""
+    """All twelve enum members must exist with the correct values."""
 
-    def test_eleven_actions_exist(self):
-        assert len(EmergencyAction) == 11
+    def test_twelve_actions_exist(self):
+        assert len(EmergencyAction) == 12
 
     def test_freeze_registry(self):
         assert EmergencyAction.FREEZE_REGISTRY.value == "freeze_registry"
@@ -83,6 +83,9 @@ class TestEmergencyAction:
 
     def test_clear_override(self):
         assert EmergencyAction.CLEAR_OVERRIDE.value == "clear_override"
+
+    def test_force_epoch_advance(self):
+        assert EmergencyAction.FORCE_EPOCH_ADVANCE.value == "force_epoch_advance"
 
 
 # ---------------------------------------------------------------------------

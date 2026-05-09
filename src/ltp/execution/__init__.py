@@ -38,6 +38,18 @@ from .writer_recovery import (
 from .writer_epoch import EpochTracker, check_expirations, promote_due_probations
 from .writer_gate import WriterGate
 
+# Committee Formation (Spec C3a)
+from .committee import (
+    CommitteeRole, CommitteeMember, CommitteeRoster,
+    EpochTrigger, EpochRecord,
+    EvictionReason, EvictionEvent, CommitteeEvent,
+    EpochStrategy, FloorMode, StandbyStrategy, EvictionMode,
+    CommitteePolicy,
+    CommitteeFormation, EpochManager,
+    EvictionHandler, StandbySelector,
+    CommitteeManager,
+)
+
 __all__ = [
     # Execution layer (Spec B)
     "OrderedBatch", "BatchResult", "TxResult", "StateQuery", "StateResult", "OperationType",
@@ -68,4 +80,13 @@ __all__ = [
     "PolicySnapshotStore", "RecoveryQuorum",
     "EpochTracker", "check_expirations", "promote_due_probations",
     "WriterGate",
+    # Committee Formation (Spec C3a)
+    "CommitteeRole", "CommitteeMember", "CommitteeRoster",
+    "EpochTrigger", "EpochRecord",
+    "EvictionReason", "EvictionEvent", "CommitteeEvent",
+    "EpochStrategy", "FloorMode", "StandbyStrategy", "EvictionMode",
+    "CommitteePolicy",
+    "CommitteeFormation", "EpochManager",
+    "EvictionHandler", "StandbySelector",
+    "CommitteeManager",
 ]
