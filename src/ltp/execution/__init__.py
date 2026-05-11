@@ -50,6 +50,16 @@ from .committee import (
     CommitteeManager,
 )
 
+# DKG (Spec C3b)
+from .committee.dkg import (
+    DKGState, DKGPhase,
+    DKGCommitment, DKGShare, DKGComplaint,
+    DKGResult, DKGSessionConfig,
+    ScalarField, ScalarPoly,
+    DKGTransport, FakeDKGTransport,
+    DKGKeyRegistry,
+)
+
 __all__ = [
     # Execution layer (Spec B)
     "OrderedBatch", "BatchResult", "TxResult", "StateQuery", "StateResult", "OperationType",
@@ -89,4 +99,11 @@ __all__ = [
     "CommitteeFormation", "EpochManager",
     "EvictionHandler", "StandbySelector",
     "CommitteeManager",
+    # DKG (Spec C3b)
+    "DKGState", "DKGPhase",
+    "DKGCommitment", "DKGShare", "DKGComplaint",
+    "DKGResult", "DKGSessionConfig",
+    "ScalarField", "ScalarPoly",
+    "DKGTransport", "FakeDKGTransport",
+    "DKGKeyRegistry",
 ]

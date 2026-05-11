@@ -9,6 +9,9 @@ from .types import (
     DKGResult,
     DKGSessionConfig,
 )
+from .scalar_poly import ScalarField, ScalarPoly
+from .transport import DKGTransport, FakeDKGTransport
+from .registry import DKGKeyRegistry
 
 __all__ = [
     "DKGState",
@@ -18,4 +21,9 @@ __all__ = [
     "DKGComplaint",
     "DKGResult",
     "DKGSessionConfig",
+    "ScalarField",
+    "ScalarPoly",
+    "DKGTransport",
+    "FakeDKGTransport",
+    "DKGKeyRegistry",
 ]

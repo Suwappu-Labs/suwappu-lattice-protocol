@@ -23,6 +23,16 @@ from .eviction import EvictionHandler
 from .standby import StandbySelector, score_member
 from .manager import CommitteeManager
 
+# DKG (Spec C3b)
+from .dkg import (
+    DKGState, DKGPhase,
+    DKGCommitment, DKGShare, DKGComplaint,
+    DKGResult, DKGSessionConfig,
+    ScalarField, ScalarPoly,
+    DKGTransport, FakeDKGTransport,
+    DKGKeyRegistry,
+)
+
 __all__ = [
     # Types
     "CommitteeRole", "CommitteeMember", "CommitteeRoster",
@@ -36,4 +46,11 @@ __all__ = [
     "EvictionHandler", "StandbySelector", "score_member",
     # Coordinator
     "CommitteeManager",
+    # DKG (Spec C3b)
+    "DKGState", "DKGPhase",
+    "DKGCommitment", "DKGShare", "DKGComplaint",
+    "DKGResult", "DKGSessionConfig",
+    "ScalarField", "ScalarPoly",
+    "DKGTransport", "FakeDKGTransport",
+    "DKGKeyRegistry",
 ]
