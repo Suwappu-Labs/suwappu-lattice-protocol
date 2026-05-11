@@ -76,3 +76,8 @@ class CommitteePolicy:
     # --- Admin overrides ---
     force_include: frozenset[bytes] = field(default_factory=frozenset)
     force_exclude: frozenset[bytes] = field(default_factory=frozenset)
+
+    # --- DKG (Spec C3b) ---
+    dkg_threshold: int = 0
+    dkg_timeout_rounds: int = 10
+    dkg_eager_start_rounds: int = 5
