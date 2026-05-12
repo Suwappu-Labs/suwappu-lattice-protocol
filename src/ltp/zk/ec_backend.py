@@ -42,8 +42,33 @@ except ImportError:
     _FQ = None
 
 
+# G2 operations use the optimized backend (projective coordinates)
+# Required for G2_to_signature / signature_to_G2 compatibility
+_py_ecc_g2_available = False
+try:
+    from py_ecc.optimized_bls12_381 import (  # type: ignore[import-untyped]
+        G2 as _OPT_G2,
+        Z2 as _OPT_Z2,
+        multiply as _opt_multiply,
+        add as _opt_add,
+        curve_order as _OPT_CURVE_ORDER,
+    )
+    from py_ecc.bls.g2_primitives import (  # type: ignore[import-untyped]
+        G2_to_signature as _G2_to_signature,
+        G1_to_pubkey as _G1_to_pubkey,
+    )
+    _py_ecc_g2_available = True
+except ImportError:
+    _OPT_G2 = None
+    _OPT_Z2 = None
+    _OPT_CURVE_ORDER = None
+
+
 # Type alias for G1 points (tuple of FQ elements in py_ecc)
 G1Point = Any
+
+# Type alias for G2 points (optimized_bls12_381 projective 3-tuple)
+G2Point = Any
 
 # BLS12-381 G1 cofactor for subgroup clearing
 _G1_COFACTOR = 0x396C8C005555E1568C00AAAB0000AAAB
@@ -257,3 +282,65 @@ def curve_order() -> int:
     """Return the BLS12-381 curve order."""
     _require_backend()
     return _BLS_ORDER
+
+
+# ---------------------------------------------------------------------------
+# G2 point arithmetic (optimized backend — projective coordinates)
+# ---------------------------------------------------------------------------
+
+
+def g2_generator() -> G2Point:
+    """Return the standard BLS12-381 G2 generator (optimized/projective)."""
+    _require_backend()
+    return _OPT_G2
+
+
+def g2_scalar_mul(point: G2Point, scalar: int) -> G2Point:
+    """Compute scalar * point on BLS12-381 G2."""
+    _require_backend()
+    return _opt_multiply(point, scalar % _OPT_CURVE_ORDER)
+
+
+def g2_add(p1: G2Point, p2: G2Point) -> G2Point:
+    """Add two G2 points."""
+    _require_backend()
+    return _opt_add(p1, p2)
+
+
+def g2_identity() -> G2Point:
+    """Return the identity element of G2 (optimized backend)."""
+    _require_backend()
+    return _OPT_Z2
+
+
+def g2_compress(point: G2Point) -> bytes:
+    """Compress a G2 point to 96 bytes (Zcash serialization).
+
+    Compatible with BLS.verify() signature format.
+    """
+    _require_backend()
+    return bytes(_G2_to_signature(point))
+
+
+# ---------------------------------------------------------------------------
+# G1 compression (for threshold verify bridge to BLS.verify)
+# ---------------------------------------------------------------------------
+
+
+def g1_compress(point: G1Point) -> bytes:
+    """Compress a G1 point to 48 bytes.
+
+    Converts from the affine (x, y) format used by ec_backend
+    to the 48-byte compressed format used by BLS.verify().
+    """
+    _require_backend()
+    if point is None:
+        return b"\x00" * 48
+    # py_ecc's G1_to_pubkey expects optimized (projective) format.
+    # Convert affine (x, y) to projective (x, y, 1).
+    from py_ecc.fields import optimized_bls12_381_FQ as OPT_FQ
+    x_opt = OPT_FQ(int(point[0]))
+    y_opt = OPT_FQ(int(point[1]))
+    z_opt = OPT_FQ(1)
+    projective = (x_opt, y_opt, z_opt)
+    return bytes(_G1_to_pubkey(projective))
