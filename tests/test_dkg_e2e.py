@@ -86,7 +86,7 @@ def _run_ceremony(
         for c in all_received_complaints:
             if c.complainant_fp != s.my_fp:
                 s.receive_complaint(c)
-        result = s.finalize()
+        result, _signing_key = s.finalize()
         results.append(result)
 
     return results
@@ -169,7 +169,7 @@ class TestRegistryIntegration:
                     if fp in shares:
                         s.receive_share(shares[fp])
                 s.end_sharing_phase()
-            result = sessions[0].finalize()
+            result, _signing_key = sessions[0].finalize()
             reg.store(result)
 
         assert reg.epoch_count() == 3

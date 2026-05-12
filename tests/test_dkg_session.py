@@ -134,9 +134,11 @@ class TestDKGSessionFinalize:
 
         results = []
         for s in sessions:
-            result = s.finalize()
+            result, signing_key = s.finalize()
             results.append(result)
             assert s.state is DKGState.COMPLETED
+            assert signing_key.secret_share > 0
+            assert signing_key.participant_fp == s.my_fp
 
         # All participants agree on the group public key
         assert results[0].group_pk == results[1].group_pk == results[2].group_pk

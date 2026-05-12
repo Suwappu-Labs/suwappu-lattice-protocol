@@ -24,6 +24,7 @@ from .types import (
     DKGShare,
     DKGState,
 )
+from .threshold_signing import ThresholdSigningKey
 from .vss import PedersenVSS
 
 __all__ = ["DKGSession"]
@@ -133,7 +134,7 @@ class DKGSession:
         """Collect a complaint during the COMPLAINING phase."""
         self._complaints.append(complaint)
 
-    def finalize(self) -> DKGResult:
+    def finalize(self) -> tuple[DKGResult, ThresholdSigningKey]:
         """COMPLAINING -> FINALIZING -> COMPLETED. Resolve complaints and derive keys."""
         self.state = DKGState.FINALIZING
 
@@ -181,17 +182,32 @@ class DKGSession:
 
         my_vk = g1_serialize(g1_scalar_mul(g1_generator(), my_secret_share))
         participant_vks = {self.my_fp: my_vk}
+        group_pk_bytes = g1_serialize(group_point)
 
         self.state = DKGState.COMPLETED
-        return DKGResult(
+
+        result = DKGResult(
             vm_tag=self.config.vm_tag,
             epoch=self.config.epoch,
-            group_pk=g1_serialize(group_point),
+            group_pk=group_pk_bytes,
             participant_vks=participant_vks,
             threshold=self.config.threshold,
             qual_set=frozenset(self._qual),
             phase=DKGPhase.EAGER,
+            my_secret_share=my_secret_share,
         )
+
+        signing_key = ThresholdSigningKey(
+            participant_fp=self.my_fp,
+            participant_index=self.my_index,
+            secret_share=my_secret_share,
+            group_pk=group_pk_bytes,
+            threshold=self.config.threshold,
+            epoch=self.config.epoch,
+            vm_tag=self.config.vm_tag,
+        )
+
+        return result, signing_key
 
     def abort(self, reason: str) -> None:
         """Any state -> FAILED."""
