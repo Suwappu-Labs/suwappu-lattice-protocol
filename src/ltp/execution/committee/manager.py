@@ -38,6 +38,7 @@ class CommitteeManager:
         self._eviction = EvictionHandler(policy, self._standby)
         self._epoch_mgr = EpochManager(vm_tag, policy, self._formation, emergency)
         self._dkg_registry = DKGKeyRegistry(vm_tag)
+        self._signing_keys: dict[int, list] = {}
 
     def on_writer_state_change(
         self,
@@ -110,12 +111,56 @@ class CommitteeManager:
                     s.receive_share(shares[fp])
             s.end_sharing_phase()
 
-        # Phase 4: finalize (use first participant's result for group key)
+        # Phase 4: finalize — collect results and signing keys
+        epoch = self._epoch_mgr.current_epoch
         try:
-            result = sessions[0].finalize()
+            signing_keys = []
+            for s in sessions:
+                result, key = s.finalize()
+                signing_keys.append(key)
+            # Store the first result (group key is the same for all)
             self._dkg_registry.store(result)
+            self._signing_keys[epoch] = signing_keys
         except (ValueError, KeyError):
             pass  # DKG failed — epoch runs without threshold signing
+
+    def sign_as_committee(
+        self,
+        message: bytes,
+        domain: bytes,
+    ) -> Optional[bytes]:
+        """Produce a threshold BLS signature over a message.
+
+        Returns 96-byte combined signature, or None if no DKG keys exist.
+        """
+        epoch = self._epoch_mgr.current_epoch
+        keys = self._signing_keys.get(epoch)
+        if not keys:
+            return None
+
+        from .dkg.threshold_signing import partial_sign, combine_partial_signatures
+
+        threshold = self._policy.dkg_threshold
+        partials = [partial_sign(k, message, domain) for k in keys[:threshold]]
+        return combine_partial_signatures(partials, threshold)
+
+    def verify_committee_signature(
+        self,
+        message: bytes,
+        signature: bytes,
+        domain: bytes,
+        epoch: Optional[int] = None,
+    ) -> bool:
+        """Verify a threshold BLS signature against the committee's group key."""
+        if epoch is None:
+            epoch = self._epoch_mgr.current_epoch
+        if not self._dkg_registry.has_epoch(epoch):
+            return False
+
+        from .dkg.threshold_signing import threshold_verify
+
+        group_pk = self._dkg_registry.group_pk(epoch)
+        return threshold_verify(group_pk, message, signature, domain)
 
     @property
     def dkg_registry(self) -> DKGKeyRegistry:
