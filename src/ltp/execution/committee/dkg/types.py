@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 __all__ = [
@@ -66,6 +66,7 @@ class DKGResult:
     threshold: int
     qual_set: frozenset[bytes]
     phase: DKGPhase
+    my_secret_share: int | None = field(default=None)
 
 
 @dataclass
