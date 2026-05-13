@@ -46,6 +46,7 @@ CLAUDE.md
 docs/ETP_UNIFIED_NODE_DEPLOYMENT_PLAN.md
 docs/ETP_IMPLEMENTATION_STATUS.md
 docs/superpowers/
+docs/plans/
 
 # Bridge execution outputs
 bridge_results*.json
