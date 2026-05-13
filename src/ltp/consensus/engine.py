@@ -225,16 +225,34 @@ class LocalMysticetiEngine:
         all_decisions.sort(key=lambda d: d.round)
         return all_decisions
 
-    # Async mode (placeholder — fully implemented in Task 8)
     def start(self) -> None:
-        """Begin async protocol execution."""
+        """Begin async protocol execution on a background thread."""
+        if self._running:
+            return
         self._running = True
+        self._thread = threading.Thread(target=self._async_loop, daemon=True)
+        self._thread.start()
 
     def stop(self) -> None:
         """Stop async execution."""
         self._running = False
+        if self._thread is not None:
+            self._thread.join(timeout=5.0)
+            self._thread = None
+
+    def _async_loop(self) -> None:
+        """Background loop that advances rounds on a timer."""
+        interval = self._round_timeout_ms / 1000.0
+        while self._running:
+            self.advance_round()
+            time.sleep(interval)
 
     def stream_commits(self) -> Iterator[CommitDecision]:
-        """Yield committed decisions. In sync mode, drains the queue."""
-        while self._commit_queue:
-            yield self._commit_queue.popleft()
+        """Yield committed decisions. Blocks briefly in async mode."""
+        while self._running or self._commit_queue:
+            if self._commit_queue:
+                yield self._commit_queue.popleft()
+            elif self._running:
+                time.sleep(0.01)
+            else:
+                break
