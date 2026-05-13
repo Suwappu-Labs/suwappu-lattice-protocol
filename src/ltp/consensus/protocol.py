@@ -6,6 +6,7 @@ import time
 
 from .types import Block, Certificate, CommitDecision, EquivocationProof, RoundState
 from .dag_store import DAGStore
+from .commit_rule import evaluate_direct_commit, evaluate_indirect_commit, collect_causal_history
 
 
 class MysticetiProtocol:
@@ -112,21 +113,53 @@ class MysticetiProtocol:
         return None
 
     def receive_certificate(self, cert: Certificate) -> CommitDecision | None:
-        """Store certificate and check commit rule.
-
-        Commit rule evaluation is delegated to commit_rule.py (Task 5).
-        Returns None until commit rule is wired up.
-        """
+        """Store certificate and check commit rule."""
         rs = self._get_round_state(cert.block.round)
         rs.certificates[cert.block.author] = cert
         self._dag.add_certificate(cert)
         if cert.block.round > self._current_round:
             self._current_round = cert.block.round
-        return None  # Commit rule wired in Task 5
+        return self._try_commit_from(cert.block.round)
+
+    def _try_commit_from(self, trigger_round: int) -> CommitDecision | None:
+        """Try to commit the leader for the round before trigger_round."""
+        if trigger_round > 0:
+            target_round = trigger_round - 1
+            if target_round not in self._committed_rounds:
+                leader = self.leader_for_round(target_round)
+                if not self.is_equivocator(leader):
+                    decision = evaluate_direct_commit(
+                        self._dag, target_round, leader, self._quorum,
+                    )
+                    if decision is not None:
+                        self._committed_rounds.add(target_round)
+                        for b in decision.committed_blocks:
+                            self._committed_digests.add(b.digest)
+                        return decision
+        return None
 
     def check_commit(self, round: int) -> CommitDecision | None:
-        """Evaluate commit rule for round's leader. Wired in Task 5."""
-        return None  # Commit rule wired in Task 5
+        """Evaluate commit rule for a specific round's leader."""
+        if round in self._committed_rounds:
+            return None
+        leader = self.leader_for_round(round)
+        if self.is_equivocator(leader):
+            return None
+        decision = evaluate_direct_commit(self._dag, round, leader, self._quorum)
+        if decision is not None:
+            self._committed_rounds.add(round)
+            for b in decision.committed_blocks:
+                self._committed_digests.add(b.digest)
+            return decision
+        decision = evaluate_indirect_commit(
+            self._dag, round, leader, self._committed_rounds,
+        )
+        if decision is not None:
+            self._committed_rounds.add(round)
+            for b in decision.committed_blocks:
+                self._committed_digests.add(b.digest)
+            return decision
+        return None
 
     def detect_equivocation(self, block: Block) -> EquivocationProof | None:
         """Check if author already proposed a different block at this round."""
