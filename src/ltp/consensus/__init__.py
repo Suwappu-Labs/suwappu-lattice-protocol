@@ -1,4 +1,4 @@
-"""Mysticeti DAG-BFT consensus engine (Spec D1a)."""
+"""Mysticeti DAG-BFT consensus engine (Specs D1a, D1b)."""
 
 from .types import (
     Block,
@@ -17,29 +17,56 @@ from .commit_rule import (
 from .engine import LocalMysticetiEngine, to_ordered_batch
 from .faults import FaultType, FaultConfig, PartitionConfig
 from .message_bus import MessageBus
+from .events import ConsensusEvent, ConsensusEventType
+from .validator_set import ValidatorInfo, ValidatorSet
+from .bls_certificates import (
+    DOMAIN_CONSENSUS_ACK,
+    BLSCertificateManager,
+    SignedCertificate,
+)
+from .backend import ConsensusBackend, LocalConsensusBackend
+from .committee_sync import CommitteeSync
+from .adapter import MysticetiAdapter
 
 __all__ = [
-    # DAG data structures
+    # D1a: DAG data structures
     "Block",
     "Certificate",
     "CommitDecision",
     "EquivocationProof",
     "RoundState",
-    # Storage
+    # D1a: Storage
     "DAGStore",
-    # Protocol
+    # D1a: Protocol
     "MysticetiProtocol",
-    # Commit rule
+    # D1a: Commit rule
     "evaluate_direct_commit",
     "evaluate_indirect_commit",
     "collect_causal_history",
-    # Engine
+    # D1a: Engine
     "LocalMysticetiEngine",
     "to_ordered_batch",
-    # Fault injection
+    # D1a: Fault injection
     "FaultType",
     "FaultConfig",
     "PartitionConfig",
-    # Message bus
+    # D1a: Message bus
     "MessageBus",
+    # D1b: Events
+    "ConsensusEvent",
+    "ConsensusEventType",
+    # D1b: Validator Set
+    "ValidatorInfo",
+    "ValidatorSet",
+    # D1b: BLS Certificates
+    "DOMAIN_CONSENSUS_ACK",
+    "BLSCertificateManager",
+    "SignedCertificate",
+    # D1b: Backend
+    "ConsensusBackend",
+    "LocalConsensusBackend",
+    # D1b: Committee Sync
+    "CommitteeSync",
+    # D1b: Adapter
+    "MysticetiAdapter",
 ]
