@@ -136,3 +136,93 @@ class TestRoundState:
         b = Block(author=0, round=1, payload=(), parents=frozenset(), timestamp_ms=1000)
         rs.proposals[0] = b
         assert 0 in rs.proposals
+
+
+from ltp.consensus.faults import FaultType, FaultConfig, PartitionConfig
+from ltp.consensus.message_bus import MessageBus
+
+
+class TestFaultTypes:
+    """FaultType enum and config dataclasses."""
+
+    def test_fault_type_values(self):
+        assert FaultType.HONEST.value == "honest"
+        assert FaultType.EQUIVOCATE.value == "equivocate"
+        assert FaultType.WITHHOLD.value == "withhold"
+        assert FaultType.CRASH.value == "crash"
+        assert FaultType.DELAY.value == "delay"
+        assert FaultType.CENSOR.value == "censor"
+
+    def test_fault_config(self):
+        fc = FaultConfig(validator=1, fault_type=FaultType.CRASH, start_round=5)
+        assert fc.validator == 1
+        assert fc.fault_type == FaultType.CRASH
+        assert fc.start_round == 5
+        assert fc.end_round is None
+        assert fc.params == {}
+
+    def test_partition_config(self):
+        pc = PartitionConfig(
+            group_a=frozenset({0, 1}),
+            group_b=frozenset({2, 3}),
+            start_round=3,
+            duration=5,
+        )
+        assert pc.group_a == frozenset({0, 1})
+        assert pc.group_b == frozenset({2, 3})
+        assert pc.start_round == 3
+        assert pc.duration == 5
+
+
+class TestMessageBus:
+    """In-memory message routing with partition support."""
+
+    def test_send_and_receive(self):
+        bus = MessageBus(num_validators=4)
+        bus.send(from_v=0, to_v=1, message="hello")
+        pending = bus.pending_for(1)
+        assert len(pending) == 1
+        assert pending[0] == (0, "hello")
+
+    def test_broadcast(self):
+        bus = MessageBus(num_validators=4)
+        bus.broadcast(from_v=0, message="block")
+        for v in range(1, 4):
+            pending = bus.pending_for(v)
+            assert len(pending) == 1
+            assert pending[0] == (0, "block")
+        assert bus.pending_for(0) == []
+
+    def test_deliver_all_clears_pending(self):
+        bus = MessageBus(num_validators=4)
+        bus.broadcast(from_v=0, message="block")
+        delivered = bus.deliver_all()
+        assert len(delivered) > 0
+        for v in range(4):
+            assert bus.pending_for(v) == []
+
+    def test_partition_blocks_cross_group(self):
+        bus = MessageBus(num_validators=4)
+        pc = PartitionConfig(
+            group_a=frozenset({0, 1}),
+            group_b=frozenset({2, 3}),
+            start_round=0,
+        )
+        bus.set_partition(pc)
+        bus.broadcast(from_v=0, message="block")
+        assert len(bus.pending_for(1)) == 1
+        assert bus.pending_for(2) == []
+        assert bus.pending_for(3) == []
+
+    def test_clear_partition_restores_delivery(self):
+        bus = MessageBus(num_validators=4)
+        pc = PartitionConfig(
+            group_a=frozenset({0, 1}),
+            group_b=frozenset({2, 3}),
+            start_round=0,
+        )
+        bus.set_partition(pc)
+        bus.clear_partition()
+        bus.broadcast(from_v=0, message="healed")
+        assert len(bus.pending_for(2)) == 1
+        assert len(bus.pending_for(3)) == 1
