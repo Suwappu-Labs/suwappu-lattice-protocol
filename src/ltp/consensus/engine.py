@@ -136,9 +136,35 @@ class LocalMysticetiEngine:
                     targets = self._fault_configs[block.author].params.get("withhold_targets", [])
                     if v_idx in targets:
                         continue
+                # Respect network partition: block author sends to v_idx
+                if self._bus._is_partitioned(block.author, v_idx):
+                    continue
                 ack = self._validators[v_idx].receive_block(block)
                 if ack is not None:
                     acks.append((block.digest, ack))
+
+        # After block delivery, drop acks for known equivocators — their blocks
+        # must not accumulate enough votes to form certificates.
+        # Collect all equivocators detected by any validator so far.
+        equivocators_known: set[int] = set()
+        for v in self._validators:
+            for author in range(self._n):
+                if v.is_equivocator(author):
+                    equivocators_known.add(author)
+        # Build a digest→author mapping from all validators' DAG stores.
+        digest_to_author: dict[bytes, int] = {}
+        for digest, _signer in acks:
+            if digest not in digest_to_author:
+                for v in self._validators:
+                    blk = v.dag_store.get_block(digest)
+                    if blk is not None:
+                        digest_to_author[digest] = blk.author
+                        break
+        acks = [
+            (digest, signer)
+            for digest, signer in acks
+            if digest_to_author.get(digest) not in equivocators_known
+        ]
 
         # Phase 3: Broadcast acks, form certificates
         certs: list[Certificate] = []
@@ -148,6 +174,9 @@ class LocalMysticetiEngine:
                     continue
                 if self._is_faulty(signer, r, FaultType.DELAY):
                     continue  # delayed acks not delivered this round
+                # Respect network partition: signer sends ack to v_idx
+                if self._bus._is_partitioned(signer, v_idx):
+                    continue
                 cert = self._validators[v_idx].receive_ack(block_digest, signer)
                 if cert is not None:
                     certs.append(cert)
@@ -161,8 +190,12 @@ class LocalMysticetiEngine:
                 unique_certs.append(cert)
 
         for cert in unique_certs:
+            cert_author = cert.block.author
             for v_idx in range(self._n):
                 if self._is_faulty(v_idx, r, FaultType.CRASH):
+                    continue
+                # Respect network partition: cert originates from its block's author
+                if self._bus._is_partitioned(cert_author, v_idx):
                     continue
                 decision = self._validators[v_idx].receive_certificate(cert)
                 if decision is not None and decision.round not in {d.round for d in decisions}:
