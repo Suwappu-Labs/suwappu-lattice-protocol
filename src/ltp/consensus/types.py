@@ -18,8 +18,10 @@ def _compute_block_digest(
     h.update(round.to_bytes(8, "big"))
     h.update(len(payload).to_bytes(4, "big"))
     for p in sorted(payload):
+        h.update(len(p).to_bytes(4, "big"))
         h.update(p)
     for parent in sorted(parents):
+        h.update(len(parent).to_bytes(4, "big"))
         h.update(parent)
     return h.digest()
 

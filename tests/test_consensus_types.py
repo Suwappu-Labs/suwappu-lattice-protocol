@@ -1,7 +1,5 @@
 """Tests for DAG data structures (Spec D1a §1)."""
 
-import hashlib
-
 from ltp.consensus.types import (
     Block,
     Certificate,
@@ -64,6 +62,11 @@ class TestBlock:
         b1 = Block(author=0, round=1, payload=(b"tx1",), parents=frozenset(), timestamp_ms=1000)
         b2 = Block(author=0, round=1, payload=(b"tx1",), parents=frozenset(), timestamp_ms=9999)
         assert b1.digest == b2.digest
+
+    def test_digest_no_length_substitution_collision(self):
+        b1 = Block(author=0, round=1, payload=(b"ab", b"c"), parents=frozenset(), timestamp_ms=1000)
+        b2 = Block(author=0, round=1, payload=(b"a", b"bc"), parents=frozenset(), timestamp_ms=1000)
+        assert b1.digest != b2.digest
 
 
 class TestCertificate:
