@@ -4,6 +4,7 @@ import pytest
 
 from src.ltp.execution.execution_events import ExecutionEventType, ExecutionEvent
 from src.ltp.consensus.events import ConsensusEventType
+from src.ltp.execution.execution_config import ExecutionConfig
 
 
 class TestExecutionEventType:
@@ -68,3 +69,30 @@ class TestConsensusEventTypeExtensions:
 
     def test_total_enum_count(self):
         assert len(list(ConsensusEventType)) == 6
+
+
+class TestExecutionConfig:
+
+    def test_default_values(self):
+        cfg = ExecutionConfig()
+        assert cfg.failure_threshold_pct == 50.0
+        assert cfg.halt_on_catastrophic is True
+        assert cfg.failure_window == 100
+        assert cfg.attestation_mode == "dual"
+
+    def test_custom_values(self):
+        cfg = ExecutionConfig(
+            failure_threshold_pct=25.0,
+            halt_on_catastrophic=False,
+            failure_window=50,
+            attestation_mode="mldsa_only",
+        )
+        assert cfg.failure_threshold_pct == 25.0
+        assert cfg.halt_on_catastrophic is False
+        assert cfg.failure_window == 50
+        assert cfg.attestation_mode == "mldsa_only"
+
+    def test_frozen(self):
+        cfg = ExecutionConfig()
+        with pytest.raises(AttributeError):
+            cfg.failure_window = 200

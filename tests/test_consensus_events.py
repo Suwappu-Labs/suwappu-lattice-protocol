@@ -8,8 +8,8 @@ from src.ltp.consensus.events import ConsensusEvent, ConsensusEventType
 class TestConsensusEventType:
     """ConsensusEventType enum tests."""
 
-    def test_enum_has_four_values(self):
-        # Extended to 6 in D1c (BATCH_EXECUTED, STATE_ROOT_ATTESTED added)
+    def test_enum_has_six_values(self):
+        # 4 from D1b + 2 from D1c (BATCH_EXECUTED, STATE_ROOT_ATTESTED)
         assert len(ConsensusEventType) == 6
 
     def test_epoch_transition_exists(self):
