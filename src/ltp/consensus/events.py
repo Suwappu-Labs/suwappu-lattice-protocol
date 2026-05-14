@@ -13,6 +13,9 @@ class ConsensusEventType(Enum):
     VALIDATOR_EVICTED = "validator_evicted"
     COMMIT_ATTESTED = "commit_attested"
     ENGINE_REBUILT = "engine_rebuilt"
+    # D1c: Execution pipeline events
+    BATCH_EXECUTED = "batch_executed"
+    STATE_ROOT_ATTESTED = "state_root_attested"
 
 
 @dataclass(frozen=True)

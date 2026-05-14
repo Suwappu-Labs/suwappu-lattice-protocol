@@ -9,7 +9,8 @@ class TestConsensusEventType:
     """ConsensusEventType enum tests."""
 
     def test_enum_has_four_values(self):
-        assert len(ConsensusEventType) == 4
+        # Extended to 6 in D1c (BATCH_EXECUTED, STATE_ROOT_ATTESTED added)
+        assert len(ConsensusEventType) == 6
 
     def test_epoch_transition_exists(self):
         assert ConsensusEventType.EPOCH_TRANSITION.value == "epoch_transition"
