@@ -111,7 +111,16 @@ def corridor_aggregate_signatures(sigs: list[bytes]) -> bytes:
 
 
 def corridor_aggregate_verify(pks: list[bytes], digest: bytes, agg_sig: bytes) -> bool:
-    """Fast-aggregate verify: all signers signed the same `digest`."""
+    """Fast-aggregate verify: all signers signed the same `digest`.
+
+    Note: `py_ecc.bls.G2Basic.AggregateVerify` rejects same-message
+    aggregates (Basic ciphersuite requires distinct messages to defend
+    against rogue-key attacks). For the same-message corridor case, we
+    manually aggregate the public keys into a single G1 point and call
+    `G2Basic.Verify` against it — that uses the matching `_NUL_` DST and
+    works under the Basic scheme as long as the signer set is fixed
+    (which it is for a corridor).
+    """
     if not pks or len(agg_sig) != SIG_SIZE:
         return False
     for pk in pks:
@@ -132,4 +141,15 @@ def corridor_aggregate_verify(pks: list[bytes], digest: bytes, agg_sig: bytes) -
             )
         except Exception:
             return False
-    return bool(_py_ecc_basic.AggregateVerify(pks, [digest] * len(pks), agg_sig))
+    # py_ecc fallback: aggregate pubkeys manually, then single-key verify.
+    try:
+        from py_ecc.bls.point_compression import compress_G1, decompress_G1
+        from py_ecc.optimized_bls12_381 import add
+
+        agg_point = decompress_G1(int.from_bytes(pks[0], "big"))
+        for pk in pks[1:]:
+            agg_point = add(agg_point, decompress_G1(int.from_bytes(pk, "big")))
+        agg_pk_bytes = compress_G1(agg_point).to_bytes(PK_SIZE, "big")
+        return bool(_py_ecc_basic.Verify(agg_pk_bytes, digest, agg_sig))
+    except Exception:
+        return False

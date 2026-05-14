@@ -207,5 +207,5 @@ def verify_attestation(corridor: Corridor, attestation: CorridorAttestation) -> 
         pks.append(pk)
 
     digest = attestation.payload.canonical_digest()
-    if not BLS.aggregate_verify_same_message(pks, digest, attestation.aggregate_signature):
+    if not corridor_aggregate_verify(pks, digest, attestation.aggregate_signature):
         raise AggregateVerificationFailed()

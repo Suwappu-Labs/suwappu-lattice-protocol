@@ -96,6 +96,12 @@ from .state_anchor import (
     hash_anchor_blake3,
     hash_anchor_keccak256,
 )
+from .submission import (
+    CorridorAnchorBuild,
+    CorridorAnchorError,
+    build_state_anchor_blake3,
+    build_state_anchor_keccak256,
+)
 
 __all__ = [
     # constants
@@ -179,4 +185,9 @@ __all__ = [
     "ML_KEM_1024_CT_BYTES",
     "BLS_G2_COMPRESSED_BYTES",
     "SHA3_256_BYTES",
+    # Corridor → gsx-db submission bridge
+    "build_state_anchor_blake3",
+    "build_state_anchor_keccak256",
+    "CorridorAnchorBuild",
+    "CorridorAnchorError",
 ]
