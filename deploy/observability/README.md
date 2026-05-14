@@ -4,6 +4,16 @@ Local Prometheus + AlertManager + Grafana stack for monitoring one or
 more ETP / LTP nodes. Built for both developer laptops and production
 bastions.
 
+## Visuals
+
+If you want the architecture context behind the metrics, see:
+
+- [GSX Visual Index](../../../gsx-dag/docs/visuals/index.html)
+- [GSX Ecosystem Atlas](../../../gsx-dag/docs/visuals/gsx-ecosystem-atlas.html)
+- [GSX DAG presentation](../../../gsx-dag/docs/visuals/gsx-dag.html)
+- [GSX DB presentation](../../../gsx-dag/docs/visuals/gsx-db.html)
+- [LTP presentation](../../../gsx-dag/docs/visuals/ltp.html)
+
 ## Layout
 
 ```

@@ -10,6 +10,7 @@
 
 * [Whitepaper](WHITEPAPER.md)
 * [Architecture](design-decisions/ARCHITECTURE.md)
+* [GSX DAG and GSX-DB Integration](design-decisions/GSX_DAG_DB_INTEGRATION.md)
 * [Streaming Protocol](design-decisions/STREAMING_PROTOCOL.md)
 * [ZK Transfer Mode](design-decisions/ZK_TRANSFER_MODE.md)
 * [Enforcement Mechanisms](design-decisions/ENFORCEMENT_MECHANISMS.md)
@@ -29,6 +30,12 @@
 * [Production Plan](PRODUCTION_PLAN.md)
 * [Deployment Guide](DEPLOYMENT_GUIDE.md)
 * [Bridge MVP Scope](bridge-mvp-scope.md)
+
+## Compliance
+
+* [FedRAMP High Readiness](compliance/fedramp-high/README.md)
+* [FedRAMP High Control Matrix](compliance/fedramp-high/control-matrix.md)
+* [FedRAMP High Release Evidence](compliance/fedramp-high/release-evidence.md)
 
 ## Expansion
 

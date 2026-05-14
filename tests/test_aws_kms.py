@@ -10,9 +10,24 @@ from __future__ import annotations
 import os
 import threading
 
-import boto3
 import pytest
-from moto import mock_aws
+
+try:
+    import boto3
+    from moto import mock_aws
+except ImportError:
+    boto3 = None
+
+    def mock_aws(func=None, *args, **kwargs):
+        if func is None:
+            return lambda wrapped: wrapped
+        return func
+
+
+pytestmark = pytest.mark.skipif(
+    boto3 is None,
+    reason="boto3/moto cloud test dependencies not installed",
+)
 
 from src.ltp.cloud.aws_kms import AWSKMSBackend
 from src.ltp.primitives import MLDSA

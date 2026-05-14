@@ -2,7 +2,19 @@
 
 ## Overview
 
-The Entanglement Transfer Protocol documentation is organized into six categories.
+The Entanglement Transfer Protocol documentation is organized into seven categories.
+
+## Visuals
+
+Presentation-ready GSX visuals live alongside the DAG repo and the shared source formats:
+
+- [GSX Visual Index](../../gsx-dag/docs/visuals/index.html)
+- [GSX Ecosystem Atlas](../../gsx-dag/docs/visuals/gsx-ecosystem-atlas.html)
+- [GSX DAG presentation](../../gsx-dag/docs/visuals/gsx-dag.html)
+- [GSX DB presentation](../../gsx-dag/docs/visuals/gsx-db.html)
+- [LTP presentation](../../gsx-dag/docs/visuals/ltp.html)
+- Mermaid sources: [GSX DAG](../../gsx-dag/docs/visuals/mermaid/gsx-dag.md), [GSX DB](../../gsx-dag/docs/visuals/mermaid/gsx-db.md), [LTP](../../gsx-dag/docs/visuals/mermaid/ltp.md)
+- Excalidraw sources: [GSX DAG](../../gsx-dag/docs/visuals/excalidraw/gsx-dag.excalidraw), [GSX DB](../../gsx-dag/docs/visuals/excalidraw/gsx-db.excalidraw), [LTP](../../gsx-dag/docs/visuals/excalidraw/ltp.excalidraw)
 
 | Category | Document | Description |
 |----------|----------|-------------|
@@ -12,6 +24,7 @@ The Entanglement Transfer Protocol documentation is organized into six categorie
 | **Specification** | [Whitepaper](WHITEPAPER.md) | Full protocol design — three-phase COMMIT/LATTICE/MATERIALIZE |
 | | [Technical Report](../LTP_COMPREHENSIVE_REPORT.md) | 13-section architecture, deployment, and governance report |
 | **Architecture** | [Architecture](design-decisions/ARCHITECTURE.md) | System components, data flow, security layers |
+| | [GSX DAG and GSX-DB Integration](design-decisions/GSX_DAG_DB_INTEGRATION.md) | Cross-repo boundary with the DAG L1 and state substrate |
 | | [Commitment Network Options](design-decisions/COMMITMENT_NETWORK_OPTIONS.md) | Custom L1 vs Ethereum L1/L2 analysis |
 | | [Streaming Protocol](design-decisions/STREAMING_PROTOCOL.md) | Chunked streaming, bandwidth amortization, backpressure |
 | | [Enforcement Mechanisms](design-decisions/ENFORCEMENT_MECHANISMS.md) | PDP proofs, programmable slashing, progressive decentralization |
@@ -20,6 +33,7 @@ The Entanglement Transfer Protocol documentation is organized into six categorie
 | **Operations** | [Production Plan](PRODUCTION_PLAN.md) | PoC to production roadmap — 7 phases, 14 weeks |
 | | [Deployment Guide](DEPLOYMENT_GUIDE.md) | Docker, Kubernetes, CI/CD, key management, monitoring |
 | | [Bridge MVP](bridge-mvp-scope.md) | L1-L2 cross-chain bridge scope and components |
+| **Compliance** | [FedRAMP High Readiness](compliance/fedramp-high/README.md) | System boundary, control matrix, SSP narratives, and release evidence gates |
 | **Security** | [Security Review](design-decisions/Security/SECURITY_REVIEW-2-24-2026.md) | Formal security review (2026-02-24) |
 | | [Shard Exposure Analysis](design-decisions/Security/001-lattice-key-shard-exposure.md) | Attack chain analysis and Option A-D comparison |
 | **Reviews** | [Review #1](design-decisions/Reviews/001/001-Formal-Whitepaper-Review.md) | Formal whitepaper review |

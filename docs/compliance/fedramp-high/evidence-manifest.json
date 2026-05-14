@@ -1,0 +1,122 @@
+{
+  "package": "gsx-lattice-protocol-fedramp-high-readiness",
+  "version": 1,
+  "deployment_profile": "fedramp-high",
+  "required_release_repositories": [
+    "gsx-lattice-protocol",
+    "gsx-dag",
+    "gsx-db"
+  ],
+  "authoritative_references": [
+    "https://www.fedramp.gov/docs/rev5/playbook/csp/authorization/ssp/",
+    "https://www.fedramp.gov/preview/2026/providers/rev5/controls/",
+    "https://csrc.nist.gov/Pubs/sp/800/53/r5/upd1/Final",
+    "https://csrc.nist.gov/pubs/fips/203/final",
+    "https://csrc.nist.gov/pubs/fips/204/final",
+    "https://csrc.nist.gov/publications/detail/fips/202/final"
+  ],
+  "required_release_fields": [
+    "gsx-lattice-protocol commit/tag",
+    "gsx-dag commit/tag",
+    "gsx-db commit/tag",
+    "SBOM path",
+    "dependency scan path",
+    "Semgrep path",
+    "signed artifact digest",
+    "provenance attestation path",
+    "test report paths",
+    "POA&M path"
+  ],
+  "evidence": [
+    {
+      "id": "boundary",
+      "control_ids": ["CM-8", "CA-3", "SC-7"],
+      "owner": "platform-security",
+      "status": "partial",
+      "evidence_path": "docs/compliance/fedramp-high/system-boundary.md",
+      "test_command": "python3 -m pytest tests/test_fedramp_high_readiness.py -q",
+      "poam": "Attach production cloud inventory and authorization boundary diagram."
+    },
+    {
+      "id": "data-flow",
+      "control_ids": ["AU-2", "AU-3", "SC-8"],
+      "owner": "ltp",
+      "status": "implemented",
+      "evidence_path": "docs/compliance/fedramp-high/data-flow.md",
+      "test_command": "python3 -m pytest tests/test_fedramp_high_readiness.py -q",
+      "poam": ""
+    },
+    {
+      "id": "trust-boundary",
+      "control_ids": ["SC-7", "SC-12", "SC-13"],
+      "owner": "ltp",
+      "status": "partial",
+      "evidence_path": "docs/compliance/fedramp-high/trust-boundary.md",
+      "test_command": "python3 -m pytest tests/test_fedramp_high_readiness.py -q",
+      "poam": "Attach FIPS 140-3 runtime module validation evidence."
+    },
+    {
+      "id": "assessment-boundary",
+      "control_ids": ["CA-3", "SA-9", "SR-3"],
+      "owner": "architecture",
+      "status": "partial",
+      "evidence_path": "docs/compliance/fedramp-high/assessment-boundary.md",
+      "test_command": "python3 -m pytest tests/test_fedramp_high_readiness.py -q",
+      "poam": "Attach official cross-repo assessment package references."
+    },
+    {
+      "id": "gateway-preflight",
+      "control_ids": ["CM-6", "SC-8", "SC-12", "AU-6"],
+      "owner": "ltp",
+      "status": "implemented",
+      "evidence_path": "deploy/preflight_gateway.py",
+      "test_command": "python3 -m pytest tests/test_fedramp_high_readiness.py -q",
+      "poam": ""
+    },
+    {
+      "id": "fedramp-env-template",
+      "control_ids": ["CM-2", "CM-6"],
+      "owner": "platform",
+      "status": "implemented",
+      "evidence_path": "config/fedramp-high.env.template",
+      "test_command": "python3 -m pytest tests/test_fedramp_high_readiness.py -q",
+      "poam": ""
+    },
+    {
+      "id": "audit-schema",
+      "control_ids": ["AU-2", "AU-3", "AU-6"],
+      "owner": "ltp",
+      "status": "implemented",
+      "evidence_path": "src/ltp/compliance.py",
+      "test_command": "python3 -m pytest tests/test_fedramp_high_readiness.py tests/test_compliance.py -q",
+      "poam": ""
+    },
+    {
+      "id": "gsx-boundary",
+      "control_ids": ["CA-3", "SA-9", "SR-3"],
+      "owner": "architecture",
+      "status": "implemented",
+      "evidence_path": "docs/design-decisions/GSX_DAG_DB_INTEGRATION.md",
+      "test_command": "python3 -m pytest tests/test_fedramp_high_readiness.py -q",
+      "poam": ""
+    },
+    {
+      "id": "release-evidence",
+      "control_ids": ["SA-10", "SA-11", "SR-4", "SR-11"],
+      "owner": "release",
+      "status": "planned",
+      "evidence_path": "docs/compliance/fedramp-high/release-evidence.md",
+      "test_command": "python3 -m pytest tests/test_fedramp_high_readiness.py -q",
+      "poam": "Attach generated SBOM, scans, signatures, and provenance at release time."
+    },
+    {
+      "id": "control-matrix",
+      "control_ids": ["CA-2", "CA-7", "PL-2"],
+      "owner": "compliance",
+      "status": "partial",
+      "evidence_path": "docs/compliance/fedramp-high/control-matrix.md",
+      "test_command": "python3 -m pytest tests/test_fedramp_high_readiness.py -q",
+      "poam": "Merge with official FedRAMP SSP control workbook."
+    }
+  ]
+}

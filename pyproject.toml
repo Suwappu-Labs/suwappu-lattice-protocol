@@ -83,7 +83,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".", "src"]
 markers = [
     "smoke: post-deploy smoke tests that require a live gateway (skip if not reachable)",
 ]

@@ -16,6 +16,18 @@
 
 ---
 
+## Visuals
+
+Presentation-ready GSX visuals are collected in the DAG repo and linked here for convenience:
+
+- [GSX Visual Index](../gsx-dag/docs/visuals/index.html)
+- [GSX Ecosystem Atlas](../gsx-dag/docs/visuals/gsx-ecosystem-atlas.html)
+- [GSX DAG presentation](../gsx-dag/docs/visuals/gsx-dag.html)
+- [GSX DB presentation](../gsx-dag/docs/visuals/gsx-db.html)
+- [LTP presentation](../gsx-dag/docs/visuals/ltp.html)
+- Mermaid sources: [GSX DAG](../gsx-dag/docs/visuals/mermaid/gsx-dag.md), [GSX DB](../gsx-dag/docs/visuals/mermaid/gsx-db.md), [LTP](../gsx-dag/docs/visuals/mermaid/ltp.md)
+- Excalidraw sources: [GSX DAG](../gsx-dag/docs/visuals/excalidraw/gsx-dag.excalidraw), [GSX DB](../gsx-dag/docs/visuals/excalidraw/gsx-db.excalidraw), [LTP](../gsx-dag/docs/visuals/excalidraw/ltp.excalidraw)
+
 ## The Problem
 
 Every existing protocol -- TCP/IP, HTTP, FTP, QUIC -- operates on the same
@@ -72,6 +84,27 @@ The entity is never serialized and shipped as a monolithic payload. It is
 | **Dual-Lane Hashing** | SHA3-256 (canonical/on-chain) + BLAKE3-256 (internal/performance) | Enforced separation |
 | **On-Chain Settlement** | LTPAnchorRegistry v6 with UUPS proxy + MultiSig + Timelock governance | Deployed on GSX Testnet + Base Sepolia |
 
+## GSX Stack Alignment
+
+LTP is the transfer and attestation layer for the GSX stack. `gsx-dag` owns DAG
+ordering and validator-ring consensus; `gsx-db` owns the canonical EVM/Move
+state substrate and emits the state roots that LTP anchors and attests.
+
+| Layer | Repository | LTP Integration |
+|-------|------------|-----------------|
+| Transfer + attestation | `gsx-lattice-protocol` | COMMIT/LATTICE/MATERIALIZE, gateway VM, `LTPAnchorRegistry` |
+| Consensus + ordering | `gsx-dag` | Consumes LTP corridor attestations through `crates/gsx-ltp` |
+| State substrate | `gsx-db` | Produces state roots and anchors through `gsxdb-bridge` / `gsxdb-state` |
+
+See [GSX DAG and GSX-DB Integration](docs/design-decisions/GSX_DAG_DB_INTEGRATION.md)
+for the current cross-repo boundary.
+
+The Python wire-compatible mirror of `gsx-dag/crates/gsx-ltp` lives in
+[`src/ltp/corridor/`](src/ltp/corridor): 7-of-9 corridor attestation,
+Commitment-Node DA SLA, cross-chain DID rotation statement, and the
+length-prefixed SHA3-256 domain digest the DAG L1 signs over. Digest parity
+against the Rust reference is locked in `tests/corridor/test_digest_parity.py`.
+
 ## Implementation Reality
 
 | Area | Runtime Truth | Details |
@@ -89,6 +122,8 @@ The entity is never serialized and shipped as a monolithic payload. It is
 | **HSM Custody** | Real boundary — sentinels for dk/sk | `hsm_sign()` / `hsm_decaps()` route through HSM; no plaintext leak |
 | **Ethereum Backend** | Real when RPC configured | Fail-closed; no silent fallback to simulation in real mode |
 | **Base L1 Backend** | Local simulation for testing | Production requires deployed chain infrastructure |
+| **GSX-DAG Boundary** | External Rust L1 | DAG ordering and validator-ring consensus live in `gsx-dag` |
+| **GSX-DB Boundary** | External Rust substrate | State mutation, OCC, state roots, recovery, and L2 sync live in `gsx-db` |
 
 ## What's Implemented
 
@@ -296,6 +331,7 @@ See [docs/README.md](docs/README.md) for the full documentation index.
 | [Whitepaper](docs/WHITEPAPER.md) | Full protocol specification |
 | [Technical Report](LTP_COMPREHENSIVE_REPORT.md) | 13-section architecture & deployment report |
 | [Architecture](docs/design-decisions/ARCHITECTURE.md) | System components and data flow |
+| [GSX DAG and GSX-DB Integration](docs/design-decisions/GSX_DAG_DB_INTEGRATION.md) | Cross-repo boundary with the DAG L1 and state substrate |
 | [Production Plan](docs/PRODUCTION_PLAN.md) | PoC to production roadmap |
 | [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) | Docker, Kubernetes, CI/CD |
 | [Bridge MVP](docs/bridge-mvp-scope.md) | Cross-chain bridge scope |

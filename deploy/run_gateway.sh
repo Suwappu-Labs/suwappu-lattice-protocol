@@ -38,6 +38,9 @@ if [[ ! -f "${ENV_FILE}" ]]; then
     echo "    ETP_GATEWAY_VM_DEST_REGISTRY"
     echo "    ETP_GATEWAY_VM_OPERATOR_KEY"
     echo ""
+    echo "  For FedRAMP High readiness, start from:"
+    echo "    config/fedramp-high.env.template"
+    echo ""
     exit 1
 fi
 

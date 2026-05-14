@@ -2,6 +2,16 @@
 
 Self-contained code examples demonstrating ETP's capabilities, organized by complexity.
 
+## Visuals
+
+Presentation-ready GSX visuals are available in the DAG repo:
+
+- [GSX Visual Index](../../gsx-dag/docs/visuals/index.html)
+- [GSX Ecosystem Atlas](../../gsx-dag/docs/visuals/gsx-ecosystem-atlas.html)
+- [GSX DAG presentation](../../gsx-dag/docs/visuals/gsx-dag.html)
+- [GSX DB presentation](../../gsx-dag/docs/visuals/gsx-db.html)
+- [LTP presentation](../../gsx-dag/docs/visuals/ltp.html)
+
 ## Prerequisites
 
 ```bash
