@@ -19,7 +19,7 @@ Inline Mermaid diagrams, standalone HTML decks, and editable Mermaid/Excalidraw 
 | | [Changelog](../CHANGELOG.md) | Version history v1.0.0 through v5.0.0 |
 | | [Security Policy](../SECURITY.md) | Vulnerability reporting and contract security scope |
 | **Specification** | [Whitepaper](WHITEPAPER.md) | Full protocol design — three-phase COMMIT/LATTICE/MATERIALIZE |
-| | [Technical Report](../LTP_COMPREHENSIVE_REPORT.md) | 13-section architecture, deployment, and governance report |
+| | [Visuals](visuals/README.md) | Inline-Mermaid diagrams + HTML decks + editable sources |
 | **Architecture** | [Architecture](design-decisions/ARCHITECTURE.md) | System components, data flow, security layers |
 | | [GSX DAG and GSX-DB Integration](design-decisions/GSX_DAG_DB_INTEGRATION.md) | Cross-repo boundary with the DAG L1 and state substrate |
 | | [Commitment Network Options](design-decisions/COMMITMENT_NETWORK_OPTIONS.md) | Custom L1 vs Ethereum L1/L2 analysis |
@@ -82,6 +82,6 @@ New to ETP? Read in this order:
 1. **[Contributing](../CONTRIBUTING.md)** — Clone, install, run tests
 2. **[Whitepaper](WHITEPAPER.md)** — Understand the core protocol
 3. **[Architecture](design-decisions/ARCHITECTURE.md)** — See how it's built
-4. **[Technical Report](../LTP_COMPREHENSIVE_REPORT.md)** — Full system deep dive
+4. **[Visuals](visuals/README.md)** — Inline diagrams of LTP, GSX DAG, and GSX-DB
 5. **[Security Review](design-decisions/Security/SECURITY_REVIEW-2-24-2026.md)** — Understand the threat model
-6. **[Production Plan](PRODUCTION_PLAN.md)** — See the path to production
+6. **[Production Roadmap](plans/2026-05-11-production-roadmap.md)** — See the current milestones

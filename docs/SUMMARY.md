@@ -18,6 +18,16 @@
 * [Cross-Deployment Federation](design-decisions/CROSS_DEPLOYMENT_FEDERATION.md)
 * [Commitment Network Options](design-decisions/COMMITMENT_NETWORK_OPTIONS.md)
 
+## Plans & Specs
+
+* [Production Roadmap (2026-05-11)](plans/2026-05-11-production-roadmap.md)
+* [Session Roadmap (2026-05-11)](plans/2026-05-11-session-roadmap.md)
+* [Committee Formation & Epoch Management](plans/2026-05-08-committee-formation-epoch-management.md)
+* [Threshold DKG Spec](plans/2026-05-09-threshold-dkg-spec.md)
+* [Threshold DKG Plan](plans/2026-05-10-threshold-dkg-plan.md)
+* [Threshold BLS Signing Spec](plans/2026-05-11-threshold-bls-signing-spec.md)
+* [Threshold BLS Signing Plan](plans/2026-05-12-threshold-bls-signing-plan.md)
+
 ## Security
 
 * [Threat Model](THREAT_MODEL.md)
@@ -28,30 +38,27 @@
 
 ## Operations
 
-* [Production Plan](PRODUCTION_PLAN.md)
 * [Deployment Guide](DEPLOYMENT_GUIDE.md)
+* [Operator Runbook](OPERATOR_RUNBOOK.md)
 * [Bridge MVP Scope](bridge-mvp-scope.md)
-
-## Compliance
-
-* [FedRAMP High Readiness](compliance/fedramp-high/README.md)
-* [FedRAMP High Control Matrix](compliance/fedramp-high/control-matrix.md)
-* [FedRAMP High Release Evidence](compliance/fedramp-high/release-evidence.md)
-
-## Expansion
-
-* [Gateway VM Plan](LTP_GATEWAY_VM_PLAN.md)
-* [DID Expansion Plan](DID_EXPANSION_PLAN.md)
-* [Implementation Status](ETP_IMPLEMENTATION_STATUS.md)
 * [Deployed Contracts](DEPLOYED_CONTRACTS.md)
 
-## Technical Report
+## Compliance — FedRAMP High
 
-* [Full Report](../LTP_COMPREHENSIVE_REPORT.md)
+* [Readiness Overview](compliance/fedramp-high/README.md)
+* [Control Matrix](compliance/fedramp-high/control-matrix.md)
+* [Release Evidence](compliance/fedramp-high/release-evidence.md)
+* [System Boundary](compliance/fedramp-high/system-boundary.md)
+* [Assessment Boundary](compliance/fedramp-high/assessment-boundary.md)
+* [Trust Boundary](compliance/fedramp-high/trust-boundary.md)
+* [Data Flow](compliance/fedramp-high/data-flow.md)
+* [SSP Narratives](compliance/fedramp-high/ssp-narratives.md)
 
 ## Reviews
 
-* [Review #1](design-decisions/Reviews/001/001-Formal-Whitepaper-Review.md)
-* [Review #2](design-decisions/Reviews/002/002-Formal-Whitepaper-Review.md)
-* [Review #3](design-decisions/Reviews/003/003-Formal-Whitepaper-review.md)
+* [Review #1 — Formal](design-decisions/Reviews/001/001-Formal-Whitepaper-Review.md)
+* [Review #1 — Mathematical](design-decisions/Reviews/001/001-Mathematical-Review.md)
+* [Review #2 — Formal](design-decisions/Reviews/002/002-Formal-Whitepaper-Review.md)
+* [Review #2 — Mathematical](design-decisions/Reviews/002/002-Mathematical-Review.md)
+* [Review #3 — Formal](design-decisions/Reviews/003/003-Formal-Whitepaper-review.md)
 * [Eastern Research Landscape](design-decisions/Reviews/004/004-Eastern-Research-Landscape.md)

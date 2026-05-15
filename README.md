@@ -327,10 +327,10 @@ See [docs/README.md](docs/README.md) for the full documentation index.
 | Document | Description |
 |----------|-------------|
 | [Whitepaper](docs/WHITEPAPER.md) | Full protocol specification |
-| [Technical Report](LTP_COMPREHENSIVE_REPORT.md) | 13-section architecture & deployment report |
 | [Architecture](docs/design-decisions/ARCHITECTURE.md) | System components and data flow |
+| [Visuals](docs/visuals/README.md) | Inline-Mermaid diagrams (LTP, GSX DAG, GSX-DB, anchor lifecycle, trust boundary, DKG) |
 | [GSX DAG and GSX-DB Integration](docs/design-decisions/GSX_DAG_DB_INTEGRATION.md) | Cross-repo boundary with the DAG L1 and state substrate |
-| [Production Plan](docs/PRODUCTION_PLAN.md) | PoC to production roadmap |
+| [Production Roadmap](docs/plans/2026-05-11-production-roadmap.md) | Current milestones (2026-05-11) |
 | [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) | Docker, Kubernetes, CI/CD |
 | [Bridge MVP](docs/bridge-mvp-scope.md) | Cross-chain bridge scope |
 | [Security Review](docs/design-decisions/Security/SECURITY_REVIEW-2-24-2026.md) | Formal security analysis |

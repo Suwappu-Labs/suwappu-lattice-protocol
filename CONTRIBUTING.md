@@ -166,7 +166,7 @@ When modifying `LTPAnchorRegistry.sol`:
 
 - [Architecture](docs/design-decisions/ARCHITECTURE.md) — System components and data flow
 - [Whitepaper](docs/WHITEPAPER.md) — Full protocol specification
-- [Technical Report](LTP_COMPREHENSIVE_REPORT.md) — 13-section architecture & deployment report
+- [Visuals](docs/visuals/README.md) — Inline-Mermaid diagrams of LTP, GSX DAG, GSX-DB, anchor lifecycle, trust boundary, DKG
 
 ## Questions?
 
