@@ -324,9 +324,11 @@
 3. Malicious dealer crafts a polynomial whose commitment biases the group public key in a predictable way (e.g., toward a key the attacker knows the discrete log of for a subset of inputs).
 4. Group PK is biased; downstream threshold signatures are weakened for the attacker's pre-chosen messages.
 
-**Remediation.** `FIXED-IN-PR` (Commit 4):
-- New "phase 1.5" lock: each dealer first publishes `H(commitments_blob || nonce)`. Only after all hashes are collected do dealers reveal the underlying commitments. Reveal that doesn't match the earlier hash → bias attempt detected.
-- `tests/security/test_attack_dkg_bias.py` regression guard.
+**Remediation.** `DEFERRED` (originally planned for Commit 4 of this PR; deferred to a dedicated follow-up because the commit-then-reveal phase requires a non-trivial protocol message format change that's incompatible with rolling out alongside the parallel docs/visuals work on the same branch). The PR adds:
+- `DOMAIN_TAG_DKG_COMMIT` constant ready to bind the commitment-phase hash.
+- `tests/security/test_attack_dkg_bias.py` (xfail) documenting the bias surface; flips to a regression guard once the protocol change lands.
+
+Tracked in a new Linear issue "DKG commit-then-reveal phase (LTP-A-016)".
 
 ---
 

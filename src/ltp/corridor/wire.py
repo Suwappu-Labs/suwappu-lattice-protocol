@@ -171,14 +171,22 @@ def super_node_to_dict(s: SuperNode) -> dict[str, Any]:
         "authority": s.authority,
         "corridor": s.corridor,
         "bls_public_key": s.bls_public_key.hex(),
+        "pop": s.pop.hex(),
     }
 
 
 def super_node_from_dict(d: dict[str, Any]) -> SuperNode:
+    # ``pop`` is optional for backwards compatibility with pre-LTP-A-015
+    # fixtures; supplied wires of length 96 are validated, missing or
+    # empty ``pop`` defaults to ``b""``.
+    pop_field: bytes = b""
+    if "pop" in d and d["pop"]:
+        pop_field = _hex_bytes(d, "pop", _SIZE_BLS_SIGNATURE)
     return SuperNode(
         authority=_int_field(d, "authority"),
         corridor=_int_field(d, "corridor"),
         bls_public_key=_hex_bytes(d, "bls_public_key", _SIZE_BLS_PUBLIC_KEY),
+        pop=pop_field,
     )
 
 

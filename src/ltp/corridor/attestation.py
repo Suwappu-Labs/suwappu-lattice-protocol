@@ -68,11 +68,23 @@ class SuperNode:
     """A corridor super-node — paper §9 Definition 4 role 2.
 
     `bls_public_key` is the compressed G1 (48-byte) BLS12-381 public key.
+    `pop` is the Proof-of-Possession: a 96-byte BLS signature over the
+    `bls_public_key` bytes under ``DOMAIN_TAG_CORRIDOR_POP``. Default is
+    empty for backwards compatibility with existing test fixtures; new
+    deployments MUST supply a real PoP and call ``Corridor.verify_pops()``
+    before trusting the member set. See LTP-A-015 in the security audit.
     """
 
     authority: AuthorityId
     corridor: CorridorId
     bls_public_key: bytes
+    pop: bytes = b""
+
+
+class CorridorPopVerificationFailed(LtpError):
+    def __init__(self, authority: AuthorityId) -> None:
+        super().__init__(f"PoP verification failed for super-node {authority}")
+        self.authority = authority
 
 
 @dataclass(frozen=True)
@@ -87,6 +99,30 @@ class Corridor:
             if m.authority == authority:
                 return m.bls_public_key
         return None
+
+    def verify_pops(self) -> None:
+        """Verify every member's Proof-of-Possession.
+
+        Closes LTP-A-015 at the *registration* surface (the verify-time
+        manual G1 aggregation in ``corridor/bls.py`` is the static-set
+        defense; this is the adaptive-attacker defense).
+
+        Raises ``CorridorPopVerificationFailed`` on the first bad PoP.
+        A member with an empty ``pop`` is rejected — this method is the
+        opt-in security gate, callers can skip it for legacy test fixtures.
+        """
+        from .bls import corridor_verify
+        from .constants import DOMAIN_TAG_CORRIDOR_POP
+
+        for m in self.members:
+            if not m.pop or len(m.pop) != 96:
+                raise CorridorPopVerificationFailed(m.authority)
+            # The PoP signs (DOMAIN_TAG_CORRIDOR_POP || pk_bytes) so a
+            # rogue key can't reuse a non-PoP signature for this slot.
+            msg = DOMAIN_TAG_CORRIDOR_POP + m.bls_public_key
+            ok = corridor_verify(m.bls_public_key, msg, m.pop)
+            if not ok:
+                raise CorridorPopVerificationFailed(m.authority)
 
 
 @dataclass(frozen=True)

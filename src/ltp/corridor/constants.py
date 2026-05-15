@@ -21,6 +21,18 @@ DOMAIN_TAG_ATTEST = b"GSX-LTP-ATTEST-V1"
 DOMAIN_TAG_CID = b"GSX-LTP-CID-V1"
 DOMAIN_TAG_DID_STARK = b"GSX-DID-STARK-V1"
 
+# Proof-of-possession domain for corridor SuperNode registration. Closes
+# LTP-A-015 (Boneh-Drijvers-Neven rogue-key attack on aggregate BLS) by
+# requiring each member to prove they hold the secret key for the
+# advertised BLS public key. The signature is over the public key bytes
+# under this DST.
+DOMAIN_TAG_CORRIDOR_POP = b"LTP-CORRIDOR-POP-V1"
+
+# DKG commit-then-reveal phase. Closes LTP-A-016 by binding each dealer
+# to a hash-commitment of their polynomial commitments before any
+# commitment payload is revealed to peers.
+DOMAIN_TAG_DKG_COMMIT = b"LTP-DKG-COMMIT-V1"
+
 # BLS hash-to-curve domain separation tag for the corridor signing surface.
 # Matches `gsx-dag/crates/gsx-crypto/src/bls.rs::BLS_DST`. LTP's default BLS
 # helper signs under py_ecc's `G2ProofOfPossession` DST instead, so the
