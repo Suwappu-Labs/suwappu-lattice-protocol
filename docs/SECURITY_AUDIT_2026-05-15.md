@@ -403,9 +403,17 @@ The audit's original concern (a malicious dealer biasing its *commitment* after 
 **Severity.** HIGH.
 **File.** `docs/design-decisions/Security/001-lattice-key-shard-exposure.md`, `src/ltp/corridor/envelope.py`.
 
-**Status.** Existing security review picked Option C (encrypted shards + derivable metadata). Implementation not yet deployed.
+**Status.** `CONFIRMED-OK`. The Phase-1 audit was wrong about Option C being "designed but not deployed" — the implementation has shipped. Verified in code:
 
-**Remediation.** `DEFERRED` — out of scope for this PR. Existing Linear tracking applies. This audit re-flags it as still-open.
+- `src/ltp/lattice.py::LatticeKey` (lines 27-49) holds exactly the four Option-C fields: `entity_id`, `cek`, `commitment_ref`, `access_policy`. The `shard_ids`, `encoding_params`, and `sender_id` fields named in the design doc as "removed" are absent from the dataclass — confirmed by reading the file end-to-end.
+- `src/ltp/shards.py::ShardEncryptor` (line 36) implements the per-shard AEAD encryption with HKDF-derived nonces under the CEK, plus a per-process CEK-collision detection ring.
+- `src/ltp/protocol.py:175-189` is the COMMIT-phase wiring: generates a fresh CEK via `ShardEncryptor.generate_cek()`, encrypts every shard before distribution via `network.distribute_encrypted_shards(...)`.
+- `src/ltp/protocol.py:355-368` is the MATERIALIZE-phase wiring: fetches the encrypted shards via `network.fetch_encrypted_shards(...)`, decrypts each with the CEK unsealed from the lattice key.
+- `src/ltp/commitment.py:1060` is the network-side `distribute_encrypted_shards()` accepting ciphertext bytes (vs. the pre-Option-C `distribute_shards()` which took plaintext).
+
+`tests/test_protocol.py`, `tests/test_shard_distribution.py`, `tests/test_commitment.py` collectively pass 122/122 cases against the end-to-end Option-C flow.
+
+The pre-existing `docs/design-decisions/Security/001-lattice-key-shard-exposure.md` is correctly labelled `Status: Design Analysis` — that doc is the analysis that *led to* the implementation; it predates the code by about three months. The audit row is updated to point at the actual implementation. Regression-guarded by the existing protocol test suite.
 
 ---
 

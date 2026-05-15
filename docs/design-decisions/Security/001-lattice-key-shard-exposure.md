@@ -2,7 +2,23 @@
 
 **Date:** 2026-02-24  
 **Issue:** CRITICAL — Lattice key leaks shard IDs, enabling unauthorized reconstruction  
-**Status:** Design Analysis
+**Status:** Design Analysis → **Option C implemented** (verified 2026-05-15)
+
+> **Implementation note (2026-05-15):** Option C is the production design and is shipped.
+> See [`SECURITY_AUDIT_2026-05-15.md`](../../SECURITY_AUDIT_2026-05-15.md) LTP-A-022 for the
+> code-anchor verification: `src/ltp/lattice.py::LatticeKey` carries only
+> `entity_id` / `cek` / `commitment_ref` / `access_policy`; shards are encrypted
+> via `src/ltp/shards.py::ShardEncryptor` before distribution at
+> `src/ltp/protocol.py:175-189`; receivers fetch encrypted shards and decrypt
+> with the CEK at `src/ltp/protocol.py:355-368`. The 122-test protocol + shard
+> + commitment suite is the regression guard.
+> 
+> This doc remains the design-rationale source. The implementation diverges
+> in two minor ways: (1) the access-policy field is a dict rather than a
+> fixed-length blob, and (2) the encrypted-shard nonce is HKDF-derived
+> from the CEK + entity_id + shard index rather than the literal shard
+> index, providing an extra layer of protection against CEK-reuse-across-
+> entities accidents.
 
 ---
 
