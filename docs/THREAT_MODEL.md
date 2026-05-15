@@ -7,7 +7,7 @@
 This document identifies assets, threat sources, and categorized threats for the
 Entanglement Transfer Protocol (ETP/LTP). For the full protocol specification,
 see the [Whitepaper](WHITEPAPER.md). For implementation details, see the
-[Technical Report](../LTP_COMPREHENSIVE_REPORT.md).
+[Architecture](design-decisions/ARCHITECTURE.md).
 
 ---
 

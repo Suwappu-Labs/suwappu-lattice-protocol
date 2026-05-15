@@ -58,13 +58,25 @@ def assert_bls_crypto() -> None:
 def assert_bls_production() -> None:
     """Assert that the production BLS backend (blst) is available.
 
-    Call this in production deployments where performance matters.
+    Call this in production deployments where performance matters AND
+    where the py_ecc fallback's lack of documented constant-time
+    guarantees would be a security regression. The py_ecc path is fine
+    for dev / CI but should never run in production.
     """
     if not _blst_available:
         raise RuntimeError(
             "Production BLS backend (blst) not available. "
             "Install with: pip install blst"
         )
+
+
+# Fail-fast at import time when LTP_ENV signals a production deployment
+# but the production-grade backend is missing. Catches the case where
+# `pip install -e .[crypto]` was used without `blst` and a production
+# operator never noticed until a signing hot path silently downgraded
+# to the constant-time-unverified py_ecc fallback.
+if os.environ.get("LTP_ENV", "").lower() == "production":
+    assert_bls_production()
 
 
 class BLS:

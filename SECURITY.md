@@ -83,7 +83,7 @@ MultiSig (2-of-2) → TimelockController (60s testnet / 24-48h production) → L
 
 For detailed security analysis and design decisions:
 
-- [Technical Report — Smart Contract Architecture](LTP_COMPREHENSIVE_REPORT.md)
+- [Threat Model](docs/THREAT_MODEL.md)
 - [Security Review (2026-02-24)](docs/design-decisions/Security/SECURITY_REVIEW-2-24-2026.md)
 - [Lattice Key Shard Exposure Analysis](docs/design-decisions/Security/001-lattice-key-shard-exposure.md)
 - [Architecture — Security Layers](docs/design-decisions/ARCHITECTURE.md#6-security-layers)

@@ -280,7 +280,14 @@ __all__ = [
     "assert_real_crypto",
     # Utilities
     "reset_poc_state",
+    # Cross-repo wire surface with gsx-dag (paper §10)
+    "corridor",
 ]
+
+
+# Sub-namespace import — re-exported so callers can `from ltp import corridor`
+# and reach the wire-compatible mirror of `gsx-dag/crates/gsx-ltp`.
+from . import corridor  # noqa: E402
 
 
 # Lazy imports to avoid circular dependency (merkle_log → ltp.primitives → ltp)

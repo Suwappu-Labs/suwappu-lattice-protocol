@@ -9,9 +9,11 @@ delay with jitter. RetryPolicy combines both for peer connections.
 from __future__ import annotations
 
 import logging
-import random
+import secrets
 import threading
 import time as _time
+
+_secure_random = secrets.SystemRandom()
 from dataclasses import dataclass
 from typing import Optional
 
@@ -138,7 +140,7 @@ class ExponentialBackoff:
         """Calculate delay for the given attempt number (0-indexed)."""
         delay = min(self.max_delay, self.base_delay * (2 ** attempt))
         if self.jitter > 0:
-            delay += random.uniform(0, self.jitter)
+            delay += _secure_random.uniform(0, self.jitter)
         return delay
 
     def wait(self, attempt: int) -> None:

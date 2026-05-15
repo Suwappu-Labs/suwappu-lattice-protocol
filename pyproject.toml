@@ -16,62 +16,66 @@ requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
+# Security-sensitive dependencies are pinned with upper bounds. See
+# docs/STABILITY_PROMISES.md for the bump policy and how to file a
+# semver-floor request for a new transitive CVE.
 performance = [
-    "blake3>=0.3.0",
+    "blake3>=0.3.0,<2.0",
 ]
 crypto = [
-    "pqcrypto>=0.3.0",
-    "pynacl>=1.5.0",
+    "pqcrypto>=0.3.0,<1.0",
+    "pynacl>=1.5.0,<2.0",
 ]
 chain = [
-    "web3>=6.0.0",
+    "web3>=6.0.0,<8.0.0",
 ]
 network = [
-    "grpcio>=1.50.0",
-    "grpcio-tools>=1.80.0",
-    "tomli>=2.0.0; python_version < '3.11'",
+    "grpcio>=1.50.0,<2.0",
+    "grpcio-tools>=1.80.0,<2.0",
+    "tomli>=2.0.0,<3.0; python_version < '3.11'",
 ]
 gateway = [
-    "fastapi>=0.100.0",
-    "uvicorn[standard]>=0.44.0",
-    "httpx>=0.24.0",
+    "fastapi>=0.100.0,<1.0",
+    "uvicorn[standard]>=0.44.0,<1.0",
+    "httpx>=0.24.0,<1.0",
 ]
 federation = [
-    "httpx>=0.24.0",
-    "dnspython>=2.4.0",
+    "httpx>=0.24.0,<1.0",
+    "dnspython>=2.4.0,<3.0",
 ]
 cloud = [
-    "boto3>=1.26.0",
+    "boto3>=1.26.0,<2.0",
 ]
 zk = [
-    "py_ecc>=7.0.0",
+    "py_ecc>=7.0.0,<9.0",
 ]
 rocksdb = [
-    "lsm-db>=0.7.3",
+    "lsm-db>=0.7.3,<1.0",
 ]
 production = [
-    "pqcrypto>=0.3.0",
-    "pynacl>=1.5.0",
-    "zfec>=1.6.0.0",
-    "blake3>=1.0.0",
-    "py_ecc>=7.0.0",
+    "pqcrypto>=0.3.0,<1.0",
+    "pynacl>=1.5.0,<2.0",
+    "zfec>=1.6.0.0,<2.0",
+    "blake3>=1.0.0,<2.0",
+    "py_ecc>=7.0.0,<9.0",
 ]
 dev = [
-    "pytest>=9.0.3",
-    "hypothesis>=6.0",
-    "blake3>=0.3.0",
-    "pqcrypto>=0.3.0",
-    "pynacl>=1.5.0",
-    "zfec>=1.6.0.0",
-    "grpcio>=1.50.0",
-    "grpcio-tools>=1.80.0",
-    "fastapi>=0.100.0",
-    "uvicorn[standard]>=0.44.0",
-    "httpx>=0.24.0",
-    "boto3>=1.26.0",
-    "moto[kms]>=4.0.0",
-    "py_ecc>=7.0.0",
-    "dnspython>=2.4.0",
+    "pytest>=9.0.3,<10.0",
+    "hypothesis>=6.0,<7.0",
+    "blake3>=0.3.0,<2.0",
+    "pqcrypto>=0.3.0,<1.0",
+    "pynacl>=1.5.0,<2.0",
+    "zfec>=1.6.0.0,<2.0",
+    "grpcio>=1.50.0,<2.0",
+    "grpcio-tools>=1.80.0,<2.0",
+    "fastapi>=0.100.0,<1.0",
+    "uvicorn[standard]>=0.44.0,<1.0",
+    "httpx>=0.24.0,<1.0",
+    "boto3>=1.26.0,<2.0",
+    "moto[kms]>=4.0.0,<6.0",
+    "py_ecc>=7.0.0,<9.0",
+    "dnspython>=2.4.0,<3.0",
+    "pip-audit>=2.7.0,<3.0",
 ]
 
 [project.scripts]
@@ -81,9 +85,12 @@ etp-gateway = "ltp.gateway_vm.__main__:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+ltp = ["py.typed"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".", "src"]
 markers = [
     "smoke: post-deploy smoke tests that require a live gateway (skip if not reachable)",
 ]

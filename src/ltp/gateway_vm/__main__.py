@@ -10,10 +10,19 @@ Requires: pip install -e ".[gateway,chain,crypto]"
 from __future__ import annotations
 
 import os
+import re
 import sys
 
 from .boot import validate_config
 from .config import GatewayVMConfig
+
+
+_OPERATOR_KEY_RE = re.compile(r"^0x[0-9a-fA-F]{64}$")
+
+
+def _valid_operator_key(key: str) -> bool:
+    """Return True if ``key`` is 0x + 64 hex chars (LTP-A-013)."""
+    return bool(_OPERATOR_KEY_RE.match(key))
 
 
 def main() -> None:
@@ -41,6 +50,15 @@ def main() -> None:
     operator_key = os.environ.get("ETP_GATEWAY_VM_OPERATOR_KEY", "")
     if not operator_key:
         print("ERROR: Missing ETP_GATEWAY_VM_OPERATOR_KEY", file=sys.stderr)
+        sys.exit(1)
+
+    # LTP-A-013: validate operator key format at boot so a typo surfaces here
+    # rather than at the first signing attempt. Expect 0x + 64 hex chars.
+    if not _valid_operator_key(operator_key):
+        print(
+            "ERROR: ETP_GATEWAY_VM_OPERATOR_KEY must be 0x + 64 hex chars",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # --- Late imports (web3 + crypto may not be installed) ---
@@ -181,7 +199,11 @@ def main() -> None:
 
     import uvicorn
 
-    host = os.environ.get("ETP_GATEWAY_HOST", "0.0.0.0")
+    # LTP-A-011: default host bind is loopback. Operators who want to expose
+    # the gateway publicly must opt in via ETP_GATEWAY_HOST=0.0.0.0 (or a
+    # specific interface) and pair that with the JWT + rate-limit middleware
+    # from gateway_vm/middleware.py.
+    host = os.environ.get("ETP_GATEWAY_HOST", "127.0.0.1")
     port = int(os.environ.get("ETP_GATEWAY_PORT", "8000"))
 
     print(f"Starting ETP Gateway VM on {host}:{port}")

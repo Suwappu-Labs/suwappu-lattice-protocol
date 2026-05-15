@@ -32,8 +32,34 @@ contract DeployMainnet is Script {
         // Parse comma-separated owner addresses
         address[] memory owners = _parseAddresses(ownersRaw);
         require(owners.length >= multisigThreshold, "threshold exceeds owner count");
-        require(multisigThreshold >= 2, "mainnet requires threshold >= 2");
-        require(timelockDelay >= 3600, "mainnet requires timelock >= 1 hour");
+
+        // LTP-A-002 / LTP-A-009 (docs/SECURITY_AUDIT_2026-05-15.md):
+        // production-grade Byzantine threshold + 24-hour Timelock.
+        //   - threshold >= ceil(N/2) + 1 prevents Ronin/Harmony-class
+        //     single-key compromise from gaining quorum
+        //   - timelock >= 24h gives honest governance a real reaction
+        //     window for malicious upgrades (Cypher Protocol class)
+        //   - reject deploy on known testnets unless ALLOW_TESTNET_DEPLOY=true
+        uint256 minThreshold = (owners.length / 2) + 1;
+        require(
+            multisigThreshold >= minThreshold,
+            "mainnet requires threshold >= ceil(N/2) + 1"
+        );
+        require(timelockDelay >= 24 hours, "mainnet requires timelock >= 24 hours");
+
+        uint256 chainId = block.chainid;
+        bool allowTestnet = vm.envOr("ALLOW_TESTNET_DEPLOY", false);
+        // 31337 = anvil, 84532 = Base Sepolia, 11155111 = Ethereum Sepolia,
+        // 103115120 = GSX testnet. Add more as needed.
+        bool isTestnet =
+            chainId == 31337 ||
+            chainId == 84532 ||
+            chainId == 11155111 ||
+            chainId == 103115120;
+        require(
+            !isTestnet || allowTestnet,
+            "DeployMainnet refuses to deploy on a known testnet without ALLOW_TESTNET_DEPLOY=true"
+        );
 
         vm.startBroadcast();
 

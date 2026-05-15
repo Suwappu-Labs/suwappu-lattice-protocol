@@ -3,7 +3,7 @@
 # Quick commands for testing, building, and deployment verification.
 
 .PHONY: test test-python test-contracts test-integration test-all
-.PHONY: build lint clean ci-integration
+.PHONY: build lint clean ci-integration audit abi help
 
 # ── Python Tests ────────────────────────────────────────────────────────
 
@@ -64,3 +64,41 @@ clean:
 	rm -rf src/ltp/__pycache__ tests/__pycache__
 	rm -rf contracts/out contracts/cache
 	@echo "Clean."
+
+# ── Supply-chain audit ──────────────────────────────────────────────────
+
+audit:
+	@if ! command -v pip-audit >/dev/null 2>&1; then \
+		echo "pip-audit not installed; run: pip install 'pip-audit>=2.7.0,<3.0'"; \
+		exit 1; \
+	fi
+	pip-audit --strict --vulnerability-service osv
+
+# ── ABI export (for non-Python integrators) ─────────────────────────────
+
+abi:
+	@if [ ! -d contracts/out ]; then \
+		echo "contracts/out/ missing; run 'cd contracts && forge build' first"; \
+		exit 1; \
+	fi
+	@mkdir -p contracts/abi
+	@for f in contracts/out/*.sol/*.json; do \
+		name=$$(basename $$f .json); \
+		jq '.abi' $$f > contracts/abi/$$name.json; \
+		echo "wrote contracts/abi/$$name.json"; \
+	done
+
+# ── Help ────────────────────────────────────────────────────────────────
+
+help:
+	@echo "Common targets:"
+	@echo "  make test                run the Python test suite (default)"
+	@echo "  make test-python         Python only (skip live-anvil)"
+	@echo "  make test-contracts      Forge / Solidity tests"
+	@echo "  make test-integration    Python + Anvil contract integration"
+	@echo "  make test-all            full suite + integration"
+	@echo "  make audit               pip-audit against installed deps"
+	@echo "  make abi                 regenerate contracts/abi/*.json"
+	@echo "  make build               pip install -e .[dev]"
+	@echo "  make lint                syntax check"
+	@echo "  make clean               remove caches + build outputs"

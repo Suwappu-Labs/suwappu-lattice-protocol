@@ -113,6 +113,20 @@ class SoftwareHSM(HSMBackend):
     """
 
     def __init__(self) -> None:
+        # LTP-A-004: refuse instantiation when LTP_ENV signals a production
+        # deployment AND the operator explicitly asked for the software
+        # backend. The PoC keystore is fine for dev/CI but lacks the
+        # constant-time and tamper-resistance guarantees expected in prod.
+        import os as _os
+        env = _os.environ.get("LTP_ENV", "").lower()
+        provider = _os.environ.get("ETP_HSM_PROVIDER", "").lower()
+        if env == "production" and provider == "software":
+            raise RuntimeError(
+                "SoftwareHSM cannot be used in production "
+                "(LTP_ENV=production + ETP_HSM_PROVIDER=software). "
+                "Configure a PKCS#11 HSM or cloud KMS backend; see "
+                "docs/compliance/fedramp-high/trust-boundary.md."
+            )
         # key_id → {"type": "kem"|"dsa", "public": bytes, "private": bytes}
         self._keys: dict[str, dict] = {}
 

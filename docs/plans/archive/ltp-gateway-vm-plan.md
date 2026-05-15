@@ -1,3 +1,8 @@
+> **Superseded** — archived 2026-05-15. Some gateway VM work landed in `deploy/preflight_gateway.py` and `deploy/run_gateway.sh`; see [`docs/plans/2026-05-11-production-roadmap.md`](../2026-05-11-production-roadmap.md) for the current scope.
+> Retained for the original gateway architecture rationale and POA attestation design.
+
+---
+
 # LTP Gateway VM Plan — POA Attestation Gateway for GSX Devnet
 
 **Author:** Javier Calderon Jr, CTO - Global Settlement (GSX)

@@ -105,6 +105,42 @@ cast call 0x79eF1B7914f98C5C1404617449AB1f377c475996 "version()(uint256)" --rpc-
 cast call 0x79eF1B7914f98C5C1404617449AB1f377c475996 "admin()(address)" --rpc-url "$BASE_SEPOLIA_RPC_URL"
 ```
 
+## ABIs for Non-Python Integrators
+
+The full `LTPAnchorRegistry` ABI is checked in at
+[`contracts/abi/LTPAnchorRegistry.json`](../contracts/abi/LTPAnchorRegistry.json)
+so dApp developers can verify anchors from JavaScript / TypeScript / Go
+without running a local Solidity build. A worked ethers v6 example lives
+at [`examples/verify_anchor_from_js.mjs`](../examples/verify_anchor_from_js.mjs):
+
+```bash
+node examples/verify_anchor_from_js.mjs \
+  https://sepolia.base.org \
+  0x79eF1B7914f98C5C1404617449AB1f377c475996 \
+  <entityIdHash>
+```
+
+To regenerate the ABI after a contract change, run `forge build` in
+`contracts/` and copy the `abi` field of
+`contracts/out/LTPAnchorRegistry.sol/LTPAnchorRegistry.json` into
+`contracts/abi/LTPAnchorRegistry.json` (or use the `make abi` target).
+
 ---
 
 **Total across both chains: 53 on-chain transactions, all status `0x1` (success).**
+
+---
+
+## v7 Governance Hardening (Source Updates — Pending Deploy)
+
+The Solidity changes in PR #8 Commit 5 (`docs/SECURITY_AUDIT_2026-05-15.md` LTP-A-002, LTP-A-007, LTP-A-009, LTP-A-017) are source-only — they do **not** modify any deployed v5/v6 contract. They take effect when the next batch (v7) is deployed using the tightened `DeployMainnet.s.sol` script.
+
+| Change | File | What it enforces at the next deploy |
+|---|---|---|
+| MultiSig Byzantine threshold | `contracts/script/DeployMainnet.s.sol` | `threshold >= ceil(N/2) + 1` (no more 2-of-2) |
+| Timelock minimum delay | `contracts/script/DeployMainnet.s.sol` | `>= 24 hours` for mainnet (no more 60-second windows) |
+| Reject testnet deploys via mainnet script | `contracts/script/DeployMainnet.s.sol` | Refuses chain IDs 31337, 84532, 11155111, 103115120 unless `ALLOW_TESTNET_DEPLOY=true` |
+| ZK production-mode lock | `contracts/src/ZKBridgeVerifier.sol::lockProduction()` | Admin call irreversibly refuses `MODE_SIMULATED` |
+| BridgeEmitter authorized senders | `contracts/src/BridgeEmitter.sol` | New deploys pass `permissionless=false` and call `setAuthorized(...)` per legitimate caller |
+
+After v7 deploys, update the GSX Testnet / Base Sepolia tables above with the new addresses and link the corresponding governance proposal IDs.

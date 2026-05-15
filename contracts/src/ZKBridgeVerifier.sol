@@ -35,6 +35,10 @@ contract ZKBridgeVerifier {
     address public admin;
     OptimisticBridgeChallenge public challengeContract;
     uint8 public verificationMode;
+    /// @notice When true, MODE_SIMULATED is rejected at verify time and
+    ///         the flag itself becomes irreversibly locked.
+    ///         LTP-A-007 (docs/SECURITY_AUDIT_2026-05-15.md).
+    bool public productionMode;
 
     // Track verified proofs to prevent double-finalization
     mapping(bytes32 => bool) public verifiedProofs;
@@ -59,6 +63,7 @@ contract ZKBridgeVerifier {
     error InvalidPublicInputs();
     error ProofAlreadyUsed();
     error Unauthorized();
+    error SimulatedModeNotAllowedInProduction();
 
     // -----------------------------------------------------------------------
     // Constructor
@@ -72,6 +77,24 @@ contract ZKBridgeVerifier {
         admin = _admin;
         challengeContract = OptimisticBridgeChallenge(_challengeContract);
         verificationMode = _mode;
+        // productionMode defaults false; production deploys call
+        // `lockProduction()` post-deploy to refuse MODE_SIMULATED.
+    }
+
+    event ProductionModeLocked();
+
+    /// @notice Irreversibly lock the contract into production mode.
+    ///         After this call:
+    ///           - MODE_SIMULATED is rejected at verify time
+    ///           - This function reverts on every subsequent call
+    ///           - setVerificationMode rejects any future switch to
+    ///             MODE_SIMULATED
+    ///         Admin only. LTP-A-007.
+    function lockProduction() external {
+        if (msg.sender != admin) revert Unauthorized();
+        if (verificationMode == MODE_SIMULATED) revert SimulatedModeNotAllowedInProduction();
+        productionMode = true;
+        emit ProductionModeLocked();
     }
 
     // -----------------------------------------------------------------------
@@ -96,6 +119,10 @@ contract ZKBridgeVerifier {
         bytes32 proofId = keccak256(abi.encodePacked(proofBytes, inputs.sthRootHash, inputs.operatorVkHash, inputs.treeSize, inputs.sthSequence));
         if (verifiedProofs[proofId]) revert ProofAlreadyUsed();
 
+        // LTP-A-007: refuse simulated proofs when locked into production.
+        if (productionMode && verificationMode == MODE_SIMULATED) {
+            revert SimulatedModeNotAllowedInProduction();
+        }
         // Dispatch to verification backend
         bool valid;
         if (verificationMode == MODE_SIMULATED) {
@@ -266,6 +293,12 @@ contract ZKBridgeVerifier {
 
     function setVerificationMode(uint8 _mode) external {
         if (msg.sender != admin) revert Unauthorized();
+        // LTP-A-007: once production-locked, admin can switch backends
+        // freely between real verifiers but can never re-enable the
+        // simulated path.
+        if (productionMode && _mode == MODE_SIMULATED) {
+            revert SimulatedModeNotAllowedInProduction();
+        }
         verificationMode = _mode;
     }
 

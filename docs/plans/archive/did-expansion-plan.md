@@ -1,3 +1,8 @@
+> **Superseded** — archived 2026-05-15. Original "Planning" status from April 2026; no implementation work has landed. See [`docs/plans/2026-05-11-production-roadmap.md`](../2026-05-11-production-roadmap.md) for current scope.
+> Retained for the DID design rationale; the referenced "Proposed MoveVM+DID Architecture" .docx is not in git.
+
+---
+
 # ETP DID Expansion Plan — Decentralized Identity via Lattice Transfer Protocol
 
 **Author:** Javier Calderon Jr, CTO — Global Settlement (GSX)

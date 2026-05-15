@@ -166,7 +166,23 @@ When modifying `LTPAnchorRegistry.sol`:
 
 - [Architecture](docs/design-decisions/ARCHITECTURE.md) — System components and data flow
 - [Whitepaper](docs/WHITEPAPER.md) — Full protocol specification
-- [Technical Report](LTP_COMPREHENSIVE_REPORT.md) — 13-section architecture & deployment report
+- [Visuals](docs/visuals/README.md) — Inline-Mermaid diagrams of LTP, GSX DAG, GSX-DB, anchor lifecycle, trust boundary, DKG
+- [Corridor Integration](docs/CORRIDOR_INTEGRATION.md) — how to interop with the 7-of-9 attestation pipeline from Python / Rust / JS
+- [Stability Promises](docs/STABILITY_PROMISES.md) — semver, deprecation policy, what's public vs internal
+- [Formal Verification Status](docs/FORMAL_VERIFICATION_STATUS.md) — what's symbolically verified and what isn't
+
+## Quick Commands
+
+```bash
+make test                # Python suite (skips live-anvil integration)
+make test-contracts      # Forge / Solidity tests
+make test-integration    # Python + Anvil contract integration tests
+make audit               # pip-audit against installed deps
+make abi                 # regenerate contracts/abi/*.json from contracts/out/
+make help                # full target list
+```
+
+The package ships type hints (`src/ltp/py.typed`) per PEP 561 — mypy / pyright will pick up the public API surface automatically when you `pip install -e ".[dev,chain]"`.
 
 ## Questions?
 

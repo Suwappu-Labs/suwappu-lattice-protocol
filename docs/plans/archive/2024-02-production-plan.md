@@ -1,3 +1,8 @@
+> **Superseded** — archived 2026-05-15. See [`docs/plans/2026-05-11-production-roadmap.md`](../2026-05-11-production-roadmap.md) for current milestones.
+> Retained for historical context; test counts ("821 tests") and timelines below are stale.
+
+---
+
 # ETP Production Implementation Plan
 
 From PoC (current: 821 tests, in-memory, simulated crypto) to production-grade post-quantum bridge.

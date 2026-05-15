@@ -2,7 +2,16 @@
 
 ## Overview
 
-The Entanglement Transfer Protocol documentation is organized into six categories.
+The Entanglement Transfer Protocol documentation is organized into seven categories.
+
+## Visuals
+
+Inline Mermaid diagrams, standalone HTML decks, and editable Mermaid/Excalidraw sources live in [`docs/visuals/`](visuals/README.md).
+
+- [Visuals overview (inline Mermaid)](visuals/README.md)
+- Presentations: [LTP](visuals/ltp.html) · [GSX DAG](visuals/gsx-dag.html) · [GSX DB](visuals/gsx-db.html) · [Ecosystem Atlas](visuals/gsx-ecosystem-atlas.html) · [Visual index](visuals/index.html)
+- Mermaid sources: [LTP](visuals/mermaid/ltp.md) · [GSX DAG](visuals/mermaid/gsx-dag.md) · [GSX DB](visuals/mermaid/gsx-db.md)
+- Excalidraw sources: [LTP](visuals/excalidraw/ltp.excalidraw) · [GSX DAG](visuals/excalidraw/gsx-dag.excalidraw) · [GSX DB](visuals/excalidraw/gsx-db.excalidraw)
 
 | Category | Document | Description |
 |----------|----------|-------------|
@@ -10,8 +19,9 @@ The Entanglement Transfer Protocol documentation is organized into six categorie
 | | [Changelog](../CHANGELOG.md) | Version history v1.0.0 through v5.0.0 |
 | | [Security Policy](../SECURITY.md) | Vulnerability reporting and contract security scope |
 | **Specification** | [Whitepaper](WHITEPAPER.md) | Full protocol design — three-phase COMMIT/LATTICE/MATERIALIZE |
-| | [Technical Report](../LTP_COMPREHENSIVE_REPORT.md) | 13-section architecture, deployment, and governance report |
+| | [Visuals](visuals/README.md) | Inline-Mermaid diagrams + HTML decks + editable sources |
 | **Architecture** | [Architecture](design-decisions/ARCHITECTURE.md) | System components, data flow, security layers |
+| | [GSX DAG and GSX-DB Integration](design-decisions/GSX_DAG_DB_INTEGRATION.md) | Cross-repo boundary with the DAG L1 and state substrate |
 | | [Commitment Network Options](design-decisions/COMMITMENT_NETWORK_OPTIONS.md) | Custom L1 vs Ethereum L1/L2 analysis |
 | | [Streaming Protocol](design-decisions/STREAMING_PROTOCOL.md) | Chunked streaming, bandwidth amortization, backpressure |
 | | [Enforcement Mechanisms](design-decisions/ENFORCEMENT_MECHANISMS.md) | PDP proofs, programmable slashing, progressive decentralization |
@@ -20,6 +30,7 @@ The Entanglement Transfer Protocol documentation is organized into six categorie
 | **Operations** | [Production Plan](PRODUCTION_PLAN.md) | PoC to production roadmap — 7 phases, 14 weeks |
 | | [Deployment Guide](DEPLOYMENT_GUIDE.md) | Docker, Kubernetes, CI/CD, key management, monitoring |
 | | [Bridge MVP](bridge-mvp-scope.md) | L1-L2 cross-chain bridge scope and components |
+| **Compliance** | [FedRAMP High Readiness](compliance/fedramp-high/README.md) | System boundary, control matrix, SSP narratives, and release evidence gates |
 | **Security** | [Security Review](design-decisions/Security/SECURITY_REVIEW-2-24-2026.md) | Formal security review (2026-02-24) |
 | | [Shard Exposure Analysis](design-decisions/Security/001-lattice-key-shard-exposure.md) | Attack chain analysis and Option A-D comparison |
 | **Reviews** | [Review #1](design-decisions/Reviews/001/001-Formal-Whitepaper-Review.md) | Formal whitepaper review |
@@ -71,6 +82,6 @@ New to ETP? Read in this order:
 1. **[Contributing](../CONTRIBUTING.md)** — Clone, install, run tests
 2. **[Whitepaper](WHITEPAPER.md)** — Understand the core protocol
 3. **[Architecture](design-decisions/ARCHITECTURE.md)** — See how it's built
-4. **[Technical Report](../LTP_COMPREHENSIVE_REPORT.md)** — Full system deep dive
+4. **[Visuals](visuals/README.md)** — Inline diagrams of LTP, GSX DAG, and GSX-DB
 5. **[Security Review](design-decisions/Security/SECURITY_REVIEW-2-24-2026.md)** — Understand the threat model
-6. **[Production Plan](PRODUCTION_PLAN.md)** — See the path to production
+6. **[Production Roadmap](plans/2026-05-11-production-roadmap.md)** — See the current milestones

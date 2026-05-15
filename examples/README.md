@@ -2,11 +2,30 @@
 
 Self-contained code examples demonstrating ETP's capabilities, organized by complexity.
 
+## Visuals
+
+For architectural context behind these examples, see [`docs/visuals/`](../docs/visuals/README.md):
+
+- [LTP presentation](../docs/visuals/ltp.html)
+- [GSX DAG presentation](../docs/visuals/gsx-dag.html)
+- [GSX DB presentation](../docs/visuals/gsx-db.html)
+- [Ecosystem Atlas](../docs/visuals/gsx-ecosystem-atlas.html)
+
 ## Prerequisites
 
 ```bash
 pip install -e ".[dev]"
 ```
+
+## Non-Python Integrations
+
+For dApp developers verifying LTP anchors from JavaScript / TypeScript:
+
+- [`verify_anchor_from_js.mjs`](verify_anchor_from_js.mjs) — ethers v6 script
+  that reads [`contracts/abi/LTPAnchorRegistry.json`](../contracts/abi/LTPAnchorRegistry.json)
+  and queries the registry on Base Sepolia (or any other deployment listed in
+  [`docs/DEPLOYED_CONTRACTS.md`](../docs/DEPLOYED_CONTRACTS.md)). Run with
+  `node examples/verify_anchor_from_js.mjs <rpcUrl> <registry> <entityIdHash>`.
 
 ## Quickstart
 

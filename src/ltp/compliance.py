@@ -582,11 +582,27 @@ class AuditEventType(Enum):
     ACCESS_CONTROL = "access.control"
     ACCESS_DENIED = "access.denied"
     ACCESS_GRANTED = "access.granted"
+    AUTHN_DECISION = "authn.decision"
+    AUTHZ_DECISION = "authz.decision"
+
+    # Lattice key lifecycle
+    LATTICE_KEY_ISSUED = "lattice_key.issued"
+    LATTICE_KEY_MATERIALIZED = "lattice_key.materialized"
+
+    # Anchor lifecycle
+    ANCHOR_SUBMITTED = "anchor.submitted"
+    ANCHOR_VERIFIED = "anchor.verified"
 
     # Key management
     KEY_GENERATED = "key.generated"
     KEY_ROTATED = "key.rotated"
     KEY_REVOKED = "key.revoked"
+    KMS_OPERATION = "kms.operation"
+    HSM_OPERATION = "hsm.operation"
+
+    # Signer ceremony
+    DKG_EVENT = "dkg.event"
+    THRESHOLD_SIGNING_QUORUM = "threshold_signing.quorum"
 
     # Node operations
     NODE_REGISTERED = "node.registered"
@@ -596,6 +612,7 @@ class AuditEventType(Enum):
 
     # Governance
     GOVERNANCE_TRANSITION = "governance.transition"
+    GOVERNANCE_ACTION = "governance.action"
     DISPUTE_CREATED = "dispute.created"
     DISPUTE_RESOLVED = "dispute.resolved"
 
@@ -608,6 +625,9 @@ class AuditEventType(Enum):
     # Security
     SECURITY_VIOLATION = "security.violation"
     INVARIANT_CHECK = "invariant.check"
+    CONFIG_CHANGED = "config.changed"
+    PREFLIGHT_FAILURE = "preflight.failure"
+    CROSS_REPO_SYNC_FAILURE = "cross_repo.sync_failure"
 
 
 @dataclass
@@ -627,16 +647,25 @@ class AuditEvent:
     details: Optional[dict] = None
     outcome: str = "success"
     event_id: str = ""
+    schema_version: str = "ltp.audit.v1"
+    component: str = "ltp"
+    source: str = "application"
+    correlation_id: Optional[str] = None
+    control_ids: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         if not self.event_id:
             # Generate deterministic event ID from content
-            content = f"{self.event_type.value}:{self.actor_id}:{self.action}:{self.timestamp}"
+            content = (
+                f"{self.schema_version}:{self.event_type.value}:"
+                f"{self.actor_id}:{self.action}:{self.timestamp}"
+            )
             self.event_id = canonical_hash(content.encode())
 
     def to_dict(self) -> dict:
         return {
             "event_id": self.event_id,
+            "schema_version": self.schema_version,
             "event_type": self.event_type.value,
             "actor_id": self.actor_id,
             "target_id": self.target_id,
@@ -645,6 +674,10 @@ class AuditEvent:
             "epoch": self.epoch,
             "details": self.details,
             "outcome": self.outcome,
+            "component": self.component,
+            "source": self.source,
+            "correlation_id": self.correlation_id,
+            "control_ids": list(self.control_ids),
         }
 
 
@@ -1185,13 +1218,27 @@ class SIEMExporter:
     # Map event types to CEF severity (0-10)
     _SEVERITY_MAP: dict[AuditEventType, int] = {
         AuditEventType.SECURITY_VIOLATION: 9,
+        AuditEventType.PREFLIGHT_FAILURE: 8,
         AuditEventType.ACCESS_DENIED: 7,
+        AuditEventType.AUTHN_DECISION: 7,
+        AuditEventType.AUTHZ_DECISION: 7,
         AuditEventType.NODE_EVICTED: 6,
         AuditEventType.NODE_SLASHED: 6,
+        AuditEventType.CROSS_REPO_SYNC_FAILURE: 6,
         AuditEventType.GDPR_DELETION_REQUEST: 5,
         AuditEventType.KEY_REVOKED: 5,
+        AuditEventType.KMS_OPERATION: 5,
+        AuditEventType.HSM_OPERATION: 5,
+        AuditEventType.CONFIG_CHANGED: 5,
         AuditEventType.GOVERNANCE_TRANSITION: 4,
+        AuditEventType.GOVERNANCE_ACTION: 4,
+        AuditEventType.DKG_EVENT: 4,
+        AuditEventType.THRESHOLD_SIGNING_QUORUM: 4,
+        AuditEventType.ANCHOR_SUBMITTED: 4,
+        AuditEventType.ANCHOR_VERIFIED: 4,
         AuditEventType.NODE_AUDITED: 3,
+        AuditEventType.LATTICE_KEY_ISSUED: 3,
+        AuditEventType.LATTICE_KEY_MATERIALIZED: 3,
         AuditEventType.ENTITY_COMMITTED: 2,
         AuditEventType.ENTITY_MATERIALIZED: 2,
         AuditEventType.KEY_ROTATED: 2,
@@ -1251,13 +1298,19 @@ class SIEMExporter:
             "@context": "https://ltp.network/compliance/v1",
             "@type": "AuditEvent",
             "eventId": event.event_id,
+            "schemaVersion": event.schema_version,
             "eventType": event.event_type.value,
             "actor": {"@type": "Identity", "id": event.actor_id},
             "action": event.action,
             "timestamp": event.timestamp,
             "epoch": event.epoch,
             "outcome": event.outcome,
+            "component": event.component,
+            "source": event.source,
+            "controlIds": list(event.control_ids),
         }
+        if event.correlation_id:
+            doc["correlationId"] = event.correlation_id
         if event.target_id:
             doc["target"] = {"@type": "Entity", "id": event.target_id}
         if event.details:
@@ -1456,6 +1509,8 @@ class ComplianceConfig:
     enable_audit_logging: bool = True
     audit_retention_epochs: int = 26_280  # ~3 years
     siem_format: SIEMFormat = SIEMFormat.JSON
+    siem_export_enabled: bool = False
+    siem_destination: Optional[str] = None
 
     # Key management
     enable_key_rotation: bool = False
@@ -1500,6 +1555,26 @@ class ComplianceConfig:
                         "FedRAMP requires US jurisdiction constraint "
                         "(remove GLOBAL from allowed_jurisdictions)"
                     )
+
+        if ComplianceFramework.FEDRAMP_HIGH in self.frameworks:
+            if not self.enable_key_rotation:
+                violations.append(
+                    "FedRAMP High requires key rotation controls "
+                    "(set enable_key_rotation=True)"
+                )
+            if self.hsm_config is None or self.hsm_config.provider in {"software", "memory"}:
+                violations.append(
+                    "FedRAMP High requires KMS/HSM-backed key protection "
+                    "(configure hsm_config with a non-software provider)"
+                )
+            if not self.siem_export_enabled or not self.siem_destination:
+                violations.append(
+                    "FedRAMP High requires audit export to a SIEM or authorized audit sink"
+                )
+            if self.audit_retention_epochs < 26_280:
+                violations.append(
+                    "FedRAMP High requires at least three years of audit retention evidence"
+                )
 
         if ComplianceFramework.SOC2_TYPE2 in self.frameworks:
             if not self.enable_rbac:
@@ -1590,6 +1665,7 @@ class ComplianceConfig:
             "audit_logging_enabled": self.enable_audit_logging,
             "audit_retention_years": round(self.audit_retention_epochs / 8760, 1),
             "siem_format": self.siem_format.value,
+            "siem_export_enabled": self.siem_export_enabled,
             "key_rotation_enabled": self.enable_key_rotation,
             "key_rotation_max_age_years": round(
                 self.key_rotation_max_age_epochs / 8760, 1
