@@ -162,9 +162,22 @@
 
 **Why it's LayerZero-class.** LayerZero's contested design lets the same operator run both the relayer and the oracle, so a malicious operator's signature passes both. LTP's equivalent is admin-as-both-anchorer-and-resolver.
 
-**Remediation.** `FIXED-IN-SOURCE` (Commit 5):
-- New `OptimisticBridgeChallenge.finalizeUnchallenged(bytes32 anchorDigest)` callable by anyone after `challenge.deadline + grace_period` if no challenge was filed. Closes the "admin sits on the resolution" denial-of-truth.
-- Recommended next: a separate arbiter contract or off-chain voting for `resolveChallenge` itself. Filed as Linear follow-up.
+**Remediation.** `FIXED-IN-SOURCE` (Commits 5, 9, 11) — Option E defense in depth:
+
+| Path | Function | Caller | Outcome on success |
+|---|---|---|---|
+| Admin (legacy) | `resolveChallenge(d, fraudValid)` | admin | favors fraudValid party |
+| ZK validity proof | `finalizeWithZKProof(d)` | zkVerifier | returns both bonds (operator innocent) |
+| ZK fraud proof | `finalizeWithFraudProof(d)` | zkVerifier (admin CANNOT) | challenger gets both bonds |
+| Independent arbiter | `resolveChallengeByArbiter(d, fraudValid)` | arbiter (admin CANNOT) | favors fraudValid party |
+| Time-decay | `resolveByTimeDecay(d)` | anyone, after `openedAt + resolutionGracePeriod` | challenger gets both bonds |
+
+Properties pinned by the invariant suite (`contracts/test/invariant/OptimisticBridgeChallenge.invariant.t.sol`):
+- I3: fraud-proof path gated to zkVerifier (admin can never invoke)
+- I5: arbiter path gated to arbiter (admin can never invoke)
+- I6: time-decay path cannot succeed before grace elapses
+
+The constructor sets `resolutionGracePeriod = 14 days`. `setResolutionGracePeriod` enforces a 24-hour floor. `setArbiter` refuses any address equal to `admin` so admin and arbiter are guaranteed-distinct. Production v7 deploys should route `setArbiter` through the governance Timelock (not addressed here — v7-operational concern).
 
 ---
 

@@ -185,4 +185,110 @@ contract SecurityTest is Test {
         vm.expectRevert(OptimisticBridgeChallenge.Unauthorized.selector);
         ch.finalizeWithFraudProof(digest);
     }
+
+    // -----------------------------------------------------------------------
+    // LTP-A-006 Option E: independent arbiter MultiSig + time-decay
+    // -----------------------------------------------------------------------
+
+    address constant ARBITER = address(0xA8B17E8);
+
+    function _openChallengeWithArbiter()
+        internal
+        returns (OptimisticBridgeChallenge ch, bytes32 digest)
+    {
+        ch = new OptimisticBridgeChallenge(admin, 1 hours, 1 wei, 1 wei);
+        vm.prank(admin);
+        ch.setArbiter(ARBITER);
+        digest = keccak256("arbiter-anchor");
+        vm.deal(bob, 10 ether);
+        vm.prank(bob);
+        ch.openWindow{value: 1 ether}(digest);
+        vm.deal(address(0xA11CE), 10 ether);
+        vm.prank(address(0xA11CE));
+        ch.submitChallenge{value: 0.5 ether}(digest, 1, keccak256("proof"));
+    }
+
+    function test_arbiter_resolves_fraud_pays_challenger() public {
+        (OptimisticBridgeChallenge ch, bytes32 digest) = _openChallengeWithArbiter();
+        address alice = address(0xA11CE);
+        uint256 aliceBefore = alice.balance;
+        vm.prank(ARBITER);
+        ch.resolveChallengeByArbiter(digest, true);
+        assertEq(alice.balance - aliceBefore, 1.5 ether);
+    }
+
+    function test_arbiter_resolves_dismissal_pays_operator() public {
+        (OptimisticBridgeChallenge ch, bytes32 digest) = _openChallengeWithArbiter();
+        uint256 bobBefore = bob.balance;
+        vm.prank(ARBITER);
+        ch.resolveChallengeByArbiter(digest, false);
+        assertEq(bob.balance - bobBefore, 1.5 ether);
+    }
+
+    function test_admin_cannot_call_arbiter_path() public {
+        (OptimisticBridgeChallenge ch, bytes32 digest) = _openChallengeWithArbiter();
+        vm.prank(admin);
+        vm.expectRevert(OptimisticBridgeChallenge.Unauthorized.selector);
+        ch.resolveChallengeByArbiter(digest, true);
+    }
+
+    function test_arbiter_cannot_equal_admin() public {
+        OptimisticBridgeChallenge ch = new OptimisticBridgeChallenge(admin, 1 hours, 1 wei, 1 wei);
+        vm.prank(admin);
+        vm.expectRevert(OptimisticBridgeChallenge.InvalidArbiter.selector);
+        ch.setArbiter(admin);
+    }
+
+    function test_unset_arbiter_cannot_resolve() public {
+        OptimisticBridgeChallenge ch = new OptimisticBridgeChallenge(admin, 1 hours, 1 wei, 1 wei);
+        // arbiter is address(0); even a call from address(0) must reject.
+        bytes32 digest = keccak256("no-arbiter");
+        vm.deal(bob, 10 ether);
+        vm.prank(bob);
+        ch.openWindow{value: 1 ether}(digest);
+        vm.deal(address(0xA11CE), 10 ether);
+        vm.prank(address(0xA11CE));
+        ch.submitChallenge{value: 0.5 ether}(digest, 1, keccak256("proof"));
+        vm.prank(address(0)); // worst case: someone calls as zero
+        vm.expectRevert(OptimisticBridgeChallenge.Unauthorized.selector);
+        ch.resolveChallengeByArbiter(digest, true);
+    }
+
+    function test_time_decay_pays_challenger_after_grace() public {
+        (OptimisticBridgeChallenge ch, bytes32 digest) = _openChallengeWithArbiter();
+        address alice = address(0xA11CE);
+        uint256 aliceBefore = alice.balance;
+        // Default grace is 14 days; warp past it.
+        vm.warp(block.timestamp + 15 days);
+        // Anyone (here: a random EOA) can call.
+        vm.prank(address(0xCAFEC0DE));
+        ch.resolveByTimeDecay(digest);
+        assertEq(alice.balance - aliceBefore, 1.5 ether);
+    }
+
+    function test_time_decay_rejects_before_grace() public {
+        (OptimisticBridgeChallenge ch, bytes32 digest) = _openChallengeWithArbiter();
+        vm.warp(block.timestamp + 13 days); // < 14 day default
+        vm.prank(address(0xCAFEC0DE));
+        vm.expectRevert(OptimisticBridgeChallenge.ResolutionGraceNotElapsed.selector);
+        ch.resolveByTimeDecay(digest);
+    }
+
+    function test_time_decay_grace_floor_enforced() public {
+        OptimisticBridgeChallenge ch = new OptimisticBridgeChallenge(admin, 1 hours, 1 wei, 1 wei);
+        vm.prank(admin);
+        vm.expectRevert(OptimisticBridgeChallenge.GracePeriodBelowFloor.selector);
+        ch.setResolutionGracePeriod(23 hours); // below 24h floor
+    }
+
+    function test_first_resolution_wins_admin_then_arbiter_rejected() public {
+        (OptimisticBridgeChallenge ch, bytes32 digest) = _openChallengeWithArbiter();
+        // Admin resolves first.
+        vm.prank(admin);
+        ch.resolveChallenge(digest, false);
+        // Arbiter cannot override.
+        vm.prank(ARBITER);
+        vm.expectRevert(OptimisticBridgeChallenge.WindowNotChallenged.selector);
+        ch.resolveChallengeByArbiter(digest, true);
+    }
 }

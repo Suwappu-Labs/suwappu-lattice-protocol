@@ -24,6 +24,7 @@ contract OptimisticBridgeChallengeInvariantTest is Test {
 
     address internal constant ADMIN = address(0xA1);
     address internal constant ZK_VERIFIER = address(0xBEEF);
+    address internal constant ARBITER = address(0xA8B17E8);
 
     function setUp() public {
         ch = new OptimisticBridgeChallenge(
@@ -34,8 +35,11 @@ contract OptimisticBridgeChallengeInvariantTest is Test {
         );
         vm.prank(ADMIN);
         ch.setZKVerifier(ZK_VERIFIER);
+        // LTP-A-006 Option E setup
+        vm.prank(ADMIN);
+        ch.setArbiter(ARBITER);
 
-        handler = new Handler(ch, ZK_VERIFIER);
+        handler = new Handler(ch, ZK_VERIFIER, ARBITER);
 
         // Restrict fuzzing to the handler's external surface.
         targetContract(address(handler));
@@ -56,6 +60,18 @@ contract OptimisticBridgeChallengeInvariantTest is Test {
     function invariant_fraud_proof_gated_to_verifier() public view {
         assertFalse(handler.adminEverCalledFraudProof());
     }
+
+    /// I5: arbiter path is gated to arbiter only (admin can never invoke it).
+    function invariant_arbiter_path_gated() public view {
+        assertFalse(handler.adminEverCalledArbiterPath());
+    }
+
+    /// I6: time-decay path cannot be invoked before the grace window
+    ///     has elapsed; the handler tracks any such attempt that
+    ///     unexpectedly succeeded.
+    function invariant_time_decay_respects_grace() public view {
+        assertFalse(handler.observedTimeDecayBeforeGrace());
+    }
 }
 
 /// @notice Handler bounds the fuzzer's call set to legal entrypoints and
@@ -63,19 +79,24 @@ contract OptimisticBridgeChallengeInvariantTest is Test {
 contract Handler is Test {
     OptimisticBridgeChallenge public ch;
     address public zkVerifier;
+    address public arbiter;
 
     bytes32[] public digests;
     mapping(bytes32 => bool) public seen;
+    mapping(bytes32 => uint64) public openedAt;
 
     uint256 public totalUnsettledBonds;
     bool public observedDoubleFinalize;
     bool public adminEverCalledFraudProof;
+    bool public adminEverCalledArbiterPath;
+    bool public observedTimeDecayBeforeGrace;
 
     address internal constant ADMIN = address(0xA1);
 
-    constructor(OptimisticBridgeChallenge _ch, address _verifier) {
+    constructor(OptimisticBridgeChallenge _ch, address _verifier, address _arbiter) {
         ch = _ch;
         zkVerifier = _verifier;
+        arbiter = _arbiter;
         vm.deal(address(this), 1000 ether);
     }
 
@@ -93,6 +114,7 @@ contract Handler is Test {
         if (address(this).balance < bond) return;
         digests.push(anchorDigest);
         seen[anchorDigest] = true;
+        openedAt[anchorDigest] = uint64(block.timestamp);
         try ch.openWindow{value: bond}(anchorDigest) {
             totalUnsettledBonds += bond;
         } catch {}
@@ -161,7 +183,46 @@ contract Handler is Test {
 
     // ----- Time travel within a sane window -----
     function warp(uint256 secs) external {
-        secs = bound(secs, 0, 3 days);
+        secs = bound(secs, 0, 30 days);
         vm.warp(block.timestamp + secs);
+    }
+
+    // ----- LTP-A-006 Option E: arbiter resolves challenge -----
+    function resolveByArbiter(uint256 i, bool fraudValid) external {
+        if (digests.length == 0) return;
+        bytes32 d = digests[i % digests.length];
+        uint256 balBefore = address(ch).balance;
+        vm.prank(arbiter);
+        try ch.resolveChallengeByArbiter(d, fraudValid) {
+            uint256 paid = balBefore - address(ch).balance;
+            totalUnsettledBonds -= paid;
+        } catch {}
+    }
+
+    // ----- Admin attempts arbiter path (must always revert) -----
+    function adminTriesArbiterPath(uint256 i) external {
+        if (digests.length == 0) return;
+        bytes32 d = digests[i % digests.length];
+        vm.prank(ADMIN);
+        try ch.resolveChallengeByArbiter(d, true) {
+            adminEverCalledArbiterPath = true;
+        } catch {}
+    }
+
+    // ----- Time-decay path -----
+    function tryTimeDecay(uint256 i) external {
+        if (digests.length == 0) return;
+        bytes32 d = digests[i % digests.length];
+        uint64 ts = uint64(block.timestamp);
+        uint64 ready = openedAt[d] + uint64(ch.resolutionGracePeriod());
+        uint256 balBefore = address(ch).balance;
+        try ch.resolveByTimeDecay(d) {
+            uint256 paid = balBefore - address(ch).balance;
+            totalUnsettledBonds -= paid;
+            // If we got here BEFORE the grace window, that's a violation.
+            if (ts < ready) {
+                observedTimeDecayBeforeGrace = true;
+            }
+        } catch {}
     }
 }
