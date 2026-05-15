@@ -47,6 +47,17 @@ contract DeployMainnet is Script {
         );
         require(timelockDelay >= 24 hours, "mainnet requires timelock >= 24 hours");
 
+        // LTP-A-001 (docs/SECURITY_AUDIT_2026-05-15.md): wide challenge
+        // window. Mainnet floor is 24h so the OptimisticBridgeChallenge
+        // gives honest challengers (and the symmetric ZK fraud-proof
+        // path in finalizeWithFraudProof) a real detection window
+        // before the operator can finalize. Recommended 48-72h.
+        uint256 challengePeriod = vm.envOr("CHALLENGE_PERIOD", uint256(48 hours));
+        require(
+            challengePeriod >= 24 hours,
+            "mainnet requires challengePeriod >= 24 hours"
+        );
+
         uint256 chainId = block.chainid;
         bool allowTestnet = vm.envOr("ALLOW_TESTNET_DEPLOY", false);
         // 31337 = anvil, 84532 = Base Sepolia, 11155111 = Ethereum Sepolia,

@@ -4,6 +4,7 @@
 
 .PHONY: test test-python test-contracts test-integration test-all
 .PHONY: build lint clean ci-integration audit abi help
+.PHONY: slither echidna solhint contracts-secaudit contracts-invariants
 
 # ── Python Tests ────────────────────────────────────────────────────────
 
@@ -88,13 +89,48 @@ abi:
 		echo "wrote contracts/abi/$$name.json"; \
 	done
 
+# ── Smart-contract security suite ───────────────────────────────────────
+#
+# These targets run static analysis + property fuzz + linting against
+# the contracts/ tree. They complement, not replace, the forge unit
+# and invariant tests under contracts/test/. See
+# docs/SECURITY_AUDIT_2026-05-15.md §"Contract security tooling".
+
+slither:  ## Slither static analysis (requires `pip install slither-analyzer`)
+	@if ! command -v slither >/dev/null 2>&1; then \
+		echo "slither not installed; run: pip install slither-analyzer"; \
+		exit 1; \
+	fi
+	cd contracts && slither . --config-file slither.config.json
+
+solhint:  ## Solidity linter (requires `npm install -g solhint`)
+	@if ! command -v solhint >/dev/null 2>&1; then \
+		echo "solhint not installed; run: npm install -g solhint"; \
+		exit 1; \
+	fi
+	cd contracts && solhint 'src/**/*.sol'
+
+echidna:  ## Echidna property fuzz (requires `brew install echidna` or docker)
+	@if ! command -v echidna >/dev/null 2>&1; then \
+		echo "echidna not installed; brew install echidna  OR  docker pull trailofbits/echidna"; \
+		exit 1; \
+	fi
+	cd contracts && \
+		echidna . --contract BridgeEmitterEchidna --config echidna.yaml
+
+contracts-invariants:  ## Foundry stateful invariant tests (cheap; runs in CI)
+	cd contracts && forge test --match-path 'test/invariant/*' -vv
+
+contracts-secaudit: slither solhint contracts-invariants test-contracts  ## Run the full smart-contract security suite
+	@echo "✓ slither, solhint, foundry invariants, and forge unit tests all green"
+
 # ── Help ────────────────────────────────────────────────────────────────
 
 help:
 	@echo "Common targets:"
 	@echo "  make test                run the Python test suite (default)"
 	@echo "  make test-python         Python only (skip live-anvil)"
-	@echo "  make test-contracts      Forge / Solidity tests"
+	@echo "  make test-contracts      Forge / Solidity unit tests"
 	@echo "  make test-integration    Python + Anvil contract integration"
 	@echo "  make test-all            full suite + integration"
 	@echo "  make audit               pip-audit against installed deps"
@@ -102,3 +138,10 @@ help:
 	@echo "  make build               pip install -e .[dev]"
 	@echo "  make lint                syntax check"
 	@echo "  make clean               remove caches + build outputs"
+	@echo ""
+	@echo "Smart-contract security:"
+	@echo "  make slither             Slither static analysis"
+	@echo "  make solhint             Solidity linter"
+	@echo "  make echidna             Echidna property fuzz (slow)"
+	@echo "  make contracts-invariants Foundry invariant tests (fast, runs in CI)"
+	@echo "  make contracts-secaudit  Run the full security suite"

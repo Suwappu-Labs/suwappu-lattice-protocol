@@ -114,4 +114,75 @@ contract SecurityTest is Test {
         ch.finalizeWindow(digest);
         assertTrue(ch.isFinalized(digest));
     }
+
+    // -----------------------------------------------------------------------
+    // LTP-A-001 Option E: symmetric ZK fraud-proof finalization
+    // -----------------------------------------------------------------------
+
+    address constant ZK_VERIFIER = address(0xBEEFCAFE);
+
+    function _openChallenge(uint256 opBond, uint256 chBond)
+        internal
+        returns (OptimisticBridgeChallenge ch, bytes32 digest)
+    {
+        ch = new OptimisticBridgeChallenge(admin, 1 hours, 1 wei, 1 wei);
+        vm.prank(admin);
+        ch.setZKVerifier(ZK_VERIFIER);
+        digest = keccak256("contested-anchor");
+
+        // Operator opens window.
+        vm.deal(bob, 10 ether);
+        vm.prank(bob);
+        ch.openWindow{value: opBond}(digest);
+
+        // Challenger submits.
+        address alice = address(0xA11CE);
+        vm.deal(alice, 10 ether);
+        vm.prank(alice);
+        ch.submitChallenge{value: chBond}(digest, 1, keccak256("proof"));
+    }
+
+    function test_fraud_proof_finalize_pays_challenger() public {
+        uint256 opBond = 1 ether;
+        uint256 chBond = 0.5 ether;
+        (OptimisticBridgeChallenge ch, bytes32 digest) = _openChallenge(opBond, chBond);
+        address alice = address(0xA11CE);
+
+        uint256 aliceBefore = alice.balance;
+        vm.prank(ZK_VERIFIER);
+        ch.finalizeWithFraudProof(digest);
+
+        // Challenger receives operator + challenger bonds.
+        assertEq(alice.balance - aliceBefore, opBond + chBond);
+    }
+
+    function test_fraud_proof_admin_cannot_call() public {
+        (OptimisticBridgeChallenge ch, bytes32 digest) = _openChallenge(1 ether, 0.5 ether);
+        vm.prank(admin);
+        vm.expectRevert(OptimisticBridgeChallenge.Unauthorized.selector);
+        ch.finalizeWithFraudProof(digest);
+    }
+
+    function test_fraud_proof_rejects_unchallenged_window() public {
+        OptimisticBridgeChallenge ch = new OptimisticBridgeChallenge(admin, 1 hours, 1 wei, 1 wei);
+        vm.prank(admin);
+        ch.setZKVerifier(ZK_VERIFIER);
+        bytes32 digest = keccak256("untouched");
+
+        vm.deal(bob, 10 ether);
+        vm.prank(bob);
+        ch.openWindow{value: 1 ether}(digest);
+
+        // No challenge filed; fraud-proof path must reject.
+        vm.prank(ZK_VERIFIER);
+        vm.expectRevert(OptimisticBridgeChallenge.WindowNotChallenged.selector);
+        ch.finalizeWithFraudProof(digest);
+    }
+
+    function test_fraud_proof_arbitrary_caller_rejected() public {
+        (OptimisticBridgeChallenge ch, bytes32 digest) = _openChallenge(1 ether, 0.5 ether);
+        vm.prank(address(0xDEAD));
+        vm.expectRevert(OptimisticBridgeChallenge.Unauthorized.selector);
+        ch.finalizeWithFraudProof(digest);
+    }
 }

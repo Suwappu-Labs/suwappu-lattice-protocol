@@ -247,8 +247,10 @@ contract OptimisticBridgeChallenge {
         emit ZKVerifierSet(_zkVerifier);
     }
 
-    /// @notice Finalize a window via ZK proof. Callable by admin or authorized ZK verifier.
-    ///         Skips the challenge period — instant finality. Returns all bonds.
+    /// @notice Finalize a window via ZK proof of *validity*. Callable by admin
+    ///         or authorized ZK verifier. Skips the challenge period — instant
+    ///         finality. Returns both bonds (operator was honest; challenger
+    ///         acted in good faith and is not slashed). LTP-A-001.
     function finalizeWithZKProof(bytes32 anchorDigest) external nonReentrant {
         if (msg.sender != admin && msg.sender != zkVerifier) revert Unauthorized();
 
@@ -271,5 +273,35 @@ contract OptimisticBridgeChallenge {
         }
 
         emit WindowFinalized(anchorDigest, c.opener, opBond);
+    }
+
+    /// @notice Finalize a *challenged* window via ZK proof of *fraud*. Mirrors
+    ///         finalizeWithZKProof but rules in the challenger's favor: the
+    ///         operator's bond is slashed and paid (together with the
+    ///         challenger's bond) to the challenger. Callable only by the
+    ///         authorized ZK verifier — admin cannot invoke this path
+    ///         (LTP-A-001 Option E: admin-independent fraud finalization).
+    /// @dev    The ZK verifier is expected to have already validated a
+    ///         SNARK proving the attestation didn't verify under the
+    ///         declared group public key, or that the anchor is otherwise
+    ///         provably fraudulent. This contract trusts the verifier
+    ///         to have run that check; the verifier itself is gated by
+    ///         setZKVerifier (admin-only).
+    function finalizeWithFraudProof(bytes32 anchorDigest) external nonReentrant {
+        if (msg.sender != zkVerifier) revert Unauthorized();
+
+        Challenge storage c = _challenges[anchorDigest];
+        if (c.status != STATUS_CHALLENGED) revert WindowNotChallenged();
+
+        c.status = STATUS_RESOLVED;
+        uint256 totalBonds = c.operatorBond + c.challengerBond;
+
+        // Challenger wins both bonds (operator was fraudulent).
+        if (totalBonds > 0) {
+            (bool ok, ) = payable(c.challenger).call{value: totalBonds}("");
+            require(ok, "Transfer to challenger failed");
+        }
+
+        emit ChallengeResolved(anchorDigest, true, c.challenger, totalBonds);
     }
 }

@@ -592,6 +592,34 @@ pytest tests/security/ -v
 
 Each test in `tests/security/` carries a docstring naming the LTP-A finding it exercises. Failing tests indicate a regression of the corresponding defense. Tests marked `@pytest.mark.security_regression` are skipped by default; run with `-m security_regression` to confirm they pass *only when the defense is disabled*, proving the test actually exercises the attack rather than a sympathetic side path.
 
+## Contract security tooling
+
+The smart-contract surface is the highest-value attack target in LTP. To make defense-in-depth continuous rather than point-in-time, the repo ships a security tooling stack that runs alongside every contract change:
+
+| Tool | What it catches | Where it lives | When it runs |
+|---|---|---|---|
+| **Forge unit tests** | Functional correctness, named exploit paths | `contracts/test/Security.t.sol`, `contracts/test/LTPAnchorRegistry.t.sol`, etc. | Every PR (`forge-test` job) |
+| **Foundry invariants** | Stateful property violations across long fuzzed call sequences (bond conservation, no-double-finalize, role-gated paths) | `contracts/test/invariant/*.t.sol` | Every PR (`contracts-invariants` job) |
+| **Slither** | Static-analysis catalog of ~80 known Solidity vulnerability patterns | `contracts/slither.config.json` | Every PR (`contracts-static-analysis` job, `fail-on: high`) |
+| **solhint** | Style / structural lint per `.solhint.json` | `contracts/.solhint.json` | Every PR (same job, non-blocking) |
+| **Echidna** | Property-based fuzz on per-contract harnesses (rogue-key attempts, unauthorized senders, bond drains) | `contracts/test/echidna/*Echidna.sol` + `contracts/echidna.yaml` | Nightly / on-demand (`make echidna`) |
+
+The full security suite is invokable locally via `make contracts-secaudit`. CI runs the cheap parts (`slither + solhint + forge invariants`) on every PR; Echidna's longer campaigns run nightly via a follow-up scheduled workflow.
+
+### Why this matrix
+
+- **Forge unit tests** prove individual exploit paths are blocked; they don't catch state-space surprises.
+- **Foundry invariants** are the lowest-effort way to catch state-space surprises across sequences of calls (e.g., "after any combination of openWindow / submitChallenge / resolveChallenge / finalizeWithZKProof / finalizeWithFraudProof, contract balance always equals the sum of unsettled bonds").
+- **Slither** is the highest-ROI static analyzer for Solidity — catches reentrancy, uninitialized storage, suicidal contracts, arbitrary-jump, etc. Trail of Bits maintains the detector library.
+- **solhint** keeps style consistent and catches anti-patterns like `now` aliases or `tx.origin` checks.
+- **Echidna** complements Foundry invariants with mutation-based fuzzing — it's slower but finds bugs Foundry's coverage-guided fuzzer misses.
+
+A future contributor adding a new security-critical contract should:
+1. Add forge unit tests under `contracts/test/`.
+2. Add a Foundry invariant suite under `contracts/test/invariant/` if there's stateful behavior worth pinning.
+3. Add an Echidna harness under `contracts/test/echidna/` if the contract has rogue-key, signature-forgery, or bond-drain surfaces.
+4. Run `make slither` locally before pushing; suppress with `// slither-disable-next-line <detector>` where a finding is reviewed and accepted.
+
 ## References
 
 - `docs/THREAT_MODEL.md` — STRIDE + PQC threat model

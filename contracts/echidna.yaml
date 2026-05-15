@@ -1,0 +1,40 @@
+# Echidna configuration for security-critical LTP contracts.
+#
+# Run with:
+#   cd contracts
+#   echidna . --contract <Name>Echidna --config echidna.yaml
+#
+# See contracts/test/echidna/ for per-contract invariant suites.
+
+# Test campaign length. 50_000 sequences is a reasonable nightly target;
+# 5_000 is the CI default for fast feedback.
+testLimit: 50000
+seqLen: 100
+
+# Treat assert() and require() failures as findings (not just revert).
+testMode: assertion
+
+# Multi-ABI lets Echidna call into linked contracts (e.g., BridgeEmitter
+# calls into its constructor-set admin path).
+multi-abi: true
+
+# Worker concurrency. CI runners typically have 2-4 cores.
+workers: 4
+
+# Corpus directory for replay & coverage continuity across runs.
+corpusDir: "echidna-corpus"
+
+# Coverage tracking helps Echidna's mutation strategy reach deeper paths.
+coverage: true
+
+# Allow contract deployment via the constructor signature so we can
+# parameterize Echidna entrypoints with non-trivial setup.
+deployer: "0x10000"
+sender: ["0x10000", "0x20000", "0x30000"]
+
+# Source-line coverage report on exit.
+format: text
+
+# Cap each function call's gas at a sane upper bound so a single
+# malformed call doesn't burn the whole sequence budget.
+gasLimit: 10000000
