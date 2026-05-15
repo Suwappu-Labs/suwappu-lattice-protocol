@@ -60,5 +60,11 @@
 * [Review #1 — Mathematical](design-decisions/Reviews/001/001-Mathematical-Review.md)
 * [Review #2 — Formal](design-decisions/Reviews/002/002-Formal-Whitepaper-Review.md)
 * [Review #2 — Mathematical](design-decisions/Reviews/002/002-Mathematical-Review.md)
-* [Review #3 — Formal](design-decisions/Reviews/003/003-Formal-Whitepaper-review.md)
+* [Review #3 — Formal](design-decisions/Reviews/003/003-Formal-Whitepaper-Review.md)
 * [Eastern Research Landscape](design-decisions/Reviews/004/004-Eastern-Research-Landscape.md)
+
+## Archive
+
+* [2024-02 Production Plan (superseded)](plans/archive/2024-02-production-plan.md)
+* [DID Expansion Plan (superseded)](plans/archive/did-expansion-plan.md)
+* [Gateway VM Plan (superseded)](plans/archive/ltp-gateway-vm-plan.md)
