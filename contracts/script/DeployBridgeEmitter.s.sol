@@ -15,14 +15,21 @@ import {BridgeEmitter} from "../src/BridgeEmitter.sol";
 ///       --broadcast --chain-id 84532 -vvvv
 contract DeployBridgeEmitter is Script {
     function run() external {
+        // Deployer is admin by default; permissionless mode off so the
+        // deployment is admin-gated until governance flips it on.
+        address admin = msg.sender;
+        bool permissionless = false;
+
         vm.startBroadcast();
 
-        BridgeEmitter emitter = new BridgeEmitter();
+        BridgeEmitter emitter = new BridgeEmitter(admin, permissionless);
 
         vm.stopBroadcast();
 
         console.log("=== BridgeEmitter Deployment ===");
         console.log("BridgeEmitter:", address(emitter));
+        console.log("Admin:", admin);
+        console.log("Permissionless:", permissionless);
         console.log("Chain ID:", block.chainid);
     }
 }
