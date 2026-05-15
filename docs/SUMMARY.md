@@ -27,6 +27,7 @@
 * [Threshold DKG Plan](plans/2026-05-10-threshold-dkg-plan.md)
 * [Threshold BLS Signing Spec](plans/2026-05-11-threshold-bls-signing-spec.md)
 * [Threshold BLS Signing Plan](plans/2026-05-12-threshold-bls-signing-plan.md)
+* [Gate 5 + Gate 6 Closure (2026-05-15)](plans/2026-05-15-gate-5-6-closure.md)
 
 ## Security
 
