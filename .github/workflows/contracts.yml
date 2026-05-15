@@ -55,6 +55,29 @@ jobs:
       - name: Run Python tests
         run: pytest tests/ -v --ignore=tests/test_contract_integration.py
 
+  dep-audit:
+    name: Dependency vulnerability audit (pip-audit)
+    runs-on: ubuntu-latest
+    # Non-blocking: a fresh transitive CVE shouldn't stall every PR.
+    # Maintainers triage via the workflow log and open an issue if
+    # action is needed. To make this blocking, drop `continue-on-error`.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install project + pip-audit
+        run: |
+          pip install -e ".[dev,chain]"
+          pip install "pip-audit>=2.7.0,<3.0"
+
+      - name: Run pip-audit against installed packages
+        run: pip-audit --strict --vulnerability-service osv
+
   integration-test:
     name: Contract Integration (Python + Anvil)
     runs-on: ubuntu-latest
