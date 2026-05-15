@@ -23,7 +23,7 @@ performance = [
     "blake3>=0.3.0,<2.0",
 ]
 crypto = [
-    "pqcrypto>=0.3.0,<1.0",
+    "pqcrypto>=0.4.0,<0.5",  # LTP-A-014: post-KyberSlash baseline; PQClean _CLEAN_ variant
     "pynacl>=1.5.0,<2.0",
 ]
 chain = [
@@ -53,7 +53,7 @@ rocksdb = [
     "lsm-db>=0.7.3,<1.0",
 ]
 production = [
-    "pqcrypto>=0.3.0,<1.0",
+    "pqcrypto>=0.4.0,<0.5",  # LTP-A-014: post-KyberSlash baseline; PQClean _CLEAN_ variant
     "pynacl>=1.5.0,<2.0",
     "zfec>=1.6.0.0,<2.0",
     "blake3>=1.0.0,<2.0",
@@ -63,7 +63,7 @@ dev = [
     "pytest>=9.0.3,<10.0",
     "hypothesis>=6.0,<7.0",
     "blake3>=0.3.0,<2.0",
-    "pqcrypto>=0.3.0,<1.0",
+    "pqcrypto>=0.4.0,<0.5",  # LTP-A-014: post-KyberSlash baseline; PQClean _CLEAN_ variant
     "pynacl>=1.5.0,<2.0",
     "zfec>=1.6.0.0,<2.0",
     "grpcio>=1.50.0,<2.0",

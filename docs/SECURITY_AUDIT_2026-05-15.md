@@ -286,7 +286,29 @@
 
 **Exploit chain.** KyberSlash exploits timing differences in the error-correction step of Kyber/ML-KEM decapsulation to recover the private key over many trials. Whether LTP is exposed depends on whether `pqcrypto>=0.3.0` ships the constant-time patches.
 
-**Remediation.** `DEFERRED` — new Linear issue: "KyberSlash audit for pqcrypto>=0.3.0,<1.0 pin". Requires reading the upstream changelog of the bound `pqcrypto` version against the patched-since date in the academic paper, plus adding a constant-time timing test.
+**Remediation.** `CONFIRMED-OK` + `FIXED-IN-PR` (Commit 9).
+
+**Findings from audit research:**
+
+- **Installed**: `pqcrypto 0.4.0` (released 2026-01-25 on PyPI).
+- **Underlying C**: PQClean `MLKEM768_CLEAN` reference implementation — confirmed by inspecting `pqcrypto._kem.ml_kem_768.lib`, which exports `PQCLEAN_MLKEM768_CLEAN_*` symbols. We're **not** bound to the optimized AVX2 / AArch64 variants where KyberSlash's blast radius was widest.
+- **KyberSlash timeline**: KyberSlash 1 disclosed 2023-12-15 (timing leak in `poly_compress`); KyberSlash 2 disclosed 2024-01 (timing leak in `poly_tomsg`). Both patched in PQClean upstream by early 2024.
+- **Our floor (pre-this-commit) was `pqcrypto>=0.3.0`** — released 2025-04-21, over a year after both patches landed. Even the floor was post-patch.
+
+**Code change in this commit:**
+
+- `pyproject.toml`: tightened `pqcrypto>=0.3.0,<1.0` → `pqcrypto>=0.4.0,<0.5`. The new floor locks in the latest known-good (2026-01-25) and the new ceiling prevents silent future major bumps.
+
+**Test added:** `tests/security/test_attack_kyberslash.py` — 6 structural invariants on `MLKEM.decaps`:
+
+1. Valid encapsulation roundtrips correctly.
+2. Garbage ciphertext (correct length) does **not** raise — it returns a deterministic pseudorandom shared secret (FIPS-203 implicit rejection). An early return on invalid input would be a timing-leak surface.
+3. Implicit rejection is deterministic — same `(dk, garbage_ct)` always yields the same rejected `ss`.
+4. Wrong ciphertext length raises `ValueError` *before* the C library is called (length check is on public data only, not a timing leak).
+5. Same for wrong dk length.
+6. The bound C library exports `PQCLEAN_MLKEM768_CLEAN_*` symbols (not the optimized variants).
+
+The audit doc previously routed this to [GLO-771](https://linear.app/globalsettlement/issue/GLO-771); that issue is now ready to close with the verification above pasted into a comment.
 
 ---
 
