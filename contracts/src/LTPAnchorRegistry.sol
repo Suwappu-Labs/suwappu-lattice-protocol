@@ -55,6 +55,40 @@ contract LTPAnchorRegistry is ILTPAnchorRegistry, Initializable, UUPSUpgradeable
     mapping(bytes32 => bytes32) public entitySigners;
 
     // -----------------------------------------------------------------------
+    // LTP-A-005 Option C-3 storage — owner-signed binding statement +
+    // on-chain dispute path (docs/SECURITY_AUDIT_2026-05-15.md).
+    //
+    // Off-chain: the relayer verifies the entity owner's ML-DSA signature
+    //   over (entityIdHash || signerVkHash) before submitting the first
+    //   anchor. The signature itself stays off-chain (ML-DSA verify is
+    //   too expensive on-chain today); the registry stores hashes of the
+    //   statement and signature so any future dispute can reference
+    //   them.
+    // On-chain: an authorized binding-dispute verifier (set by admin,
+    //   distinct from the OptimisticBridgeChallenge zkVerifier) can call
+    //   disputeBinding after verifying a SNARK that the stored signature
+    //   was forged. Successful dispute clears the entitySigners binding
+    //   so the legitimate owner can re-anchor with a fresh statement.
+
+    struct BindingStatement {
+        bytes32 signerVkHash;       // bound signer at first anchor
+        bytes32 statementHash;      // hash of off-chain signed statement bytes
+        bytes32 signatureHash;      // hash of the ML-DSA signature bytes
+        uint64 bindingTimestamp;    // block.timestamp at first binding
+        bool disputed;              // true if disputeBinding has been called
+    }
+
+    /// @notice entityIdHash => recorded binding statement evidence.
+    mapping(bytes32 => BindingStatement) public bindingStatements;
+
+    /// @notice Authorized address that may call disputeBinding. Distinct
+    ///         from `admin` so admin compromise alone cannot dismiss a
+    ///         legitimate binding-dispute claim. Admin sets via
+    ///         setBindingDisputeVerifier — production v7 routes that
+    ///         setter through the governance Timelock.
+    address public bindingDisputeVerifier;
+
+    // -----------------------------------------------------------------------
     // Constructor — disables initializers on the implementation contract
     // -----------------------------------------------------------------------
 
@@ -310,6 +344,97 @@ contract LTPAnchorRegistry is ILTPAnchorRegistry, Initializable, UUPSUpgradeable
         if (!authorizedSigners[newSignerVkHash]) revert UnauthorizedSigner(newSignerVkHash);
         entitySigners[entityIdHash] = newSignerVkHash;
         emit EntitySignerBound(entityIdHash, newSignerVkHash);
+    }
+
+    // -----------------------------------------------------------------------
+    // LTP-A-005 Option C-3 — owner-signed binding statement + dispute
+    // -----------------------------------------------------------------------
+
+    /// @notice Anchor and simultaneously record an owner-signed binding
+    ///         statement as on-chain evidence. The relayer MUST have
+    ///         verified the owner's ML-DSA signature off-chain before
+    ///         calling this; the registry stores hashes for any future
+    ///         dispute.
+    /// @dev    On the FIRST anchor for an entity, this binds the entity
+    ///         to `signerVkHash` AND records the statement evidence.
+    ///         On subsequent anchors with the same signerVkHash, the
+    ///         evidence parameters are ignored (binding is already
+    ///         recorded). Pass zero for `bindingStatementHash` and
+    ///         `bindingSignatureHash` if you don't want to record
+    ///         evidence — equivalent to legacy `anchor()`.
+    function anchorWithBinding(
+        bytes32 anchorDigest,
+        bytes32 entityIdHash,
+        bytes32 merkleRoot,
+        bytes32 policyHash,
+        bytes32 signerVkHash,
+        uint64  sequence,
+        uint64  validUntil,
+        uint8   receiptType,
+        bytes32 bindingStatementHash,
+        bytes32 bindingSignatureHash
+    ) external whenNotPaused {
+        bool isFirstBinding = entitySigners[entityIdHash] == bytes32(0);
+
+        _anchor(
+            anchorDigest,
+            entityIdHash,
+            merkleRoot,
+            policyHash,
+            signerVkHash,
+            sequence,
+            validUntil,
+            receiptType
+        );
+
+        if (isFirstBinding && bindingStatementHash != bytes32(0)) {
+            bindingStatements[entityIdHash] = BindingStatement({
+                signerVkHash: signerVkHash,
+                statementHash: bindingStatementHash,
+                signatureHash: bindingSignatureHash,
+                bindingTimestamp: uint64(block.timestamp),
+                disputed: false
+            });
+            emit BindingStatementRecorded(
+                entityIdHash, signerVkHash, bindingStatementHash, bindingSignatureHash
+            );
+        }
+    }
+
+    /// @notice Dispute a previously recorded binding by submitting a
+    ///         cryptographic fraud proof. Callable only by the
+    ///         authorized binding-dispute verifier (set by admin via
+    ///         setBindingDisputeVerifier). The verifier is expected to
+    ///         have validated a SNARK proving the recorded
+    ///         `bindingSignatureHash` does NOT correspond to a valid
+    ///         ML-DSA signature by the legitimate entity owner.
+    /// @dev    On success: marks the binding as `disputed`, clears
+    ///         `entitySigners[entityIdHash]` so the legitimate owner
+    ///         can re-anchor with a fresh statement, and emits
+    ///         BindingDisputed. The dispute is one-shot per binding —
+    ///         once disputed, no further dispute call is accepted.
+    function disputeBinding(bytes32 entityIdHash, bytes32 fraudProofHash) external {
+        if (msg.sender != bindingDisputeVerifier || bindingDisputeVerifier == address(0)) {
+            revert NotBindingDisputeVerifier(msg.sender);
+        }
+        BindingStatement storage b = bindingStatements[entityIdHash];
+        if (b.bindingTimestamp == 0) revert NoBindingRecorded(entityIdHash);
+        if (b.disputed) revert BindingAlreadyDisputed(entityIdHash);
+
+        bytes32 disputedVk = b.signerVkHash;
+        b.disputed = true;
+        // Clear the binding so the legitimate owner can re-anchor.
+        delete entitySigners[entityIdHash];
+        emit BindingDisputed(entityIdHash, disputedVk, fraudProofHash);
+    }
+
+    /// @notice Admin function — set the dispute verifier address.
+    /// @dev    Production v7 deployments route this setter through the
+    ///         governance Timelock; same reasoning as the
+    ///         OptimisticBridgeChallenge arbiter wiring (LTP-A-006).
+    function setBindingDisputeVerifier(address verifier) external onlyAdmin {
+        emit BindingDisputeVerifierUpdated(bindingDisputeVerifier, verifier);
+        bindingDisputeVerifier = verifier;
     }
 
     // -----------------------------------------------------------------------

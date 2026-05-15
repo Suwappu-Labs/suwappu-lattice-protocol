@@ -142,7 +142,35 @@
 
 **Financial impact.** Bridge capacity for any first-anchored-by-attacker entity. Bounded by the set of entities the attacker reaches first; if the system uses content-derived entity IDs, the attacker can pre-compute and squat.
 
-**Remediation.** `DEFERRED`. The v6 binding mechanism is correct by design (it prevents signer-swap attacks); the failure is governance compromise (LTP-A-002), which is the upstream cause. Recommended: a 7-day "squatting challenge window" before binding finalizes, where the entity owner can dispute. New Linear issue.
+**Remediation.** `FIXED-IN-SOURCE` (Commit 12) — Option C-3 (off-chain owner-sig verify + on-chain SNARK on dispute):
+
+**Off-chain (relayer responsibility).** Before submitting the first anchor for an entity, the relayer verifies an ML-DSA-65 signature by the entity owner over `(entityIdHash || signerVkHash)`. ML-DSA on-chain verify is too gas-expensive today; the relayer is the gate, and the registry stores the hashes of the statement + signature as on-chain evidence.
+
+**On-chain (audit + dispute).** `LTPAnchorRegistry` gains:
+
+| Surface | What it does |
+|---|---|
+| `anchorWithBinding(...)` | Wraps `anchor()` and additionally records `bindingStatements[entityId]` with `(signerVkHash, statementHash, signatureHash, timestamp)` on the FIRST anchor. Subsequent anchors ignore the binding args (already recorded). Pass zero hashes to behave identically to legacy `anchor()`. |
+| `bindingStatements[entityId]` | Public view of the recorded binding evidence. Anyone can fetch it for later off-chain SNARK construction. |
+| `bindingDisputeVerifier` | Admin-set verifier address. Distinct from OptimisticBridgeChallenge's `zkVerifier` so the binding-dispute surface has its own gating. |
+| `setBindingDisputeVerifier(addr)` | Admin only. v7 deploys should route this through the governance Timelock. |
+| `disputeBinding(entityId, fraudProofHash)` | Callable only by `bindingDisputeVerifier`. Marks the binding as `disputed` and clears `entitySigners[entityId]` so the legitimate owner can re-anchor with a fresh statement. One-shot per binding (rejected if already disputed). |
+
+**Defense chain:**
+1. Owner pre-signs `(entityId, signerVkHash)` off-chain with their ML-DSA key.
+2. Relayer verifies this before submitting `anchorWithBinding`.
+3. If a malicious admin registers an attacker's vkHash AND the attacker squats first, the legitimate owner can:
+   - Generate a SNARK proving the recorded `signatureHash` is NOT a valid signature by them
+   - Submit the SNARK to the binding dispute verifier
+   - The verifier calls `disputeBinding`, unbinding the entity
+   - The owner re-anchors with their real binding statement
+
+**Tests:** 6 new unit tests in `Security.t.sol` + an Echidna harness `LTPAnchorBindingEchidna.sol` pinning three invariants:
+- B1: dispute clears entitySigners
+- B2: dispute is one-shot
+- B3: admin cannot call disputeBinding (only the verifier can)
+
+The audit's residual concern was governance compromise upstream (LTP-A-002). With v7's 5-of-7 + 48h timelock + this dispute path, a malicious admin would need to (a) compromise governance, (b) survive 48h Timelock visibility, AND (c) the legitimate owner would still have a cryptographic recovery path. Three independent failures required for sustained squatting.
 
 ---
 

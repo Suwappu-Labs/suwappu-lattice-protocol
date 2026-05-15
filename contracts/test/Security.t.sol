@@ -3,8 +3,10 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {BridgeEmitter} from "../src/BridgeEmitter.sol";
+import {LTPAnchorRegistry} from "../src/LTPAnchorRegistry.sol";
 import {OptimisticBridgeChallenge} from "../src/OptimisticBridgeChallenge.sol";
 import {ZKBridgeVerifier} from "../src/ZKBridgeVerifier.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /// @title Security.t.sol
 /// @notice Forge regression tests for the Solidity-layer hardening fixes in
@@ -290,5 +292,161 @@ contract SecurityTest is Test {
         vm.prank(ARBITER);
         vm.expectRevert(OptimisticBridgeChallenge.WindowNotChallenged.selector);
         ch.resolveChallengeByArbiter(digest, true);
+    }
+
+    // -----------------------------------------------------------------------
+    // LTP-A-005 Option C-3: owner-signed binding statement + dispute
+    // -----------------------------------------------------------------------
+
+    address constant BINDING_VERIFIER = address(0xB1ED181E);
+
+    function _deployRegistry() internal returns (LTPAnchorRegistry reg) {
+        LTPAnchorRegistry impl = new LTPAnchorRegistry();
+        bytes memory initData = abi.encodeCall(LTPAnchorRegistry.initialize, (admin));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        reg = LTPAnchorRegistry(address(proxy));
+    }
+
+    function _anchorWithBinding(
+        LTPAnchorRegistry reg,
+        bytes32 entityId,
+        bytes32 vkHash,
+        bytes32 stmtHash,
+        bytes32 sigHash
+    ) internal {
+        vm.prank(admin);
+        reg.registerSigner(vkHash);
+        reg.anchorWithBinding(
+            keccak256(abi.encode(entityId, vkHash, uint64(1))),
+            entityId,
+            keccak256("merkle"),
+            keccak256("policy"),
+            vkHash,
+            uint64(1),
+            uint64(block.timestamp + 365 days),
+            uint8(0),
+            stmtHash,
+            sigHash
+        );
+    }
+
+    function test_anchor_with_binding_records_statement() public {
+        LTPAnchorRegistry reg = _deployRegistry();
+        bytes32 entityId = keccak256("entity-1");
+        bytes32 vkHash = keccak256("legit-signer");
+        bytes32 stmtHash = keccak256("owner-signed-statement");
+        bytes32 sigHash = keccak256("ml-dsa-signature");
+
+        _anchorWithBinding(reg, entityId, vkHash, stmtHash, sigHash);
+
+        (bytes32 boundVk, bytes32 stored_stmt, bytes32 stored_sig, uint64 ts, bool disputed)
+            = reg.bindingStatements(entityId);
+        assertEq(boundVk, vkHash);
+        assertEq(stored_stmt, stmtHash);
+        assertEq(stored_sig, sigHash);
+        assertGt(ts, 0);
+        assertFalse(disputed);
+        // Entity-signer binding established.
+        assertEq(reg.entitySigners(entityId), vkHash);
+    }
+
+    function test_anchor_with_zero_binding_hashes_is_legacy_anchor() public {
+        LTPAnchorRegistry reg = _deployRegistry();
+        bytes32 entityId = keccak256("entity-legacy");
+        bytes32 vkHash = keccak256("legit-signer");
+
+        _anchorWithBinding(reg, entityId, vkHash, bytes32(0), bytes32(0));
+
+        // Binding still established; statement hashes empty.
+        (, bytes32 stored_stmt, bytes32 stored_sig, uint64 ts,) = reg.bindingStatements(entityId);
+        assertEq(stored_stmt, bytes32(0));
+        assertEq(stored_sig, bytes32(0));
+        assertEq(ts, 0); // not recorded when hashes are zero
+        assertEq(reg.entitySigners(entityId), vkHash);
+    }
+
+    function test_dispute_binding_clears_entity_and_marks_disputed() public {
+        LTPAnchorRegistry reg = _deployRegistry();
+        bytes32 entityId = keccak256("entity-2");
+        bytes32 vkHash = keccak256("attacker-signer");
+        bytes32 stmtHash = keccak256("forged-statement");
+        bytes32 sigHash = keccak256("forged-sig");
+
+        _anchorWithBinding(reg, entityId, vkHash, stmtHash, sigHash);
+
+        vm.prank(admin);
+        reg.setBindingDisputeVerifier(BINDING_VERIFIER);
+
+        bytes32 fraudProofHash = keccak256("snark-of-forgery");
+        vm.prank(BINDING_VERIFIER);
+        reg.disputeBinding(entityId, fraudProofHash);
+
+        (,,,, bool disputed) = reg.bindingStatements(entityId);
+        assertTrue(disputed);
+        // Entity binding cleared.
+        assertEq(reg.entitySigners(entityId), bytes32(0));
+    }
+
+    function test_dispute_binding_admin_cannot_call() public {
+        LTPAnchorRegistry reg = _deployRegistry();
+        bytes32 entityId = keccak256("entity-3");
+        bytes32 vkHash = keccak256("vk-3");
+        _anchorWithBinding(reg, entityId, vkHash, keccak256("s"), keccak256("g"));
+
+        vm.prank(admin);
+        reg.setBindingDisputeVerifier(BINDING_VERIFIER);
+
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSignature("NotBindingDisputeVerifier(address)", admin));
+        reg.disputeBinding(entityId, keccak256("proof"));
+    }
+
+    function test_dispute_binding_rejects_unrecorded_entity() public {
+        LTPAnchorRegistry reg = _deployRegistry();
+        bytes32 entityId = keccak256("never-bound");
+        vm.prank(admin);
+        reg.setBindingDisputeVerifier(BINDING_VERIFIER);
+        vm.prank(BINDING_VERIFIER);
+        vm.expectRevert(abi.encodeWithSignature("NoBindingRecorded(bytes32)", entityId));
+        reg.disputeBinding(entityId, keccak256("proof"));
+    }
+
+    function test_dispute_binding_one_shot() public {
+        LTPAnchorRegistry reg = _deployRegistry();
+        bytes32 entityId = keccak256("entity-4");
+        bytes32 vkHash = keccak256("vk-4");
+        _anchorWithBinding(reg, entityId, vkHash, keccak256("s"), keccak256("g"));
+
+        vm.prank(admin);
+        reg.setBindingDisputeVerifier(BINDING_VERIFIER);
+
+        vm.prank(BINDING_VERIFIER);
+        reg.disputeBinding(entityId, keccak256("p1"));
+
+        // Second call must revert.
+        vm.prank(BINDING_VERIFIER);
+        vm.expectRevert(abi.encodeWithSignature("BindingAlreadyDisputed(bytes32)", entityId));
+        reg.disputeBinding(entityId, keccak256("p2"));
+    }
+
+    function test_dispute_allows_legitimate_owner_to_rebind() public {
+        LTPAnchorRegistry reg = _deployRegistry();
+        bytes32 entityId = keccak256("entity-5");
+        bytes32 attackerVk = keccak256("attacker-vk");
+        bytes32 ownerVk = keccak256("legit-owner-vk");
+
+        // Attacker squats first.
+        _anchorWithBinding(reg, entityId, attackerVk, keccak256("forged-s"), keccak256("forged-g"));
+        assertEq(reg.entitySigners(entityId), attackerVk);
+
+        // Legitimate owner produces SNARK proof of forgery; verifier acts.
+        vm.prank(admin);
+        reg.setBindingDisputeVerifier(BINDING_VERIFIER);
+        vm.prank(BINDING_VERIFIER);
+        reg.disputeBinding(entityId, keccak256("snark-of-forgery"));
+
+        // Owner re-binds with the correct signer + statement.
+        _anchorWithBinding(reg, entityId, ownerVk, keccak256("real-statement"), keccak256("real-sig"));
+        assertEq(reg.entitySigners(entityId), ownerVk);
     }
 }
