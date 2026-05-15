@@ -47,7 +47,7 @@ zk = [
     "py_ecc>=7.0.0",
 ]
 rocksdb = [
-    "lsm-db>=0.7",
+    "lsm-db>=0.7.3",
 ]
 production = [
     "pqcrypto>=0.3.0",
