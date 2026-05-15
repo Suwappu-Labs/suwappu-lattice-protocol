@@ -23,7 +23,7 @@ from .eviction import EvictionHandler
 from .standby import StandbySelector, score_member
 from .manager import CommitteeManager
 
-# DKG (Spec C3b)
+# DKG (Spec C3b) + Threshold Signing (Spec C3c)
 from .dkg import (
     DKGState, DKGPhase,
     DKGCommitment, DKGShare, DKGComplaint,
@@ -31,6 +31,8 @@ from .dkg import (
     ScalarField, ScalarPoly,
     DKGTransport, FakeDKGTransport,
     DKGKeyRegistry,
+    ThresholdSigningKey, PartialSignature,
+    DOMAIN_ATTESTATION, DOMAIN_STATE_ROOT, DOMAIN_CROSS_VM,
 )
 
 __all__ = [
@@ -53,4 +55,7 @@ __all__ = [
     "ScalarField", "ScalarPoly",
     "DKGTransport", "FakeDKGTransport",
     "DKGKeyRegistry",
+    # Threshold Signing (Spec C3c)
+    "ThresholdSigningKey", "PartialSignature",
+    "DOMAIN_ATTESTATION", "DOMAIN_STATE_ROOT", "DOMAIN_CROSS_VM",
 ]
