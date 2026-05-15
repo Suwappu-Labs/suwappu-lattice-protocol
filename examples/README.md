@@ -4,13 +4,12 @@ Self-contained code examples demonstrating ETP's capabilities, organized by comp
 
 ## Visuals
 
-Presentation-ready GSX visuals are available in the DAG repo:
+For architectural context behind these examples, see [`docs/visuals/`](../docs/visuals/README.md):
 
-- [GSX Visual Index](../../gsx-dag/docs/visuals/index.html)
-- [GSX Ecosystem Atlas](../../gsx-dag/docs/visuals/gsx-ecosystem-atlas.html)
-- [GSX DAG presentation](../../gsx-dag/docs/visuals/gsx-dag.html)
-- [GSX DB presentation](../../gsx-dag/docs/visuals/gsx-db.html)
-- [LTP presentation](../../gsx-dag/docs/visuals/ltp.html)
+- [LTP presentation](../docs/visuals/ltp.html)
+- [GSX DAG presentation](../docs/visuals/gsx-dag.html)
+- [GSX DB presentation](../docs/visuals/gsx-db.html)
+- [Ecosystem Atlas](../docs/visuals/gsx-ecosystem-atlas.html)
 
 ## Prerequisites
 

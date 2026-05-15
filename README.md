@@ -18,15 +18,13 @@
 
 ## Visuals
 
-Presentation-ready GSX visuals are collected in the DAG repo and linked here for convenience:
+Diagrams of LTP, GSX DAG, GSX-DB, and the ecosystem atlas live in [`docs/visuals/`](docs/visuals/README.md) — each in three forms (inline Mermaid that renders on GitHub/GitBook, standalone HTML decks, and editable Mermaid/Excalidraw sources).
 
-- [GSX Visual Index](../gsx-dag/docs/visuals/index.html)
-- [GSX Ecosystem Atlas](../gsx-dag/docs/visuals/gsx-ecosystem-atlas.html)
-- [GSX DAG presentation](../gsx-dag/docs/visuals/gsx-dag.html)
-- [GSX DB presentation](../gsx-dag/docs/visuals/gsx-db.html)
-- [LTP presentation](../gsx-dag/docs/visuals/ltp.html)
-- Mermaid sources: [GSX DAG](../gsx-dag/docs/visuals/mermaid/gsx-dag.md), [GSX DB](../gsx-dag/docs/visuals/mermaid/gsx-db.md), [LTP](../gsx-dag/docs/visuals/mermaid/ltp.md)
-- Excalidraw sources: [GSX DAG](../gsx-dag/docs/visuals/excalidraw/gsx-dag.excalidraw), [GSX DB](../gsx-dag/docs/visuals/excalidraw/gsx-db.excalidraw), [LTP](../gsx-dag/docs/visuals/excalidraw/ltp.excalidraw)
+- [Visuals overview](docs/visuals/README.md) — inline-rendered Mermaid diagrams
+- [LTP presentation](docs/visuals/ltp.html), [GSX DAG presentation](docs/visuals/gsx-dag.html), [GSX DB presentation](docs/visuals/gsx-db.html)
+- [GSX Ecosystem Atlas](docs/visuals/gsx-ecosystem-atlas.html), [Visual index](docs/visuals/index.html)
+- Mermaid sources: [LTP](docs/visuals/mermaid/ltp.md) · [GSX DAG](docs/visuals/mermaid/gsx-dag.md) · [GSX DB](docs/visuals/mermaid/gsx-db.md)
+- Excalidraw sources: [LTP](docs/visuals/excalidraw/ltp.excalidraw) · [GSX DAG](docs/visuals/excalidraw/gsx-dag.excalidraw) · [GSX DB](docs/visuals/excalidraw/gsx-db.excalidraw)
 
 ## The Problem
 

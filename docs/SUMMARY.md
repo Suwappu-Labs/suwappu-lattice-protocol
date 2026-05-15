@@ -3,6 +3,7 @@
 ## Getting Started
 
 * [Overview](README.md)
+* [Visuals](visuals/README.md)
 * [Quick Start](../CONTRIBUTING.md)
 * [Changelog](../CHANGELOG.md)
 

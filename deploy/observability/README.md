@@ -6,13 +6,12 @@ bastions.
 
 ## Visuals
 
-If you want the architecture context behind the metrics, see:
+If you want the architecture context behind the metrics, see [`docs/visuals/`](../../docs/visuals/README.md):
 
-- [GSX Visual Index](../../../gsx-dag/docs/visuals/index.html)
-- [GSX Ecosystem Atlas](../../../gsx-dag/docs/visuals/gsx-ecosystem-atlas.html)
-- [GSX DAG presentation](../../../gsx-dag/docs/visuals/gsx-dag.html)
-- [GSX DB presentation](../../../gsx-dag/docs/visuals/gsx-db.html)
-- [LTP presentation](../../../gsx-dag/docs/visuals/ltp.html)
+- [LTP presentation](../../docs/visuals/ltp.html)
+- [GSX DAG presentation](../../docs/visuals/gsx-dag.html)
+- [GSX DB presentation](../../docs/visuals/gsx-db.html)
+- [Ecosystem Atlas](../../docs/visuals/gsx-ecosystem-atlas.html)
 
 ## Layout
 

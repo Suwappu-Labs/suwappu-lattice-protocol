@@ -6,15 +6,12 @@ The Entanglement Transfer Protocol documentation is organized into seven categor
 
 ## Visuals
 
-Presentation-ready GSX visuals live alongside the DAG repo and the shared source formats:
+Inline Mermaid diagrams, standalone HTML decks, and editable Mermaid/Excalidraw sources live in [`docs/visuals/`](visuals/README.md).
 
-- [GSX Visual Index](../../gsx-dag/docs/visuals/index.html)
-- [GSX Ecosystem Atlas](../../gsx-dag/docs/visuals/gsx-ecosystem-atlas.html)
-- [GSX DAG presentation](../../gsx-dag/docs/visuals/gsx-dag.html)
-- [GSX DB presentation](../../gsx-dag/docs/visuals/gsx-db.html)
-- [LTP presentation](../../gsx-dag/docs/visuals/ltp.html)
-- Mermaid sources: [GSX DAG](../../gsx-dag/docs/visuals/mermaid/gsx-dag.md), [GSX DB](../../gsx-dag/docs/visuals/mermaid/gsx-db.md), [LTP](../../gsx-dag/docs/visuals/mermaid/ltp.md)
-- Excalidraw sources: [GSX DAG](../../gsx-dag/docs/visuals/excalidraw/gsx-dag.excalidraw), [GSX DB](../../gsx-dag/docs/visuals/excalidraw/gsx-db.excalidraw), [LTP](../../gsx-dag/docs/visuals/excalidraw/ltp.excalidraw)
+- [Visuals overview (inline Mermaid)](visuals/README.md)
+- Presentations: [LTP](visuals/ltp.html) · [GSX DAG](visuals/gsx-dag.html) · [GSX DB](visuals/gsx-db.html) · [Ecosystem Atlas](visuals/gsx-ecosystem-atlas.html) · [Visual index](visuals/index.html)
+- Mermaid sources: [LTP](visuals/mermaid/ltp.md) · [GSX DAG](visuals/mermaid/gsx-dag.md) · [GSX DB](visuals/mermaid/gsx-db.md)
+- Excalidraw sources: [LTP](visuals/excalidraw/ltp.excalidraw) · [GSX DAG](visuals/excalidraw/gsx-dag.excalidraw) · [GSX DB](visuals/excalidraw/gsx-db.excalidraw)
 
 | Category | Document | Description |
 |----------|----------|-------------|
