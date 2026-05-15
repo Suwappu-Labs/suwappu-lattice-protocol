@@ -65,8 +65,12 @@ async def lookup_event(request: Request, tx_hash: str) -> JSONResponse:
         tracker = request.app.state.gateway_tracker
         rec = tracker.lookup_by_tx_hash(tx_hash)
         if rec is None:
+            # LTP-A-027: do not echo the user-controlled tx_hash back in the
+            # response body; an attacker would use error messages to
+            # fingerprint internal data. Log it server-side for ops.
+            logger.info("lookup_event miss tx_hash=%s", tx_hash)
             return JSONResponse(
-                {"error": f"no event found for tx_hash {tx_hash}"},
+                {"error": "event not found"},
                 status_code=404,
             )
         return JSONResponse(_serialize_record(rec))

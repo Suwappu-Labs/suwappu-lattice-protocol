@@ -113,7 +113,16 @@ class NodeServer:
         self._port = port
         self._host = host
         self._tls_config = tls_config
-        server_opts = {}
+        # LTP-A-019: bound message size and concurrent streams so a single
+        # client can't OOM the server with a deeply nested protobuf or pin
+        # 10k streams open.
+        server_opts: dict = {
+            "options": [
+                ("grpc.max_receive_message_length", 4 * 1024 * 1024),
+                ("grpc.max_send_message_length", 4 * 1024 * 1024),
+                ("grpc.max_concurrent_streams", 100),
+            ],
+        }
         if interceptors:
             server_opts["interceptors"] = interceptors
         self._server = grpc.server(

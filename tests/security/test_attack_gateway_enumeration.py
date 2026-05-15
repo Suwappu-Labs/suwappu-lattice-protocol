@@ -78,11 +78,6 @@ def test_middleware_module_exports_three_classes():
     assert hasattr(mod, "BodySizeLimitMiddleware"), "body-size middleware missing"
 
 
-@pytest.mark.xfail(
-    reason="LTP-A-011: defense (default host bind 127.0.0.1) lands in Commit 3 "
-    "of this PR. Once Commit 3 lands this xfail flips to xpass.",
-    strict=False,
-)
 def test_default_host_bind_is_not_zero_zero_zero_zero():
     """LTP-A-011: ``__main__`` must NOT hard-code 0.0.0.0 as the host bind
     default.
