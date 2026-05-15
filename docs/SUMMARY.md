@@ -5,6 +5,7 @@
 * [Overview](README.md)
 * [Visuals](visuals/README.md)
 * [Quick Start](../CONTRIBUTING.md)
+* [Stability Promises](STABILITY_PROMISES.md)
 * [Changelog](../CHANGELOG.md)
 
 ## Protocol
@@ -12,6 +13,7 @@
 * [Whitepaper](WHITEPAPER.md)
 * [Architecture](design-decisions/ARCHITECTURE.md)
 * [GSX DAG and GSX-DB Integration](design-decisions/GSX_DAG_DB_INTEGRATION.md)
+* [Corridor Integration](CORRIDOR_INTEGRATION.md)
 * [Streaming Protocol](design-decisions/STREAMING_PROTOCOL.md)
 * [ZK Transfer Mode](design-decisions/ZK_TRANSFER_MODE.md)
 * [Enforcement Mechanisms](design-decisions/ENFORCEMENT_MECHANISMS.md)
@@ -36,6 +38,7 @@
 * [Security Review (2026-02-24)](design-decisions/Security/SECURITY_REVIEW-2-24-2026.md)
 * [Shard Exposure Analysis](design-decisions/Security/001-lattice-key-shard-exposure.md)
 * [Formal Protocol Analysis](formal/ANALYSIS.md)
+* [Formal Verification Status](FORMAL_VERIFICATION_STATUS.md)
 
 ## Operations
 
