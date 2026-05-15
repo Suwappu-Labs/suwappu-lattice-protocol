@@ -427,7 +427,7 @@ The audit's original concern (a malicious dealer biasing its *commitment* after 
 
 **Exploit chain.** Compromised gateway can mutate or delete past audit events; no cryptographic linkage detects tampering after the fact.
 
-**Remediation.** `DEFERRED`. Recommended: Merkle-chained or signed-tree-head audit log similar to RFC 6962. New Linear follow-up.
+**Remediation.** `CONFIRMED-OK` + `FIXED-IN-PR` (Commit 7). The defense was already in place: `src/ltp/compliance.py::ComplianceAuditLogger` maintains a hash-chained append-only log with `verify_chain_integrity()`. Each event's chain hash = `SHA3-256(json(event) || prev_head)`. Tampering with either the event body or the chain hash is detected and the first invalid index is reported. `tests/security/test_attack_audit_log_tamper.py` is the regression guard (event-body tamper, chain-hash tamper, head-hash monotonicity).
 
 ---
 
@@ -498,7 +498,14 @@ A retag of `@v6` upstream can no longer execute different code in our CI.
 
 **Exploit chain.** `rotateSigner(old, new)` atomically revokes old and registers new. In-flight anchors with the old key fail at `_anchor()` because `authorizedSigners[old] = false`. An attacker observing the rotation can spam anchors with the old key to maximize the failure window.
 
-**Remediation.** `DEFERRED`. Recommended: 24-hour grace period where both old and new keys are valid. Linear follow-up.
+**Remediation.** `FIXED-IN-SOURCE` (Commit 7) — source-only for v7 deploy. `LTPAnchorRegistry` gains:
+- new `mapping(bytes32 => uint64) public signerExpiresAt` storage
+- new event `SignerExpiryScheduled(bytes32 indexed vkHash, uint64 expiresAt)`
+- new `rotateSignerWithGrace(oldVkHash, newVkHash, gracePeriod)` admin function — old key remains valid until `block.timestamp + gracePeriod` (capped at 7 days)
+- `_anchor()` rejects expired signers via `block.timestamp > signerExpiresAt[vk]`
+- Legacy `rotateSigner(old, new)` preserved (delegates to `_rotateSignerWithGrace` with grace=0)
+
+Existing v5/v6 deployments retain the atomic-rotation semantics. v7 deploys gain the optional grace path.
 
 ---
 

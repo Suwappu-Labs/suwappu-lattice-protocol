@@ -45,6 +45,12 @@ contract LTPAnchorRegistry is ILTPAnchorRegistry, Initializable, UUPSUpgradeable
     /// @notice signerVkHash => authorized flag
     mapping(bytes32 => bool) public authorizedSigners;
 
+    /// @notice signerVkHash => expiry timestamp for grace-period rotations.
+    ///         Zero means "no scheduled expiry"; nonzero means the key is
+    ///         authorized only while block.timestamp <= signerExpiresAt[vk].
+    ///         LTP-A-030 in docs/SECURITY_AUDIT_2026-05-15.md.
+    mapping(bytes32 => uint64) public signerExpiresAt;
+
     /// @notice entityIdHash => bound signerVkHash (v6: entity-signer binding)
     mapping(bytes32 => bytes32) public entitySigners;
 
@@ -190,8 +196,14 @@ contract LTPAnchorRegistry is ILTPAnchorRegistry, Initializable, UUPSUpgradeable
         if (entityIdHash == bytes32(0)) revert ZeroEntityId();
         if (signerVkHash == bytes32(0)) revert ZeroSignerVk();
 
-        // 1. Signer authorization
+        // 1. Signer authorization. A signer with a scheduled expiry
+        //    (LTP-A-030 grace-period rotation) remains valid until
+        //    block.timestamp passes signerExpiresAt.
         if (!authorizedSigners[signerVkHash]) {
+            revert UnauthorizedSigner(signerVkHash);
+        }
+        uint64 expiresAt = signerExpiresAt[signerVkHash];
+        if (expiresAt != 0 && block.timestamp > expiresAt) {
             revert UnauthorizedSigner(signerVkHash);
         }
 
@@ -248,13 +260,45 @@ contract LTPAnchorRegistry is ILTPAnchorRegistry, Initializable, UUPSUpgradeable
 
     /// @inheritdoc ILTPAnchorRegistry
     function rotateSigner(bytes32 oldVkHash, bytes32 newVkHash) external onlyAdmin {
+        _rotateSignerWithGrace(oldVkHash, newVkHash, 0);
+    }
+
+    /// @notice Rotate a signer with a grace period during which the old
+    ///         key remains valid for already-signed in-flight anchors.
+    ///         LTP-A-030 in docs/SECURITY_AUDIT_2026-05-15.md.
+    /// @dev    The old key is NOT revoked at this call; instead its
+    ///         expiry is recorded at `block.timestamp + gracePeriod`.
+    ///         `_anchor()` rejects the old key once expiry elapses.
+    ///         `gracePeriod` is capped at 7 days to bound ambiguity.
+    function rotateSignerWithGrace(
+        bytes32 oldVkHash,
+        bytes32 newVkHash,
+        uint64 gracePeriod
+    ) external onlyAdmin {
+        require(gracePeriod <= 7 days, "grace > 7d");
+        _rotateSignerWithGrace(oldVkHash, newVkHash, gracePeriod);
+    }
+
+    function _rotateSignerWithGrace(
+        bytes32 oldVkHash,
+        bytes32 newVkHash,
+        uint64 gracePeriod
+    ) internal {
         if (oldVkHash == bytes32(0) || newVkHash == bytes32(0)) revert ZeroSignerVk();
         if (!authorizedSigners[oldVkHash]) revert SignerNotRegistered(oldVkHash);
         if (authorizedSigners[newVkHash]) revert SignerAlreadyRegistered(newVkHash);
         signerSequences[newVkHash] = signerSequences[oldVkHash];
-        authorizedSigners[oldVkHash] = false;
         authorizedSigners[newVkHash] = true;
-        emit SignerRevoked(oldVkHash);
+        if (gracePeriod == 0) {
+            // Atomic rotation: old key revoked immediately.
+            authorizedSigners[oldVkHash] = false;
+            emit SignerRevoked(oldVkHash);
+        } else {
+            // Grace-period rotation: old key stays authorized; _anchor
+            // additionally checks signerExpiresAt to gate in-flight use.
+            signerExpiresAt[oldVkHash] = uint64(block.timestamp) + gracePeriod;
+            emit SignerExpiryScheduled(oldVkHash, signerExpiresAt[oldVkHash]);
+        }
         emit SignerRegistered(newVkHash);
         emit SignerRotated(oldVkHash, newVkHash);
     }

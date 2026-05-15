@@ -67,6 +67,9 @@ interface ILTPAnchorRegistry {
     // v6 — signer rotation
     event SignerRotated(bytes32 indexed oldVkHash, bytes32 indexed newVkHash);
 
+    // v7 — signer rotation grace period (LTP-A-030)
+    event SignerExpiryScheduled(bytes32 indexed vkHash, uint64 expiresAt);
+
     // -----------------------------------------------------------------------
     // Errors
     // -----------------------------------------------------------------------
