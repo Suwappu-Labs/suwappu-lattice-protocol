@@ -64,19 +64,20 @@ def test_honest_dkg_produces_group_pk():
     assert len(group_pks) == 1, "honest DKG must converge on a single group PK"
 
 
-@pytest.mark.xfail(
-    reason="LTP-A-016: defense (commit-then-reveal phase) lands in Commit 4 of "
-    "this PR. Until then, a tampered share is silently dropped instead of raising. "
-    "Once Commit 4 lands this xfail flips to xpass and the test becomes a "
-    "regression guard.",
-    strict=False,
-)
 def test_session_detects_share_inconsistent_with_commitment():
-    """If a malicious dealer's broadcast share doesn't match its committed
-    polynomial, an honest participant must catch it before finalize.
+    """LTP-A-016: a malicious dealer's tampered share is detected during
+    ``end_sharing_phase`` and surfaces as a non-empty complaint list.
 
-    This is the Pedersen VSS invariant. A bias attack that mutates the
-    polynomial post-commitment surfaces here as a verification failure.
+    The defense in place is Pedersen VSS verification: the recipient
+    checks the share against the dealer's published commitments. The
+    test asserts the complaint surface is non-empty and names the
+    malicious dealer correctly.
+
+    Finalize succeeds (with the bad dealer excluded from QUAL) because
+    n=4, threshold=3 still has enough honest participants. The test
+    therefore asserts (a) the complaint exists and (b) the bad dealer
+    is dropped from the final QUAL set rather than its biased
+    contribution reaching the group key.
     """
     sessions = _make_sessions(4, 3)
     commitments, all_shares = [], []
@@ -113,16 +114,21 @@ def test_session_detects_share_inconsistent_with_commitment():
                 share = shares[fp] if j != 0 else attacker_shares.get(fp, shares[fp])
                 s.receive_share(share)
 
-    # The recipient (session-1) should detect the tampered share. The
-    # `end_sharing_phase` is where the Pedersen VSS verification runs.
-    # Either it raises, or `finalize` fails — both are acceptable defenses.
+    # The recipient (session-1) detects the tampered share at
+    # ``end_sharing_phase`` and surfaces it as a complaint.
     victim = sessions[1]
-    try:
-        victim.end_sharing_phase()
-        # If end_sharing_phase didn't catch it, finalize must.
-        with pytest.raises((ValueError, AssertionError, KeyError)):
-            victim.finalize()
-    except (ValueError, AssertionError) as exc:
-        # Detection at end_sharing_phase — preferred path.
-        assert "share" in str(exc).lower() or "commit" in str(exc).lower() \
-            or "verif" in str(exc).lower() or len(str(exc)) > 0
+    complaints = victim.end_sharing_phase()
+    assert complaints, (
+        "Pedersen VSS verification missed a tampered share — "
+        "LTP-A-016 defense regressed"
+    )
+    assert any(c.dealer_fp == sessions[0].my_fp for c in complaints), (
+        "complaint did not name the malicious dealer"
+    )
+
+    # Finalize: bad dealer is excluded from QUAL; remaining 3 honest
+    # dealers still meet threshold=3.
+    result, _ = victim.finalize()
+    assert sessions[0].my_fp not in result.qual_set, (
+        "tampered dealer remained in the QUAL set — bias attack succeeded"
+    )

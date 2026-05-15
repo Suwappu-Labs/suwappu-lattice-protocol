@@ -43,8 +43,15 @@ class MerkleLog:
     operator_sk).  In a multi-operator deployment, independent instances are
     cross-checked via STH gossip.
 
-    Thread safety: not thread-safe.  External synchronization required for
-    concurrent appends.
+    Thread safety (LTP-A-028 in docs/SECURITY_AUDIT_2026-05-15.md):
+        ``append`` and ``publish_sth`` acquire an internal ``threading.Lock``
+        so concurrent calls from multiple threads are safe — the lock
+        serializes tree mutation and STH sequence assignment.  Read-only
+        accessors (``size``, ``latest_sth``, ``inclusion_proof``) do not
+        take the lock; callers that read during concurrent appends may
+        observe transient states.  For strong read-after-write guarantees
+        across threads, call ``publish_sth`` and pass the returned STH to
+        the reader.
     """
 
     def __init__(self, operator_vk: bytes, operator_sk: bytes) -> None:
@@ -53,12 +60,16 @@ class MerkleLog:
             operator_vk: ML-DSA-65 verification key (public — included in every STH).
             operator_sk: ML-DSA-65 signing key (private — never leaves this object).
         """
+        import threading
         self._tree = MerkleTree()
         self._records: list[bytes] = []   # raw record bytes, parallel to tree leaves
         self._operator_vk = operator_vk
         self._operator_sk = operator_sk
         self._sths: list[SignedTreeHead] = []
         self._sequence: int = 0
+        # Serializes mutators (append / publish_sth) so concurrent
+        # producers can't race on tree state or STH sequence.
+        self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # Core log operations
@@ -80,10 +91,12 @@ class MerkleLog:
 
         The record is stored verbatim; the tree stores its leaf hash.
         Returns the 0-based leaf index, which is used for inclusion proofs.
+        Thread-safe — see class docstring.
         """
-        idx = self._tree.append(record)
-        self._records.append(record)
-        return idx
+        with self._lock:
+            idx = self._tree.append(record)
+            self._records.append(record)
+            return idx
 
     def publish_sth(self) -> SignedTreeHead:
         """
@@ -93,18 +106,20 @@ class MerkleLog:
         Callers SHOULD publish an STH after each batch of appends so that
         receivers can detect any log inconsistency.
 
-        Returns the signed STH (also stored in self._sths).
+        Returns the signed STH (also stored in self._sths). Thread-safe —
+        see class docstring.
         """
-        sth = SignedTreeHead.sign(
-            sequence=self._sequence,
-            tree_size=self._tree.size,
-            root_hash=self._tree.root(),
-            operator_vk=self._operator_vk,
-            operator_sk=self._operator_sk,
-        )
-        self._sths.append(sth)
-        self._sequence += 1
-        return sth
+        with self._lock:
+            sth = SignedTreeHead.sign(
+                sequence=self._sequence,
+                tree_size=self._tree.size,
+                root_hash=self._tree.root(),
+                operator_vk=self._operator_vk,
+                operator_sk=self._operator_sk,
+            )
+            self._sths.append(sth)
+            self._sequence += 1
+            return sth
 
     def inclusion_proof(self, index: int) -> InclusionProof:
         """

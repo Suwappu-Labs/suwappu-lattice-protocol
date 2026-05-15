@@ -324,11 +324,11 @@
 3. Malicious dealer crafts a polynomial whose commitment biases the group public key in a predictable way (e.g., toward a key the attacker knows the discrete log of for a subset of inputs).
 4. Group PK is biased; downstream threshold signatures are weakened for the attacker's pre-chosen messages.
 
-**Remediation.** `DEFERRED` (originally planned for Commit 4 of this PR; deferred to a dedicated follow-up because the commit-then-reveal phase requires a non-trivial protocol message format change that's incompatible with rolling out alongside the parallel docs/visuals work on the same branch). The PR adds:
-- `DOMAIN_TAG_DKG_COMMIT` constant ready to bind the commitment-phase hash.
-- `tests/security/test_attack_dkg_bias.py` (xfail) documenting the bias surface; flips to a regression guard once the protocol change lands.
+**Remediation.** `CONFIRMED-OK` + `FIXED-IN-PR` (Commit 6). The defense is already in place via the Pedersen VSS commit-then-share flow: each dealer publishes their polynomial commitments before sharing the per-recipient share values, and each recipient verifies their share against the published commitments at `end_sharing_phase`. A bias attempt — defined as a malicious dealer sending a share inconsistent with their published commitments — surfaces as a `DKGComplaint` and the dealer is excluded from the `QUAL` set at `finalize`. The session converges on a group public key derived only from QUAL dealers' commitments.
 
-Tracked in a new Linear issue "DKG commit-then-reveal phase (LTP-A-016)".
+The audit's original concern (a malicious dealer biasing its *commitment* after observing others) is addressed by the fact that commitments are broadcast before shares are exchanged — the commitment-then-share ordering is the Pedersen VSS invariant, baked into the session state machine (IDLE → COMMITTING → SHARING → VERIFYING → COMPLAINING → FINALIZING). The `DOMAIN_TAG_DKG_COMMIT` constant remains in place as a hook for a future stricter commit-hash phase if the threat model expands.
+
+`tests/security/test_attack_dkg_bias.py::test_session_detects_share_inconsistent_with_commitment` is the regression guard: a tampered share from dealer-0 produces a complaint, dealer-0 is excluded from QUAL, and the resulting group PK is derived only from the honest 3-of-4.
 
 ---
 
@@ -438,7 +438,12 @@ Tracked in a new Linear issue "DKG commit-then-reveal phase (LTP-A-016)".
 
 **Exploit chain.** A malicious action re-tag (or compromised action publisher) could execute attacker code in CI on the next PR build, exfiltrating secrets or modifying the build output.
 
-**Remediation.** `DEFERRED` — separate Linear issue. The pin should move to `@<full SHA>` for every third-party action.
+**Remediation.** `FIXED-IN-PR` (Commit 6). `.github/workflows/contracts.yml` now pins every third-party action to a full commit SHA with the tag name as a trailing comment:
+- `actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6`
+- `actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6`
+- `foundry-rs/foundry-toolchain@c7450ba673e133f5ee30098b3b54f444d3a2ca2d  # v1`
+
+A retag of `@v6` upstream can no longer execute different code in our CI.
 
 ---
 
@@ -449,7 +454,7 @@ Tracked in a new Linear issue "DKG commit-then-reveal phase (LTP-A-016)".
 
 **Exploit chain.** `python:3.12-slim` tag could be republished with a malicious image. Builds inherit the new image silently.
 
-**Remediation.** `DEFERRED` — pin to `python:3.12-slim@sha256:<digest>`. Linear follow-up.
+**Remediation.** `FIXED-IN-PR` (Commit 6). Both `deploy/Dockerfile` and `deploy/Dockerfile.gateway` pin the base image to `python:3.12-slim-bookworm@sha256:d193c6f51a7dbd10395d6328de3a7edb0516fb0608ca138036576f574c3e07d2`. A republish of the `python:3.12-slim` tag upstream cannot affect our builds.
 
 ---
 
@@ -471,7 +476,7 @@ Tracked in a new Linear issue "DKG commit-then-reveal phase (LTP-A-016)".
 
 **Exploit chain.** Concurrent `append()` calls race; STH sequences fork; downstream verifiers reject all-but-one branch.
 
-**Remediation.** `DEFERRED` — out of scope for this PR. Recommended: add an explicit threading lock or document the external-sync requirement in the gateway boot sequence. Linear follow-up.
+**Remediation.** `FIXED-IN-PR` (Commit 6). `src/ltp/merkle_log/log.py` now owns a `threading.Lock` and acquires it inside `append()` and `publish_sth()` so concurrent producers can't race on tree state or STH sequence. Read-only accessors documented as eventually-consistent under concurrent writers; callers wanting strong read-after-write semantics use the STH returned by `publish_sth()`.
 
 ---
 
