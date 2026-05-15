@@ -17,6 +17,16 @@ For architectural context behind these examples, see [`docs/visuals/`](../docs/v
 pip install -e ".[dev]"
 ```
 
+## Non-Python Integrations
+
+For dApp developers verifying LTP anchors from JavaScript / TypeScript:
+
+- [`verify_anchor_from_js.mjs`](verify_anchor_from_js.mjs) — ethers v6 script
+  that reads [`contracts/abi/LTPAnchorRegistry.json`](../contracts/abi/LTPAnchorRegistry.json)
+  and queries the registry on Base Sepolia (or any other deployment listed in
+  [`docs/DEPLOYED_CONTRACTS.md`](../docs/DEPLOYED_CONTRACTS.md)). Run with
+  `node examples/verify_anchor_from_js.mjs <rpcUrl> <registry> <entityIdHash>`.
+
 ## Quickstart
 
 ```python

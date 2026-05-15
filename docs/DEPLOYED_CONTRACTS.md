@@ -105,6 +105,26 @@ cast call 0x79eF1B7914f98C5C1404617449AB1f377c475996 "version()(uint256)" --rpc-
 cast call 0x79eF1B7914f98C5C1404617449AB1f377c475996 "admin()(address)" --rpc-url "$BASE_SEPOLIA_RPC_URL"
 ```
 
+## ABIs for Non-Python Integrators
+
+The full `LTPAnchorRegistry` ABI is checked in at
+[`contracts/abi/LTPAnchorRegistry.json`](../contracts/abi/LTPAnchorRegistry.json)
+so dApp developers can verify anchors from JavaScript / TypeScript / Go
+without running a local Solidity build. A worked ethers v6 example lives
+at [`examples/verify_anchor_from_js.mjs`](../examples/verify_anchor_from_js.mjs):
+
+```bash
+node examples/verify_anchor_from_js.mjs \
+  https://sepolia.base.org \
+  0x79eF1B7914f98C5C1404617449AB1f377c475996 \
+  <entityIdHash>
+```
+
+To regenerate the ABI after a contract change, run `forge build` in
+`contracts/` and copy the `abi` field of
+`contracts/out/LTPAnchorRegistry.sol/LTPAnchorRegistry.json` into
+`contracts/abi/LTPAnchorRegistry.json` (or use the `make abi` target).
+
 ---
 
 **Total across both chains: 53 on-chain transactions, all status `0x1` (success).**

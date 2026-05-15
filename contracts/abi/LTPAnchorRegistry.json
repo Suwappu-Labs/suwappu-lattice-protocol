@@ -1,0 +1,280 @@
+[
+  {
+    "type": "function",
+    "name": "anchor",
+    "inputs": [
+      { "name": "anchorDigest", "type": "bytes32" },
+      { "name": "entityIdHash", "type": "bytes32" },
+      { "name": "merkleRoot", "type": "bytes32" },
+      { "name": "policyHash", "type": "bytes32" },
+      { "name": "signerVkHash", "type": "bytes32" },
+      { "name": "sequence", "type": "uint64" },
+      { "name": "validUntil", "type": "uint64" },
+      { "name": "receiptType", "type": "uint8" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "batchAnchor",
+    "inputs": [
+      { "name": "anchorDigests", "type": "bytes32[]" },
+      { "name": "entityIdHashes", "type": "bytes32[]" },
+      { "name": "merkleRoots", "type": "bytes32[]" },
+      { "name": "policyHashes", "type": "bytes32[]" },
+      { "name": "signerVkHashes", "type": "bytes32[]" },
+      { "name": "sequences", "type": "uint64[]" },
+      { "name": "validUntils", "type": "uint64[]" },
+      { "name": "receiptTypes", "type": "uint8[]" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transitionState",
+    "inputs": [
+      { "name": "entityIdHash", "type": "bytes32" },
+      { "name": "newState", "type": "uint8" },
+      { "name": "signerVkHash", "type": "bytes32" },
+      { "name": "sequence", "type": "uint64" },
+      { "name": "validUntil", "type": "uint64" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "registerSigner",
+    "inputs": [{ "name": "vkHash", "type": "bytes32" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "revokeSigner",
+    "inputs": [{ "name": "vkHash", "type": "bytes32" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "rotateSigner",
+    "inputs": [
+      { "name": "oldVkHash", "type": "bytes32" },
+      { "name": "newVkHash", "type": "bytes32" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "reassignEntitySigner",
+    "inputs": [
+      { "name": "entityIdHash", "type": "bytes32" },
+      { "name": "newSignerVkHash", "type": "bytes32" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "isAnchored",
+    "inputs": [{ "name": "anchorDigest", "type": "bytes32" }],
+    "outputs": [{ "name": "", "type": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getEntityState",
+    "inputs": [{ "name": "entityIdHash", "type": "bytes32" }],
+    "outputs": [{ "name": "", "type": "uint8" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getSignerSequence",
+    "inputs": [{ "name": "vkHash", "type": "bytes32" }],
+    "outputs": [{ "name": "", "type": "uint64" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAnchorRecord",
+    "inputs": [{ "name": "anchorDigest", "type": "bytes32" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "components": [
+          { "name": "merkleRoot", "type": "bytes32" },
+          { "name": "policyHash", "type": "bytes32" },
+          { "name": "signerVkHash", "type": "bytes32" },
+          { "name": "entityIdHash", "type": "bytes32" },
+          { "name": "sequence", "type": "uint64" },
+          { "name": "validUntil", "type": "uint64" },
+          { "name": "targetChainId", "type": "uint64" },
+          { "name": "receiptType", "type": "uint8" },
+          { "name": "entityState", "type": "uint8" },
+          { "name": "anchoredAt", "type": "uint64" }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "areAnchored",
+    "inputs": [{ "name": "anchorDigests", "type": "bytes32[]" }],
+    "outputs": [{ "name": "", "type": "bool[]" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getEntityStates",
+    "inputs": [{ "name": "entityIdHashes", "type": "bytes32[]" }],
+    "outputs": [{ "name": "", "type": "uint8[]" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAnchorRecords",
+    "inputs": [{ "name": "anchorDigests", "type": "bytes32[]" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[]",
+        "components": [
+          { "name": "merkleRoot", "type": "bytes32" },
+          { "name": "policyHash", "type": "bytes32" },
+          { "name": "signerVkHash", "type": "bytes32" },
+          { "name": "entityIdHash", "type": "bytes32" },
+          { "name": "sequence", "type": "uint64" },
+          { "name": "validUntil", "type": "uint64" },
+          { "name": "targetChainId", "type": "uint64" },
+          { "name": "receiptType", "type": "uint8" },
+          { "name": "entityState", "type": "uint8" },
+          { "name": "anchoredAt", "type": "uint64" }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "Anchored",
+    "inputs": [
+      { "name": "anchorDigest", "type": "bytes32", "indexed": true },
+      { "name": "entityIdHash", "type": "bytes32", "indexed": true },
+      { "name": "signerVkHash", "type": "bytes32", "indexed": true },
+      { "name": "sequence", "type": "uint64", "indexed": false }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "BatchAnchored",
+    "inputs": [
+      { "name": "count", "type": "uint256", "indexed": false },
+      { "name": "firstDigest", "type": "bytes32", "indexed": true }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SignerRegistered",
+    "inputs": [{ "name": "vkHash", "type": "bytes32", "indexed": true }],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SignerRevoked",
+    "inputs": [{ "name": "vkHash", "type": "bytes32", "indexed": true }],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "StateTransitioned",
+    "inputs": [
+      { "name": "entityIdHash", "type": "bytes32", "indexed": true },
+      { "name": "signerVkHash", "type": "bytes32", "indexed": true },
+      { "name": "fromState", "type": "uint8", "indexed": false },
+      { "name": "toState", "type": "uint8", "indexed": false },
+      { "name": "sequence", "type": "uint64", "indexed": false }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdminTransferred",
+    "inputs": [
+      { "name": "oldAdmin", "type": "address", "indexed": true },
+      { "name": "newAdmin", "type": "address", "indexed": true }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Paused",
+    "inputs": [{ "name": "by", "type": "address", "indexed": true }],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Unpaused",
+    "inputs": [{ "name": "by", "type": "address", "indexed": true }],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "EntitySignerBound",
+    "inputs": [
+      { "name": "entityIdHash", "type": "bytes32", "indexed": true },
+      { "name": "signerVkHash", "type": "bytes32", "indexed": true }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SignerRotated",
+    "inputs": [
+      { "name": "oldVkHash", "type": "bytes32", "indexed": true },
+      { "name": "newVkHash", "type": "bytes32", "indexed": true }
+    ],
+    "anonymous": false
+  },
+  { "type": "error", "name": "AlreadyAnchored", "inputs": [{ "name": "anchorDigest", "type": "bytes32" }] },
+  { "type": "error", "name": "SequenceTooLow", "inputs": [
+      { "name": "signerVkHash", "type": "bytes32" },
+      { "name": "provided", "type": "uint64" },
+      { "name": "current", "type": "uint64" }
+  ] },
+  { "type": "error", "name": "Expired", "inputs": [
+      { "name": "validUntil", "type": "uint64" },
+      { "name": "blockTimestamp", "type": "uint64" }
+  ] },
+  { "type": "error", "name": "UnauthorizedSigner", "inputs": [{ "name": "signerVkHash", "type": "bytes32" }] },
+  { "type": "error", "name": "InvalidStateTransition", "inputs": [
+      { "name": "fromState", "type": "uint8" },
+      { "name": "toState", "type": "uint8" }
+  ] },
+  { "type": "error", "name": "NotAdmin", "inputs": [{ "name": "caller", "type": "address" }] },
+  { "type": "error", "name": "EmptyBatch", "inputs": [] },
+  { "type": "error", "name": "BatchTooLarge", "inputs": [
+      { "name": "provided", "type": "uint256" },
+      { "name": "max", "type": "uint256" }
+  ] },
+  { "type": "error", "name": "ArrayLengthMismatch", "inputs": [] },
+  { "type": "error", "name": "ContractPaused", "inputs": [] },
+  { "type": "error", "name": "ZeroDigest", "inputs": [] },
+  { "type": "error", "name": "ZeroMerkleRoot", "inputs": [] },
+  { "type": "error", "name": "ZeroEntityId", "inputs": [] },
+  { "type": "error", "name": "ZeroSignerVk", "inputs": [] },
+  { "type": "error", "name": "NotEntitySigner", "inputs": [
+      { "name": "entityIdHash", "type": "bytes32" },
+      { "name": "signerVkHash", "type": "bytes32" }
+  ] },
+  { "type": "error", "name": "SignerNotRegistered", "inputs": [{ "name": "vkHash", "type": "bytes32" }] },
+  { "type": "error", "name": "SignerAlreadyRegistered", "inputs": [{ "name": "vkHash", "type": "bytes32" }] }
+]
