@@ -135,30 +135,25 @@ contract SCN005_Penpie_Reentrancy is Test {
     ///      precondition check. We verify by inspecting status BEFORE
     ///      the transfer would land.
     function test_E2_status_set_before_transfer_in_finalizeWindow() public {
-        bytes32 digest = keccak256("e2-window");
-        vm.prank(OPENER);
-        ch.openWindow{value: 1 ether}(digest);
+        // Simplest reproducer: a single window opened by an observer
+        // contract. Warp past the deadline. Trigger finalizeWindow.
+        // The observer's `receive()` runs DURING the external call
+        // and records the on-chain status.
+        StatusObserver observer = new StatusObserver(ch, bytes32(0));
+        vm.deal(address(observer), 5 ether);
 
-        vm.warp(block.timestamp + 2 hours);
-
-        // Configure attacker to query status during its receive().
-        // For this we use a recipient that records what it sees and
-        // does NOT re-enter (just inspects).
-        StatusObserver observer = new StatusObserver(ch, digest);
-        vm.deal(address(this), 1 ether);
-
-        // The opener of the digest is OPENER, but for the observer
-        // mechanic we need a window whose opener IS the observer.
         bytes32 obsDigest = keccak256("e2-window-obs");
-        vm.deal(address(observer), 2 ether);
         vm.prank(address(observer));
         ch.openWindow{value: 1 ether}(obsDigest);
 
+        observer.setSelfDigest(obsDigest);
+
+        // Move time past the deadline. Contract was set up with
+        // challengePeriod=1 hours; advancing by 2 hours guarantees
+        // block.timestamp > openedAt + 1 hours.
         vm.warp(block.timestamp + 2 hours);
 
-        // Trigger finalizeWindow; receive() runs INSIDE the call,
-        // so observer captures the on-chain status at that moment.
-        observer.setSelfDigest(obsDigest);
+        // Anyone can call finalizeWindow once the deadline has passed.
         ch.finalizeWindow(obsDigest);
 
         assertEq(uint256(observer.statusSeenDuringReceive()),
