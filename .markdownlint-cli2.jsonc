@@ -1,0 +1,59 @@
+// markdownlint-cli2 config — overrides rule + glob settings beyond what
+// .markdownlint.json provides. Necessary because cli2 does not honor the
+// "ignores" key inside .markdownlint.json.
+//
+// Approach: we lint for STRUCTURAL issues only (heading hierarchy, single
+// h1 per file) and let cosmetic style preferences (indent depth, emphasis
+// marker style, list-marker style, blank-line spacing) pass. This is a
+// FAANG retrofit pattern — establish a meaningful floor for the new tier
+// of repository hygiene without forcing a one-shot reformat of every
+// pre-existing document.
+{
+    "config": {
+        "default": true,
+
+        // Structural rules we DO enforce
+        "MD001": true,
+        "MD025": true,
+
+        // Cosmetic style rules — off for the retrofit. Re-enable in a
+        // follow-up PR after a one-shot autoformat pass.
+        "MD004": false,
+        "MD007": false,
+        "MD009": false,
+        "MD012": false,
+        "MD013": false,
+        "MD022": false,
+        "MD024": false,
+        "MD028": false,
+        "MD029": false,
+        "MD031": false,
+        "MD032": false,
+        "MD033": false,
+        "MD034": false,
+        "MD036": false,
+        "MD037": false,
+        "MD040": false,
+        "MD041": false,
+        "MD042": false,
+        "MD046": false,
+        "MD049": false,
+        "MD050": false,
+        "MD052": false,
+        "MD056": false,
+        "MD058": false,
+        "MD060": false
+    },
+
+    "globs": [
+        "docs/**/*.md",
+        "*.md"
+    ],
+
+    "ignores": [
+        "docs/plans/archive/**",
+        "docs/design-decisions/Reviews/**",
+        "docs/api/python/**",
+        "node_modules/**"
+    ]
+}

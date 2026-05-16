@@ -53,10 +53,8 @@ jobs:
 
       - name: Run markdownlint-cli2
         uses: DavidAnson/markdownlint-cli2-action@ded1f9488f68a970bc66ea5619e13e9b52e601cd  # v23.2.0
-        with:
-          globs: |
-            docs/**/*.md
-            *.md
+        # Globs + ignores come from .markdownlint-cli2.jsonc so we don't
+        # have to keep two lists in sync. Don't pass `globs:` here.
 
   mermaid-validate:
     name: Mermaid syntax
