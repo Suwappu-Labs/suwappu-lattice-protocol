@@ -10,10 +10,10 @@ The Bifrost-class bugs spanned three incidents in 2021:
 
 ## Primary sources
 
-- **THORChain post-mortems** —
-  https://docs.thorchain.org/ecosystem/security#incident-response
-  (curated list); individual incidents on the team's Substack and
-  GitLab.
+- **THORChain post-mortems** — individual incidents published on
+  the team's Substack and GitLab. (The earlier curated index page
+  has moved; search "THORChain security incident response 2021"
+  for the current location.)
 - **Patch PRs** in `thorchain/thornode` and `thorchain/heimdall`
   closing the various Bifrost / Router paths.
 
