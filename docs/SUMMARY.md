@@ -1,10 +1,20 @@
 # Table of contents
 
+## By Role
+
+* [Personas Overview](personas/README.md)
+* [dApp Developer](personas/dapp-developer.md)
+* [Node Operator](personas/node-operator.md)
+* [Cryptographer](personas/cryptographer.md)
+* [Compliance Auditor](personas/compliance-auditor.md)
+* [Contributor](personas/contributor.md)
+
 ## Getting Started
 
 * [Overview](README.md)
 * [Visuals](visuals/README.md)
 * [Quick Start](../CONTRIBUTING.md)
+* [Code of Conduct](../CODE_OF_CONDUCT.md)
 * [Stability Promises](STABILITY_PROMISES.md)
 * [Changelog](../CHANGELOG.md)
 
