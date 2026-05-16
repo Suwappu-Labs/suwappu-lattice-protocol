@@ -142,5 +142,6 @@ The Solidity changes in PR #8 Commit 5 (`docs/SECURITY_AUDIT_2026-05-15.md` LTP-
 | Reject testnet deploys via mainnet script | `contracts/script/DeployMainnet.s.sol` | Refuses chain IDs 31337, 84532, 11155111, 103115120 unless `ALLOW_TESTNET_DEPLOY=true` |
 | ZK production-mode lock | `contracts/src/ZKBridgeVerifier.sol::lockProduction()` | Admin call irreversibly refuses `MODE_SIMULATED` |
 | BridgeEmitter authorized senders | `contracts/src/BridgeEmitter.sol` | New deploys pass `permissionless=false` and call `setAuthorized(...)` per legitimate caller |
+| Signer rotation grace period | `contracts/src/LTPAnchorRegistry.sol::rotateSignerWithGrace` | New optional admin function lets in-flight anchors signed by the old key remain valid for up to 7 days after rotation |
 
 After v7 deploys, update the GSX Testnet / Base Sepolia tables above with the new addresses and link the corresponding governance proposal IDs.

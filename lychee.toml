@@ -1,0 +1,59 @@
+# Lychee link-checker configuration.
+# Docs: https://lychee.cli.rs/usage/config/
+
+# --- Crawling -----------------------------------------------------------
+
+cache = true
+max_cache_age = "7d"
+max_concurrency = 4
+timeout = 20
+retry_wait_time = 2
+max_retries = 2
+
+# --- Output -------------------------------------------------------------
+
+format = "compact"
+no_progress = true
+
+# --- Status codes -------------------------------------------------------
+# External targets we treat as "alive" — many real docs sites return 401/403
+# to bots, and several archives return 206 for partial responses. We still
+# reject true 4xx/5xx so genuine breakage surfaces.
+accept = [200, 206, 304, 401, 403, 429]
+
+# --- What to check ------------------------------------------------------
+
+include_fragments = false
+include_verbatim = false
+
+# Skip historical archive trees and the long-form formal-review documents:
+# - docs/plans/archive/** is intentionally frozen-in-time
+# - docs/design-decisions/Reviews/** contains hundreds of citation links to
+#   academic PDFs that don't all resolve reliably from CI
+exclude_path = [
+    "docs/plans/archive",
+    "docs/design-decisions/Reviews",
+    "node_modules",
+    ".git",
+]
+
+# Mailto links, localhost, and example-only hosts should never be hit
+exclude = [
+    "^mailto:",
+    "^https?://localhost(:\\d+)?",
+    "^https?://127\\.0\\.0\\.1",
+    "^https?://0\\.0\\.0\\.0",
+    "^https?://example\\.(com|org|net)",
+    "^https?://your-",
+    # Etherscan / explorer links for testnet addresses are flaky in CI
+    "^https?://(www\\.)?etherscan\\.io/address/",
+    "^https?://(www\\.)?basescan\\.org/address/",
+    # Private GSX repositories — unauthenticated CI returns 404 for these
+    "^https?://github\\.com/GlobalSettlementNetwork/gsx-dag",
+    "^https?://github\\.com/GlobalSettlementNetwork/gsx-db",
+]
+
+# --- Internal-link strictness -------------------------------------------
+# Internal links (relative paths) MUST resolve. This is the regression
+# class that has caused the most pain in this PR series.
+require_https = false

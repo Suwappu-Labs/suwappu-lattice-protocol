@@ -45,8 +45,48 @@ contract LTPAnchorRegistry is ILTPAnchorRegistry, Initializable, UUPSUpgradeable
     /// @notice signerVkHash => authorized flag
     mapping(bytes32 => bool) public authorizedSigners;
 
+    /// @notice signerVkHash => expiry timestamp for grace-period rotations.
+    ///         Zero means "no scheduled expiry"; nonzero means the key is
+    ///         authorized only while block.timestamp <= signerExpiresAt[vk].
+    ///         LTP-A-030 in docs/SECURITY_AUDIT_2026-05-15.md.
+    mapping(bytes32 => uint64) public signerExpiresAt;
+
     /// @notice entityIdHash => bound signerVkHash (v6: entity-signer binding)
     mapping(bytes32 => bytes32) public entitySigners;
+
+    // -----------------------------------------------------------------------
+    // LTP-A-005 Option C-3 storage — owner-signed binding statement +
+    // on-chain dispute path (docs/SECURITY_AUDIT_2026-05-15.md).
+    //
+    // Off-chain: the relayer verifies the entity owner's ML-DSA signature
+    //   over (entityIdHash || signerVkHash) before submitting the first
+    //   anchor. The signature itself stays off-chain (ML-DSA verify is
+    //   too expensive on-chain today); the registry stores hashes of the
+    //   statement and signature so any future dispute can reference
+    //   them.
+    // On-chain: an authorized binding-dispute verifier (set by admin,
+    //   distinct from the OptimisticBridgeChallenge zkVerifier) can call
+    //   disputeBinding after verifying a SNARK that the stored signature
+    //   was forged. Successful dispute clears the entitySigners binding
+    //   so the legitimate owner can re-anchor with a fresh statement.
+
+    struct BindingStatement {
+        bytes32 signerVkHash;       // bound signer at first anchor
+        bytes32 statementHash;      // hash of off-chain signed statement bytes
+        bytes32 signatureHash;      // hash of the ML-DSA signature bytes
+        uint64 bindingTimestamp;    // block.timestamp at first binding
+        bool disputed;              // true if disputeBinding has been called
+    }
+
+    /// @notice entityIdHash => recorded binding statement evidence.
+    mapping(bytes32 => BindingStatement) public bindingStatements;
+
+    /// @notice Authorized address that may call disputeBinding. Distinct
+    ///         from `admin` so admin compromise alone cannot dismiss a
+    ///         legitimate binding-dispute claim. Admin sets via
+    ///         setBindingDisputeVerifier — production v7 routes that
+    ///         setter through the governance Timelock.
+    address public bindingDisputeVerifier;
 
     // -----------------------------------------------------------------------
     // Constructor — disables initializers on the implementation contract
@@ -190,8 +230,14 @@ contract LTPAnchorRegistry is ILTPAnchorRegistry, Initializable, UUPSUpgradeable
         if (entityIdHash == bytes32(0)) revert ZeroEntityId();
         if (signerVkHash == bytes32(0)) revert ZeroSignerVk();
 
-        // 1. Signer authorization
+        // 1. Signer authorization. A signer with a scheduled expiry
+        //    (LTP-A-030 grace-period rotation) remains valid until
+        //    block.timestamp passes signerExpiresAt.
         if (!authorizedSigners[signerVkHash]) {
+            revert UnauthorizedSigner(signerVkHash);
+        }
+        uint64 expiresAt = signerExpiresAt[signerVkHash];
+        if (expiresAt != 0 && block.timestamp > expiresAt) {
             revert UnauthorizedSigner(signerVkHash);
         }
 
@@ -248,13 +294,45 @@ contract LTPAnchorRegistry is ILTPAnchorRegistry, Initializable, UUPSUpgradeable
 
     /// @inheritdoc ILTPAnchorRegistry
     function rotateSigner(bytes32 oldVkHash, bytes32 newVkHash) external onlyAdmin {
+        _rotateSignerWithGrace(oldVkHash, newVkHash, 0);
+    }
+
+    /// @notice Rotate a signer with a grace period during which the old
+    ///         key remains valid for already-signed in-flight anchors.
+    ///         LTP-A-030 in docs/SECURITY_AUDIT_2026-05-15.md.
+    /// @dev    The old key is NOT revoked at this call; instead its
+    ///         expiry is recorded at `block.timestamp + gracePeriod`.
+    ///         `_anchor()` rejects the old key once expiry elapses.
+    ///         `gracePeriod` is capped at 7 days to bound ambiguity.
+    function rotateSignerWithGrace(
+        bytes32 oldVkHash,
+        bytes32 newVkHash,
+        uint64 gracePeriod
+    ) external onlyAdmin {
+        require(gracePeriod <= 7 days, "grace > 7d");
+        _rotateSignerWithGrace(oldVkHash, newVkHash, gracePeriod);
+    }
+
+    function _rotateSignerWithGrace(
+        bytes32 oldVkHash,
+        bytes32 newVkHash,
+        uint64 gracePeriod
+    ) internal {
         if (oldVkHash == bytes32(0) || newVkHash == bytes32(0)) revert ZeroSignerVk();
         if (!authorizedSigners[oldVkHash]) revert SignerNotRegistered(oldVkHash);
         if (authorizedSigners[newVkHash]) revert SignerAlreadyRegistered(newVkHash);
         signerSequences[newVkHash] = signerSequences[oldVkHash];
-        authorizedSigners[oldVkHash] = false;
         authorizedSigners[newVkHash] = true;
-        emit SignerRevoked(oldVkHash);
+        if (gracePeriod == 0) {
+            // Atomic rotation: old key revoked immediately.
+            authorizedSigners[oldVkHash] = false;
+            emit SignerRevoked(oldVkHash);
+        } else {
+            // Grace-period rotation: old key stays authorized; _anchor
+            // additionally checks signerExpiresAt to gate in-flight use.
+            signerExpiresAt[oldVkHash] = uint64(block.timestamp) + gracePeriod;
+            emit SignerExpiryScheduled(oldVkHash, signerExpiresAt[oldVkHash]);
+        }
         emit SignerRegistered(newVkHash);
         emit SignerRotated(oldVkHash, newVkHash);
     }
@@ -266,6 +344,105 @@ contract LTPAnchorRegistry is ILTPAnchorRegistry, Initializable, UUPSUpgradeable
         if (!authorizedSigners[newSignerVkHash]) revert UnauthorizedSigner(newSignerVkHash);
         entitySigners[entityIdHash] = newSignerVkHash;
         emit EntitySignerBound(entityIdHash, newSignerVkHash);
+    }
+
+    // -----------------------------------------------------------------------
+    // LTP-A-005 Option C-3 — owner-signed binding statement + dispute
+    // -----------------------------------------------------------------------
+
+    /// @notice Anchor and simultaneously record an owner-signed binding
+    ///         statement as on-chain evidence. The relayer MUST have
+    ///         verified the owner's ML-DSA signature off-chain before
+    ///         calling this; the registry stores hashes for any future
+    ///         dispute.
+    /// @dev    On the FIRST anchor for an entity, this binds the entity
+    ///         to `signerVkHash` AND records the statement evidence.
+    ///         On subsequent anchors with the same signerVkHash, the
+    ///         evidence parameters are ignored (binding is already
+    ///         recorded). Pass zero for `bindingStatementHash` and
+    ///         `bindingSignatureHash` if you don't want to record
+    ///         evidence — equivalent to legacy `anchor()`.
+    function anchorWithBinding(
+        bytes32 anchorDigest,
+        bytes32 entityIdHash,
+        bytes32 merkleRoot,
+        bytes32 policyHash,
+        bytes32 signerVkHash,
+        uint64  sequence,
+        uint64  validUntil,
+        uint8   receiptType,
+        bytes32 bindingStatementHash,
+        bytes32 bindingSignatureHash
+    ) external whenNotPaused {
+        bool isFirstBinding = entitySigners[entityIdHash] == bytes32(0);
+
+        _anchor(
+            anchorDigest,
+            entityIdHash,
+            merkleRoot,
+            policyHash,
+            signerVkHash,
+            sequence,
+            validUntil,
+            receiptType
+        );
+
+        if (isFirstBinding && bindingStatementHash != bytes32(0)) {
+            bindingStatements[entityIdHash] = BindingStatement({
+                signerVkHash: signerVkHash,
+                statementHash: bindingStatementHash,
+                signatureHash: bindingSignatureHash,
+                bindingTimestamp: uint64(block.timestamp),
+                disputed: false
+            });
+            emit BindingStatementRecorded(
+                entityIdHash, signerVkHash, bindingStatementHash, bindingSignatureHash
+            );
+        }
+    }
+
+    /// @notice Dispute a previously recorded binding by submitting a
+    ///         cryptographic fraud proof. Callable only by the
+    ///         authorized binding-dispute verifier (set by admin via
+    ///         setBindingDisputeVerifier). The verifier is expected to
+    ///         have validated a SNARK proving the recorded
+    ///         `bindingSignatureHash` does NOT correspond to a valid
+    ///         ML-DSA signature by the legitimate entity owner.
+    /// @dev    On success: marks the binding as `disputed`, clears
+    ///         `entitySigners[entityIdHash]` so the legitimate owner
+    ///         can re-anchor with a fresh statement, and emits
+    ///         BindingDisputed. The dispute is one-shot per binding —
+    ///         once disputed, no further dispute call is accepted.
+    function disputeBinding(bytes32 entityIdHash, bytes32 fraudProofHash) external {
+        if (msg.sender != bindingDisputeVerifier || bindingDisputeVerifier == address(0)) {
+            revert NotBindingDisputeVerifier(msg.sender);
+        }
+        BindingStatement storage b = bindingStatements[entityIdHash];
+        if (b.bindingTimestamp == 0) revert NoBindingRecorded(entityIdHash);
+        if (b.disputed) revert BindingAlreadyDisputed(entityIdHash);
+
+        bytes32 disputedVk = b.signerVkHash;
+        b.disputed = true;
+        // Clear the binding so the legitimate owner can re-anchor.
+        delete entitySigners[entityIdHash];
+        // Reset the per-entity state machine to UNKNOWN so the legitimate
+        // owner can transition back through UNKNOWN → ANCHORED (line ~597
+        // in _isValidTransition). Without this reset, the attacker's
+        // ANCHORED state persists and re-anchoring trips
+        // InvalidStateTransition(ANCHORED, ANCHORED). The audit trail is
+        // still preserved via `b.disputed = true` above and the
+        // BindingDisputed event below.
+        delete entityStates[entityIdHash];
+        emit BindingDisputed(entityIdHash, disputedVk, fraudProofHash);
+    }
+
+    /// @notice Admin function — set the dispute verifier address.
+    /// @dev    Production v7 deployments route this setter through the
+    ///         governance Timelock; same reasoning as the
+    ///         OptimisticBridgeChallenge arbiter wiring (LTP-A-006).
+    function setBindingDisputeVerifier(address verifier) external onlyAdmin {
+        emit BindingDisputeVerifierUpdated(bindingDisputeVerifier, verifier);
+        bindingDisputeVerifier = verifier;
     }
 
     // -----------------------------------------------------------------------

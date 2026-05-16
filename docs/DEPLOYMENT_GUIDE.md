@@ -5,7 +5,7 @@ flowchart LR
     S1["Stage 1\nLocal Dev"] --> S2["Stage 2\nContainerized"] --> S3["Stage 3\nCI/CD"] --> S4["Stage 4\nKubernetes"] --> S5["Stage 5\nKey Management"] --> S6["Stage 6\nMonitoring"] --> S7["Stage 7\nChecklist"]
 ```
 
-Concrete steps to deploy the Entanglement Transfer Protocol from local dev to production infrastructure. Builds on [PRODUCTION_PLAN.md](./PRODUCTION_PLAN.md).
+Concrete steps to deploy the Entanglement Transfer Protocol from local dev to production infrastructure. See [STABILITY_PROMISES.md](./STABILITY_PROMISES.md) for the version-skew tolerances and [plans/2026-05-11-production-roadmap.md](./plans/2026-05-11-production-roadmap.md) for the current roadmap.
 
 ---
 

@@ -67,6 +67,23 @@ interface ILTPAnchorRegistry {
     // v6 — signer rotation
     event SignerRotated(bytes32 indexed oldVkHash, bytes32 indexed newVkHash);
 
+    // v7 — signer rotation grace period (LTP-A-030)
+    event SignerExpiryScheduled(bytes32 indexed vkHash, uint64 expiresAt);
+
+    // v7 — owner-signed binding statement (LTP-A-005 Option C-3)
+    event BindingStatementRecorded(
+        bytes32 indexed entityIdHash,
+        bytes32 indexed signerVkHash,
+        bytes32 statementHash,
+        bytes32 signatureHash
+    );
+    event BindingDisputed(
+        bytes32 indexed entityIdHash,
+        bytes32 indexed disputedSignerVkHash,
+        bytes32 fraudProofHash
+    );
+    event BindingDisputeVerifierUpdated(address indexed previous, address indexed next);
+
     // -----------------------------------------------------------------------
     // Errors
     // -----------------------------------------------------------------------
@@ -90,6 +107,11 @@ interface ILTPAnchorRegistry {
 
     // v6 — entity-signer binding
     error NotEntitySigner(bytes32 entityIdHash, bytes32 signerVkHash);
+
+    // v7 — binding-statement dispute (LTP-A-005 Option C-3)
+    error NotBindingDisputeVerifier(address caller);
+    error BindingAlreadyDisputed(bytes32 entityIdHash);
+    error NoBindingRecorded(bytes32 entityIdHash);
 
     // v6 — signer rotation
     error SignerNotRegistered(bytes32 vkHash);

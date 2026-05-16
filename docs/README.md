@@ -1,87 +1,106 @@
-# Documentation Index
+# Lattice Transfer Protocol — Documentation
 
-## Overview
+Post-quantum cryptographic data transfer with on-chain anchors. This index
+routes you to the right document in one click; if you can't tell what
+you're looking for yet, start with the persona pages.
 
-The Entanglement Transfer Protocol documentation is organized into seven categories.
+## Who are you?
+
+| You are… | Start here |
+|---|---|
+| **dApp developer** building on top of LTP anchors | [→ dApp Developer](personas/dapp-developer.md) |
+| **Node operator** running a node, gateway, or corridor super-node | [→ Node Operator](personas/node-operator.md) |
+| **Cryptographer** reviewing the protocol or the proofs | [→ Cryptographer](personas/cryptographer.md) |
+| **Compliance auditor** verifying FedRAMP / third-party audit | [→ Compliance Auditor](personas/compliance-auditor.md) |
+| **Contributor** sending a PR or filing a bug | [→ Contributor](personas/contributor.md) |
+
+See [personas/README.md](personas/README.md) for the rationale and the
+Diátaxis quadrant model.
+
+## Quick start
+
+New to LTP? Read in this order:
+
+1. **[CONTRIBUTING.md](../CONTRIBUTING.md)** — clone, install, run the test
+   suite (~10 minutes)
+2. **[WHITEPAPER.md](WHITEPAPER.md)** — three-phase protocol design
+3. **[visuals/README.md](visuals/README.md)** — Mermaid + HTML decks for
+   LTP, GSX DAG, GSX-DB, and the ecosystem atlas
+4. **[CORRIDOR_INTEGRATION.md](CORRIDOR_INTEGRATION.md)** — wire format
+5. **[DEPLOYED_CONTRACTS.md](DEPLOYED_CONTRACTS.md)** — current registry
+   addresses on GSX Testnet and Base Sepolia
 
 ## Visuals
-
-Inline Mermaid diagrams, standalone HTML decks, and editable Mermaid/Excalidraw sources live in [`docs/visuals/`](visuals/README.md).
 
 - [Visuals overview (inline Mermaid)](visuals/README.md)
 - Presentations: [LTP](visuals/ltp.html) · [GSX DAG](visuals/gsx-dag.html) · [GSX DB](visuals/gsx-db.html) · [Ecosystem Atlas](visuals/gsx-ecosystem-atlas.html) · [Visual index](visuals/index.html)
 - Mermaid sources: [LTP](visuals/mermaid/ltp.md) · [GSX DAG](visuals/mermaid/gsx-dag.md) · [GSX DB](visuals/mermaid/gsx-db.md)
 - Excalidraw sources: [LTP](visuals/excalidraw/ltp.excalidraw) · [GSX DAG](visuals/excalidraw/gsx-dag.excalidraw) · [GSX DB](visuals/excalidraw/gsx-db.excalidraw)
 
-| Category | Document | Description |
-|----------|----------|-------------|
-| **Getting Started** | [Contributing](../CONTRIBUTING.md) | Development setup, code style, PR workflow |
-| | [Changelog](../CHANGELOG.md) | Version history v1.0.0 through v5.0.0 |
-| | [Security Policy](../SECURITY.md) | Vulnerability reporting and contract security scope |
-| **Specification** | [Whitepaper](WHITEPAPER.md) | Full protocol design — three-phase COMMIT/LATTICE/MATERIALIZE |
-| | [Visuals](visuals/README.md) | Inline-Mermaid diagrams + HTML decks + editable sources |
-| **Architecture** | [Architecture](design-decisions/ARCHITECTURE.md) | System components, data flow, security layers |
-| | [GSX DAG and GSX-DB Integration](design-decisions/GSX_DAG_DB_INTEGRATION.md) | Cross-repo boundary with the DAG L1 and state substrate |
-| | [Commitment Network Options](design-decisions/COMMITMENT_NETWORK_OPTIONS.md) | Custom L1 vs Ethereum L1/L2 analysis |
-| | [Streaming Protocol](design-decisions/STREAMING_PROTOCOL.md) | Chunked streaming, bandwidth amortization, backpressure |
-| | [Enforcement Mechanisms](design-decisions/ENFORCEMENT_MECHANISMS.md) | PDP proofs, programmable slashing, progressive decentralization |
-| | [Cross-Deployment Federation](design-decisions/CROSS_DEPLOYMENT_FEDERATION.md) | Network discovery, trust levels, cross-network materialization |
-| | [ZK Transfer Mode](design-decisions/ZK_TRANSFER_MODE.md) | Hiding commitments, Groth16 proofs, post-quantum upgrade path |
-| **Operations** | [Production Plan](PRODUCTION_PLAN.md) | PoC to production roadmap — 7 phases, 14 weeks |
-| | [Deployment Guide](DEPLOYMENT_GUIDE.md) | Docker, Kubernetes, CI/CD, key management, monitoring |
-| | [Bridge MVP](bridge-mvp-scope.md) | L1-L2 cross-chain bridge scope and components |
-| **Compliance** | [FedRAMP High Readiness](compliance/fedramp-high/README.md) | System boundary, control matrix, SSP narratives, and release evidence gates |
-| **Security** | [Security Review](design-decisions/Security/SECURITY_REVIEW-2-24-2026.md) | Formal security review (2026-02-24) |
-| | [Shard Exposure Analysis](design-decisions/Security/001-lattice-key-shard-exposure.md) | Attack chain analysis and Option A-D comparison |
-| **Reviews** | [Review #1](design-decisions/Reviews/001/001-Formal-Whitepaper-Review.md) | Formal whitepaper review |
-| | [Review #2](design-decisions/Reviews/002/002-Formal-Whitepaper-Review.md) | Formal whitepaper review |
-| | [Review #3](design-decisions/Reviews/003/003-Formal-Whitepaper-review.md) | Formal whitepaper review |
-| | [Eastern Research Landscape](design-decisions/Reviews/004/004-Eastern-Research-Landscape.md) | Asian blockchain research landscape for ETP expansion |
+## Index by topic
 
-## Document Relationships
+| Category | Document | Description |
+|---|---|---|
+| **Getting Started** | [Contributing](../CONTRIBUTING.md) | Development setup, code style, PR workflow |
+| | [Code of Conduct](../CODE_OF_CONDUCT.md) | Contributor Covenant 2.1 |
+| | [Changelog](../CHANGELOG.md) | Version history v1.0.0 through v5.0.0 |
+| | [Stability Promises](STABILITY_PROMISES.md) | What we will and won't break across versions |
+| | [Security Policy](../SECURITY.md) | Vulnerability reporting and scope |
+| **Specification** | [Whitepaper](WHITEPAPER.md) | Full protocol design — three-phase COMMIT / LATTICE / MATERIALIZE |
+| | [Threat Model](THREAT_MODEL.md) | Adversary capabilities and invariants |
+| | [Formal Verification Status](FORMAL_VERIFICATION_STATUS.md) | What's machine-checked vs paper-proven |
+| **Architecture** | [Architecture](design-decisions/ARCHITECTURE.md) | System components, data flow, security layers |
+| | [GSX DAG / GSX-DB Integration](design-decisions/GSX_DAG_DB_INTEGRATION.md) | Cross-repo boundary with the DAG L1 and state substrate |
+| | [Corridor Integration](CORRIDOR_INTEGRATION.md) | Wire format and ABI surface |
+| | [Streaming Protocol](design-decisions/STREAMING_PROTOCOL.md) | Chunked streaming, bandwidth amortization, backpressure |
+| | [ZK Transfer Mode](design-decisions/ZK_TRANSFER_MODE.md) | Hiding commitments, Groth16 proofs |
+| | [Enforcement Mechanisms](design-decisions/ENFORCEMENT_MECHANISMS.md) | PDP proofs, programmable slashing |
+| | [Cross-Deployment Federation](design-decisions/CROSS_DEPLOYMENT_FEDERATION.md) | Network discovery, trust levels, federation |
+| | [Commitment Network Options](design-decisions/COMMITMENT_NETWORK_OPTIONS.md) | Custom L1 vs Ethereum L1/L2 analysis |
+| **Operations** | [Deployment Guide](DEPLOYMENT_GUIDE.md) | Docker, Kubernetes, CI/CD, key management |
+| | [Operator Runbook](OPERATOR_RUNBOOK.md) | Day-2 operations, key rotation, on-call |
+| | [Bridge MVP Scope](bridge-mvp-scope.md) | L1-L2 cross-chain bridge scope |
+| | [Deployed Contracts](DEPLOYED_CONTRACTS.md) | Current registry addresses and governance topology |
+| **Compliance** | [FedRAMP High Readiness](compliance/fedramp-high/README.md) | System boundary, control matrix, SSP narratives |
+| **Security** | [Security Audit (2026-05-15)](SECURITY_AUDIT_2026-05-15.md) | Most recent independent audit |
+| | [Security Review (2026-02-24)](design-decisions/Security/SECURITY_REVIEW-2-24-2026.md) | Formal security review |
+| | [Shard Exposure Analysis](design-decisions/Security/001-lattice-key-shard-exposure.md) | Attack chain analysis and Option A-D comparison |
+| | [Formal Protocol Analysis](formal/ANALYSIS.md) | Tamarin / ProVerif outputs |
+
+## Document relationships
 
 ```mermaid
 flowchart TD
-    WP[Whitepaper] --> ARCH[Architecture]
-    WP --> PP[Production Plan]
-    WP --> ZK[ZK Transfer Mode]
-    WP --> FED[Federation]
-    WP --> ENF[Enforcement]
-    WP --> STR[Streaming]
+    PERSONAS[Personas Landing] --> DAPP[dApp Developer]
+    PERSONAS --> OPS[Node Operator]
+    PERSONAS --> CRYPTO[Cryptographer]
+    PERSONAS --> AUDIT[Compliance Auditor]
+    PERSONAS --> CONTRIB[Contributor]
 
-    ARCH --> CNO[Commitment Network Options]
-    ARCH --> SEC[Security Review]
-    ARCH --> SHARD[Shard Exposure Analysis]
+    DAPP --> DEPLOYED[Deployed Contracts]
+    DAPP --> CORRIDOR[Corridor Integration]
+    DAPP --> STABILITY[Stability Promises]
 
-    PP --> DG[Deployment Guide]
-    PP --> BRIDGE[Bridge MVP]
+    OPS --> DEPLOY[Deployment Guide]
+    OPS --> RUNBOOK[Operator Runbook]
+    OPS --> DEPLOYED
 
-    CNO --> DG
+    CRYPTO --> WP[Whitepaper]
+    CRYPTO --> TM[Threat Model]
+    CRYPTO --> FORMAL[Formal Verification Status]
+    CRYPTO --> AUDITDOC[Security Audit]
 
-    SEC --> SHARD
+    AUDIT --> FEDRAMP[FedRAMP Control Matrix]
+    AUDIT --> AUDITDOC
+    AUDIT --> DEPLOYED
 
-    REPORT[Technical Report] --> ARCH
-    REPORT --> PP
-
-    CONTRIB[Contributing] -.-> ARCH
-    CONTRIB -.-> WP
-
-    SECURITY[Security Policy] -.-> SEC
-    SECURITY -.-> SHARD
-
-    R1[Review #1] -.-> WP
-    R2[Review #2] -.-> WP
-    R3[Review #3] -.-> WP
-    R4[Eastern Research] -.-> WP
+    CONTRIB --> CONTRIBUTING[Contributing]
+    CONTRIB --> MAKEFILE[Makefile]
+    CONTRIB --> EXAMPLES[Examples]
 ```
 
-## Quick Start
+## Examples
 
-New to ETP? Read in this order:
-
-1. **[Contributing](../CONTRIBUTING.md)** — Clone, install, run tests
-2. **[Whitepaper](WHITEPAPER.md)** — Understand the core protocol
-3. **[Architecture](design-decisions/ARCHITECTURE.md)** — See how it's built
-4. **[Visuals](visuals/README.md)** — Inline diagrams of LTP, GSX DAG, and GSX-DB
-5. **[Security Review](design-decisions/Security/SECURITY_REVIEW-2-24-2026.md)** — Understand the threat model
-6. **[Production Roadmap](plans/2026-05-11-production-roadmap.md)** — See the current milestones
+Runnable examples live in [`examples/`](../examples/) and double as
+tutorial content. Start with [`quickstart.py`](../examples/quickstart.py)
+and [`bridge_transfer.py`](../examples/bridge_transfer.py).

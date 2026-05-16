@@ -7,13 +7,53 @@ name = "ltp"
 version = "3.0.0"
 description = "Lattice Transfer Protocol — post-quantum cryptographic data transfer"
 readme = "README.md"
+# NOTE: The repository LICENSE file is Elastic License 2.0 while this
+# field declares MIT. The discrepancy is tracked in Linear and must be
+# resolved by the project lead before publishing to PyPI.
 license = "MIT"
 requires-python = ">=3.10"
+keywords = [
+    "post-quantum",
+    "cryptography",
+    "ml-kem",
+    "ml-dsa",
+    "bridge",
+    "cross-chain",
+    "lattice",
+    "merkle-log",
+    "fedramp",
+    "blockchain",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Information Technology",
+    "Topic :: Security :: Cryptography",
+    "Topic :: System :: Distributed Computing",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Typing :: Typed",
+]
 # Zero external dependencies for core library (stdlib only).
 # Real PQ crypto activates automatically when optional deps are installed:
 #   pqcrypto → ML-KEM-768 (FIPS 203) + ML-DSA-65 (FIPS 204)
 #   pynacl   → XChaCha20-Poly1305 (libsodium)
 dependencies = []
+
+[project.urls]
+Documentation  = "https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/tree/main/docs"
+Repository     = "https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol"
+Changelog      = "https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/blob/main/CHANGELOG.md"
+"Issue Tracker" = "https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/issues"
+"Security Policy" = "https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/blob/main/SECURITY.md"
+"Whitepaper"   = "https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/blob/main/docs/WHITEPAPER.md"
 
 [project.optional-dependencies]
 # Security-sensitive dependencies are pinned with upper bounds. See
@@ -23,7 +63,7 @@ performance = [
     "blake3>=0.3.0,<2.0",
 ]
 crypto = [
-    "pqcrypto>=0.3.0,<1.0",
+    "pqcrypto>=0.4.0,<0.5",  # LTP-A-014: post-KyberSlash baseline; PQClean _CLEAN_ variant
     "pynacl>=1.5.0,<2.0",
 ]
 chain = [
@@ -53,7 +93,7 @@ rocksdb = [
     "lsm-db>=0.7.3,<1.0",
 ]
 production = [
-    "pqcrypto>=0.3.0,<1.0",
+    "pqcrypto>=0.4.0,<0.5",  # LTP-A-014: post-KyberSlash baseline; PQClean _CLEAN_ variant
     "pynacl>=1.5.0,<2.0",
     "zfec>=1.6.0.0,<2.0",
     "blake3>=1.0.0,<2.0",
@@ -63,7 +103,7 @@ dev = [
     "pytest>=9.0.3,<10.0",
     "hypothesis>=6.0,<7.0",
     "blake3>=0.3.0,<2.0",
-    "pqcrypto>=0.3.0,<1.0",
+    "pqcrypto>=0.4.0,<0.5",  # LTP-A-014: post-KyberSlash baseline; PQClean _CLEAN_ variant
     "pynacl>=1.5.0,<2.0",
     "zfec>=1.6.0.0,<2.0",
     "grpcio>=1.50.0,<2.0",
@@ -76,6 +116,7 @@ dev = [
     "py_ecc>=7.0.0,<9.0",
     "dnspython>=2.4.0,<3.0",
     "pip-audit>=2.7.0,<3.0",
+    "pdoc>=14.0,<16.0",
 ]
 
 [project.scripts]

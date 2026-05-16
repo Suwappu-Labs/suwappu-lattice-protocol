@@ -60,6 +60,29 @@ contract OptimisticBridgeChallenge {
     uint256 public minOperatorBond;
     uint256 public minChallengerBond;
 
+    // LTP-A-006 Option E (docs/SECURITY_AUDIT_2026-05-15.md): three
+    // independent paths to challenge resolution, so a compromised
+    // admin cannot single-handedly dismiss a fraud claim.
+    //
+    //   path A: admin's resolveChallenge (legacy)
+    //   path B: arbiter's resolveChallengeByArbiter (independent)
+    //   path C: anyone's resolveByTimeDecay after the grace window
+    //
+    // ZK verifier's finalizeWithZKProof / finalizeWithFraudProof
+    // (LTP-A-001) is a fourth fully-autonomous path.
+
+    /// @notice Independent arbiter address. May resolve any challenged
+    ///         window in its own right. Distinct from admin so a single
+    ///         key compromise on either does not enable fraud dismissal.
+    address public arbiter;
+
+    /// @notice After (window.openedAt + resolutionGracePeriod) seconds,
+    ///         anyone may call resolveByTimeDecay to rule in favor of
+    ///         the challenger. Defends against admin AND arbiter both
+    ///         going silent (e.g. simultaneous compromise without the
+    ///         attacker having keys to forge a legitimate resolution).
+    uint256 public resolutionGracePeriod;
+
     // -----------------------------------------------------------------------
     // Events
     // -----------------------------------------------------------------------
@@ -68,6 +91,12 @@ contract OptimisticBridgeChallenge {
     event ChallengeSubmitted(bytes32 indexed anchorDigest, address indexed challenger, uint8 proofType, bytes32 proofHash);
     event ChallengeResolved(bytes32 indexed anchorDigest, bool fraudValid, address winner, uint256 reward);
     event WindowFinalized(bytes32 indexed anchorDigest, address indexed opener, uint256 bondReturned);
+
+    // LTP-A-006 Option E events
+    event ArbiterUpdated(address indexed previousArbiter, address indexed newArbiter);
+    event ResolutionGracePeriodUpdated(uint256 previousSeconds, uint256 newSeconds);
+    event ResolvedByArbiter(bytes32 indexed anchorDigest, bool fraudValid, address winner, uint256 reward);
+    event ResolvedByTimeDecay(bytes32 indexed anchorDigest, address indexed challenger, uint256 reward);
 
     // -----------------------------------------------------------------------
     // Errors
@@ -81,6 +110,9 @@ contract OptimisticBridgeChallenge {
     error InsufficientBond(uint256 required, uint256 provided);
     error ChallengeDeadlinePassed();
     error ZeroDigest();
+    error ResolutionGraceNotElapsed(uint64 readyAt, uint64 currentTime);
+    error InvalidArbiter();
+    error GracePeriodBelowFloor(uint256 provided, uint256 floor);
 
     // -----------------------------------------------------------------------
     // Constructor
@@ -96,6 +128,10 @@ contract OptimisticBridgeChallenge {
         challengePeriod = _challengePeriod;
         minOperatorBond = _minOperatorBond;
         minChallengerBond = _minChallengerBond;
+        // Sane default: 14 days. Admin can tune via setResolutionGracePeriod
+        // post-deploy. Arbiter is unset; admin sets via setArbiter before
+        // the v7 production deploy.
+        resolutionGracePeriod = 14 days;
     }
 
     // -----------------------------------------------------------------------
@@ -234,6 +270,82 @@ contract OptimisticBridgeChallenge {
     }
 
     // -----------------------------------------------------------------------
+    // LTP-A-006 Option E — independent arbiter + time-decay
+    // -----------------------------------------------------------------------
+
+    /// @notice Set the independent arbiter. Distinct from admin so a single
+    ///         key compromise on either does not enable fraud dismissal.
+    ///         Admin-only — the cosigner agreement (per OPERATOR_RUNBOOK §13)
+    ///         binds the arbiter's identity in advance. Production v7
+    ///         deployments should route this through the governance Timelock.
+    function setArbiter(address _arbiter) external onlyAdmin {
+        if (_arbiter == admin) revert InvalidArbiter();
+        emit ArbiterUpdated(arbiter, _arbiter);
+        arbiter = _arbiter;
+    }
+
+    /// @notice Tune the time-decay grace period. Floor 24h; recommended 14d.
+    function setResolutionGracePeriod(uint256 newSeconds) external onlyAdmin {
+        if (newSeconds < 24 hours) {
+            revert GracePeriodBelowFloor(newSeconds, 24 hours);
+        }
+        emit ResolutionGracePeriodUpdated(resolutionGracePeriod, newSeconds);
+        resolutionGracePeriod = newSeconds;
+    }
+
+    /// @notice Resolve a challenged window via the independent arbiter.
+    ///         Path B in the LTP-A-006 Option E defense matrix. Mirrors
+    ///         `resolveChallenge` but is gated to the arbiter address.
+    ///         Admin cannot call this path.
+    function resolveChallengeByArbiter(bytes32 anchorDigest, bool fraudValid)
+        external
+        nonReentrant
+    {
+        if (msg.sender != arbiter || arbiter == address(0)) revert Unauthorized();
+
+        Challenge storage c = _challenges[anchorDigest];
+        if (c.status != STATUS_CHALLENGED) revert WindowNotChallenged();
+
+        c.status = STATUS_RESOLVED;
+        uint256 totalBonds = c.operatorBond + c.challengerBond;
+
+        address winner = fraudValid ? c.challenger : c.opener;
+        if (totalBonds > 0) {
+            (bool ok, ) = payable(winner).call{value: totalBonds}("");
+            require(ok, "Transfer failed");
+        }
+
+        emit ResolvedByArbiter(anchorDigest, fraudValid, winner, totalBonds);
+    }
+
+    /// @notice Path C in the LTP-A-006 Option E defense matrix.
+    ///         If neither admin nor arbiter has resolved the challenge
+    ///         within `resolutionGracePeriod` seconds of the window
+    ///         opening, anyone may call this to rule in favor of the
+    ///         challenger. Defends against simultaneous compromise of
+    ///         admin AND arbiter (where the attacker holds the keys to
+    ///         *do nothing* but not to forge a legitimate resolution).
+    function resolveByTimeDecay(bytes32 anchorDigest) external nonReentrant {
+        Challenge storage c = _challenges[anchorDigest];
+        if (c.status != STATUS_CHALLENGED) revert WindowNotChallenged();
+
+        uint64 readyAt = c.openedAt + uint64(resolutionGracePeriod);
+        if (block.timestamp < readyAt) {
+            revert ResolutionGraceNotElapsed(readyAt, uint64(block.timestamp));
+        }
+
+        c.status = STATUS_RESOLVED;
+        uint256 totalBonds = c.operatorBond + c.challengerBond;
+
+        if (totalBonds > 0) {
+            (bool ok, ) = payable(c.challenger).call{value: totalBonds}("");
+            require(ok, "Transfer failed");
+        }
+
+        emit ResolvedByTimeDecay(anchorDigest, c.challenger, totalBonds);
+    }
+
+    // -----------------------------------------------------------------------
     // ZK Bridge integration
     // -----------------------------------------------------------------------
 
@@ -247,8 +359,10 @@ contract OptimisticBridgeChallenge {
         emit ZKVerifierSet(_zkVerifier);
     }
 
-    /// @notice Finalize a window via ZK proof. Callable by admin or authorized ZK verifier.
-    ///         Skips the challenge period — instant finality. Returns all bonds.
+    /// @notice Finalize a window via ZK proof of *validity*. Callable by admin
+    ///         or authorized ZK verifier. Skips the challenge period — instant
+    ///         finality. Returns both bonds (operator was honest; challenger
+    ///         acted in good faith and is not slashed). LTP-A-001.
     function finalizeWithZKProof(bytes32 anchorDigest) external nonReentrant {
         if (msg.sender != admin && msg.sender != zkVerifier) revert Unauthorized();
 
@@ -271,5 +385,35 @@ contract OptimisticBridgeChallenge {
         }
 
         emit WindowFinalized(anchorDigest, c.opener, opBond);
+    }
+
+    /// @notice Finalize a *challenged* window via ZK proof of *fraud*. Mirrors
+    ///         finalizeWithZKProof but rules in the challenger's favor: the
+    ///         operator's bond is slashed and paid (together with the
+    ///         challenger's bond) to the challenger. Callable only by the
+    ///         authorized ZK verifier — admin cannot invoke this path
+    ///         (LTP-A-001 Option E: admin-independent fraud finalization).
+    /// @dev    The ZK verifier is expected to have already validated a
+    ///         SNARK proving the attestation didn't verify under the
+    ///         declared group public key, or that the anchor is otherwise
+    ///         provably fraudulent. This contract trusts the verifier
+    ///         to have run that check; the verifier itself is gated by
+    ///         setZKVerifier (admin-only).
+    function finalizeWithFraudProof(bytes32 anchorDigest) external nonReentrant {
+        if (msg.sender != zkVerifier) revert Unauthorized();
+
+        Challenge storage c = _challenges[anchorDigest];
+        if (c.status != STATUS_CHALLENGED) revert WindowNotChallenged();
+
+        c.status = STATUS_RESOLVED;
+        uint256 totalBonds = c.operatorBond + c.challengerBond;
+
+        // Challenger wins both bonds (operator was fraudulent).
+        if (totalBonds > 0) {
+            (bool ok, ) = payable(c.challenger).call{value: totalBonds}("");
+            require(ok, "Transfer to challenger failed");
+        }
+
+        emit ChallengeResolved(anchorDigest, true, c.challenger, totalBonds);
     }
 }

@@ -485,3 +485,108 @@ curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" \
 - **Security on-call:** security@globalsettlement.dev (PGP key on keybase)
 - **Slack:** `#etp-ops` (GSX workspace)
 - **Incident tracker:** https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/issues
+
+---
+
+## 13. v7 Production Deploy Checklist
+
+Closes audit findings **LTP-A-002** and **LTP-A-009** in
+[`SECURITY_AUDIT_2026-05-15.md`](SECURITY_AUDIT_2026-05-15.md). The
+source-side enforcement (`contracts/script/DeployMainnet.s.sol`)
+guarantees a v7 deploy can't go out with anything weaker than
+`threshold >= ceil(N/2) + 1` and `timelockDelay >= 24 hours`. This
+section is the human-decision side.
+
+### 13.1 Owner set (target: N = 7, threshold = 5)
+
+| Slot | Role | Key custody |
+|---|---|---|
+| 1 | GSX engineering — region A | AWS KMS (us-east-1) gated by IAM + MFA |
+| 2 | GSX engineering — region B | GCP Cloud KMS (europe-west1) gated by IAM + MFA |
+| 3 | GSX engineering — region C | AWS KMS (ap-southeast-1) gated by IAM + MFA |
+| 4 | GSX founder / lead | Ledger hardware wallet in cold storage |
+| 5 | GSX founder / lead | Ledger hardware wallet (separate physical location) |
+| 6 | External audit firm cosigner | Audit firm's institutional custody |
+| 7 | Institutional partner cosigner | Partner's institutional custody |
+
+**Threshold = 5-of-7 (≈71%).** Matches Optimism / Arbitrum supermajority
+practice. Internal-only attack still requires all 5 GSX-controlled keys
+(slots 1–5); any 3-key compromise can't reach quorum.
+
+**Before deploying:**
+1. Confirm each cosigner's wallet address and have it signed via the
+   cosigner agreement.
+2. Confirm each cosigner has tested signing a no-op test transaction
+   on a fresh testnet.
+3. Document each owner's incident-response SLA — how fast can they
+   respond to a 48h Timelock proposal?
+
+### 13.2 Timelock delays
+
+The current `TimelockController` enforces one delay for every
+operation. Recommended floor values:
+
+| Operation | Delay | Why |
+|---|---|---|
+| Contract upgrade (`_authorizeUpgrade`) | **48h** | Globally-distributed honest signers have a full business day to detect + `cancel()` a malicious proposal |
+| Signer registration / rotation | 24h | High-frequency operation; longer is operationally painful |
+| Emergency pause | 0s (instant) | Incident response is time-critical; pause is reversible |
+
+Per-selector delays require either two `TimelockController` instances
+or a custom timelock — deferred to a follow-up. v7 launches with a
+single 48h delay for everything except the instant-pause path.
+
+### 13.3 Migration sequence
+
+1. **Deploy v7 contracts** on a separate proxy. The new
+   `LTPAnchorRegistry` implementation has the storage extension for
+   `signerExpiresAt` (LTP-A-030 grace-period rotation).
+2. **Initialize v7 admin** to the new 5-of-7 MultiSig (via the new
+   Timelock).
+3. **Schedule a Timelock proposal on v5/v6** to transfer admin to the
+   v7 Timelock. 60-second delay clears it in a minute.
+4. **Pause v5/v6** during cutover; stage gateway operators to switch
+   `ETP_GATEWAY_VM_DEST_REGISTRY` to the v7 proxy address.
+5. **Replay any in-flight anchors** from the v5/v6 mempool against the
+   v7 registry using the existing replayer.
+6. **Update `DEPLOYED_CONTRACTS.md`** with v7 addresses, MultiSig
+   members, and the governance-proposal IDs that authorized the move.
+7. **Call `lockProduction()`** on the new `ZKBridgeVerifier` (LTP-A-007).
+8. **Migrate `BridgeEmitter`** to the new `authorizedSenders` set
+   (LTP-A-017) — list every legitimate caller before locking.
+
+### 13.4 Verification
+
+```bash
+# v7 registry
+cast call <V7_REGISTRY> "version()(uint256)" --rpc-url "$BASE_SEPOLIA_RPC_URL"
+cast call <V7_REGISTRY> "admin()(address)"   --rpc-url "$BASE_SEPOLIA_RPC_URL"
+# Expect: version=7, admin=<v7 Timelock>
+
+# v7 Timelock
+cast call <V7_TIMELOCK> "getMinDelay()(uint256)" --rpc-url "$BASE_SEPOLIA_RPC_URL"
+# Expect: 172800  (48h)
+
+# v7 MultiSig
+cast call <V7_MULTISIG> "threshold()(uint256)"  --rpc-url "$BASE_SEPOLIA_RPC_URL"
+cast call <V7_MULTISIG> "ownerCount()(uint256)" --rpc-url "$BASE_SEPOLIA_RPC_URL"
+# Expect: threshold=5, ownerCount=7
+
+# v7 ZKBridgeVerifier
+cast call <V7_ZK_VERIFIER> "productionMode()(bool)" --rpc-url "$BASE_SEPOLIA_RPC_URL"
+# Expect: true
+```
+
+### 13.5 Comparable bridges (for justification in any audit response)
+
+| Bridge | Threshold | Upgrade delay |
+|---|---|---|
+| Optimism Security Council | 9-of-13 (~70%) | variable per role |
+| Arbitrum Security Council | 9-of-12 (75%) | 3 days |
+| Polygon zkEVM | tiered | 10 days |
+| Hop Protocol | 5-of-9 (~55%) | 24h |
+| Across | 2-of-2 + challenge | 1-7 days |
+
+LTP at 5-of-7 + 48h sits in the middle: meaningful Byzantine threshold
+without requiring a full 13-member Security Council, with a delay long
+enough for incident response without being operationally painful.

@@ -11,10 +11,10 @@ jobs:
     name: Forge Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+        uses: foundry-rs/foundry-toolchain@c7450ba673e133f5ee30098b3b54f444d3a2ca2d  # v1
 
       - name: Install Solidity dependencies
         working-directory: contracts
@@ -32,10 +32,10 @@ jobs:
     name: Python Tests (with real PQ crypto)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
         with:
           python-version: "3.12"
 
@@ -63,10 +63,10 @@ jobs:
     # action is needed. To make this blocking, drop `continue-on-error`.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
         with:
           python-version: "3.12"
 
@@ -78,18 +78,84 @@ jobs:
       - name: Run pip-audit against installed packages
         run: pip-audit --strict --vulnerability-service osv
 
+  contracts-static-analysis:
+    name: Slither + solhint (LTP-A-002/-007/-017 security suite)
+    runs-on: ubuntu-latest
+    # Non-blocking: surface high-severity findings as a yellow check
+    # so they're visible on every PR, but don't gate merge on a
+    # false-positive. To make blocking, drop `continue-on-error`.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node (for solhint)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: "20"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@c7450ba673e133f5ee30098b3b54f444d3a2ca2d  # v1
+
+      - name: Install Solidity dependencies
+        working-directory: contracts
+        run: |
+          git config user.name "ci"
+          git config user.email "ci@gsx.dev"
+          forge install foundry-rs/forge-std
+          forge install OpenZeppelin/openzeppelin-contracts
+
+      - name: Slither static analysis
+        uses: crytic/slither-action@f197989dea5b53e986d0f88c60a034ddd77ec9a8  # v0.4.0
+        with:
+          target: "contracts/"
+          slither-config: "contracts/slither.config.json"
+          fail-on: high
+
+      - name: Install solhint
+        run: npm install -g solhint@5.0.3
+
+      - name: Run solhint
+        working-directory: contracts
+        run: solhint 'src/**/*.sol' || true
+
+  contracts-invariants:
+    name: Foundry invariant suite (contracts/test/invariant/)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@c7450ba673e133f5ee30098b3b54f444d3a2ca2d  # v1
+
+      - name: Install Solidity dependencies
+        working-directory: contracts
+        run: |
+          git config user.name "ci"
+          git config user.email "ci@gsx.dev"
+          forge install foundry-rs/forge-std
+          forge install OpenZeppelin/openzeppelin-contracts
+
+      - name: Run invariant tests
+        working-directory: contracts
+        run: forge test --match-path 'test/invariant/*' -vv
+
   integration-test:
     name: Contract Integration (Python + Anvil)
     runs-on: ubuntu-latest
     needs: [forge-test, python-test]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+        uses: foundry-rs/foundry-toolchain@c7450ba673e133f5ee30098b3b54f444d3a2ca2d  # v1
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
         with:
           python-version: "3.12"
 

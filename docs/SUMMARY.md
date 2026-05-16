@@ -1,10 +1,21 @@
 # Table of contents
 
+## By Role
+
+* [Personas Overview](personas/README.md)
+* [dApp Developer](personas/dapp-developer.md)
+* [Node Operator](personas/node-operator.md)
+* [Cryptographer](personas/cryptographer.md)
+* [Compliance Auditor](personas/compliance-auditor.md)
+* [Contributor](personas/contributor.md)
+
 ## Getting Started
 
 * [Overview](README.md)
 * [Visuals](visuals/README.md)
 * [Quick Start](../CONTRIBUTING.md)
+* [Code of Conduct](../CODE_OF_CONDUCT.md)
+* [Working with AI Agents](AI_AGENTS.md)
 * [Stability Promises](STABILITY_PROMISES.md)
 * [Changelog](../CHANGELOG.md)
 
@@ -19,6 +30,10 @@
 * [Enforcement Mechanisms](design-decisions/ENFORCEMENT_MECHANISMS.md)
 * [Cross-Deployment Federation](design-decisions/CROSS_DEPLOYMENT_FEDERATION.md)
 * [Commitment Network Options](design-decisions/COMMITMENT_NETWORK_OPTIONS.md)
+
+## Reference
+
+* [Python API Reference](api/README.md)
 
 ## Plans & Specs
 

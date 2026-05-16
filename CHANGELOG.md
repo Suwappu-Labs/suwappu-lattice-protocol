@@ -5,6 +5,33 @@ All notable changes to the Entanglement Transfer Protocol will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Breaking changes are marked **[BREAKING]** inline. See
+[`docs/STABILITY_PROMISES.md`](docs/STABILITY_PROMISES.md) for the
+public-surface promise and the cross-version compatibility matrix.
+
+## [Unreleased]
+
+### Added
+- Repository governance baseline: `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1),
+  `.github/CODEOWNERS` (per-area required reviewers), `.github/FUNDING.yml`
+- `pyproject.toml` metadata: PEP 621 keywords, classifiers, and `[project.urls]`
+- Persona-based docs landing under `docs/personas/` (dApp developer, node
+  operator, cryptographer, compliance auditor, contributor)
+- Auto-generated Python API reference via `pdoc` — `make docs-api` target
+- Cross-version compatibility matrix in `docs/STABILITY_PROMISES.md`
+- Security hardening: LTP-A-001 (Option E + Slither/Echidna/Foundry-invariant
+  suite), LTP-A-005 (Option C-3 owner-signed binding + on-chain dispute),
+  LTP-A-006 (Option E independent arbiter + time-decay paths),
+  LTP-A-014 (KyberSlash audit — confirmed-OK + pin tightened),
+  LTP-A-022 (cross-language BLS DST pinning — confirmed-OK)
+
+### Changed
+- `CHANGELOG.md` entries now flag breaking changes inline with `**[BREAKING]**`
+
+### Known issues
+- LICENSE discrepancy: repo file declares Elastic 2.0 while `pyproject.toml`
+  declares MIT — resolution pending in Linear GLO-785
+
 ## [5.0.0] - 2026-03-25
 
 ### Added
@@ -16,7 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Author attribution in contract `version()` return
 
 ### Changed
-- Contract version bumped from 4 to 5
+- **[BREAKING]** Contract version bumped from 4 to 5 — clients pinned to
+  `version() == 4` will reject; update version checks before upgrading
 - All 84 Solidity tests passing with v5 assertions
 - Full end-to-end PQC pipeline verified before deployment
 
@@ -41,7 +69,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Governance chain: MultiSig → Timelock (60s) → Registry
 
 ### Changed
-- Registry admin transferred from MultiSig to Timelock
+- **[BREAKING]** Registry admin transferred from MultiSig to Timelock —
+  governance scripts that called the registry directly through the
+  MultiSig must now route through the Timelock with a queued + executed
+  pattern. See `OPERATOR_RUNBOOK.md` §"Governance Operations"
 - 60-second delay on testnet (production: 24-48 hours)
 
 ## [3.1.0] - 2026-03-23
@@ -73,8 +104,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `run_trust_layer.py` — Full demo entry point covering all trust layer features
 
 ### Changed
-- Dual-lane architecture enforced: SHA3-256 for settlement, BLAKE3-256 for internal only
-- Real PQ crypto active (`_USE_REAL_KEM`, `_USE_REAL_DSA`, `_USE_REAL_AEAD` all `True`)
+- **[BREAKING]** Dual-lane architecture enforced: SHA3-256 for settlement,
+  BLAKE3-256 for internal only — anchors signed under the wrong lane are
+  rejected on-chain; clients mixing lanes must migrate to SHA3-256 for
+  the settlement path
+- **[BREAKING]** Real PQ crypto active (`_USE_REAL_KEM`, `_USE_REAL_DSA`,
+  `_USE_REAL_AEAD` all `True`) — the previous in-tree stub crypto is no
+  longer accepted at runtime; deploys must install `pqcrypto` + `pynacl`
+  via `pip install -e '.[production]'`
 - Python test count from 821 to 1,167 across 38 test files
 - Module count from ~35 to 60+ across 8 subpackages
 
@@ -95,8 +132,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Test suite expanded from 160 to 821 tests across 19 test files
-- Commitment records now store Merkle root of encrypted shard hashes (no plaintext shard IDs)
-- Lattice key reduced from ~869 bytes to ~160 bytes (Option C: encrypted shards + derivable metadata)
+- **[BREAKING]** Commitment records now store Merkle root of encrypted
+  shard hashes — plaintext shard IDs no longer appear in the log; clients
+  that indexed by shard ID must migrate to root-based lookup
+- **[BREAKING]** Lattice key reduced from ~869 bytes to ~160 bytes
+  (Option C: encrypted shards + derivable metadata) — pre-v3 lattice keys
+  are not parseable by the v3 SDK; re-issue keys before upgrading
 
 ## [2.0.0] - 2026-02-24
 
@@ -107,9 +148,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security review and attack chain analysis (001-lattice-key-shard-exposure)
 
 ### Changed
-- Lattice key sealed via ML-KEM-768 envelope encryption (replaces plaintext JSON)
-- Commitment nodes store AEAD-encrypted ciphertext (nodes cannot read shard content)
-- Commitment log stores Merkle root only (individual shard IDs removed)
+- **[BREAKING]** Lattice key sealed via ML-KEM-768 envelope encryption —
+  replaces the v1 plaintext JSON lattice key format entirely; v1 keys
+  cannot be loaded by v2
+- **[BREAKING]** Commitment nodes store AEAD-encrypted ciphertext —
+  nodes cannot read shard content; any operator monitoring that depended
+  on plaintext shard inspection must migrate to ciphertext metadata
+- **[BREAKING]** Commitment log stores Merkle root only — individual
+  shard IDs removed from the log; off-chain indexers must rebuild from
+  the root + per-entity proofs
 
 ## [1.0.0] - 2026-02-01
 

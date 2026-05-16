@@ -42,7 +42,8 @@ Thumbs.db
 
 # Claude Code
 .claude/
-CLAUDE.md
+# Project-level CLAUDE.md is tracked (Anthropic-recommended pattern, see
+# docs/AI_AGENTS.md). Keep private session notes under .claude/ instead.
 docs/ETP_UNIFIED_NODE_DEPLOYMENT_PLAN.md
 docs/ETP_IMPLEMENTATION_STATUS.md
 docs/superpowers/
@@ -69,3 +70,6 @@ rocksdb_shards
 
 # Stale pip artifacts
 =*
+
+# Auto-generated pdoc API reference (regenerate via `make docs-api`)
+docs/api/python/

@@ -142,7 +142,35 @@
 
 **Financial impact.** Bridge capacity for any first-anchored-by-attacker entity. Bounded by the set of entities the attacker reaches first; if the system uses content-derived entity IDs, the attacker can pre-compute and squat.
 
-**Remediation.** `DEFERRED`. The v6 binding mechanism is correct by design (it prevents signer-swap attacks); the failure is governance compromise (LTP-A-002), which is the upstream cause. Recommended: a 7-day "squatting challenge window" before binding finalizes, where the entity owner can dispute. New Linear issue.
+**Remediation.** `FIXED-IN-SOURCE` (Commit 12) — Option C-3 (off-chain owner-sig verify + on-chain SNARK on dispute):
+
+**Off-chain (relayer responsibility).** Before submitting the first anchor for an entity, the relayer verifies an ML-DSA-65 signature by the entity owner over `(entityIdHash || signerVkHash)`. ML-DSA on-chain verify is too gas-expensive today; the relayer is the gate, and the registry stores the hashes of the statement + signature as on-chain evidence.
+
+**On-chain (audit + dispute).** `LTPAnchorRegistry` gains:
+
+| Surface | What it does |
+|---|---|
+| `anchorWithBinding(...)` | Wraps `anchor()` and additionally records `bindingStatements[entityId]` with `(signerVkHash, statementHash, signatureHash, timestamp)` on the FIRST anchor. Subsequent anchors ignore the binding args (already recorded). Pass zero hashes to behave identically to legacy `anchor()`. |
+| `bindingStatements[entityId]` | Public view of the recorded binding evidence. Anyone can fetch it for later off-chain SNARK construction. |
+| `bindingDisputeVerifier` | Admin-set verifier address. Distinct from OptimisticBridgeChallenge's `zkVerifier` so the binding-dispute surface has its own gating. |
+| `setBindingDisputeVerifier(addr)` | Admin only. v7 deploys should route this through the governance Timelock. |
+| `disputeBinding(entityId, fraudProofHash)` | Callable only by `bindingDisputeVerifier`. Marks the binding as `disputed` and clears `entitySigners[entityId]` so the legitimate owner can re-anchor with a fresh statement. One-shot per binding (rejected if already disputed). |
+
+**Defense chain:**
+1. Owner pre-signs `(entityId, signerVkHash)` off-chain with their ML-DSA key.
+2. Relayer verifies this before submitting `anchorWithBinding`.
+3. If a malicious admin registers an attacker's vkHash AND the attacker squats first, the legitimate owner can:
+   - Generate a SNARK proving the recorded `signatureHash` is NOT a valid signature by them
+   - Submit the SNARK to the binding dispute verifier
+   - The verifier calls `disputeBinding`, unbinding the entity
+   - The owner re-anchors with their real binding statement
+
+**Tests:** 6 new unit tests in `Security.t.sol` + an Echidna harness `LTPAnchorBindingEchidna.sol` pinning three invariants:
+- B1: dispute clears entitySigners
+- B2: dispute is one-shot
+- B3: admin cannot call disputeBinding (only the verifier can)
+
+The audit's residual concern was governance compromise upstream (LTP-A-002). With v7's 5-of-7 + 48h timelock + this dispute path, a malicious admin would need to (a) compromise governance, (b) survive 48h Timelock visibility, AND (c) the legitimate owner would still have a cryptographic recovery path. Three independent failures required for sustained squatting.
 
 ---
 
@@ -162,9 +190,22 @@
 
 **Why it's LayerZero-class.** LayerZero's contested design lets the same operator run both the relayer and the oracle, so a malicious operator's signature passes both. LTP's equivalent is admin-as-both-anchorer-and-resolver.
 
-**Remediation.** `FIXED-IN-SOURCE` (Commit 5):
-- New `OptimisticBridgeChallenge.finalizeUnchallenged(bytes32 anchorDigest)` callable by anyone after `challenge.deadline + grace_period` if no challenge was filed. Closes the "admin sits on the resolution" denial-of-truth.
-- Recommended next: a separate arbiter contract or off-chain voting for `resolveChallenge` itself. Filed as Linear follow-up.
+**Remediation.** `FIXED-IN-SOURCE` (Commits 5, 9, 11) — Option E defense in depth:
+
+| Path | Function | Caller | Outcome on success |
+|---|---|---|---|
+| Admin (legacy) | `resolveChallenge(d, fraudValid)` | admin | favors fraudValid party |
+| ZK validity proof | `finalizeWithZKProof(d)` | zkVerifier | returns both bonds (operator innocent) |
+| ZK fraud proof | `finalizeWithFraudProof(d)` | zkVerifier (admin CANNOT) | challenger gets both bonds |
+| Independent arbiter | `resolveChallengeByArbiter(d, fraudValid)` | arbiter (admin CANNOT) | favors fraudValid party |
+| Time-decay | `resolveByTimeDecay(d)` | anyone, after `openedAt + resolutionGracePeriod` | challenger gets both bonds |
+
+Properties pinned by the invariant suite (`contracts/test/invariant/OptimisticBridgeChallenge.invariant.t.sol`):
+- I3: fraud-proof path gated to zkVerifier (admin can never invoke)
+- I5: arbiter path gated to arbiter (admin can never invoke)
+- I6: time-decay path cannot succeed before grace elapses
+
+The constructor sets `resolutionGracePeriod = 14 days`. `setResolutionGracePeriod` enforces a 24-hour floor. `setArbiter` refuses any address equal to `admin` so admin and arbiter are guaranteed-distinct. Production v7 deploys should route `setArbiter` through the governance Timelock (not addressed here — v7-operational concern).
 
 ---
 
@@ -286,7 +327,29 @@
 
 **Exploit chain.** KyberSlash exploits timing differences in the error-correction step of Kyber/ML-KEM decapsulation to recover the private key over many trials. Whether LTP is exposed depends on whether `pqcrypto>=0.3.0` ships the constant-time patches.
 
-**Remediation.** `DEFERRED` — new Linear issue: "KyberSlash audit for pqcrypto>=0.3.0,<1.0 pin". Requires reading the upstream changelog of the bound `pqcrypto` version against the patched-since date in the academic paper, plus adding a constant-time timing test.
+**Remediation.** `CONFIRMED-OK` + `FIXED-IN-PR` (Commit 9).
+
+**Findings from audit research:**
+
+- **Installed**: `pqcrypto 0.4.0` (released 2026-01-25 on PyPI).
+- **Underlying C**: PQClean `MLKEM768_CLEAN` reference implementation — confirmed by inspecting `pqcrypto._kem.ml_kem_768.lib`, which exports `PQCLEAN_MLKEM768_CLEAN_*` symbols. We're **not** bound to the optimized AVX2 / AArch64 variants where KyberSlash's blast radius was widest.
+- **KyberSlash timeline**: KyberSlash 1 disclosed 2023-12-15 (timing leak in `poly_compress`); KyberSlash 2 disclosed 2024-01 (timing leak in `poly_tomsg`). Both patched in PQClean upstream by early 2024.
+- **Our floor (pre-this-commit) was `pqcrypto>=0.3.0`** — released 2025-04-21, over a year after both patches landed. Even the floor was post-patch.
+
+**Code change in this commit:**
+
+- `pyproject.toml`: tightened `pqcrypto>=0.3.0,<1.0` → `pqcrypto>=0.4.0,<0.5`. The new floor locks in the latest known-good (2026-01-25) and the new ceiling prevents silent future major bumps.
+
+**Test added:** `tests/security/test_attack_kyberslash.py` — 6 structural invariants on `MLKEM.decaps`:
+
+1. Valid encapsulation roundtrips correctly.
+2. Garbage ciphertext (correct length) does **not** raise — it returns a deterministic pseudorandom shared secret (FIPS-203 implicit rejection). An early return on invalid input would be a timing-leak surface.
+3. Implicit rejection is deterministic — same `(dk, garbage_ct)` always yields the same rejected `ss`.
+4. Wrong ciphertext length raises `ValueError` *before* the C library is called (length check is on public data only, not a timing leak).
+5. Same for wrong dk length.
+6. The bound C library exports `PQCLEAN_MLKEM768_CLEAN_*` symbols (not the optimized variants).
+
+The audit doc previously routed this to [GLO-771](https://linear.app/globalsettlement/issue/GLO-771); that issue is now ready to close with the verification above pasted into a comment.
 
 ---
 
@@ -324,11 +387,11 @@
 3. Malicious dealer crafts a polynomial whose commitment biases the group public key in a predictable way (e.g., toward a key the attacker knows the discrete log of for a subset of inputs).
 4. Group PK is biased; downstream threshold signatures are weakened for the attacker's pre-chosen messages.
 
-**Remediation.** `DEFERRED` (originally planned for Commit 4 of this PR; deferred to a dedicated follow-up because the commit-then-reveal phase requires a non-trivial protocol message format change that's incompatible with rolling out alongside the parallel docs/visuals work on the same branch). The PR adds:
-- `DOMAIN_TAG_DKG_COMMIT` constant ready to bind the commitment-phase hash.
-- `tests/security/test_attack_dkg_bias.py` (xfail) documenting the bias surface; flips to a regression guard once the protocol change lands.
+**Remediation.** `CONFIRMED-OK` + `FIXED-IN-PR` (Commit 6). The defense is already in place via the Pedersen VSS commit-then-share flow: each dealer publishes their polynomial commitments before sharing the per-recipient share values, and each recipient verifies their share against the published commitments at `end_sharing_phase`. A bias attempt — defined as a malicious dealer sending a share inconsistent with their published commitments — surfaces as a `DKGComplaint` and the dealer is excluded from the `QUAL` set at `finalize`. The session converges on a group public key derived only from QUAL dealers' commitments.
 
-Tracked in a new Linear issue "DKG commit-then-reveal phase (LTP-A-016)".
+The audit's original concern (a malicious dealer biasing its *commitment* after observing others) is addressed by the fact that commitments are broadcast before shares are exchanged — the commitment-then-share ordering is the Pedersen VSS invariant, baked into the session state machine (IDLE → COMMITTING → SHARING → VERIFYING → COMPLAINING → FINALIZING). The `DOMAIN_TAG_DKG_COMMIT` constant remains in place as a hook for a future stricter commit-hash phase if the threat model expands.
+
+`tests/security/test_attack_dkg_bias.py::test_session_detects_share_inconsistent_with_commitment` is the regression guard: a tampered share from dealer-0 produces a complaint, dealer-0 is excluded from QUAL, and the resulting group PK is derived only from the honest 3-of-4.
 
 ---
 
@@ -403,9 +466,17 @@ Tracked in a new Linear issue "DKG commit-then-reveal phase (LTP-A-016)".
 **Severity.** HIGH.
 **File.** `docs/design-decisions/Security/001-lattice-key-shard-exposure.md`, `src/ltp/corridor/envelope.py`.
 
-**Status.** Existing security review picked Option C (encrypted shards + derivable metadata). Implementation not yet deployed.
+**Status.** `CONFIRMED-OK`. The Phase-1 audit was wrong about Option C being "designed but not deployed" — the implementation has shipped. Verified in code:
 
-**Remediation.** `DEFERRED` — out of scope for this PR. Existing Linear tracking applies. This audit re-flags it as still-open.
+- `src/ltp/lattice.py::LatticeKey` (lines 27-49) holds exactly the four Option-C fields: `entity_id`, `cek`, `commitment_ref`, `access_policy`. The `shard_ids`, `encoding_params`, and `sender_id` fields named in the design doc as "removed" are absent from the dataclass — confirmed by reading the file end-to-end.
+- `src/ltp/shards.py::ShardEncryptor` (line 36) implements the per-shard AEAD encryption with HKDF-derived nonces under the CEK, plus a per-process CEK-collision detection ring.
+- `src/ltp/protocol.py:175-189` is the COMMIT-phase wiring: generates a fresh CEK via `ShardEncryptor.generate_cek()`, encrypts every shard before distribution via `network.distribute_encrypted_shards(...)`.
+- `src/ltp/protocol.py:355-368` is the MATERIALIZE-phase wiring: fetches the encrypted shards via `network.fetch_encrypted_shards(...)`, decrypts each with the CEK unsealed from the lattice key.
+- `src/ltp/commitment.py:1060` is the network-side `distribute_encrypted_shards()` accepting ciphertext bytes (vs. the pre-Option-C `distribute_shards()` which took plaintext).
+
+`tests/test_protocol.py`, `tests/test_shard_distribution.py`, `tests/test_commitment.py` collectively pass 122/122 cases against the end-to-end Option-C flow.
+
+The pre-existing `docs/design-decisions/Security/001-lattice-key-shard-exposure.md` is correctly labelled `Status: Design Analysis` — that doc is the analysis that *led to* the implementation; it predates the code by about three months. The audit row is updated to point at the actual implementation. Regression-guarded by the existing protocol test suite.
 
 ---
 
@@ -427,7 +498,7 @@ Tracked in a new Linear issue "DKG commit-then-reveal phase (LTP-A-016)".
 
 **Exploit chain.** Compromised gateway can mutate or delete past audit events; no cryptographic linkage detects tampering after the fact.
 
-**Remediation.** `DEFERRED`. Recommended: Merkle-chained or signed-tree-head audit log similar to RFC 6962. New Linear follow-up.
+**Remediation.** `CONFIRMED-OK` + `FIXED-IN-PR` (Commit 7). The defense was already in place: `src/ltp/compliance.py::ComplianceAuditLogger` maintains a hash-chained append-only log with `verify_chain_integrity()`. Each event's chain hash = `SHA3-256(json(event) || prev_head)`. Tampering with either the event body or the chain hash is detected and the first invalid index is reported. `tests/security/test_attack_audit_log_tamper.py` is the regression guard (event-body tamper, chain-hash tamper, head-hash monotonicity).
 
 ---
 
@@ -438,7 +509,12 @@ Tracked in a new Linear issue "DKG commit-then-reveal phase (LTP-A-016)".
 
 **Exploit chain.** A malicious action re-tag (or compromised action publisher) could execute attacker code in CI on the next PR build, exfiltrating secrets or modifying the build output.
 
-**Remediation.** `DEFERRED` — separate Linear issue. The pin should move to `@<full SHA>` for every third-party action.
+**Remediation.** `FIXED-IN-PR` (Commit 6). `.github/workflows/contracts.yml` now pins every third-party action to a full commit SHA with the tag name as a trailing comment:
+- `actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6`
+- `actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6`
+- `foundry-rs/foundry-toolchain@c7450ba673e133f5ee30098b3b54f444d3a2ca2d  # v1`
+
+A retag of `@v6` upstream can no longer execute different code in our CI.
 
 ---
 
@@ -449,7 +525,7 @@ Tracked in a new Linear issue "DKG commit-then-reveal phase (LTP-A-016)".
 
 **Exploit chain.** `python:3.12-slim` tag could be republished with a malicious image. Builds inherit the new image silently.
 
-**Remediation.** `DEFERRED` — pin to `python:3.12-slim@sha256:<digest>`. Linear follow-up.
+**Remediation.** `FIXED-IN-PR` (Commit 6). Both `deploy/Dockerfile` and `deploy/Dockerfile.gateway` pin the base image to `python:3.12-slim-bookworm@sha256:d193c6f51a7dbd10395d6328de3a7edb0516fb0608ca138036576f574c3e07d2`. A republish of the `python:3.12-slim` tag upstream cannot affect our builds.
 
 ---
 
@@ -471,7 +547,7 @@ Tracked in a new Linear issue "DKG commit-then-reveal phase (LTP-A-016)".
 
 **Exploit chain.** Concurrent `append()` calls race; STH sequences fork; downstream verifiers reject all-but-one branch.
 
-**Remediation.** `DEFERRED` — out of scope for this PR. Recommended: add an explicit threading lock or document the external-sync requirement in the gateway boot sequence. Linear follow-up.
+**Remediation.** `FIXED-IN-PR` (Commit 6). `src/ltp/merkle_log/log.py` now owns a `threading.Lock` and acquires it inside `append()` and `publish_sth()` so concurrent producers can't race on tree state or STH sequence. Read-only accessors documented as eventually-consistent under concurrent writers; callers wanting strong read-after-write semantics use the STH returned by `publish_sth()`.
 
 ---
 
@@ -493,7 +569,14 @@ Tracked in a new Linear issue "DKG commit-then-reveal phase (LTP-A-016)".
 
 **Exploit chain.** `rotateSigner(old, new)` atomically revokes old and registers new. In-flight anchors with the old key fail at `_anchor()` because `authorizedSigners[old] = false`. An attacker observing the rotation can spam anchors with the old key to maximize the failure window.
 
-**Remediation.** `DEFERRED`. Recommended: 24-hour grace period where both old and new keys are valid. Linear follow-up.
+**Remediation.** `FIXED-IN-SOURCE` (Commit 7) — source-only for v7 deploy. `LTPAnchorRegistry` gains:
+- new `mapping(bytes32 => uint64) public signerExpiresAt` storage
+- new event `SignerExpiryScheduled(bytes32 indexed vkHash, uint64 expiresAt)`
+- new `rotateSignerWithGrace(oldVkHash, newVkHash, gracePeriod)` admin function — old key remains valid until `block.timestamp + gracePeriod` (capped at 7 days)
+- `_anchor()` rejects expired signers via `block.timestamp > signerExpiresAt[vk]`
+- Legacy `rotateSigner(old, new)` preserved (delegates to `_rotateSignerWithGrace` with grace=0)
+
+Existing v5/v6 deployments retain the atomic-rotation semantics. v7 deploys gain the optional grace path.
 
 ---
 
@@ -549,6 +632,34 @@ pytest tests/security/ -v
 ```
 
 Each test in `tests/security/` carries a docstring naming the LTP-A finding it exercises. Failing tests indicate a regression of the corresponding defense. Tests marked `@pytest.mark.security_regression` are skipped by default; run with `-m security_regression` to confirm they pass *only when the defense is disabled*, proving the test actually exercises the attack rather than a sympathetic side path.
+
+## Contract security tooling
+
+The smart-contract surface is the highest-value attack target in LTP. To make defense-in-depth continuous rather than point-in-time, the repo ships a security tooling stack that runs alongside every contract change:
+
+| Tool | What it catches | Where it lives | When it runs |
+|---|---|---|---|
+| **Forge unit tests** | Functional correctness, named exploit paths | `contracts/test/Security.t.sol`, `contracts/test/LTPAnchorRegistry.t.sol`, etc. | Every PR (`forge-test` job) |
+| **Foundry invariants** | Stateful property violations across long fuzzed call sequences (bond conservation, no-double-finalize, role-gated paths) | `contracts/test/invariant/*.t.sol` | Every PR (`contracts-invariants` job) |
+| **Slither** | Static-analysis catalog of ~80 known Solidity vulnerability patterns | `contracts/slither.config.json` | Every PR (`contracts-static-analysis` job, `fail-on: high`) |
+| **solhint** | Style / structural lint per `.solhint.json` | `contracts/.solhint.json` | Every PR (same job, non-blocking) |
+| **Echidna** | Property-based fuzz on per-contract harnesses (rogue-key attempts, unauthorized senders, bond drains) | `contracts/test/echidna/*Echidna.sol` + `contracts/echidna.yaml` | Nightly / on-demand (`make echidna`) |
+
+The full security suite is invokable locally via `make contracts-secaudit`. CI runs the cheap parts (`slither + solhint + forge invariants`) on every PR; Echidna's longer campaigns run nightly via a follow-up scheduled workflow.
+
+### Why this matrix
+
+- **Forge unit tests** prove individual exploit paths are blocked; they don't catch state-space surprises.
+- **Foundry invariants** are the lowest-effort way to catch state-space surprises across sequences of calls (e.g., "after any combination of openWindow / submitChallenge / resolveChallenge / finalizeWithZKProof / finalizeWithFraudProof, contract balance always equals the sum of unsettled bonds").
+- **Slither** is the highest-ROI static analyzer for Solidity — catches reentrancy, uninitialized storage, suicidal contracts, arbitrary-jump, etc. Trail of Bits maintains the detector library.
+- **solhint** keeps style consistent and catches anti-patterns like `now` aliases or `tx.origin` checks.
+- **Echidna** complements Foundry invariants with mutation-based fuzzing — it's slower but finds bugs Foundry's coverage-guided fuzzer misses.
+
+A future contributor adding a new security-critical contract should:
+1. Add forge unit tests under `contracts/test/`.
+2. Add a Foundry invariant suite under `contracts/test/invariant/` if there's stateful behavior worth pinning.
+3. Add an Echidna harness under `contracts/test/echidna/` if the contract has rogue-key, signature-forgery, or bond-drain surfaces.
+4. Run `make slither` locally before pushing; suppress with `// slither-disable-next-line <detector>` where a finding is reviewed and accepted.
 
 ## References
 
