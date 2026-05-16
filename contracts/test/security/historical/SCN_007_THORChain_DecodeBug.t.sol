@@ -143,7 +143,7 @@ contract SCN007_THORChain_DecodeBug is Test {
         OptimisticBridgeChallenge ch1 = new OptimisticBridgeChallenge(
             ADMIN, 1 hours, 1 ether, 0.5 ether
         );
-        ZKBridgeVerifier ver = new ZKBridgeVerifier(ADMIN, address(ch1));
+        ZKBridgeVerifier ver = new ZKBridgeVerifier(ADMIN, address(ch1), 0);
 
         address targetBefore = address(ver.challengeContract());
         assertEq(targetBefore, address(ch1));
