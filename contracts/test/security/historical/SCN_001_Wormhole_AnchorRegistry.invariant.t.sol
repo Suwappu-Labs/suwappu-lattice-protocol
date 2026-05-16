@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {LTPAnchorRegistry} from "../../../src/LTPAnchorRegistry.sol";
+import {ILTPAnchorRegistry} from "../../../src/interfaces/ILTPAnchorRegistry.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /// @title SCN_001_Wormhole_AnchorRegistry.invariant
@@ -43,7 +44,7 @@ contract SCN001_Invariant is Test {
     function invariant_no_unauthorized_anchor() public view {
         for (uint256 i = 0; i < handler.observedAnchorCount(); ++i) {
             bytes32 digest = handler.observedAnchors(i);
-            LTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchorRecord(digest);
+            ILTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchorRecord(digest);
             // At write-time the handler recorded the vk as authorized;
             // we mirror that into `handler.wasAuthorizedAtWrite`.
             assertTrue(
@@ -57,7 +58,7 @@ contract SCN001_Invariant is Test {
     function invariant_chain_id_stamp() public view {
         for (uint256 i = 0; i < handler.observedAnchorCount(); ++i) {
             bytes32 digest = handler.observedAnchors(i);
-            LTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchorRecord(digest);
+            ILTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchorRecord(digest);
             assertEq(uint256(rec.targetChainId), block.chainid);
         }
     }

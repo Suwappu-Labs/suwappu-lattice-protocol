@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {LTPAnchorRegistry} from "../../src/LTPAnchorRegistry.sol";
+import {ILTPAnchorRegistry} from "../../src/interfaces/ILTPAnchorRegistry.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /// @title SCN_001_WormholeEchidna
@@ -116,7 +117,7 @@ contract SCN_001_WormholeEchidna {
     function echidna_no_unauthorized_anchor() external view returns (bool) {
         for (uint256 i = 0; i < anchoredDigests.length; ++i) {
             bytes32 d = anchoredDigests[i];
-            LTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchorRecord(d);
+            ILTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchorRecord(d);
             if (!sawAuthorizedAtWrite[rec.signerVkHash]) {
                 return false;
             }
@@ -127,7 +128,7 @@ contract SCN_001_WormholeEchidna {
     /// P2: targetChainId stamp on every anchor equals block.chainid.
     function echidna_chain_id_stamp() external view returns (bool) {
         for (uint256 i = 0; i < anchoredDigests.length; ++i) {
-            LTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchorRecord(anchoredDigests[i]);
+            ILTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchorRecord(anchoredDigests[i]);
             if (uint256(rec.targetChainId) != block.chainid) {
                 return false;
             }

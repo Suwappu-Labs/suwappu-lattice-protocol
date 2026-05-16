@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {LTPAnchorRegistry} from "../../../src/LTPAnchorRegistry.sol";
+import {ILTPAnchorRegistry} from "../../../src/interfaces/ILTPAnchorRegistry.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /// @title SCN_001_Wormhole_AnchorRegistry
@@ -76,7 +77,7 @@ contract SCN001_Wormhole_AnchorRegistry is Test {
 
         vm.prank(ATTACKER);
         vm.expectRevert(abi.encodeWithSelector(
-            LTPAnchorRegistry.UnauthorizedSigner.selector, ATTACKER_VK
+            ILTPAnchorRegistry.UnauthorizedSigner.selector, ATTACKER_VK
         ));
         reg.anchor(
             anchorDigest, entityId, merkleRoot, bytes32(0),
@@ -93,7 +94,7 @@ contract SCN001_Wormhole_AnchorRegistry is Test {
 
         vm.prank(LEGITIMATE_RELAYER);
         vm.expectRevert(abi.encodeWithSelector(
-            LTPAnchorRegistry.UnauthorizedSigner.selector, ATTACKER_VK
+            ILTPAnchorRegistry.UnauthorizedSigner.selector, ATTACKER_VK
         ));
         reg.anchor(
             anchorDigest, entityId, keccak256("root"), bytes32(0),
@@ -114,7 +115,7 @@ contract SCN001_Wormhole_AnchorRegistry is Test {
 
         // Second submit of the same digest must revert.
         vm.expectRevert(abi.encodeWithSelector(
-            LTPAnchorRegistry.AlreadyAnchored.selector, anchorDigest
+            ILTPAnchorRegistry.AlreadyAnchored.selector, anchorDigest
         ));
         reg.anchor(
             anchorDigest, entityId, keccak256("root"), bytes32(0),
@@ -139,7 +140,7 @@ contract SCN001_Wormhole_AnchorRegistry is Test {
 
         // Second anchor from a different authorized signer must revert.
         vm.expectRevert(abi.encodeWithSelector(
-            LTPAnchorRegistry.NotEntitySigner.selector, entityId, secondVk
+            ILTPAnchorRegistry.NotEntitySigner.selector, entityId, secondVk
         ));
         reg.anchor(
             keccak256("second-anchor"), entityId, keccak256("root"), bytes32(0),
@@ -158,7 +159,7 @@ contract SCN001_Wormhole_AnchorRegistry is Test {
 
         // Replay attempt with sequence <= current HWM (5) must revert.
         vm.expectRevert(abi.encodeWithSelector(
-            LTPAnchorRegistry.SequenceTooLow.selector, LEGIT_VK, uint64(5), uint64(5)
+            ILTPAnchorRegistry.SequenceTooLow.selector, LEGIT_VK, uint64(5), uint64(5)
         ));
         reg.anchor(
             keccak256("seq-anchor-2"), entityId, keccak256("root"), bytes32(0),
@@ -175,7 +176,7 @@ contract SCN001_Wormhole_AnchorRegistry is Test {
         vm.warp(uint256(validUntil) + 1); // jump past expiry
 
         vm.expectRevert(abi.encodeWithSelector(
-            LTPAnchorRegistry.Expired.selector, validUntil, uint64(block.timestamp)
+            ILTPAnchorRegistry.Expired.selector, validUntil, uint64(block.timestamp)
         ));
         reg.anchor(
             keccak256("expired-anchor"), keccak256("entity"), keccak256("root"),
@@ -197,7 +198,7 @@ contract SCN001_Wormhole_AnchorRegistry is Test {
 
         _legitAnchor(anchorDigest, entityId, LEGIT_VK, uint64(1));
 
-        LTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchorRecord(anchorDigest);
+        ILTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchorRecord(anchorDigest);
         assertEq(uint256(rec.targetChainId), block.chainid);
     }
 
@@ -209,7 +210,7 @@ contract SCN001_Wormhole_AnchorRegistry is Test {
         vm.prank(ADMIN);
         reg.pause();
 
-        vm.expectRevert(LTPAnchorRegistry.ContractPaused.selector);
+        vm.expectRevert(ILTPAnchorRegistry.ContractPaused.selector);
         reg.anchor(
             keccak256("paused-anchor"), keccak256("entity"), keccak256("root"),
             bytes32(0), LEGIT_VK, uint64(1), uint64(block.timestamp + 1 days), uint8(0)
