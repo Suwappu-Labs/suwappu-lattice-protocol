@@ -101,10 +101,15 @@ contract Handler is Test {
     }
 
     receive() external payable {
-        // Bond refunds land here.
-        totalUnsettledBonds = totalUnsettledBonds > msg.value
-            ? totalUnsettledBonds - msg.value
-            : 0;
+        // Refund landing pad. The wrappers that trigger payouts
+        // (resolveChallenge / resolveByArbiter / finalizeWithZKProof /
+        // finalizeWithFraudProof / tryTimeDecay) own the accounting via
+        // `totalUnsettledBonds -= paid`. Decrementing here too caused a
+        // double-subtraction that, combined with the saturating clamp,
+        // produced invariant_bonds_conserved counter-examples where
+        // address(ch).balance > totalUnsettledBonds because the tracker
+        // had been zeroed out before the wrapper could subtract its
+        // share. Keep this body intentionally empty.
     }
 
     // ----- Open a new window -----
