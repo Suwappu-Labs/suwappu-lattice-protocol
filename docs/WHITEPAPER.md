@@ -2,7 +2,7 @@
 
 # LTP: Lattice Transfer Protocol
 
-### Whitepaper
+## Whitepaper
 
 <br>
 
