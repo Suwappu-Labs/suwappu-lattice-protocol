@@ -2,7 +2,7 @@
 
 # Entanglement Transfer Protocol
 
-### A Post-Quantum Cryptographic Data Transfer Protocol
+## A Post-Quantum Cryptographic Data Transfer Protocol
 
 > *"Don't move the data. Transfer the proof. Reconstruct the truth."*
 
