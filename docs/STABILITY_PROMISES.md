@@ -69,6 +69,41 @@ Each MAJOR or MINOR release publishes:
 | FedRAMP evidence bundle | `docs/compliance/fedramp-high/release-evidence.md` | Template per the compliance overlay; filled in at release time |
 | SBOM (CycloneDX) | (release pipeline) | Generated on each tag; format is CycloneDX 1.5 JSON |
 
+## Cross-version compatibility matrix
+
+LTP has three independently-versioned surfaces — the Python SDK, the
+Solidity registry, and the corridor wire format — that must remain
+mutually compatible across deploys. This matrix captures which combinations
+are live, which are planned, and how to read version skew.
+
+| Python SDK | Solidity Registry | Wire Format | Status |
+|---|---|---|---|
+| 3.x | v5 | `LTP-corridor-v1` | live (GSX Testnet, Chain ID `103115120`) |
+| 3.x | v6 | `LTP-corridor-v1` | live (Base Sepolia) |
+| 4.x *(planned)* | v7 *(planned)* | `LTP-corridor-v1` | pending GLO-770 |
+
+### How to read this matrix
+
+- **A Python SDK MAJOR can talk to multiple Solidity MAJORs** because the
+  registry interface is forward-compatible within a wire-format generation.
+  v5 and v6 both implement the same `latestRoot()` / `AnchorSubmitted`
+  surface; v6 adds dispute paths without breaking v5 callers.
+- **A wire-format MAJOR bump is the breaking line.** Crossing from
+  `LTP-corridor-v1` to a future `LTP-corridor-v2` requires the SDK and
+  registry to be upgraded together. We will never silently overlap two
+  wire formats on the same chain.
+- **Skew tolerance during upgrades**: the registry's UUPS proxy lets us
+  swap implementations in place. Old SDK clients keep reading the proxy
+  address and get the new implementation transparently. Wire-format
+  bumps are coordinated; SDK + registry land together in a planned
+  maintenance window with the migration documented in OPERATOR_RUNBOOK.
+
+The contract addresses for the live rows are in
+[DEPLOYED_CONTRACTS.md](DEPLOYED_CONTRACTS.md), with the governance topology
+(MultiSig + Timelock) for each. The "planned" row only enters "live" status
+after the deploy checklist in OPERATOR_RUNBOOK §13 is signed off and the
+FedRAMP evidence bundle is regenerated.
+
 ## Filing a stability concern
 
 If you discover a downstream-breaking change that the deprecation channel missed, open an issue with the label `stability-violation` and cite the public-surface promise above that it broke. Maintainer response target is one business day for an acknowledgment, one week for a remediation plan.
