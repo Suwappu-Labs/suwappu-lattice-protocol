@@ -43,7 +43,7 @@ contract SCN001_Invariant is Test {
     function invariant_no_unauthorized_anchor() public view {
         for (uint256 i = 0; i < handler.observedAnchorCount(); ++i) {
             bytes32 digest = handler.observedAnchors(i);
-            LTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchor(digest);
+            LTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchorRecord(digest);
             // At write-time the handler recorded the vk as authorized;
             // we mirror that into `handler.wasAuthorizedAtWrite`.
             assertTrue(
@@ -57,7 +57,7 @@ contract SCN001_Invariant is Test {
     function invariant_chain_id_stamp() public view {
         for (uint256 i = 0; i < handler.observedAnchorCount(); ++i) {
             bytes32 digest = handler.observedAnchors(i);
-            LTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchor(digest);
+            LTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchorRecord(digest);
             assertEq(uint256(rec.targetChainId), block.chainid);
         }
     }

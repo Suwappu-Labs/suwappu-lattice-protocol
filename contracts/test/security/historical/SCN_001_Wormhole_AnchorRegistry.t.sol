@@ -197,7 +197,7 @@ contract SCN001_Wormhole_AnchorRegistry is Test {
 
         _legitAnchor(anchorDigest, entityId, LEGIT_VK, uint64(1));
 
-        LTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchor(anchorDigest);
+        LTPAnchorRegistry.AnchorRecord memory rec = reg.getAnchorRecord(anchorDigest);
         assertEq(uint256(rec.targetChainId), block.chainid);
     }
 
