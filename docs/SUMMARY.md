@@ -50,6 +50,9 @@
 
 * [Threat Model](THREAT_MODEL.md)
 * [Security Policy](../SECURITY.md)
+* [Security Testing Charter](../SECURITY_TESTING.md)
+* [Red-Team Campaign (May 2026)](security/RED_TEAM_CAMPAIGN_2026-05.md)
+* [Campaign Scenario Index](security/campaigns/README.md)
 * [Security Audit (2026-05-15)](SECURITY_AUDIT_2026-05-15.md)
 * [Security Review (2026-02-24)](design-decisions/Security/SECURITY_REVIEW-2-24-2026.md)
 * [Shard Exposure Analysis](design-decisions/Security/001-lattice-key-shard-exposure.md)
