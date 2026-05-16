@@ -52,14 +52,9 @@ contract SCN003_Invariant is Test {
         }
     }
 
-    /// K2: admin never changes through a non-admin call.
-    function invariant_admin_never_silently_changes() public view {
-        // The handler tracks the LAST observed admin after every call.
-        // Across the campaign, if no admin-path transferAdmin happened,
-        // the admin stays equal to ADMIN.
-        if (!handler.adminEverTransferred()) {
-            assertEq(reg.admin(), ADMIN);
-        }
+    /// K2: admin never changes inside the campaign.
+    function invariant_admin_never_changes() public view {
+        assertEq(reg.admin(), ADMIN);
     }
 }
 
@@ -70,8 +65,6 @@ contract SCN003_Handler is Test {
     bytes32[] public observedAuthorized;
     mapping(bytes32 => bool) public seenAuthorized;
     mapping(bytes32 => bool) public registeredViaAdmin;
-
-    bool public adminEverTransferred;
 
     constructor(LTPAnchorRegistry _reg, address _admin) {
         reg = _reg;
@@ -108,14 +101,12 @@ contract SCN003_Handler is Test {
         } catch {}
     }
 
-    // ----- Admin-path transferAdmin -----
-    function adminTransfer(address newAdmin) external {
-        if (newAdmin == address(0)) return;
-        vm.prank(adminAddr);
-        try reg.transferAdmin(newAdmin) {
-            adminEverTransferred = true;
-        } catch {}
-    }
+    // Note: handler intentionally does NOT expose adminTransfer.
+    // Moving admin to address(handler) would let `vm.prank(handler)`
+    // from attackerTryRegister succeed as a legitimate admin call,
+    // breaking K1's accounting without representing a contract bug.
+    // Admin-rotation property is covered by test_P8_* in the unit
+    // suite instead.
 
     // ----- Attacker attempts: must NEVER advance state -----
     function attackerTryRegister(address attacker, bytes32 vk) external {
