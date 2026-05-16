@@ -67,6 +67,12 @@ jobs:
       - name: Install mermaid-cli
         run: npm install -g @mermaid-js/mermaid-cli@^11
 
+      - name: Write Puppeteer config (CI sandbox requires --no-sandbox)
+        run: |
+          cat > /tmp/puppeteer.json <<'EOF'
+          { "args": ["--no-sandbox", "--disable-setuid-sandbox"] }
+          EOF
+
       - name: Extract and validate fenced Mermaid blocks
         run: |
           set -euo pipefail
@@ -87,8 +93,9 @@ jobs:
 
           shopt -s nullglob
           for mmd in "$tmp"/*.mmd; do
-            if ! mmdc --quiet -i "$mmd" -o "${mmd%.mmd}.svg" >/dev/null 2>&1; then
-              echo "::error file=$mmd::Mermaid syntax error"
+            if ! err=$(mmdc -p /tmp/puppeteer.json --quiet -i "$mmd" -o "${mmd%.mmd}.svg" 2>&1); then
+              echo "::error file=$mmd::Mermaid render failed"
+              echo "$err" | head -5
               fail=1
             fi
           done

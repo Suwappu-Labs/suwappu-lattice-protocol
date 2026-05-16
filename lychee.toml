@@ -48,6 +48,9 @@ exclude = [
     # Etherscan / explorer links for testnet addresses are flaky in CI
     "^https?://(www\\.)?etherscan\\.io/address/",
     "^https?://(www\\.)?basescan\\.org/address/",
+    # Private GSX repositories — unauthenticated CI returns 404 for these
+    "^https?://github\\.com/GlobalSettlementNetwork/gsx-dag",
+    "^https?://github\\.com/GlobalSettlementNetwork/gsx-db",
 ]
 
 # --- Internal-link strictness -------------------------------------------
