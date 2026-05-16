@@ -5,26 +5,26 @@
 # https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # Default — any unmatched file
-*                                   @0xSoftBoi
+*                                   @tomagsx
 
-# Smart contracts: dual review (protocol + ops)
-/contracts/                         @0xSoftBoi @tomagsx
-/contracts/script/                  @0xSoftBoi @tomagsx
+# Smart contracts and contract scripts
+/contracts/                         @tomagsx
+/contracts/script/                  @tomagsx
 
 # Cryptographic core and corridor wire format
 /src/ltp/corridor/                  @tomagsx
 /src/ltp/crypto/                    @tomagsx
-/src/ltp/anchor/                    @0xSoftBoi @tomagsx
+/src/ltp/anchor/                    @tomagsx
 
 # Compliance evidence (FedRAMP High)
-/docs/compliance/                   @0xSoftBoi
+/docs/compliance/                   @tomagsx
 
 # Deployment, CI, and release engineering
-/.github/workflows/                 @0xSoftBoi
-/deploy/                            @0xSoftBoi
-/Makefile                           @0xSoftBoi
+/.github/workflows/                 @tomagsx
+/deploy/                            @tomagsx
+/Makefile                           @tomagsx
 
 # Security policy and threat model
-/SECURITY.md                        @0xSoftBoi @tomagsx
-/docs/THREAT_MODEL.md               @0xSoftBoi @tomagsx
-/docs/SECURITY_AUDIT_*.md           @0xSoftBoi @tomagsx
+/SECURITY.md                        @tomagsx
+/docs/THREAT_MODEL.md               @tomagsx
+/docs/SECURITY_AUDIT_*.md           @tomagsx
