@@ -12,10 +12,10 @@ Historical incident: **Poly Network cross-chain bridge exploit, 10 August 2021, 
 
 ## Secondary technical analyses
 
-- **Mudit Gupta technical breakdown** —
-  https://mudit.blog/poly-network-largest-defi-hack/
-  Walks through `verifyHeaderAndExecuteTx` →
-  `_executeCrossChainTx` → `putCurEpochConPubKeyBytes`.
+- **Mudit Gupta technical breakdown** — walks through
+  `verifyHeaderAndExecuteTx` → `_executeCrossChainTx` →
+  `putCurEpochConPubKeyBytes`. (Original URL has moved; search
+  "Mudit Gupta Poly Network largest DeFi hack".)
 - **Rekt News** — https://rekt.news/polynetwork-rekt/
 - **SlowMist analysis** — independent reproduction of the cross-
   chain message construction.
