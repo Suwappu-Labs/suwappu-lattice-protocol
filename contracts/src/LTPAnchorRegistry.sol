@@ -425,6 +425,14 @@ contract LTPAnchorRegistry is ILTPAnchorRegistry, Initializable, UUPSUpgradeable
         b.disputed = true;
         // Clear the binding so the legitimate owner can re-anchor.
         delete entitySigners[entityIdHash];
+        // Reset the per-entity state machine to UNKNOWN so the legitimate
+        // owner can transition back through UNKNOWN → ANCHORED (line ~597
+        // in _isValidTransition). Without this reset, the attacker's
+        // ANCHORED state persists and re-anchoring trips
+        // InvalidStateTransition(ANCHORED, ANCHORED). The audit trail is
+        // still preserved via `b.disputed = true` above and the
+        // BindingDisputed event below.
+        delete entityStates[entityIdHash];
         emit BindingDisputed(entityIdHash, disputedVk, fraudProofHash);
     }
 

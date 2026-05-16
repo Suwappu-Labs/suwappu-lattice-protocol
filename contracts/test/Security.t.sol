@@ -272,14 +272,22 @@ contract SecurityTest is Test {
         (OptimisticBridgeChallenge ch, bytes32 digest) = _openChallengeWithArbiter();
         vm.warp(block.timestamp + 13 days); // < 14 day default
         vm.prank(address(0xCAFEC0DE));
-        vm.expectRevert(OptimisticBridgeChallenge.ResolutionGraceNotElapsed.selector);
+        // ResolutionGraceNotElapsed is a parameterized custom error
+        // (uint256 readyAt, uint256 nowAt) so the full revert payload is
+        // selector + 64 bytes of args. expectRevert(bytes4) strictly
+        // matches the length and fails; expectPartialRevert matches the
+        // selector prefix which is the assertion we actually want.
+        vm.expectPartialRevert(OptimisticBridgeChallenge.ResolutionGraceNotElapsed.selector);
         ch.resolveByTimeDecay(digest);
     }
 
     function test_time_decay_grace_floor_enforced() public {
         OptimisticBridgeChallenge ch = new OptimisticBridgeChallenge(admin, 1 hours, 1 wei, 1 wei);
         vm.prank(admin);
-        vm.expectRevert(OptimisticBridgeChallenge.GracePeriodBelowFloor.selector);
+        // GracePeriodBelowFloor(uint256 proposed, uint256 floor) — same
+        // selector-vs-encoded-args length issue as
+        // test_time_decay_rejects_before_grace; use expectPartialRevert.
+        vm.expectPartialRevert(OptimisticBridgeChallenge.GracePeriodBelowFloor.selector);
         ch.setResolutionGracePeriod(23 hours); // below 24h floor
     }
 
