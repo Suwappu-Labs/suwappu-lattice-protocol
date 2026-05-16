@@ -11,6 +11,8 @@
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 [![Version](https://img.shields.io/badge/version-3.0.0-orange)]()
 [![Post-Quantum](https://img.shields.io/badge/crypto-post--quantum-purple)]()
+[![Claude Code](https://img.shields.io/badge/Claude_Code-supported-blueviolet)](CLAUDE.md)
+[![Cursor](https://img.shields.io/badge/Cursor-supported-black)](.cursorrules)
 
 </div>
 

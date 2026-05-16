@@ -15,6 +15,7 @@
 * [Visuals](visuals/README.md)
 * [Quick Start](../CONTRIBUTING.md)
 * [Code of Conduct](../CODE_OF_CONDUCT.md)
+* [Working with AI Agents](AI_AGENTS.md)
 * [Stability Promises](STABILITY_PROMISES.md)
 * [Changelog](../CHANGELOG.md)
 
