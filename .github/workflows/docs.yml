@@ -1,0 +1,123 @@
+name: Docs CI
+
+on:
+  push:
+    branches: [main, master, "corridor/*", "codex/*"]
+    paths:
+      - "docs/**"
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - "CHANGELOG.md"
+      - "CODE_OF_CONDUCT.md"
+      - "SECURITY.md"
+      - "src/ltp/**"
+      - "lychee.toml"
+      - ".markdownlint.json"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "docs/**"
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - "CHANGELOG.md"
+      - "CODE_OF_CONDUCT.md"
+      - "SECURITY.md"
+      - "src/ltp/**"
+      - "lychee.toml"
+      - ".markdownlint.json"
+      - ".github/workflows/docs.yml"
+
+permissions:
+  contents: read
+
+jobs:
+
+  link-check:
+    name: Lychee link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - name: Run lychee
+        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411  # v2.8.0
+        with:
+          args: --config lychee.toml --no-progress 'docs/**/*.md' '*.md'
+          fail: true
+
+  markdown-lint:
+    name: Markdownlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - name: Run markdownlint-cli2
+        uses: DavidAnson/markdownlint-cli2-action@ded1f9488f68a970bc66ea5619e13e9b52e601cd  # v23.2.0
+        with:
+          globs: |
+            docs/**/*.md
+            *.md
+
+  mermaid-validate:
+    name: Mermaid syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - name: Install mermaid-cli
+        run: npm install -g @mermaid-js/mermaid-cli@^11
+
+      - name: Extract and validate fenced Mermaid blocks
+        run: |
+          set -euo pipefail
+          fail=0
+          tmp=$(mktemp -d)
+          # Find every fenced ```mermaid block across the docs
+          while IFS= read -r f; do
+            python3 - "$f" "$tmp" <<'PY'
+          import sys, pathlib, re
+          src, outdir = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+          text = src.read_text(encoding="utf-8", errors="replace")
+          blocks = re.findall(r"```mermaid\n(.*?)\n```", text, flags=re.DOTALL)
+          stem = src.as_posix().replace("/", "_")
+          for i, b in enumerate(blocks):
+              (outdir / f"{stem}.{i}.mmd").write_text(b, encoding="utf-8")
+          PY
+          done < <(find docs README.md CONTRIBUTING.md CHANGELOG.md -type f -name "*.md" 2>/dev/null)
+
+          shopt -s nullglob
+          for mmd in "$tmp"/*.mmd; do
+            if ! mmdc --quiet -i "$mmd" -o "${mmd%.mmd}.svg" >/dev/null 2>&1; then
+              echo "::error file=$mmd::Mermaid syntax error"
+              fail=1
+            fi
+          done
+          exit $fail
+
+  docs-api-build:
+    name: Build pdoc API reference
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package with dev extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[dev,production]'
+
+      - name: Generate API reference
+        run: make docs-api
+
+      - name: Upload generated docs as artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: ltp-api-docs
+          path: docs/api/python/
+          if-no-files-found: error
+          retention-days: 14
