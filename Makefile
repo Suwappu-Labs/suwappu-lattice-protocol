@@ -3,7 +3,7 @@
 # Quick commands for testing, building, and deployment verification.
 
 .PHONY: test test-python test-contracts test-integration test-all
-.PHONY: build lint clean ci-integration audit abi help
+.PHONY: build lint clean ci-integration audit abi help docs-api
 .PHONY: slither echidna solhint contracts-secaudit contracts-invariants
 
 # ── Python Tests ────────────────────────────────────────────────────────
@@ -89,6 +89,22 @@ abi:
 		echo "wrote contracts/abi/$$name.json"; \
 	done
 
+# ── Auto-generated API reference (pdoc) ─────────────────────────────────
+#
+# Generates HTML reference docs from src/ltp/ docstrings. Output lives in
+# docs/api/python/ and is .gitignored — regenerate on demand or in CI via
+# .github/workflows/docs.yml. Source of truth is the docstrings; do not
+# hand-edit the HTML.
+
+docs-api:  ## Generate Python API reference from docstrings into docs/api/python/
+	@if ! python3 -c "import pdoc" 2>/dev/null; then \
+		echo "pdoc not installed; run: pip install -e '.[dev]'"; \
+		exit 1; \
+	fi
+	@mkdir -p docs/api/python
+	python3 -m pdoc src/ltp -o docs/api/python --docformat google
+	@echo "✓ wrote docs/api/python/ltp.html and module pages"
+
 # ── Smart-contract security suite ───────────────────────────────────────
 #
 # These targets run static analysis + property fuzz + linting against
@@ -138,6 +154,7 @@ help:
 	@echo "  make build               pip install -e .[dev]"
 	@echo "  make lint                syntax check"
 	@echo "  make clean               remove caches + build outputs"
+	@echo "  make docs-api            generate Python API reference (pdoc)"
 	@echo ""
 	@echo "Smart-contract security:"
 	@echo "  make slither             Slither static analysis"

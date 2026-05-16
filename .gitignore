@@ -69,3 +69,6 @@ rocksdb_shards
 
 # Stale pip artifacts
 =*
+
+# Auto-generated pdoc API reference (regenerate via `make docs-api`)
+docs/api/python/

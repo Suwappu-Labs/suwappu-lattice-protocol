@@ -30,6 +30,10 @@
 * [Cross-Deployment Federation](design-decisions/CROSS_DEPLOYMENT_FEDERATION.md)
 * [Commitment Network Options](design-decisions/COMMITMENT_NETWORK_OPTIONS.md)
 
+## Reference
+
+* [Python API Reference](api/README.md)
+
 ## Plans & Specs
 
 * [Production Roadmap (2026-05-11)](plans/2026-05-11-production-roadmap.md)
