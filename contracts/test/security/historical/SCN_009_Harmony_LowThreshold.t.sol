@@ -128,7 +128,7 @@ contract SCN009_Harmony_LowThreshold is Test {
 
         uint256 floorVal = _byzantineFloor(ownerCount);
         assertLt(proposedThreshold, floorVal,
-                 "proposed threshold below floor — mainnet would reject");
+                 "proposed threshold below floor - mainnet would reject");
     }
 
     // -----------------------------------------------------------------------
@@ -173,7 +173,7 @@ contract SCN009_Harmony_LowThreshold is Test {
 
         // Document: the bridge is drained.
         assertEq(address(ms).balance, 0,
-                 "by design — 2-of-5 with 2 compromised owners drains");
+                 "by design - 2-of-5 with 2 compromised owners drains");
         assertEq(address(0xBADC0DE).balance, 1 ether);
 
         // Lesson: this is why DeployMainnet (H2) enforces the
