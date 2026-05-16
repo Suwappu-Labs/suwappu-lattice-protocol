@@ -43,7 +43,7 @@ contract SCN005_Invariant is Test {
         for (uint256 i = 0; i < handler.paidDigestCount(); ++i) {
             bytes32 d = handler.paidDigests(i);
             assertLe(handler.paidCount(d), uint256(1),
-                     "digest paid more than once — reentrancy?");
+                     "digest paid more than once - reentrancy?");
         }
     }
 
