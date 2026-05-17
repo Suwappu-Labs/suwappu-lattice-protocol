@@ -27,18 +27,24 @@
 
 ## Real-world bridge hacks cross-reference
 
-| Hack | Year | Loss | Pattern | LTP exposure |
-|---|---|---|---|---|
-| Wormhole | 2022 | $326M | Off-by-one in guardian-set signature verification | `LTP-A-001` |
-| Nomad | 2022 | $190M | Zero-hash treated as auto-confirmed root after upgrade | `LTP-A-003` (defense confirmed) |
-| Ronin | 2022 | $625M | 5-of-9 validator threshold; 5 keys compromised | `LTP-A-002` (worse: 2-of-2) |
-| Multichain (Anyswap) | 2023 | $125M | Single-custody MPC key | `LTP-A-004` |
-| Poly Network | 2021 | $600M | `putCurEpochConPubKeyBytes` cross-contract delegatecall hijack | `LTP-A-005` |
-| Harmony Horizon | 2022 | $100M | 2-of-5 MultiSig; 2 keys compromised | `LTP-A-002` |
-| Orbit Chain | 2024 | $82M | Compromised signer keys + weak replay protection | `LTP-A-008` (defense confirmed) |
-| Cypher Protocol | 2023 | $1M | Proxy admin compromised during upgrade window | `LTP-A-009` |
-| LayerZero DVN debate | 2024 | (none yet) | Same operator runs relayer + oracle = collusion | `LTP-A-006` |
-| KyberSlash | 2024 | (academic) | ML-KEM error-correction timing leak | `LTP-A-014` |
+Each row now also links to its executable verification scenario
+(SCN-XXX) authored under the May 2026 Red-Team Campaign — see
+[`security/RED_TEAM_CAMPAIGN_2026-05.md`](security/RED_TEAM_CAMPAIGN_2026-05.md)
+and [`security/campaigns/`](security/campaigns/).
+
+| Hack | Year | Loss | Pattern | LTP exposure | Scenario |
+|---|---|---|---|---|---|
+| Wormhole | 2022 | $326M | Off-by-one in guardian-set signature verification | `LTP-A-001` | [SCN-001](security/campaigns/SCN-001-wormhole-signature-skip/) |
+| Nomad | 2022 | $190M | Zero-hash treated as auto-confirmed root after upgrade | `LTP-A-003` (defense confirmed) | [SCN-002](security/campaigns/SCN-002-nomad-init-bug/) |
+| Ronin | 2022 | $625M | 5-of-9 validator threshold; 5 keys compromised | `LTP-A-002` (worse: 2-of-2) | [SCN-008](security/campaigns/SCN-008-ronin-active-set/) |
+| Multichain (Anyswap) | 2023 | $125M | Single-custody MPC key | `LTP-A-004` | [SCN-012](security/campaigns/SCN-012-multichain-single-custody/) |
+| Poly Network | 2021 | $600M | `putCurEpochConPubKeyBytes` cross-contract delegatecall hijack | `LTP-A-005` | [SCN-003](security/campaigns/SCN-003-poly-keeper-escalation/) |
+| Harmony Horizon | 2022 | $100M | 2-of-5 MultiSig; 2 keys compromised | `LTP-A-002` | [SCN-009](security/campaigns/SCN-009-harmony-low-threshold/) |
+| Orbit Chain | 2024 | $82M | Compromised signer keys + weak replay protection | `LTP-A-008` (defense confirmed) | [SCN-004](security/campaigns/SCN-004-orbit-multisig-subversion/) |
+| Cypher Protocol | 2023 | $1M | Proxy admin compromised during upgrade window | `LTP-A-009` | [SCN-016](security/campaigns/SCN-016-cypher-pause-bypass/) + [SCN-019](security/campaigns/SCN-019-timelock-floor/) |
+| LayerZero DVN debate | 2024 | (none yet) | Same operator runs relayer + oracle = collusion | `LTP-A-006` | [SCN-017](security/campaigns/SCN-017-layerzero-dvn/) |
+| KyberSlash | 2024 | (academic) | ML-KEM error-correction timing leak | `LTP-A-014` | (covered by audit suite directly) |
+| Signer-rotation grace race | (campaign-surfaced) | n/a | `_anchor` ignored `signerExpiresAt` | **`LTP-A-031`** (REMEDIATED) | [SCN-015](security/campaigns/SCN-015-signer-rotation-grace/) |
 
 ---
 
@@ -580,6 +586,48 @@ Existing v5/v6 deployments retain the atomic-rotation semantics. v7 deploys gain
 
 ---
 
+### LTP-A-031 — `_anchor()` ignored `signerExpiresAt` (companion to LTP-A-030)
+
+**Severity.** HIGH.
+**File.** `contracts/src/LTPAnchorRegistry.sol:535-549`.
+**Surfaced by.** Red-Team Campaign May 2026 (SCN-015 authoring).
+**Linear.** [GLO-832](https://linear.app/globalsettlement/issue/GLO-832).
+
+**Exploit chain.** `rotateSignerWithGrace(oldVk, newVk, gracePeriod)`
+records `signerExpiresAt[oldVk] = block.timestamp + gracePeriod`
+and leaves `authorizedSigners[oldVk] = true`. `transitionState()`
+correctly checks both `authorizedSigners` AND `signerExpiresAt`.
+**`_anchor()` only checked `authorizedSigners`.** The two paths
+diverged.
+
+Practical impact: an operator who rotated a compromised key
+with a 7-day grace window believed the old key would stop
+working post-grace. In fact, `anchor()` continued to accept it
+indefinitely (`authorizedSigners[oldVk]` stayed `true`; no
+expiry check fired).
+
+The contract doc-comment at `:305` explicitly claimed `_anchor()`
+rejects the old key once expiry elapses. The code did not.
+
+**Remediation.** `FIXED-IN-PR` (PR #26, commit `577e80f`). Two-
+line addition to `_anchor()` mirroring `transitionState()`:
+
+```solidity
+{
+    uint64 expiresAt = signerExpiresAt[signerVkHash];
+    if (expiresAt != 0 && block.timestamp > expiresAt) {
+        revert UnauthorizedSigner(signerVkHash);
+    }
+}
+```
+
+**Regression test.** `test_G6_old_key_rejected_after_grace_via_anchor`
+in `contracts/test/security/historical/SCN_015_SignerRotationGrace.t.sol`.
+Before the fix, this test would have FAILED on the same input
+that the operator believed was now safe.
+
+---
+
 ## Strengths (audited & confirmed)
 
 These are the surfaces the audit found correctly implemented. Recorded so external reviewers asking "is this safe?" have a citable answer, and so regressions are visible.
@@ -614,13 +662,15 @@ These are the surfaces the audit found correctly implemented. Recorded so extern
 | Severity | Count | Closed in this PR | Deferred |
 |---|---|---|---|
 | CRITICAL | 6 | 4 (LTP-A-004, -006, -007, -009) | 2 (LTP-A-001 by-design, -002 needs v7 deploy) |
-| HIGH | 9 | 6 | 3 (LTP-A-005, -014, -022) |
+| HIGH | 10 | 7 (incl. LTP-A-031 closed by Red-Team Campaign PR #26) | 3 (LTP-A-005, -014, -022) |
 | MEDIUM | 7 | 6 | 1 (LTP-A-024) |
 | LOW | 6 | 1 (LTP-A-027) | 5 (LTP-A-025, -026, -028, -029, -030) |
 | INFO | 2 | 2 (defenses confirmed + regression-tested) | 0 |
 | **Strengths** | 20 | n/a | n/a |
 
-**Total findings:** 30. **Closed in this PR:** 19. **Deferred to follow-up Linear issues:** 11.
+**Total findings:** 31 (LTP-A-031 added by Red-Team Campaign,
+May 2026). **Closed in this PR plus Red-Team Campaign:** 20.
+**Deferred to follow-up Linear issues:** 11.
 
 ---
 
