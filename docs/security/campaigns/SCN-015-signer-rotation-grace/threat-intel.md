@@ -20,10 +20,11 @@ key keeps working in some forgotten path" failure mode.
 
 ## Primary sources
 
-- **Vitalik Buterin's "anti-correlated signers" blog** —
-  https://vitalik.eth.limo/general/2024/03/28/security.html
+- **Vitalik Buterin's "anti-correlated signers" writing** —
   Discusses the operational difficulty of true key rotation in
-  distributed signer sets.
+  distributed signer sets. (Original URL has moved; search
+  "Vitalik Buterin anti-correlated signers" for the current
+  location.)
 - **Trail of Bits "Audit of a Key Rotation"** — generic
   retrospective on rotation-bug failure modes.
 
