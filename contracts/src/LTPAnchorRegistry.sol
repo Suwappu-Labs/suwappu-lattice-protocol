@@ -532,9 +532,20 @@ contract LTPAnchorRegistry is ILTPAnchorRegistry, Initializable, UUPSUpgradeable
             revert AlreadyAnchored(anchorDigest);
         }
 
-        // 2. Signer authorization (mirrors governance.py:143-173)
+        // 2. Signer authorization (mirrors governance.py:143-173 and
+        //    transitionState's LTP-A-030 grace-period check). A signer
+        //    with a scheduled expiry (`rotateSignerWithGrace`) remains
+        //    valid only until block.timestamp passes signerExpiresAt;
+        //    omitting this check would let a rotated-out key keep
+        //    anchoring indefinitely. See LTP-A-031 + SCN-015.
         if (!authorizedSigners[signerVkHash]) {
             revert UnauthorizedSigner(signerVkHash);
+        }
+        {
+            uint64 expiresAt = signerExpiresAt[signerVkHash];
+            if (expiresAt != 0 && block.timestamp > expiresAt) {
+                revert UnauthorizedSigner(signerVkHash);
+            }
         }
 
         // 2b. Entity-signer binding (v6: first write wins, then enforced)
