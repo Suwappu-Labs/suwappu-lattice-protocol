@@ -55,6 +55,10 @@ exclude = [
     # GitHub-runner CIDR ranges; the page itself is stable. Excluding to
     # avoid CI flakes — the link is still valid for human readers.
     "^https?://(www\\.)?contributor-covenant\\.org/translations",
+    # rekt.news periodically returns 500 from CI runners (hosting flake).
+    # Many threat-intel files cite rekt.news as a secondary technical
+    # source; CI shouldn't gate on their server stability.
+    "^https?://rekt\\.news/",
 ]
 
 # --- Internal-link strictness -------------------------------------------
