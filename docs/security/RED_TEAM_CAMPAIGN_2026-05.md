@@ -14,6 +14,11 @@ LTP-A-031** (`_anchor()` ignored `signerExpiresAt`).
 **Plan reference.** Approved plan:
 `/Users/mongolraider/.claude/plans/tingly-wondering-pike.md` (local).
 
+**Consolidated audit-firm-style report.** See
+[`RED_TEAM_REPORT_2026-05.md`](RED_TEAM_REPORT_2026-05.md) — this
+file is the process record; the consolidated report is the product
+auditors should read first.
+
 ## Objective
 
 The merged [`SECURITY_AUDIT_2026-05-15.md`](../SECURITY_AUDIT_2026-05-15.md)

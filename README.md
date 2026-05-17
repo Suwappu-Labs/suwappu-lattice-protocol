@@ -379,7 +379,21 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
+For external auditors and security researchers:
+
+- **Reporting a vulnerability:** see [SECURITY.md](SECURITY.md).
+- **Audit-evidence package (start here):**
+  [docs/security/RED_TEAM_REPORT_2026-05.md](docs/security/RED_TEAM_REPORT_2026-05.md)
+  — consolidated internal red-team report (May 2026 campaign).
+  33 scenarios across 8 attack layers, 1 finding surfaced and
+  remediated (LTP-A-031, HIGH). Audit-firm-style format
+  (Executive Summary → Scope → Methodology → Threat Model →
+  Findings → Defenses Verified → Maturity Self-Assessment →
+  Recommended External-Audit Focus Areas).
+- **Standing audit findings:** [docs/SECURITY_AUDIT_2026-05-15.md](docs/SECURITY_AUDIT_2026-05-15.md)
+  — 31 LTP-A-* findings catalog + 20-entry strengths register.
+- **Internal-testing charter:** [SECURITY_TESTING.md](SECURITY_TESTING.md)
+  — authorization and scope rules for red-team campaigns.
 
 ## License
 
