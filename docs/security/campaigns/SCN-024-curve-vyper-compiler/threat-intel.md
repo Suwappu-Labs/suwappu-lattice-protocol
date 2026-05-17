@@ -4,9 +4,11 @@ Historical incident: **Curve / Vyper compiler reentrancy exploit, 30 July 2023, 
 
 ## Primary sources
 
-- **Vyper team post-mortem** —
-  https://hackmd.io/@vyperlang/HJU1HFNT3 (and follow-on
-  technical writeups).
+- **Vyper team post-mortem** — published on the project's
+  HackMD in July 2023 with follow-on technical writeups.
+  (Original HackMD URL has moved; search "Vyper compiler
+  reentrancy guard post-mortem 2023" for the current
+  location.)
 - **Curve team statements** during and after the incident.
 - **Patched Vyper releases** — 0.3.7 / 0.2.16 fixes.
 
