@@ -116,4 +116,4 @@ SCN-XXX-<slug>/
 
 - [`/SECURITY_TESTING.md`](../../../SECURITY_TESTING.md) — charter + authorization
 - [`RED_TEAM_CAMPAIGN_2026-05.md`](../RED_TEAM_CAMPAIGN_2026-05.md) — campaign master doc
-- [`SECURITY_AUDIT_2026-05-15.md`](../SECURITY_AUDIT_2026-05-15.md) §28 — historical-incident → LTP-A-* cross-reference table (back-linked to SCN-XXX directories in R-6)
+- [`SECURITY_AUDIT_2026-05-15.md`](../../SECURITY_AUDIT_2026-05-15.md) §28 — historical-incident → LTP-A-* cross-reference table (back-linked to SCN-XXX directories in R-6)
