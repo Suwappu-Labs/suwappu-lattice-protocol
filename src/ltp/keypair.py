@@ -33,11 +33,40 @@ def _implicit_hsm_enabled() -> bool:
 
     Set `LTP_KEYPAIR_IMPLICIT_HSM=1` (or `true`, `yes`, `on`) to enable.
     Default off — existing call sites that read kp.dk / kp.sk directly
-    continue to work. Phase 4b migrates readers to `KeyPair.sign` /
+    continue to work. Phase 4b/4d migrate readers to `KeyPair.sign` /
     `KeyPair.decaps` so this flag can become default-on.
+
+    EXPERIMENTAL. Until Phase 4d completes, callers that still read raw
+    `kp.dk` / `kp.sk` (e.g. `SealedBox.unseal` via direct
+    `MLKEM.decaps(receiver_keypair.dk, ...)` in some paths) will fail
+    when this flag is on. A one-shot WARNING is emitted on activation.
     """
     val = os.environ.get("LTP_KEYPAIR_IMPLICIT_HSM", "").lower()
-    return val in {"1", "true", "yes", "on"}
+    enabled = val in {"1", "true", "yes", "on"}
+    if enabled and not getattr(_implicit_hsm_enabled, "_warned", False):
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "LTP_KEYPAIR_IMPLICIT_HSM is set — KeyPair.generate(hsm=None) "
+            "returns sentinel-backed keypairs (LTP-A-032 Phase 4a "
+            "EXPERIMENTAL). Un-migrated call sites that read raw kp.dk / "
+            "kp.sk WILL fail until Phase 4d completes. Do not enable in "
+            "production yet."
+        )
+        _implicit_hsm_enabled._warned = True  # type: ignore[attr-defined]
+    return enabled
+
+
+def _hsm_label(label: str) -> str:
+    """Append the `[hsm]` marker to a label without stacking suffixes.
+
+    KeyRotationManager.rotate calls `KeyPair.generate(label=old.label)`,
+    so naive `f"{label}[hsm]"` produces `alice` → `alice[hsm]` →
+    `alice[hsm][hsm]` across rotations, splitting `_key_chains` keyed
+    on label. Keep the suffix idempotent.
+    """
+    if label.endswith("[hsm]"):
+        return label
+    return f"{label}[hsm]"
 
 
 # ---------------------------------------------------------------------------
@@ -168,7 +197,7 @@ class KeyPair:
             _HSM_SENTINEL = b"\xfe" * 32
             kp = cls(
                 ek=ek, dk=_HSM_SENTINEL, vk=vk, sk=_HSM_SENTINEL,
-                label=f"{label}[hsm]",
+                label=_hsm_label(label),
                 created_at=_time.time(),
             )
             kp._hsm = hsm

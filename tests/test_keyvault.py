@@ -28,9 +28,20 @@ from ltp.keyvault import KeyVault, KeyVaultError, _derive_kek_from_seed
 
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch):
-    """Each test starts with no KEK env var and a non-production LTP_ENV."""
+    """Each test starts with no KEK env var, no OS-keychain entry,
+    and a non-production LTP_ENV (Codex P2 — isolate from host state).
+
+    The OS keychain mock returns None for the LTP entry so tests
+    exercising the "no KEK source" path are deterministic on every
+    developer's machine (otherwise a `ltp/kek` entry left over in
+    Keychain Access would silently satisfy the fallback)."""
     monkeypatch.delenv("LTP_KEY_ENCRYPTION_KEY", raising=False)
     monkeypatch.delenv("LTP_ENV", raising=False)
+    import sys
+    import types
+    fake = types.ModuleType("keyring")
+    fake.get_password = lambda service, username: None  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "keyring", fake)
 
 
 def _kek_b64(seed: bytes = b"\x42" * 32) -> str:
@@ -164,6 +175,43 @@ def test_from_environment_rejects_bad_base64(monkeypatch):
     monkeypatch.setenv("LTP_KEY_ENCRYPTION_KEY", "not-valid-base64!!!")
     with pytest.raises(KeyVaultError, match="not valid base64"):
         KeyVault.from_environment()
+
+
+def test_from_environment_rejects_empty_env_var(monkeypatch):
+    """Regression for Codex P2: an explicitly-set-but-empty
+    LTP_KEY_ENCRYPTION_KEY must NOT silently fall through to the
+    keychain / HSM fallback. Otherwise an empty secret injection (a
+    common k8s/Vault misconfiguration) would switch the active KEK
+    source and make previously-wrapped material undecryptable."""
+    monkeypatch.setenv("LTP_KEY_ENCRYPTION_KEY", "")
+    with pytest.raises(KeyVaultError, match="set but empty"):
+        KeyVault.from_environment()
+
+
+def test_from_environment_keyring_runtime_error_falls_through(monkeypatch, caplog):
+    """Regression for Codex P1: keyring backends commonly raise runtime
+    errors (NoKeyringError, KeyringBackendError, …) when no usable
+    backend is configured. KeyVault must catch those broadly and fall
+    through to the documented HSM / dev-ephemeral path instead of
+    crashing init."""
+    import sys
+    import types
+    import logging
+    fake = types.ModuleType("keyring")
+    def _broken(service, username):
+        raise RuntimeError("NoKeyringError: No recommended backend")
+    fake.get_password = _broken  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "keyring", fake)
+    monkeypatch.delenv("LTP_KEY_ENCRYPTION_KEY", raising=False)
+    monkeypatch.delenv("LTP_ENV", raising=False)
+    with caplog.at_level(logging.WARNING):
+        vault = KeyVault.from_environment()
+    # Construction succeeded via the dev-ephemeral path; keyring failure
+    # was logged but did not raise.
+    assert isinstance(vault, KeyVault)
+    assert any(
+        "OS keychain lookup failed" in rec.message for rec in caplog.records
+    )
 
 
 def test_from_environment_rejects_wrong_length(monkeypatch):

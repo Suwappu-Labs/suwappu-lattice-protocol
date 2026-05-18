@@ -81,8 +81,19 @@ class KeyVault:
         hsm: Optional["HSMBackend"] = None,
     ) -> "KeyVault":
         """Resolve a KEK from env / keychain / HSM. Fail-closed in prod."""
-        env_kek = os.environ.get(_ENV_VAR)
-        if env_kek:
+        # 1. Environment variable. If the variable is *set but empty*
+        # we refuse to silently fall through to keychain/HSM — an empty
+        # secret-injection is almost certainly a misconfiguration that
+        # would otherwise switch the active KEK source and break
+        # previously-wrapped material (Codex P2).
+        if _ENV_VAR in os.environ:
+            env_kek = os.environ[_ENV_VAR]
+            if not env_kek:
+                raise KeyVaultError(
+                    f"{_ENV_VAR} is set but empty — refusing to fall back "
+                    "to keychain/HSM. Either unset the variable or "
+                    "provide a base64 32-byte KEK."
+                )
             try:
                 kek = base64.b64decode(env_kek, validate=True)
             except Exception as exc:
@@ -96,10 +107,21 @@ class KeyVault:
                 )
             return cls(kek)
 
+        # 2. OS keychain. `keyring` raises a variety of runtime errors
+        # when no backend is configured or the backend is unavailable;
+        # catch broadly so we fall through to HSM / fail-closed / dev
+        # ephemeral path instead of crashing init (Codex P1).
         try:
             import keyring  # type: ignore[import-not-found]
-
-            kek_b64 = keyring.get_password(_KEYRING_SERVICE, _KEYRING_USERNAME)
+            try:
+                kek_b64 = keyring.get_password(_KEYRING_SERVICE, _KEYRING_USERNAME)
+            except Exception as exc:  # noqa: BLE001 — keyring backends raise many types
+                _LOG.warning(
+                    "KeyVault: OS keychain lookup failed (%s); "
+                    "falling through to next KEK source.",
+                    exc,
+                )
+                kek_b64 = None
             if kek_b64:
                 try:
                     kek = base64.b64decode(kek_b64, validate=True)
