@@ -110,6 +110,47 @@ def test_implicit_hsm_flag_returns_sentinels(monkeypatch):
     assert kp.label.endswith("[hsm]")
 
 
+def test_implicit_hsm_label_suffix_is_idempotent(monkeypatch):
+    """Regression for Codex P1: rotation passes the previous label
+    (already suffixed) back into generate(); the suffix must not
+    stack. Otherwise key chains keyed on label split:
+      alice -> alice[hsm] -> alice[hsm][hsm], breaking lookup and
+    lifecycle continuity.
+    """
+    monkeypatch.setenv("LTP_KEYPAIR_IMPLICIT_HSM", "1")
+    kp1 = KeyPair.generate(label="alice")
+    assert kp1.label == "alice[hsm]"
+    # Simulate KeyRotationManager.rotate passing the previous label back.
+    kp2 = KeyPair.generate(label=kp1.label)
+    assert kp2.label == "alice[hsm]"  # NOT "alice[hsm][hsm]"
+
+
+def test_explicit_hsm_label_suffix_is_idempotent():
+    """Same guard for the explicit-HSM branch."""
+    from ltp.hsm import SoftwareHSM
+    kp1 = KeyPair.generate(label="bob", hsm=SoftwareHSM())
+    kp2 = KeyPair.generate(label=kp1.label, hsm=SoftwareHSM())
+    assert kp1.label == "bob[hsm]"
+    assert kp2.label == "bob[hsm]"
+
+
+def test_implicit_hsm_flag_emits_experimental_warning(monkeypatch, caplog):
+    """Regression for Codex P1: turning on the flag should warn the
+    operator that un-migrated callers will fail."""
+    import logging
+    # Reset the one-shot guard so we observe the warning in this test.
+    from ltp.keypair import _implicit_hsm_enabled
+    if hasattr(_implicit_hsm_enabled, "_warned"):
+        delattr(_implicit_hsm_enabled, "_warned")
+    monkeypatch.setenv("LTP_KEYPAIR_IMPLICIT_HSM", "1")
+    with caplog.at_level(logging.WARNING):
+        KeyPair.generate(label="warned")
+    assert any(
+        "EXPERIMENTAL" in rec.message and "LTP-A-032" in rec.message
+        for rec in caplog.records
+    )
+
+
 @pytest.mark.parametrize("val", ["1", "true", "yes", "on", "TRUE", "Yes"])
 def test_implicit_hsm_flag_accepts_truthy_values(monkeypatch, val):
     monkeypatch.setenv("LTP_KEYPAIR_IMPLICIT_HSM", val)
