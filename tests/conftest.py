@@ -6,19 +6,83 @@ Fixtures are organized by scope:
   - function: network and protocol (fresh instance per test to avoid state bleed)
 """
 
-import os
-
 import pytest
 
-# LTP-A-032 Phase 4c: the implicit-HSM flag is default-on in production.
-# Many legacy tests still read kp.dk/kp.sk directly or pass kp.sk into
-# helpers that expect raw bytes. Opt those tests out at the suite level
-# until a dedicated migration pass (Phase 4e) rewrites each call site.
-# Tests/files that explicitly want the production default (implicit-HSM
-# on) monkeypatch this env var to a truthy value or unset it.
-os.environ.setdefault("LTP_KEYPAIR_IMPLICIT_HSM", "0")
-
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol, reset_poc_state
+
+
+# ---------------------------------------------------------------------------
+# LTP-A-032 Phase 4c — module-scoped opt-out from implicit-HSM
+# ---------------------------------------------------------------------------
+#
+# Production runs with `LTP_KEYPAIR_IMPLICIT_HSM` default-on, so
+# `KeyPair.generate(hsm=None)` returns sentinel-backed keypairs. The
+# modules listed below still read raw `kp.sk` / `kp.dk` bytes or pass
+# them into helpers that have not yet been migrated to `KeyPair.sign`
+# / `KeyPair.decaps`. Until Phase 4e migrates them, each test in those
+# modules gets `LTP_KEYPAIR_IMPLICIT_HSM=0` automatically.
+#
+# **Tests in any other module run under the production default** —
+# i.e. new tests written against this suite exercise the implicit-HSM
+# code path by default. Tests that need plaintext explicitly add the
+# `_legacy_plaintext_keypair` fixture or monkeypatch the env var.
+#
+# Shrink this list as Phase 4e migrates each module.
+LEGACY_PLAINTEXT_TEST_MODULES = frozenset({
+    # Phase 4e will migrate these one at a time onto KeyPair.sign/decaps.
+    "test_acvp_mldsa",
+    "test_acvp_mlkem",
+    "test_anchor_scheduler",
+    "test_anchor_verifier",
+    "test_backend_boundaries",
+    "test_bls_attestation",
+    "test_bls_e2e",
+    "test_bls_keys",
+    "test_commitment",
+    "test_compliance",
+    "test_cross_network_e2e",
+    "test_cross_network_fetcher",
+    "test_domain_separation",
+    "test_encoding",
+    "test_federation",
+    "test_federation_agreement",
+    "test_federation_gate_closure",
+    "test_federation_rate_limiter",
+    "test_gossip_core",
+    "test_gossip_grpc",
+    "test_gossip_integration",
+    "test_key_lifecycle",
+    "test_key_rotation",
+    "test_merkle_log",
+    "test_optimistic_bridge",
+    "test_primitives",
+    "test_production_gate",
+    "test_security_audit",
+    "test_shard_distribution",
+    "test_stark_bridge",
+    "test_timing_analysis",
+    "test_zk_bridge",
+    "test_zk_e2e",
+})
+
+
+@pytest.fixture
+def _legacy_plaintext_keypair(monkeypatch):
+    """Opt out of implicit-HSM mode so kp.sk / kp.dk hold plaintext.
+
+    Auto-applied to modules in `LEGACY_PLAINTEXT_TEST_MODULES`.
+    Available as an explicit fixture for any other test that needs to
+    inspect plaintext key material (e.g. AEAD wrong-key probes).
+    """
+    monkeypatch.setenv("LTP_KEYPAIR_IMPLICIT_HSM", "0")
+
+
+def pytest_collection_modifyitems(config, items):
+    """Apply `_legacy_plaintext_keypair` to legacy modules."""
+    for item in items:
+        mod_name = item.module.__name__.rsplit(".", 1)[-1]
+        if mod_name in LEGACY_PLAINTEXT_TEST_MODULES:
+            item.fixturenames.append("_legacy_plaintext_keypair")
 
 
 # ---------------------------------------------------------------------------

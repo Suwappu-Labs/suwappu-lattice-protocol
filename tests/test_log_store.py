@@ -314,6 +314,89 @@ def test_cli_rejects_missing_db_path(tmp_path):
     assert not os.path.exists(nonexistent)
 
 
+def test_phase4c_full_keypair_persistence(tmp_db):
+    """Phase 4c Q4: storing all four (vk, sk, ek, dk) writes a v2 row
+    with ek raw and dk_wrapped; subsequent load_operator_keypair_full
+    round-trips all four."""
+    sk = os.urandom(4032)
+    dk = os.urandom(2400)
+    vk = b"\xaa" * 1952
+    ek = b"\xbb" * 1184
+    store = CommitmentLogStore(tmp_db)
+    store.store_operator_keypair(vk, sk, ek=ek, dk=dk)
+    got = store.load_operator_keypair_full()
+    store.close()
+    assert got is not None
+    g_vk, g_sk, g_ek, g_dk = got
+    assert g_vk == vk
+    assert g_sk == sk
+    assert g_ek == ek
+    assert g_dk == dk
+
+
+def test_phase4c_dk_is_wrapped_on_disk(tmp_db):
+    sk = os.urandom(4032)
+    dk = os.urandom(2400)
+    store = CommitmentLogStore(tmp_db)
+    store.store_operator_keypair(b"vk", sk, ek=b"ek", dk=dk)
+    raw_dk = store._conn.execute(
+        "SELECT dk_wrapped FROM log_operator WHERE id=1"
+    ).fetchone()[0]
+    store.close()
+    assert raw_dk is not None
+    assert raw_dk != dk
+    assert len(raw_dk) == len(dk) + 40  # nonce(24) + tag(16)
+
+
+def test_phase4c_dk_aad_domain_separation(tmp_db):
+    """A wrapped dk blob cannot be unwrapped with the sk AAD."""
+    sk = os.urandom(4032)
+    dk = os.urandom(2400)
+    store = CommitmentLogStore(tmp_db)
+    store.store_operator_keypair(b"vk", sk, ek=b"ek", dk=dk)
+    raw_dk = store._conn.execute(
+        "SELECT dk_wrapped FROM log_operator WHERE id=1"
+    ).fetchone()[0]
+    store.close()
+
+    vault = KeyVault.from_environment()
+    # Right AAD unwraps; sk AAD fails.
+    assert vault.unwrap(raw_dk, aad=b"ltp.storage.log_store:operator_dk") == dk
+    with pytest.raises(KeyVaultError):
+        vault.unwrap(raw_dk, aad=b"ltp.storage.log_store:operator_sk")
+
+
+def test_phase4c_two_arg_store_still_writes_v1(tmp_db):
+    """Backward compat: store_operator_keypair(vk, sk) without ek/dk
+    writes a Phase 2 v1 row (ek=NULL, dk_wrapped=NULL,
+    wrap_version=1)."""
+    store = CommitmentLogStore(tmp_db)
+    store.store_operator_keypair(b"vk", os.urandom(4032))
+    row = store._conn.execute(
+        "SELECT ek, dk_wrapped, wrap_version FROM log_operator WHERE id=1"
+    ).fetchone()
+    store.close()
+    assert row[0] is None
+    assert row[1] is None
+    assert row[2] == 1
+
+
+def test_phase4c_legacy_v1_row_loads_with_none_ek_dk(tmp_db):
+    """A v1 row (store(vk, sk) only) returns ek=None, dk=None from
+    load_operator_keypair_full."""
+    sk = os.urandom(4032)
+    store = CommitmentLogStore(tmp_db)
+    store.store_operator_keypair(b"vk", sk)
+    full = store.load_operator_keypair_full()
+    store.close()
+    assert full is not None
+    g_vk, g_sk, g_ek, g_dk = full
+    assert g_vk == b"vk"
+    assert g_sk == sk
+    assert g_ek is None
+    assert g_dk is None
+
+
 def test_aad_domain_separation(tmp_db):
     """A wrapped blob from log_store cannot be unwrapped with a different AAD.
     Regression test for the per-site AAD discipline."""

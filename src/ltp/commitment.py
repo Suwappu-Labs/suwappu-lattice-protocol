@@ -607,22 +607,27 @@ class CommitmentLog:
         # first, persisting them via the KeyVault-wrapped log_store, and
         # then importing those same bytes back into a fresh per-process
         # SoftwareHSM so subsequent sign() calls route through the HSM.
+        #
+        # Q4 (team-decided): persist ALL FOUR (ek, dk, vk, sk) so the
+        # operator's KEM identity is also stable across restarts.
+        # Legacy v1 rows have only (vk, sk); on first reload we
+        # regenerate (ek, dk) and persist the full set as a v2 row.
         if store is not None:
-            kp_data = store.load_operator_keypair()
+            from .primitives import MLKEM as _MLKEM, MLDSA as _MLDSA
+            kp_data = store.load_operator_keypair_full()
             if kp_data is None:
-                # Fresh log: generate plain bytes, persist (wrapped on
-                # disk by Phase 2), then import into an HSM.
-                from .primitives import MLKEM as _MLKEM, MLDSA as _MLDSA
+                # Fresh log: generate all four, persist as v2.
                 ek, dk = _MLKEM.keygen()
                 vk, sk = _MLDSA.keygen()
-                store.store_operator_keypair(vk, sk)
+                store.store_operator_keypair(vk, sk, ek=ek, dk=dk)
             else:
-                vk, sk = kp_data
-                # ek/dk for the log operator were never persisted (the
-                # merkle log only needs sk/vk for signing). Generate a
-                # fresh KEM pair on reload — it isn't used by the log.
-                from .primitives import MLKEM as _MLKEM
-                ek, dk = _MLKEM.keygen()
+                vk, sk, ek, dk = kp_data
+                if ek is None or dk is None:
+                    # Legacy v1 row — upgrade to v2 by minting fresh
+                    # KEM material and persisting alongside the
+                    # existing sk/vk.
+                    ek, dk = _MLKEM.keygen()
+                    store.store_operator_keypair(vk, sk, ek=ek, dk=dk)
             self._operator_kp = KeyPair.from_persisted(
                 ek=ek, dk=dk, vk=vk, sk=sk, label="log-operator",
             )
