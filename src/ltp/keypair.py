@@ -27,6 +27,19 @@ __all__ = [
 ]
 
 
+def _implicit_hsm_enabled() -> bool:
+    """Whether KeyPair.generate(hsm=None) should route through an
+    implicit SoftwareHSM (LTP-A-032 Phase 4a opt-in flag).
+
+    Set `LTP_KEYPAIR_IMPLICIT_HSM=1` (or `true`, `yes`, `on`) to enable.
+    Default off — existing call sites that read kp.dk / kp.sk directly
+    continue to work. Phase 4b migrates readers to `KeyPair.sign` /
+    `KeyPair.decaps` so this flag can become default-on.
+    """
+    val = os.environ.get("LTP_KEYPAIR_IMPLICIT_HSM", "").lower()
+    return val in {"1", "true", "yes", "on"}
+
+
 # ---------------------------------------------------------------------------
 # Key Lifecycle State Machine
 # ---------------------------------------------------------------------------
@@ -123,17 +136,36 @@ class KeyPair:
                  When provided, private keys (dk, sk) NEVER leave the HSM
                  boundary. The KeyPair stores only public material (ek, vk)
                  and sentinel bytes for dk/sk. All sign/decaps operations
-                 must be routed through the HSM using hsm_sign() / hsm_decaps().
+                 are routed through the HSM using `KeyPair.sign` /
+                 `KeyPair.decaps` (or the deprecated `hsm_sign` / `hsm_decaps`
+                 aliases).
+
+        LTP-A-032 (Phase 4a): when the `hsm` argument is None AND the
+        environment variable LTP_KEYPAIR_IMPLICIT_HSM=1 is set, this
+        constructor instantiates a private SoftwareHSM, generates the
+        keys inside it, and returns a sentinel-backed KeyPair — i.e. no
+        plaintext dk/sk lives on the dataclass. This is an opt-in
+        compatibility flag; the default (flag unset) is unchanged so
+        existing call sites continue to read kp.dk / kp.sk directly.
+        Subsequent sub-PRs migrate readers onto the `sign` / `decaps`
+        methods so the flag can become default-on.
         """
+        if hsm is None and _implicit_hsm_enabled():
+            # Implicit-HSM mode: build a per-KeyPair SoftwareHSM so that
+            # dk/sk never enter the dataclass. Same code path as explicit
+            # HSM below; the caller did not need to opt in per call site.
+            from .hsm import SoftwareHSM as _ImplicitHSM
+            hsm = _ImplicitHSM()
+
         if hsm is not None:
             kem_key_id = f"{label}-kem"
             dsa_key_id = f"{label}-dsa"
             ek = hsm.generate_kem_keypair(kem_key_id)
             vk = hsm.generate_dsa_keypair(dsa_key_id)
             # Sentinel: dk/sk are NOT the real private keys — they are
-            # zero-filled placeholders that will fail if used directly.
-            # All private-key operations must go through hsm_sign/hsm_decaps.
-            _HSM_SENTINEL = b"\xfe" * 32  # recognizable non-key pattern
+            # recognizable non-key bytes. All private-key operations
+            # go through `sign` / `decaps`.
+            _HSM_SENTINEL = b"\xfe" * 32
             kp = cls(
                 ek=ek, dk=_HSM_SENTINEL, vk=vk, sk=_HSM_SENTINEL,
                 label=f"{label}[hsm]",
@@ -142,7 +174,11 @@ class KeyPair:
             kp._hsm = hsm
             kp._hsm_kem_key_id = kem_key_id
             kp._hsm_dsa_key_id = dsa_key_id
+            if with_bls:
+                from .bls import BLS as _BLS
+                kp.bls_pk, kp.bls_sk = _BLS.keygen()
             return kp
+
         ek, dk = MLKEM.keygen()
         vk, sk = MLDSA.keygen()
         bls_pk = None
@@ -158,23 +194,38 @@ class KeyPair:
         """True if private keys are held in an HSM (dk/sk are sentinels)."""
         return hasattr(self, '_hsm') and self._hsm is not None
 
-    def hsm_sign(self, message: bytes) -> bytes:
-        """Sign via HSM — private key never leaves the HSM boundary.
+    def sign(self, message: bytes) -> bytes:
+        """Sign `message` with this keypair's ML-DSA signing key.
 
-        Raises RuntimeError if this KeyPair is not HSM-backed.
+        Routes through the HSM if this KeyPair is HSM-backed (including
+        the implicit-HSM mode added in LTP-A-032 Phase 4a). Otherwise
+        falls back to a direct `MLDSA.sign(self.sk, message)` so existing
+        non-HSM call sites can migrate to this method without behaviour
+        change.
         """
-        if not self.is_hsm_backed:
-            raise RuntimeError("hsm_sign() called on non-HSM KeyPair; use MLDSA.sign(kp.sk, msg) instead")
-        return self._hsm.sign(self._hsm_dsa_key_id, message)
+        if self.is_hsm_backed:
+            return self._hsm.sign(self._hsm_dsa_key_id, message)
+        return MLDSA.sign(self.sk, message)
+
+    def decaps(self, kem_ciphertext: bytes) -> bytes:
+        """Decapsulate `kem_ciphertext` to the shared secret.
+
+        Routes through the HSM if this KeyPair is HSM-backed. Otherwise
+        falls back to a direct `MLKEM.decaps(self.dk, kem_ciphertext)`.
+        """
+        if self.is_hsm_backed:
+            return self._hsm.kem_decaps(self._hsm_kem_key_id, kem_ciphertext)
+        return MLKEM.decaps(self.dk, kem_ciphertext)
+
+    # Backward-compatible aliases. Existing callers can keep using
+    # `hsm_sign` / `hsm_decaps`; new code should prefer `sign` / `decaps`.
+    def hsm_sign(self, message: bytes) -> bytes:
+        """Deprecated alias for `sign`. Kept for backward compatibility."""
+        return self.sign(message)
 
     def hsm_decaps(self, kem_ciphertext: bytes) -> bytes:
-        """Decapsulate via HSM — private key never leaves the HSM boundary.
-
-        Raises RuntimeError if this KeyPair is not HSM-backed.
-        """
-        if not self.is_hsm_backed:
-            raise RuntimeError("hsm_decaps() called on non-HSM KeyPair; use MLKEM.decaps(kp.dk, ct) instead")
-        return self._hsm.kem_decaps(self._hsm_kem_key_id, kem_ciphertext)
+        """Deprecated alias for `decaps`. Kept for backward compatibility."""
+        return self.decaps(kem_ciphertext)
 
     @property
     def pub_hex(self) -> str:
