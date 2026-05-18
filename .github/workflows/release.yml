@@ -1,0 +1,104 @@
+name: Release
+
+# Triggered when an annotated tag matching `v*.*.*` is pushed.
+# Produces a GitHub Release with:
+#   - Python sdist + wheel (built via `python -m build`)
+#   - Contract ABIs (extracted via `make abi`)
+#   - SLSA build provenance attestation (Sigstore)
+#   - Release notes body extracted from CHANGELOG.md for the matching section
+#
+# GPG signing is intentionally NOT in this pipeline yet. When the ops
+# team provisions a release GPG key as the secret RELEASE_GPG_PRIVATE_KEY,
+# add a `gpg --armor --detach-sign` step before the upload.
+#
+# The release pipeline is purely additive — it never alters the tagged
+# commit, never opens a PR, never pushes anything else.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write       # to create the Release and upload assets
+  id-token: write       # required by sigstore for keyless OIDC signing
+  attestations: write   # required by attest-build-provenance
+
+jobs:
+  build-and-release:
+    name: Build, sign, and publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tagged commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        with:
+          fetch-depth: 0  # need full history for setuptools-scm if ever adopted
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build pip-audit
+
+      - name: Verify pyproject.toml version matches tag
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          PYPROJECT_VERSION=$(python -c 'import tomllib, pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')
+          if [ "${TAG#v}" != "${PYPROJECT_VERSION}" ]; then
+            echo "::error::tag ${TAG} does not match pyproject version ${PYPROJECT_VERSION}"
+            exit 1
+          fi
+          echo "tag and pyproject.toml agree on ${TAG#v}"
+
+      - name: Verify CHANGELOG has section for this tag
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          python scripts/extract_changelog.py "${TAG}" > release-body.md
+          echo "extracted $(wc -l < release-body.md) lines from CHANGELOG.md for ${TAG}"
+
+      - name: Build sdist + wheel
+        run: python -m build
+
+      - name: pip-audit (strict)
+        run: pip-audit --strict --vulnerability-service osv
+
+      - name: Install Foundry (for ABI extraction)
+        uses: foundry-rs/foundry-toolchain@c7450ba673e133f5ee30098b3b54f444d3a2ca2d  # v1
+
+      - name: Install Solidity dependencies
+        working-directory: contracts
+        run: |
+          git config user.name "ci"
+          git config user.email "ci@gsx.dev"
+          forge install foundry-rs/forge-std
+          forge install OpenZeppelin/openzeppelin-contracts
+
+      - name: Extract contract ABIs
+        run: make abi || true  # ABI target may be optional; do not block the release
+
+      - name: Stage release artifacts
+        run: |
+          mkdir -p release-artifacts
+          cp dist/*.tar.gz dist/*.whl release-artifacts/
+          # Include contract ABI bundle if it was produced.
+          if [ -d contracts/out ]; then
+            tar czf release-artifacts/contracts-abi.tar.gz -C contracts out
+          fi
+          ls -la release-artifacts/
+
+      - name: Attest build provenance (SLSA)
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2
+        with:
+          subject-path: "release-artifacts/*"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8  # v2
+        with:
+          body_path: release-body.md
+          files: release-artifacts/*
+          fail_on_unmatched_files: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

@@ -51,6 +51,7 @@ exclude = [
     # Private GSX repositories — unauthenticated CI returns 404 for these
     "^https?://github\\.com/GlobalSettlementNetwork/gsx-dag",
     "^https?://github\\.com/GlobalSettlementNetwork/gsx-db",
+    "^https?://github\\.com/GlobalSettlementNetwork/gsx-papers",
     # contributor-covenant.org occasionally resets the connection from
     # GitHub-runner CIDR ranges; the page itself is stable. Excluding to
     # avoid CI flakes — the link is still valid for human readers.
@@ -59,6 +60,10 @@ exclude = [
     # Many threat-intel files cite rekt.news as a secondary technical
     # source; CI shouldn't gate on their server stability.
     "^https?://rekt\\.news/",
+    # inria.hal.science (HAL open archive) regularly times out from
+    # GitHub-runner egress (>20s for large PDFs). Cited in WHITEPAPER.md
+    # as primary source for academic preprints; link is stable for humans.
+    "^https?://(www\\.)?inria\\.hal\\.science/",
 ]
 
 # --- Internal-link strictness -------------------------------------------

@@ -51,6 +51,7 @@ dependencies = []
 Documentation  = "https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/tree/main/docs"
 Repository     = "https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol"
 Changelog      = "https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/blob/main/CHANGELOG.md"
+"Release Notes" = "https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/releases"
 "Issue Tracker" = "https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/issues"
 "Security Policy" = "https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/blob/main/SECURITY.md"
 "Whitepaper"   = "https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/blob/main/docs/WHITEPAPER.md"

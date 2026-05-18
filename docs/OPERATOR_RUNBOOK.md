@@ -590,3 +590,27 @@ cast call <V7_ZK_VERIFIER> "productionMode()(bool)" --rpc-url "$BASE_SEPOLIA_RPC
 LTP at 5-of-7 + 48h sits in the middle: meaningful Byzantine threshold
 without requiring a full 13-member Security Council, with a delay long
 enough for incident response without being operationally painful.
+
+## 14. Release engineering
+
+See [`RELEASE_ENGINEERING.md`](RELEASE_ENGINEERING.md) for the full
+release procedure. Summary:
+
+1. PR that bumps `pyproject.toml` version and promotes the
+   `[Unreleased]` section of `CHANGELOG.md` into a dated `[X.Y.Z]`
+   block. The PR runs the dry-run release workflow which validates
+   semver shape, CHANGELOG parse, and build.
+2. Merge to `main`.
+3. Push an annotated tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z" &&
+   git push origin vX.Y.Z`.
+4. The `Release` workflow ([`.github/workflows/release.yml`](../.github/workflows/release.yml))
+   builds sdist + wheel, attaches contract ABIs, attests SLSA build
+   provenance via Sigstore, and creates a GitHub Release with the
+   CHANGELOG section as the body.
+5. Verify with `gh attestation verify <artifact> --owner
+   GlobalSettlementNetwork`.
+
+GPG signing is deferred — pipeline will be extended once the ops team
+provisions a release-signing key (HSM-backed; see §1 KMS setup).
+PyPI publishing is blocked on Linear `GLO-785` (LICENSE / pyproject
+mismatch).

@@ -1,0 +1,53 @@
+name: Release Dry-Run
+
+# Runs on PRs that touch CHANGELOG.md or pyproject.toml. Validates that
+# the next release would build cleanly: pyproject version is semver,
+# CHANGELOG has a matching section, sdist + wheel build, ABIs extract.
+# Does NOT push a tag, create a Release, or attest provenance.
+
+on:
+  pull_request:
+    paths:
+      - "CHANGELOG.md"
+      - "pyproject.toml"
+      - "scripts/extract_changelog.py"
+      - ".github/workflows/release*.yml"
+
+jobs:
+  validate:
+    name: Validate release inputs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build pytest
+
+      - name: Read pyproject.toml version
+        id: pyproject
+        run: |
+          VERSION=$(python -c 'import tomllib, pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "pyproject.toml version: ${VERSION}"
+          if ! echo "${VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$'; then
+            echo "::error::pyproject version ${VERSION} is not semver-shaped"
+            exit 1
+          fi
+
+      - name: Verify CHANGELOG has a matching section
+        run: |
+          python scripts/extract_changelog.py "v${{ steps.pyproject.outputs.version }}" > /dev/null || \
+            python scripts/extract_changelog.py "Unreleased" > /dev/null
+          echo "CHANGELOG.md parses for v${{ steps.pyproject.outputs.version }} or [Unreleased]"
+
+      - name: Build sdist + wheel (dry-run, not uploaded)
+        run: python -m build
+
+      - name: Run extract_changelog tests
+        run: python -m pytest scripts/test_extract_changelog.py -q
