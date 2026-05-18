@@ -161,15 +161,25 @@ def domain_hash_bytes(domain: bytes, data: bytes) -> bytes:
 # Domain-separated signing
 # ---------------------------------------------------------------------------
 
-def domain_sign(domain: bytes, sk: bytes, data: bytes) -> bytes:
+def domain_sign(domain: bytes, signer, data: bytes) -> bytes:
     """Sign domain-separated data: MLDSA.sign(sk, domain || data).
+
+    LTP-A-032 (Phase 4d): `signer` may now be either raw `sk` bytes
+    (legacy callers) OR a `KeyPair` (HSM-friendly path). For a KeyPair
+    we route through `keypair.sign(...)` so HSM-backed kps stay
+    sentinel-only and software-mode kps still produce identical
+    signatures.
 
     Note: Python pqcrypto backend doesn't expose ML-DSA's native context
     parameter. Domain separation via byte-prefix concatenation is the
     correct approach for our backend. If the backend is upgraded to expose
     ctx, this function's internals can change without affecting the API.
     """
-    return MLDSA.sign(sk, domain + data)
+    # Avoid an import cycle: `keypair.py` imports from this module.
+    from .keypair import KeyPair as _KeyPair
+    if isinstance(signer, _KeyPair):
+        return signer.sign(domain + data)
+    return MLDSA.sign(signer, domain + data)
 
 
 def domain_verify(domain: bytes, vk: bytes, data: bytes, sig: bytes) -> bool:

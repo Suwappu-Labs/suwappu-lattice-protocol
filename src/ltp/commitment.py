@@ -458,9 +458,19 @@ class CommitmentRecord:
             parts.append(struct.pack('>I', len(vb)) + vb)
         return b"LTP-COMMIT-v1\x00" + b"".join(parts)
 
-    def sign(self, sender_sk: bytes) -> None:
-        """Sign this record with the sender's ML-DSA-65 signing key."""
-        self.signature = MLDSA.sign(sender_sk, self.signable_payload())
+    def sign(self, sender) -> None:
+        """Sign this record with the sender's ML-DSA-65 signing key.
+
+        Accepts either raw `sk` bytes (legacy) or a `KeyPair` (LTP-A-032
+        Phase 4d). A KeyPair routes through `keypair.sign(...)` so HSM-
+        backed kps never expose plaintext sk.
+        """
+        from .keypair import KeyPair as _KeyPair
+        payload = self.signable_payload()
+        if isinstance(sender, _KeyPair):
+            self.signature = sender.sign(payload)
+        else:
+            self.signature = MLDSA.sign(sender, payload)
 
     def verify_signature(self, sender_vk: bytes) -> bool:
         """Verify this record's ML-DSA-65 signature against sender's vk."""
@@ -600,8 +610,11 @@ class CommitmentLog:
         else:
             self._operator_kp = KeyPair.generate("log-operator")
 
+        # LTP-A-032 Phase 4d: pass the KeyPair itself so the merkle-log
+        # signer routes through KeyPair.sign — HSM-backed kps stay
+        # sentinel-only and software kps behave identically.
         self._merkle_log = MerkleLog(
-            self._operator_kp.vk, self._operator_kp.sk,
+            self._operator_kp.vk, self._operator_kp,
         )
         self._records: dict[str, CommitmentRecord] = {}
         self._chain: list[str] = []  # ordered entity_ids (used by audit)

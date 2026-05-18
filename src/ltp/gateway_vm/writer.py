@@ -58,7 +58,7 @@ class AttestationWriter:
         """Create a signed attestation for a validated bridge event."""
         event_bytes = event.to_signable_bytes()
         digest = domain_hash_bytes(DOMAIN_GATEWAY_ATTEST, event_bytes)
-        signature = domain_sign(DOMAIN_GATEWAY_ATTEST, self._keypair.sk, event_bytes)
+        signature = domain_sign(DOMAIN_GATEWAY_ATTEST, self._keypair, event_bytes)
 
         return GatewayAttestation(
             event_id=event.event_id,

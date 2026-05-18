@@ -142,7 +142,14 @@ class SignedTreeHead:
             + struct.pack('>d', ts)
             + root_hash
         )
-        signature = MLDSA.sign(operator_sk, payload)
+        # LTP-A-032 Phase 4d: operator_sk may be raw bytes (legacy) or
+        # a KeyPair. Route through KeyPair.sign when applicable so
+        # HSM-backed kps stay sentinel-only.
+        from ..keypair import KeyPair as _KeyPair
+        if isinstance(operator_sk, _KeyPair):
+            signature = operator_sk.sign(payload)
+        else:
+            signature = MLDSA.sign(operator_sk, payload)
         return cls(
             sequence=sequence,
             tree_size=tree_size,

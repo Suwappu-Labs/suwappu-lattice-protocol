@@ -198,7 +198,7 @@ class SimClient:
         )
 
         sign_start = sim.clock.now
-        record.sign(self.keypair.sk)
+        record.sign(self.keypair)
         # ML-DSA-65 signing: ~1ms
         sim.clock.advance_to(sim.clock.now + 1.0)
         metrics.commit_record_sign_ms = sim.clock.now - sign_start
