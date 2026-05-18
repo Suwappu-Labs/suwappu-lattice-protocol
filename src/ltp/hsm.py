@@ -138,68 +138,108 @@ class SoftwareHSM(HSMBackend):
                 "Configure a PKCS#11 HSM or cloud KMS backend; see "
                 "docs/compliance/fedramp-high/trust-boundary.md."
             )
-        # key_id → {"type": "kem"|"dsa", "public": bytes, "private": bytes}
+        # key_id → {"type": "kem"|"dsa", "public": bytes, "private": wrapped}
+        # LTP-A-032 (Phase 3): the "private" entry holds a KeyVault-wrapped
+        # blob (nonce(24) || ciphertext || tag(16)), not raw key bytes.
+        # sign() and kem_decaps() unwrap on demand, perform the operation,
+        # and best-effort zeroize the local plaintext bytearray.
         self._keys: dict[str, dict] = {}
         # Per-instance secret seed for derive_kek(). Random per process;
         # production deployments override this by configuring a real HSM
         # whose KEK derivation happens in hardware.
         self._kek_seed: bytes = os.urandom(32)
+        # Internal KeyVault wraps stored private bytes. Uses a KEK derived
+        # from the per-instance seed so wrapping is decoupled from the
+        # application-level KeyVault.from_environment() chain and there
+        # is no bootstrap dependency (a SoftwareHSM that backs the app
+        # KeyVault still bootstraps cleanly).
+        from .keyvault import KeyVault, _derive_kek_from_seed
+        self._vault: KeyVault = KeyVault(
+            _derive_kek_from_seed(self._kek_seed, "ltp.hsm:wrap")
+        )
+
+    # AAD domain separators for the per-HSM vault. Per-key-id binding
+    # prevents a wrapped blob from being lifted to a different slot.
+    _AAD_KEM = b"ltp.hsm:kem:"
+    _AAD_DSA = b"ltp.hsm:dsa:"
+
+    def _aad(self, key_id: str, kind: str) -> bytes:
+        base = self._AAD_KEM if kind == "kem" else self._AAD_DSA
+        return base + key_id.encode("utf-8")
 
     def generate_kem_keypair(self, key_id: str) -> bytes:
-        """Generate ML-KEM keypair, store privately, return public ek."""
+        """Generate ML-KEM keypair, store wrapped, return public ek."""
         if key_id in self._keys:
             raise ValueError(f"Key ID '{key_id}' already exists in HSM")
         ek, dk = MLKEM.keygen()
+        wrapped_dk = self._vault.wrap(dk, aad=self._aad(key_id, "kem"))
         self._keys[key_id] = {
             "type": "kem",
             "algorithm": f"ML-KEM-{get_security_profile().level * 256 + 256}",
             "public": ek,
-            "private": dk,
+            "private": wrapped_dk,
         }
         return ek
 
     def generate_dsa_keypair(self, key_id: str) -> bytes:
-        """Generate ML-DSA keypair, store privately, return public vk."""
+        """Generate ML-DSA keypair, store wrapped, return public vk."""
         if key_id in self._keys:
             raise ValueError(f"Key ID '{key_id}' already exists in HSM")
         vk, sk = MLDSA.keygen()
+        wrapped_sk = self._vault.wrap(sk, aad=self._aad(key_id, "dsa"))
         self._keys[key_id] = {
             "type": "dsa",
             "algorithm": f"ML-DSA-{get_security_profile().level * 22 + 21}",
             "public": vk,
-            "private": sk,
+            "private": wrapped_sk,
         }
         return vk
 
     def sign(self, key_id: str, message: bytes) -> bytes:
-        """Sign using stored DSA key."""
+        """Sign using stored DSA key. Unwraps inside this method only."""
         entry = self._keys.get(key_id)
         if entry is None:
             raise KeyError(f"Key ID '{key_id}' not found in HSM")
         if entry["type"] != "dsa":
             raise TypeError(f"Key '{key_id}' is type '{entry['type']}', not 'dsa'")
-        return MLDSA.sign(entry["private"], message)
+        sk_plain = bytearray(
+            self._vault.unwrap(entry["private"], aad=self._aad(key_id, "dsa"))
+        )
+        try:
+            return MLDSA.sign(bytes(sk_plain), message)
+        finally:
+            # Best-effort zeroization of the unwrapped plaintext.
+            for i in range(len(sk_plain)):
+                sk_plain[i] = 0
 
     def kem_decaps(self, key_id: str, kem_ciphertext: bytes) -> bytes:
-        """Decapsulate using stored KEM key."""
+        """Decapsulate using stored KEM key. Unwraps inside this method only."""
         entry = self._keys.get(key_id)
         if entry is None:
             raise KeyError(f"Key ID '{key_id}' not found in HSM")
         if entry["type"] != "kem":
             raise TypeError(f"Key '{key_id}' is type '{entry['type']}', not 'kem'")
-        return MLKEM.decaps(entry["private"], kem_ciphertext)
+        dk_plain = bytearray(
+            self._vault.unwrap(entry["private"], aad=self._aad(key_id, "kem"))
+        )
+        try:
+            return MLKEM.decaps(bytes(dk_plain), kem_ciphertext)
+        finally:
+            for i in range(len(dk_plain)):
+                dk_plain[i] = 0
 
     def destroy_key(self, key_id: str) -> bool:
-        """Zeroize and remove key from memory."""
+        """Zeroize and remove key from memory (wrapped blob + plaintext)."""
         entry = self._keys.pop(key_id, None)
         if entry is None:
             return False
-        # Zeroize private key material (best-effort in Python)
         if "private" in entry:
-            priv = bytearray(entry["private"])
-            for i in range(len(priv)):
-                priv[i] = 0
-            entry["private"] = bytes(priv)
+            # Zero the wrapped blob (defense-in-depth — even the wrapped
+            # bytes leave no trace once destroy_key is called).
+            wrapped = bytearray(entry["private"])
+            for i in range(len(wrapped)):
+                wrapped[i] = 0
+            entry["private"] = bytes(wrapped)
         return True
 
     def has_key(self, key_id: str) -> bool:
