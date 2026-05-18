@@ -91,7 +91,7 @@ def create_handshake_envelope(
     return SignedEnvelope.create(
         domain=DOMAIN_NODE_HANDSHAKE,
         signer_vk=keypair.vk,
-        signer_sk=keypair.sk,
+        signer_sk=keypair,
         signer_id=keypair.label,
         payload_type="node-handshake",
         payload=payload.to_bytes(),

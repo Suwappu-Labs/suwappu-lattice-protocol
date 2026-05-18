@@ -112,6 +112,27 @@ class HSMBackend(ABC):
         """
         ...
 
+    @abstractmethod
+    def import_kem_keypair(self, key_id: str, ek: bytes, dk: bytes) -> None:
+        """
+        Import an ML-KEM keypair into the HSM under `key_id`.
+
+        Required for reconstructing operator identities across restarts
+        when the persisted private key was wrapped to disk (LTP-A-032
+        Phase 4c). Real HSMs implement this via PKCS#11 C_UnwrapKey;
+        software implementations store the bytes directly (still wrapped
+        at rest via the internal KeyVault).
+        """
+        ...
+
+    @abstractmethod
+    def import_dsa_keypair(self, key_id: str, vk: bytes, sk: bytes) -> None:
+        """
+        Import an ML-DSA keypair into the HSM under `key_id`. See
+        `import_kem_keypair` for rationale.
+        """
+        ...
+
 
 class SoftwareHSM(HSMBackend):
     """
@@ -241,6 +262,35 @@ class SoftwareHSM(HSMBackend):
                 wrapped[i] = 0
             entry["private"] = bytes(wrapped)
         return True
+
+    def import_kem_keypair(self, key_id: str, ek: bytes, dk: bytes) -> None:
+        """Import an existing ML-KEM keypair (LTP-A-032 Phase 4c).
+
+        Used to reconstruct operator identities from persisted-and-wrapped
+        bytes on restart. The provided `dk` is immediately wrapped via the
+        internal KeyVault before storage; the caller's bytes are not kept.
+        """
+        if key_id in self._keys:
+            raise ValueError(f"Key ID '{key_id}' already exists in HSM")
+        wrapped_dk = self._vault.wrap(bytes(dk), aad=self._aad(key_id, "kem"))
+        self._keys[key_id] = {
+            "type": "kem",
+            "algorithm": f"ML-KEM-{get_security_profile().level * 256 + 256}",
+            "public": bytes(ek),
+            "private": wrapped_dk,
+        }
+
+    def import_dsa_keypair(self, key_id: str, vk: bytes, sk: bytes) -> None:
+        """Import an existing ML-DSA keypair (LTP-A-032 Phase 4c)."""
+        if key_id in self._keys:
+            raise ValueError(f"Key ID '{key_id}' already exists in HSM")
+        wrapped_sk = self._vault.wrap(bytes(sk), aad=self._aad(key_id, "dsa"))
+        self._keys[key_id] = {
+            "type": "dsa",
+            "algorithm": f"ML-DSA-{get_security_profile().level * 22 + 21}",
+            "public": bytes(vk),
+            "private": wrapped_sk,
+        }
 
     def has_key(self, key_id: str) -> bool:
         return key_id in self._keys

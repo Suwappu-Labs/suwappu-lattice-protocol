@@ -185,7 +185,7 @@ class NodeServicer(ns_pb2_grpc.NodeServiceServicer):
             exclude_node_id=msg.sender_id,
         )
         response_bytes = response_msg.to_bytes()
-        response_sig = response_msg.sign(self._keypair.sk)
+        response_sig = response_msg.sign(self._keypair)
 
         return ns_pb2.PeerExchangeResponse(
             accepted=True,

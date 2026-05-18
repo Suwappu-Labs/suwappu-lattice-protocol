@@ -119,7 +119,7 @@ class Relayer:
             relay_envelope = SignedEnvelope.create(
                 domain=DOMAIN_BRIDGE_MSG,
                 signer_vk=self.relay_keypair.vk,
-                signer_sk=self.relay_keypair.sk,
+                signer_sk=self.relay_keypair,
                 signer_id=self.relay_keypair.label,
                 payload_type="bridge-relay",
                 payload=sealed_key,

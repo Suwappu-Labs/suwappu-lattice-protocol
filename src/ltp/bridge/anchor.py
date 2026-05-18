@@ -147,7 +147,7 @@ class L1Anchor:
         envelope = SignedEnvelope.create(
             domain=DOMAIN_BRIDGE_MSG,
             signer_vk=self.operator_keypair.vk,
-            signer_sk=self.operator_keypair.sk,
+            signer_sk=self.operator_keypair,
             signer_id=self.operator_keypair.label,
             payload_type="bridge-commit",
             payload=content,

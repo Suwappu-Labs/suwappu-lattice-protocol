@@ -119,12 +119,17 @@ class SignedEnvelope:
         cls,
         domain: bytes,
         signer_vk: bytes,
-        signer_sk: bytes,
+        signer_sk,
         signer_id: str,
         payload_type: str,
         payload: bytes,
     ) -> "SignedEnvelope":
-        """Factory: build, sign, return. Uses current time."""
+        """Factory: build, sign, return. Uses current time.
+
+        `signer_sk` accepts either raw `sk` bytes (legacy) or a
+        `KeyPair` (LTP-A-032 Phase 4d). The downstream `domain_sign`
+        handles both transparently.
+        """
         return cls.create_at(
             domain=domain,
             signer_vk=signer_vk,
@@ -140,7 +145,7 @@ class SignedEnvelope:
         cls,
         domain: bytes,
         signer_vk: bytes,
-        signer_sk: bytes,
+        signer_sk,
         signer_id: str,
         payload_type: str,
         payload: bytes,

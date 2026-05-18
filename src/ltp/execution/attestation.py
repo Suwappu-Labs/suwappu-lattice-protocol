@@ -120,7 +120,7 @@ class AttestationEngine:
     ) -> MultiVMAttestation:
         """Create an ML-DSA-only signed attestation (backward compatible)."""
         payload = self._build_payload(state_root, consensus_round, epoch, active_vm_tags)
-        signature = domain_sign(DOMAIN_MULTI_VM_ATTEST, self._keypair.sk, payload)
+        signature = domain_sign(DOMAIN_MULTI_VM_ATTEST, self._keypair, payload)
 
         return MultiVMAttestation(
             state_root=state_root,
@@ -187,7 +187,7 @@ class AttestationEngine:
             raise ValueError("No BLS identity configured — use bls_identity parameter in constructor")
 
         payload = self._build_payload(state_root, consensus_round, epoch, active_vm_tags)
-        mldsa_sig = domain_sign(DOMAIN_MULTI_VM_ATTEST, self._keypair.sk, payload)
+        mldsa_sig = domain_sign(DOMAIN_MULTI_VM_ATTEST, self._keypair, payload)
 
         att_mldsa = MultiVMAttestation(
             state_root=state_root,

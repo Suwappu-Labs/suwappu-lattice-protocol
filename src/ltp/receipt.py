@@ -131,12 +131,16 @@ class ApprovalReceipt:
         """Compute content-addressed receipt ID: H(canonical_bytes_unsigned)."""
         return canonical_hash(self.canonical_bytes_unsigned())
 
-    def sign(self, signer_sk: bytes) -> None:
-        """Sign this receipt. Sets receipt_id and signature."""
+    def sign(self, signer) -> None:
+        """Sign this receipt. Sets receipt_id and signature.
+
+        `signer` may be raw `sk` bytes (legacy) or a `KeyPair`
+        (LTP-A-032 Phase 4d). `domain_sign` already accepts both.
+        """
         self.receipt_id = self.compute_receipt_id()
         self.signature = domain_sign(
             DOMAIN_APPROVAL_RECEIPT,
-            signer_sk,
+            signer,
             self.canonical_bytes_unsigned(),
         )
 
@@ -214,7 +218,7 @@ class ApprovalReceipt:
             policy_hash=policy_hash,
             signature=b"",
         )
-        receipt.sign(signer_kp.sk)
+        receipt.sign(signer_kp)
         return receipt
 
     @classmethod
@@ -254,5 +258,5 @@ class ApprovalReceipt:
             policy_hash=policy_hash,
             signature=b"",
         )
-        receipt.sign(signer_kp.sk)
+        receipt.sign(signer_kp)
         return receipt

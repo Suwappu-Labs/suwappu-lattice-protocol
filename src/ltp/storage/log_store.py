@@ -30,11 +30,17 @@ __all__ = ["CommitmentLogStore"]
 
 _LOG = logging.getLogger(__name__)
 
-# Domain separator passed as AAD when wrapping the operator sk.
+# Domain separator passed as AAD when wrapping the operator sk / dk.
 # Anchors the wrapped blob to this storage site so a blob lifted
 # from one table cannot be unwrapped at another KeyVault call site.
 _AAD_OPERATOR_SK = b"ltp.storage.log_store:operator_sk"
-_WRAP_VERSION = 1
+_AAD_OPERATOR_DK = b"ltp.storage.log_store:operator_dk"
+# Wrap version history:
+#   1 — sk wrapped only (vk + sk_wrapped). Phase 2.
+#   2 — sk + dk wrapped; ek persisted raw (it's public). Phase 4c.
+_WRAP_VERSION_PHASE2 = 1
+_WRAP_VERSION_PHASE4C = 2
+_WRAP_VERSION = _WRAP_VERSION_PHASE4C
 
 
 class CommitmentLogStore:
@@ -75,16 +81,26 @@ class CommitmentLogStore:
         #   sk_wrapped   — KeyVault-wrapped sk (nonce || ct || tag).
         #                  Authoritative once wrap_version is non-NULL.
         #   wrap_version — INTEGER, 1 for the AEAD wrap defined above.
+        # log_operator schema (Phase 4c):
+        #   vk           — raw verification key (public; not sensitive)
+        #   sk           — legacy plaintext sk column. Nullable for v2 rows.
+        #   sk_wrapped   — KeyVault-wrapped sk (nonce || ct || tag).
+        #   ek           — raw encapsulation key (public; v2 only).
+        #   dk_wrapped   — KeyVault-wrapped dk (v2 only).
+        #   wrap_version — 1 (Phase 2: sk only) or 2 (Phase 4c: all four).
         self._conn.execute("""
             CREATE TABLE IF NOT EXISTS log_operator (
                 id            INTEGER PRIMARY KEY CHECK (id = 1),
                 vk            BLOB    NOT NULL,
                 sk            BLOB,
                 sk_wrapped    BLOB,
+                ek            BLOB,
+                dk_wrapped    BLOB,
                 wrap_version  INTEGER
             )
         """)
-        # Migrate legacy schema (sk NOT NULL, no sk_wrapped column).
+        # Migrate legacy schemas (pre-Phase-2 sk NOT NULL; Phase-2 without
+        # ek/dk_wrapped columns).
         self._migrate_legacy_schema_if_needed()
         self._conn.commit()
 
@@ -134,6 +150,8 @@ class CommitmentLogStore:
                     vk            BLOB    NOT NULL,
                     sk            BLOB,
                     sk_wrapped    BLOB,
+                    ek            BLOB,
+                    dk_wrapped    BLOB,
                     wrap_version  INTEGER
                 )
             """)
@@ -154,51 +172,103 @@ class CommitmentLogStore:
             self._conn.execute(
                 "ALTER TABLE log_operator ADD COLUMN wrap_version INTEGER"
             )
+        # Phase 4c additions (Q4 — persist all four).
+        if "ek" not in cols:
+            self._conn.execute(
+                "ALTER TABLE log_operator ADD COLUMN ek BLOB"
+            )
+        if "dk_wrapped" not in cols:
+            self._conn.execute(
+                "ALTER TABLE log_operator ADD COLUMN dk_wrapped BLOB"
+            )
 
     # ------------------------------------------------------------------
     # Operator keypair API
     # ------------------------------------------------------------------
 
-    def store_operator_keypair(self, vk: bytes, sk: bytes) -> None:
+    def store_operator_keypair(
+        self,
+        vk: bytes,
+        sk: bytes,
+        ek: Optional[bytes] = None,
+        dk: Optional[bytes] = None,
+    ) -> None:
         """Persist the log operator keypair (upsert).
 
-        `vk` is stored raw (it's public). `sk` is wrapped via KeyVault
-        before insert and stored in `sk_wrapped`. The plaintext `sk`
-        column is left NULL on new writes.
+        `vk` and `ek` are stored raw (public material). `sk` and `dk`
+        (when provided) are KeyVault-wrapped before insert. Plaintext
+        columns are left NULL on new writes.
+
+        Backward compat: callers that pass only `(vk, sk)` produce a
+        Phase 2-shaped row (no ek/dk persisted, wrap_version=1).
+        Callers that pass all four produce a Phase 4c row
+        (wrap_version=2). The CommitmentLog operator-reload path uses
+        the 4-arg form so the full identity survives restarts (Q4).
         """
         if not isinstance(sk, (bytes, bytearray)):
             raise TypeError("sk must be bytes")
         sk_wrapped = self._get_vault().wrap(bytes(sk), aad=_AAD_OPERATOR_SK)
+        full = ek is not None and dk is not None
+        if full:
+            if not isinstance(dk, (bytes, bytearray)):
+                raise TypeError("dk must be bytes")
+            dk_wrapped = self._get_vault().wrap(bytes(dk), aad=_AAD_OPERATOR_DK)
+            ek_bytes = bytes(ek)
+            wrap_version = _WRAP_VERSION_PHASE4C
+        else:
+            dk_wrapped = None
+            ek_bytes = None
+            wrap_version = _WRAP_VERSION_PHASE2
         with self._lock:
             self._conn.execute(
                 "INSERT OR REPLACE INTO log_operator "
-                "(id, vk, sk, sk_wrapped, wrap_version) "
-                "VALUES (1, ?, NULL, ?, ?)",
-                (vk, sk_wrapped, _WRAP_VERSION),
+                "(id, vk, sk, sk_wrapped, ek, dk_wrapped, wrap_version) "
+                "VALUES (1, ?, NULL, ?, ?, ?, ?)",
+                (vk, sk_wrapped, ek_bytes, dk_wrapped, wrap_version),
             )
             self._conn.commit()
 
     def load_operator_keypair(self) -> Optional[tuple[bytes, bytes]]:
-        """Load persisted operator keypair. Returns (vk, sk) or None.
+        """Legacy 2-tuple load. Returns (vk, sk) or None.
 
         Read order:
           1. sk_wrapped (if wrap_version is non-NULL) — unwrap and return.
-          2. Legacy plain sk — transparently migrate: wrap, overwrite,
-             return. A WARNING is logged. Run
-             `python -m ltp.tools.migrate_keyvault <db>` to perform
-             bulk migration explicitly.
+          2. Legacy plain sk — transparently migrate, then return.
+
+        Existing callers that only need vk/sk keep this signature; the
+        Phase 4c CommitmentLog reload path uses
+        :meth:`load_operator_keypair_full` for the (vk, sk, ek, dk)
+        tuple needed to rebuild the full HSM-backed identity.
+        """
+        full = self.load_operator_keypair_full()
+        if full is None:
+            return None
+        vk, sk, _ek, _dk = full
+        return (vk, sk)
+
+    def load_operator_keypair_full(
+        self,
+    ) -> Optional[tuple[bytes, bytes, Optional[bytes], Optional[bytes]]]:
+        """Phase 4c 4-tuple load. Returns (vk, sk, ek_or_None, dk_or_None).
+
+        `ek` / `dk` are None for legacy v1 rows that pre-date Phase 4c.
+        The caller (CommitmentLog) generates fresh values in that case
+        and persists them via :meth:`store_operator_keypair`.
         """
         with self._lock:
             row = self._conn.execute(
-                "SELECT vk, sk, sk_wrapped, wrap_version "
+                "SELECT vk, sk, sk_wrapped, ek, dk_wrapped, wrap_version "
                 "FROM log_operator WHERE id = 1"
             ).fetchone()
         if row is None:
             return None
-        vk, legacy_sk, sk_wrapped, wrap_version = row
+        vk, legacy_sk, sk_wrapped, ek, dk_wrapped, wrap_version = row
         if sk_wrapped is not None and wrap_version is not None:
             sk = self._get_vault().unwrap(sk_wrapped, aad=_AAD_OPERATOR_SK)
-            return (vk, sk)
+            dk = None
+            if dk_wrapped is not None:
+                dk = self._get_vault().unwrap(dk_wrapped, aad=_AAD_OPERATOR_DK)
+            return (vk, sk, ek, dk)
         if legacy_sk is None:
             return None
         _LOG.warning(
@@ -208,10 +278,8 @@ class CommitmentLogStore:
             "bulk migration.",
             self._db_path,
         )
-        # _migrate_row_inplace re-acquires self._lock; safe because we
-        # already returned from the lock-protected SELECT above.
         self._migrate_row_inplace(legacy_sk)
-        return (vk, legacy_sk)
+        return (vk, legacy_sk, None, None)
 
     def _migrate_row_inplace(self, legacy_sk: bytes) -> None:
         """Wrap a legacy plaintext sk and overwrite the row.
@@ -248,7 +316,7 @@ class CommitmentLogStore:
                 "UPDATE log_operator "
                 "SET sk = NULL, sk_wrapped = ?, wrap_version = ? "
                 "WHERE id = 1",
-                (sk_wrapped, _WRAP_VERSION),
+                (sk_wrapped, _WRAP_VERSION_PHASE2),
             )
             self._conn.commit()
 

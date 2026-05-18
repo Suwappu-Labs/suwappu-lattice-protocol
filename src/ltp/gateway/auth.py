@@ -75,7 +75,7 @@ def create_jwt(
     claims_b64 = _b64url_encode(json.dumps(claims, separators=(",", ":")).encode())
 
     signing_input = f"{header_b64}.{claims_b64}".encode("ascii")
-    signature = domain_sign(DOMAIN_JWT_TOKEN, keypair.sk, signing_input)
+    signature = domain_sign(DOMAIN_JWT_TOKEN, keypair, signing_input)
     sig_b64 = _b64url_encode(signature)
 
     return f"{header_b64}.{claims_b64}.{sig_b64}"

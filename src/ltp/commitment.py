@@ -458,9 +458,19 @@ class CommitmentRecord:
             parts.append(struct.pack('>I', len(vb)) + vb)
         return b"LTP-COMMIT-v1\x00" + b"".join(parts)
 
-    def sign(self, sender_sk: bytes) -> None:
-        """Sign this record with the sender's ML-DSA-65 signing key."""
-        self.signature = MLDSA.sign(sender_sk, self.signable_payload())
+    def sign(self, sender) -> None:
+        """Sign this record with the sender's ML-DSA-65 signing key.
+
+        Accepts either raw `sk` bytes (legacy) or a `KeyPair` (LTP-A-032
+        Phase 4d). A KeyPair routes through `keypair.sign(...)` so HSM-
+        backed kps never expose plaintext sk.
+        """
+        from .keypair import KeyPair as _KeyPair
+        payload = self.signable_payload()
+        if isinstance(sender, _KeyPair):
+            self.signature = sender.sign(payload)
+        else:
+            self.signature = MLDSA.sign(sender, payload)
 
     def verify_signature(self, sender_vk: bytes) -> bool:
         """Verify this record's ML-DSA-65 signature against sender's vk."""
@@ -588,20 +598,47 @@ class CommitmentLog:
 
         self._store = store  # Optional CommitmentLogStore for persistence
 
-        # Restore or generate operator keypair
+        # Restore or generate operator keypair. LTP-A-032 Phase 4c.
+        #
+        # The log operator is the one identity that MUST persist across
+        # restarts — the merkle log keeps signing under the same vk.
+        # Reconciling this with implicit-HSM mode (kp.sk is the sentinel
+        # after generate()) requires generating the bytes OUTSIDE the HSM
+        # first, persisting them via the KeyVault-wrapped log_store, and
+        # then importing those same bytes back into a fresh per-process
+        # SoftwareHSM so subsequent sign() calls route through the HSM.
+        #
+        # Q4 (team-decided): persist ALL FOUR (ek, dk, vk, sk) so the
+        # operator's KEM identity is also stable across restarts.
+        # Legacy v1 rows have only (vk, sk); on first reload we
+        # regenerate (ek, dk) and persist the full set as a v2 row.
         if store is not None:
-            kp_data = store.load_operator_keypair()
-            if kp_data is not None:
-                vk, sk = kp_data
-                self._operator_kp = KeyPair(ek=b"", dk=b"", vk=vk, sk=sk, label="log-operator")
+            from .primitives import MLKEM as _MLKEM, MLDSA as _MLDSA
+            kp_data = store.load_operator_keypair_full()
+            if kp_data is None:
+                # Fresh log: generate all four, persist as v2.
+                ek, dk = _MLKEM.keygen()
+                vk, sk = _MLDSA.keygen()
+                store.store_operator_keypair(vk, sk, ek=ek, dk=dk)
             else:
-                self._operator_kp = KeyPair.generate("log-operator")
-                store.store_operator_keypair(self._operator_kp.vk, self._operator_kp.sk)
+                vk, sk, ek, dk = kp_data
+                if ek is None or dk is None:
+                    # Legacy v1 row — upgrade to v2 by minting fresh
+                    # KEM material and persisting alongside the
+                    # existing sk/vk.
+                    ek, dk = _MLKEM.keygen()
+                    store.store_operator_keypair(vk, sk, ek=ek, dk=dk)
+            self._operator_kp = KeyPair.from_persisted(
+                ek=ek, dk=dk, vk=vk, sk=sk, label="log-operator",
+            )
         else:
             self._operator_kp = KeyPair.generate("log-operator")
 
+        # LTP-A-032 Phase 4d: pass the KeyPair itself so the merkle-log
+        # signer routes through KeyPair.sign — HSM-backed kps stay
+        # sentinel-only and software kps behave identically.
         self._merkle_log = MerkleLog(
-            self._operator_kp.vk, self._operator_kp.sk,
+            self._operator_kp.vk, self._operator_kp,
         )
         self._records: dict[str, CommitmentRecord] = {}
         self._chain: list[str] = []  # ordered entity_ids (used by audit)

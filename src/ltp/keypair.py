@@ -28,45 +28,18 @@ __all__ = [
 
 
 def _implicit_hsm_enabled() -> bool:
-    """Whether KeyPair.generate(hsm=None) should route through an
-    implicit SoftwareHSM (LTP-A-032 Phase 4a opt-in flag).
+    """Whether `KeyPair.generate(hsm=None)` routes through an implicit
+    SoftwareHSM (LTP-A-032 Phase 4c — default-on).
 
-    Set `LTP_KEYPAIR_IMPLICIT_HSM=1` (or `true`, `yes`, `on`) to enable.
-    Default off — existing call sites that read kp.dk / kp.sk directly
-    continue to work. Phase 4b/4d migrate readers to `KeyPair.sign` /
-    `KeyPair.decaps` so this flag can become default-on.
-
-    EXPERIMENTAL. Until Phase 4d completes, callers that still read raw
-    `kp.dk` / `kp.sk` (e.g. `SealedBox.unseal` via direct
-    `MLKEM.decaps(receiver_keypair.dk, ...)` in some paths) will fail
-    when this flag is on. A one-shot WARNING is emitted on activation.
+    The flag flipped from opt-in to opt-out in Phase 4c. Set
+    `LTP_KEYPAIR_IMPLICIT_HSM=0` (or `false`, `no`, `off`) to opt out —
+    intended only for legacy tests that intentionally probe plaintext
+    `kp.dk` / `kp.sk`. Production must leave the flag unset (default-on).
     """
     val = os.environ.get("LTP_KEYPAIR_IMPLICIT_HSM", "").lower()
-    enabled = val in {"1", "true", "yes", "on"}
-    if enabled and not getattr(_implicit_hsm_enabled, "_warned", False):
-        import logging as _logging
-        _logging.getLogger(__name__).warning(
-            "LTP_KEYPAIR_IMPLICIT_HSM is set — KeyPair.generate(hsm=None) "
-            "returns sentinel-backed keypairs (LTP-A-032 Phase 4a "
-            "EXPERIMENTAL). Un-migrated call sites that read raw kp.dk / "
-            "kp.sk WILL fail until Phase 4d completes. Do not enable in "
-            "production yet."
-        )
-        _implicit_hsm_enabled._warned = True  # type: ignore[attr-defined]
-    return enabled
-
-
-def _hsm_label(label: str) -> str:
-    """Append the `[hsm]` marker to a label without stacking suffixes.
-
-    KeyRotationManager.rotate calls `KeyPair.generate(label=old.label)`,
-    so naive `f"{label}[hsm]"` produces `alice` → `alice[hsm]` →
-    `alice[hsm][hsm]` across rotations, splitting `_key_chains` keyed
-    on label. Keep the suffix idempotent.
-    """
-    if label.endswith("[hsm]"):
-        return label
-    return f"{label}[hsm]"
+    if val in {"0", "false", "no", "off"}:
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -194,10 +167,14 @@ class KeyPair:
             # Sentinel: dk/sk are NOT the real private keys — they are
             # recognizable non-key bytes. All private-key operations
             # go through `sign` / `decaps`.
+            # LTP-A-032 Phase 4c: the `[hsm]` label suffix used to flag
+            # HSM-backing has been dropped (the `is_hsm_backed` property
+            # already exposes the same fact). Preserves the caller's label
+            # across rotations.
             _HSM_SENTINEL = b"\xfe" * 32
             kp = cls(
                 ek=ek, dk=_HSM_SENTINEL, vk=vk, sk=_HSM_SENTINEL,
-                label=_hsm_label(label),
+                label=label,
                 created_at=_time.time(),
             )
             kp._hsm = hsm
@@ -217,6 +194,48 @@ class KeyPair:
             bls_pk, bls_sk = _BLS.keygen()
         return cls(ek=ek, dk=dk, vk=vk, sk=sk, label=label,
                    created_at=_time.time(), bls_pk=bls_pk, bls_sk=bls_sk)
+
+    @classmethod
+    def from_persisted(
+        cls,
+        ek: bytes,
+        dk: bytes,
+        vk: bytes,
+        sk: bytes,
+        label: str = "",
+        hsm=None,
+    ) -> "KeyPair":
+        """Rebuild a KeyPair from persisted key bytes (LTP-A-032 Phase 4c).
+
+        Used when an operator identity is loaded from disk (e.g. by
+        `CommitmentLog` reading `log_store.load_operator_keypair()`).
+
+        When `LTP_KEYPAIR_IMPLICIT_HSM` is on (the default), the dk/sk
+        are imported into a private SoftwareHSM (or the explicit HSM
+        passed in) so they never live as plaintext on the dataclass —
+        identical posture to `KeyPair.generate()`. When the opt-out flag
+        is set the bytes are kept as-is for legacy callers.
+        """
+        if hsm is None and _implicit_hsm_enabled():
+            from .hsm import SoftwareHSM as _ImplicitHSM
+            hsm = _ImplicitHSM()
+        if hsm is not None:
+            kem_key_id = f"{label}-kem"
+            dsa_key_id = f"{label}-dsa"
+            hsm.import_kem_keypair(kem_key_id, ek, dk)
+            hsm.import_dsa_keypair(dsa_key_id, vk, sk)
+            _HSM_SENTINEL = b"\xfe" * 32
+            kp = cls(
+                ek=ek, dk=_HSM_SENTINEL, vk=vk, sk=_HSM_SENTINEL,
+                label=label,
+                created_at=_time.time(),
+            )
+            kp._hsm = hsm
+            kp._hsm_kem_key_id = kem_key_id
+            kp._hsm_dsa_key_id = dsa_key_id
+            return kp
+        return cls(ek=ek, dk=dk, vk=vk, sk=sk, label=label,
+                   created_at=_time.time())
 
     @property
     def is_hsm_backed(self) -> bool:

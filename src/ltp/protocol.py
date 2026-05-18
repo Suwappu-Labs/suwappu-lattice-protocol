@@ -209,7 +209,7 @@ class LTPProtocol:
             sender_vk=sender_keypair.vk,
         )
 
-        record.sign(sender_keypair.sk)
+        record.sign(sender_keypair)
         sig_size = len(record.signature)
 
         commitment_ref = self.network.log.append(record)

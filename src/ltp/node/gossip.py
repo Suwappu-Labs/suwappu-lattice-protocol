@@ -154,9 +154,13 @@ class PeerExchangeMessage:
 
         return cls(sender_id=sender_id, timestamp=timestamp, peers=peers)
 
-    def sign(self, sk: bytes) -> bytes:
-        """Sign the message with ML-DSA-65 and return signature."""
-        return domain_sign(DOMAIN_PEER_GOSSIP, sk, self.to_bytes())
+    def sign(self, signer) -> bytes:
+        """Sign the message with ML-DSA-65 and return signature.
+
+        `signer` may be raw `sk` bytes (legacy) or a `KeyPair`
+        (LTP-A-032 Phase 4d). `domain_sign` already accepts both.
+        """
+        return domain_sign(DOMAIN_PEER_GOSSIP, signer, self.to_bytes())
 
     def verify(self, vk: bytes, signature: bytes) -> bool:
         """Verify the ML-DSA-65 signature on this message."""
@@ -271,7 +275,7 @@ class GossipProtocol:
         # Send to connected peers via gRPC
         peers_sent_to = 0
         if self._send_fn is not None and msg.peers:
-            sig = msg.sign(self._keypair.sk)
+            sig = msg.sign(self._keypair)
             msg_bytes = msg.to_bytes()
             connected = self._peer_manager.get_connected_peers()
             for peer in connected:
