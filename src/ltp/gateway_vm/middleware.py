@@ -5,7 +5,7 @@ configurable via env vars so the same code path serves dev (permissive)
 and FedRAMP-high production (strict).
 
 Closes audit findings LTP-A-010 (unauthenticated enumeration) and
-LTP-A-011 (default host bind) — see ``docs/SECURITY_AUDIT_2026-05-15.md``.
+LTP-A-011 (default host bind) — see ``docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md``.
 """
 
 from __future__ import annotations

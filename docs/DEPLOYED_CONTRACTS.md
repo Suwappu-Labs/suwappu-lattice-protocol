@@ -133,7 +133,7 @@ To regenerate the ABI after a contract change, run `forge build` in
 
 ## v7 Governance Hardening (Source Updates — Pending Deploy)
 
-The Solidity changes in PR #8 Commit 5 (`docs/SECURITY_AUDIT_2026-05-15.md` LTP-A-002, LTP-A-007, LTP-A-009, LTP-A-017) are source-only — they do **not** modify any deployed v5/v6 contract. They take effect when the next batch (v7) is deployed using the tightened `DeployMainnet.s.sol` script.
+The Solidity changes in PR #8 Commit 5 (`docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md` LTP-A-002, LTP-A-007, LTP-A-009, LTP-A-017) are source-only — they do **not** modify any deployed v5/v6 contract. They take effect when the next batch (v7) is deployed using the tightened `DeployMainnet.s.sol` script.
 
 | Change | File | What it enforces at the next deploy |
 |---|---|---|

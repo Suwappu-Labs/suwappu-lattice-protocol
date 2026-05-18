@@ -25,7 +25,7 @@ noisy on CI). Instead it pins two structural invariants:
    checks before calling the C library; no secret-dependent branching
    in the Python layer. Verified by inspection of the source.
 
-LTP-A-014 in ``docs/SECURITY_AUDIT_2026-05-15.md``.
+LTP-A-014 in ``docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md``.
 """
 
 from __future__ import annotations

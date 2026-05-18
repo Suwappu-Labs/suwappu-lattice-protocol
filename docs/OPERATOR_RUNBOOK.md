@@ -491,7 +491,7 @@ curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" \
 ## 13. v7 Production Deploy Checklist
 
 Closes audit findings **LTP-A-002** and **LTP-A-009** in
-[`SECURITY_AUDIT_2026-05-15.md`](SECURITY_AUDIT_2026-05-15.md). The
+[`SECURITY_AUDIT_2026-05-15.md`](security/audits/internal/SECURITY_AUDIT_2026-05-15.md). The
 source-side enforcement (`contracts/script/DeployMainnet.s.sol`)
 guarantees a v7 deploy can't go out with anything weaker than
 `threshold >= ceil(N/2) + 1` and `timelockDelay >= 24 hours`. This

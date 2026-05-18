@@ -8,7 +8,7 @@ pragma solidity ^0.8.24;
 /// @dev    Event fields match the gateway's BridgeEvent dataclass:
 ///         sender, recipient, payloadHash, amount, nonce.
 ///
-///         LTP-A-017 (docs/SECURITY_AUDIT_2026-05-15.md): the v6
+///         LTP-A-017 (docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md): the v6
 ///         contract gates `emitBridgeTransfer` behind an admin-managed
 ///         allowlist so an arbitrary EOA can't spoof bridge-transfer
 ///         events that downstream indexers consume. Existing v5/v6

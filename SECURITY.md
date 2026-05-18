@@ -83,15 +83,15 @@ MultiSig (2-of-2) → TimelockController (60s testnet / 24-48h production) → L
 
 For detailed security analysis and design decisions:
 
-- [Internal Red-Team Report (May 2026)](docs/security/RED_TEAM_REPORT_2026-05.md)
+- [Internal Red-Team Report (May 2026)](docs/security/audits/internal/RED_TEAM_REPORT_2026-05.md)
   — consolidated audit-firm-style report covering 33 scenarios across 8
   attack layers and the LTP-A-031 finding surfaced + remediated by the campaign.
   Recommended starting point for external auditors.
-- [Standing Audit Findings (2026-05-15)](docs/SECURITY_AUDIT_2026-05-15.md) — 31 LTP-A-* findings + strengths register
+- [Standing Audit Findings (2026-05-15)](docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md) — 31 LTP-A-* findings + strengths register
 - [Internal Testing Charter](SECURITY_TESTING.md) — authorization and scope for red-team campaigns
 - [Threat Model](docs/THREAT_MODEL.md)
-- [Security Review (2026-02-24)](docs/design-decisions/Security/SECURITY_REVIEW-2-24-2026.md)
-- [Lattice Key Shard Exposure Analysis](docs/design-decisions/Security/001-lattice-key-shard-exposure.md)
+- [Security Review (2026-02-24)](docs/security/audits/internal/SECURITY_REVIEW-2-24-2026.md)
+- [Lattice Key Shard Exposure Analysis](docs/security/audits/internal/001-lattice-key-shard-exposure.md)
 - [Architecture — Security Layers](docs/design-decisions/ARCHITECTURE.md#6-security-layers)
 - [Formal Verification Tests](contracts/test/FormalVerification.t.sol) — 21 fuzz/invariant/parity tests
 

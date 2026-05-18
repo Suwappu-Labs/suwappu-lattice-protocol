@@ -62,9 +62,9 @@ New to LTP? Read in this order:
 | | [Bridge MVP Scope](bridge-mvp-scope.md) | L1-L2 cross-chain bridge scope |
 | | [Deployed Contracts](DEPLOYED_CONTRACTS.md) | Current registry addresses and governance topology |
 | **Compliance** | [FedRAMP High Readiness](compliance/fedramp-high/README.md) | System boundary, control matrix, SSP narratives |
-| **Security** | [Security Audit (2026-05-15)](SECURITY_AUDIT_2026-05-15.md) | Most recent independent audit |
-| | [Security Review (2026-02-24)](design-decisions/Security/SECURITY_REVIEW-2-24-2026.md) | Formal security review |
-| | [Shard Exposure Analysis](design-decisions/Security/001-lattice-key-shard-exposure.md) | Attack chain analysis and Option A-D comparison |
+| **Security** | [Security Audit (2026-05-15)](security/audits/internal/SECURITY_AUDIT_2026-05-15.md) | Most recent independent audit |
+| | [Security Review (2026-02-24)](security/audits/internal/SECURITY_REVIEW-2-24-2026.md) | Formal security review |
+| | [Shard Exposure Analysis](security/audits/internal/001-lattice-key-shard-exposure.md) | Attack chain analysis and Option A-D comparison |
 | | [Formal Protocol Analysis](formal/ANALYSIS.md) | Tamarin / ProVerif outputs |
 
 ## Document relationships

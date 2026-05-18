@@ -33,7 +33,7 @@ contract DeployMainnet is Script {
         address[] memory owners = _parseAddresses(ownersRaw);
         require(owners.length >= multisigThreshold, "threshold exceeds owner count");
 
-        // LTP-A-002 / LTP-A-009 (docs/SECURITY_AUDIT_2026-05-15.md):
+        // LTP-A-002 / LTP-A-009 (docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md):
         // production-grade Byzantine threshold + 24-hour Timelock.
         //   - threshold >= ceil(N/2) + 1 prevents Ronin/Harmony-class
         //     single-key compromise from gaining quorum
@@ -47,7 +47,7 @@ contract DeployMainnet is Script {
         );
         require(timelockDelay >= 24 hours, "mainnet requires timelock >= 24 hours");
 
-        // LTP-A-001 (docs/SECURITY_AUDIT_2026-05-15.md): wide challenge
+        // LTP-A-001 (docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md): wide challenge
         // window. Mainnet floor is 24h so the OptimisticBridgeChallenge
         // gives honest challengers (and the symmetric ZK fraud-proof
         // path in finalizeWithFraudProof) a real detection window

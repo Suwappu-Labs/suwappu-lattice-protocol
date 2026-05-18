@@ -1,6 +1,6 @@
 """Single source-of-truth registry of every domain tag in LTP corridor flows.
 
-LTP-A-021 in ``docs/SECURITY_AUDIT_2026-05-15.md`` flagged the lack of a
+LTP-A-021 in ``docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md`` flagged the lack of a
 global enumeration of domain tags. Tags MUST be pairwise distinct so that
 ``sha3_256_domain(tag_a, payload)`` and ``sha3_256_domain(tag_b, payload)``
 never collide for any payload — the length-prefixed hash guarantees this

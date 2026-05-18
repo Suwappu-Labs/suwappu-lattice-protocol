@@ -10,7 +10,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 
 /// @title Security.t.sol
 /// @notice Forge regression tests for the Solidity-layer hardening fixes in
-///         docs/SECURITY_AUDIT_2026-05-15.md (LTP-A-006, LTP-A-007,
+///         docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md (LTP-A-006, LTP-A-007,
 ///         LTP-A-017, LTP-A-029).
 contract SecurityTest is Test {
     address admin = address(0xA11CE);

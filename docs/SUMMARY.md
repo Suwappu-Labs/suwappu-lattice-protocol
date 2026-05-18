@@ -51,11 +51,11 @@
 * [Threat Model](THREAT_MODEL.md)
 * [Security Policy](../SECURITY.md)
 * [Security Testing Charter](../SECURITY_TESTING.md)
-* [Red-Team Campaign (May 2026)](security/RED_TEAM_CAMPAIGN_2026-05.md)
-* [Campaign Scenario Index](security/campaigns/README.md)
-* [Security Audit (2026-05-15)](SECURITY_AUDIT_2026-05-15.md)
-* [Security Review (2026-02-24)](design-decisions/Security/SECURITY_REVIEW-2-24-2026.md)
-* [Shard Exposure Analysis](design-decisions/Security/001-lattice-key-shard-exposure.md)
+* [Red-Team Campaign (May 2026)](security/audits/internal/RED_TEAM_CAMPAIGN_2026-05.md)
+* [Campaign Scenario Index](security/audits/threat-intel/README.md)
+* [Security Audit (2026-05-15)](security/audits/internal/SECURITY_AUDIT_2026-05-15.md)
+* [Security Review (2026-02-24)](security/audits/internal/SECURITY_REVIEW-2-24-2026.md)
+* [Shard Exposure Analysis](security/audits/internal/001-lattice-key-shard-exposure.md)
 * [Formal Protocol Analysis](formal/ANALYSIS.md)
 * [Formal Verification Status](FORMAL_VERIFICATION_STATUS.md)
 
@@ -79,12 +79,12 @@
 
 ## Reviews
 
-* [Review #1 — Formal](design-decisions/Reviews/001/001-Formal-Whitepaper-Review.md)
-* [Review #1 — Mathematical](design-decisions/Reviews/001/001-Mathematical-Review.md)
-* [Review #2 — Formal](design-decisions/Reviews/002/002-Formal-Whitepaper-Review.md)
-* [Review #2 — Mathematical](design-decisions/Reviews/002/002-Mathematical-Review.md)
-* [Review #3 — Formal](design-decisions/Reviews/003/003-Formal-Whitepaper-Review.md)
-* [Eastern Research Landscape](design-decisions/Reviews/004/004-Eastern-Research-Landscape.md)
+* [Review #1 — Formal](security/audits/external/whitepaper-reviews/001/001-Formal-Whitepaper-Review.md)
+* [Review #1 — Mathematical](security/audits/external/whitepaper-reviews/001/001-Mathematical-Review.md)
+* [Review #2 — Formal](security/audits/external/whitepaper-reviews/002/002-Formal-Whitepaper-Review.md)
+* [Review #2 — Mathematical](security/audits/external/whitepaper-reviews/002/002-Mathematical-Review.md)
+* [Review #3 — Formal](security/audits/external/whitepaper-reviews/003/003-Formal-Whitepaper-Review.md)
+* [Eastern Research Landscape](security/audits/external/whitepaper-reviews/004/004-Eastern-Research-Landscape.md)
 
 ## Archive
 

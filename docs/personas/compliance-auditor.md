@@ -24,7 +24,7 @@ documented. Release evidence is reproducible from CI artifacts.
 4. **[compliance/fedramp-high/release-evidence.md](../compliance/fedramp-high/release-evidence.md)** —
    how to verify the evidence manifest matches the live deploy. Every
    line item is a path or a command you can run.
-5. **[SECURITY_AUDIT_2026-05-15.md](../SECURITY_AUDIT_2026-05-15.md)** —
+5. **[SECURITY_AUDIT_2026-05-15.md](../security/audits/internal/SECURITY_AUDIT_2026-05-15.md)** —
    the most recent independent audit, all findings, and remediation
    status per finding.
 6. **[DEPLOYED_CONTRACTS.md](../DEPLOYED_CONTRACTS.md)** — verified

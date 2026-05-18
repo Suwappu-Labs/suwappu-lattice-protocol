@@ -9,7 +9,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 /// @title SCN_002_Nomad_InitBug
 /// @notice Red-team scenario SCN-002 — Nomad-class "init sets a
 ///         default trust value that whitelists any input" pattern. See
-///         docs/security/campaigns/SCN-002-nomad-init-bug/.
+///         docs/security/audits/threat-intel/SCN-002-nomad-init-bug/.
 ///
 /// Historical incident: Nomad bridge, Aug 2022, $190M. The Replica
 /// contract's `initialize()` set `confirmedRoots[bytes32(0)] = 1`,

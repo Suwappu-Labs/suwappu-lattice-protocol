@@ -28,11 +28,11 @@ include_verbatim = false
 
 # Skip historical archive trees and the long-form formal-review documents:
 # - docs/plans/archive/** is intentionally frozen-in-time
-# - docs/design-decisions/Reviews/** contains hundreds of citation links to
+# - docs/security/audits/external/whitepaper-reviews/** contains hundreds of citation links to
 #   academic PDFs that don't all resolve reliably from CI
 exclude_path = [
     "docs/plans/archive",
-    "docs/design-decisions/Reviews",
+    "docs/security/audits/external/whitepaper-reviews",
     "node_modules",
     ".git",
 ]

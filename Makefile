@@ -110,7 +110,7 @@ docs-api:  ## Generate Python API reference from docstrings into docs/api/python
 # These targets run static analysis + property fuzz + linting against
 # the contracts/ tree. They complement, not replace, the forge unit
 # and invariant tests under contracts/test/. See
-# docs/SECURITY_AUDIT_2026-05-15.md §"Contract security tooling".
+# docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md §"Contract security tooling".
 
 slither:  ## Slither static analysis (requires `pip install slither-analyzer`)
 	@if ! command -v slither >/dev/null 2>&1; then \

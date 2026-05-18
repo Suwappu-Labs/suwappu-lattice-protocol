@@ -18,7 +18,7 @@ Before suggesting a non-trivial change, an agent should load:
    `core@globalsettlement.dev`.
 3. **[OPERATOR_RUNBOOK.md](OPERATOR_RUNBOOK.md) §13** — v7 deploy checklist.
    If a change touches deploy paths, this is the authoritative checklist.
-4. **[SECURITY_AUDIT_2026-05-15.md](SECURITY_AUDIT_2026-05-15.md)** — every
+4. **[SECURITY_AUDIT_2026-05-15.md](security/audits/internal/SECURITY_AUDIT_2026-05-15.md)** — every
    open finding and remediation status. Don't propose changes that would
    reopen a closed finding.
 5. **[STABILITY_PROMISES.md](STABILITY_PROMISES.md)** — public-surface

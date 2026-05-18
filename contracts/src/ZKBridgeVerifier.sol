@@ -37,7 +37,7 @@ contract ZKBridgeVerifier {
     uint8 public verificationMode;
     /// @notice When true, MODE_SIMULATED is rejected at verify time and
     ///         the flag itself becomes irreversibly locked.
-    ///         LTP-A-007 (docs/SECURITY_AUDIT_2026-05-15.md).
+    ///         LTP-A-007 (docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md).
     bool public productionMode;
 
     // Track verified proofs to prevent double-finalization

@@ -10,7 +10,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 /// @notice Red-team scenario SCN-003 — Poly Network-class "cross-chain
 ///         message handler executes a privileged function on caller's
 ///         behalf" pattern. See
-///         docs/security/campaigns/SCN-003-poly-keeper-escalation/.
+///         docs/security/audits/threat-intel/SCN-003-poly-keeper-escalation/.
 ///
 /// Historical incident: Poly Network bridge, Aug 2021, $611M. The
 /// `EthCrossChainManager.verifyHeaderAndExecuteTx` forwarded a call

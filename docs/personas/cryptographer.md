@@ -23,7 +23,7 @@ adversarial threat model that drives the implementation choices.
 3. **[FORMAL_VERIFICATION_STATUS.md](../FORMAL_VERIFICATION_STATUS.md)** —
    what is machine-checked, what is paper-proven, and the explicit gap
    between them.
-4. **[SECURITY_AUDIT_2026-05-15.md](../SECURITY_AUDIT_2026-05-15.md)** —
+4. **[SECURITY_AUDIT_2026-05-15.md](../security/audits/internal/SECURITY_AUDIT_2026-05-15.md)** —
    the most recent independent audit findings and remediation status.
 5. **[CORRIDOR_INTEGRATION.md](../CORRIDOR_INTEGRATION.md)** — the wire
    format and the domain-separation tags that prevent cross-protocol
@@ -32,13 +32,13 @@ adversarial threat model that drives the implementation choices.
 ## Deeper dives
 
 - **Shard exposure attack analysis** →
-  [design-decisions/Security/001-lattice-key-shard-exposure.md](../design-decisions/Security/001-lattice-key-shard-exposure.md)
+  [security/audits/internal/001-lattice-key-shard-exposure.md](../security/audits/internal/001-lattice-key-shard-exposure.md)
 - **Formal protocol analysis (Tamarin / ProVerif outputs)** →
   [formal/ANALYSIS.md](../formal/ANALYSIS.md)
 - **Cross-parity tests (Python ↔ Solidity state-machine validation)** →
   `tests/test_cross_parity.py` and `contracts/test/CrossParity.t.sol`
 - **Mathematical review** →
-  [design-decisions/Reviews/001/001-Mathematical-Review.md](../design-decisions/Reviews/001/001-Mathematical-Review.md)
+  [security/audits/external/whitepaper-reviews/001/001-Mathematical-Review.md](../security/audits/external/whitepaper-reviews/001/001-Mathematical-Review.md)
 
 ## Things we want adversarial eyes on
 

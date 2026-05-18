@@ -48,7 +48,7 @@ contract LTPAnchorRegistry is ILTPAnchorRegistry, Initializable, UUPSUpgradeable
     /// @notice signerVkHash => expiry timestamp for grace-period rotations.
     ///         Zero means "no scheduled expiry"; nonzero means the key is
     ///         authorized only while block.timestamp <= signerExpiresAt[vk].
-    ///         LTP-A-030 in docs/SECURITY_AUDIT_2026-05-15.md.
+    ///         LTP-A-030 in docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md.
     mapping(bytes32 => uint64) public signerExpiresAt;
 
     /// @notice entityIdHash => bound signerVkHash (v6: entity-signer binding)
@@ -56,7 +56,7 @@ contract LTPAnchorRegistry is ILTPAnchorRegistry, Initializable, UUPSUpgradeable
 
     // -----------------------------------------------------------------------
     // LTP-A-005 Option C-3 storage — owner-signed binding statement +
-    // on-chain dispute path (docs/SECURITY_AUDIT_2026-05-15.md).
+    // on-chain dispute path (docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md).
     //
     // Off-chain: the relayer verifies the entity owner's ML-DSA signature
     //   over (entityIdHash || signerVkHash) before submitting the first
@@ -299,7 +299,7 @@ contract LTPAnchorRegistry is ILTPAnchorRegistry, Initializable, UUPSUpgradeable
 
     /// @notice Rotate a signer with a grace period during which the old
     ///         key remains valid for already-signed in-flight anchors.
-    ///         LTP-A-030 in docs/SECURITY_AUDIT_2026-05-15.md.
+    ///         LTP-A-030 in docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md.
     /// @dev    The old key is NOT revoked at this call; instead its
     ///         expiry is recorded at `block.timestamp + gracePeriod`.
     ///         `_anchor()` rejects the old key once expiry elapses.

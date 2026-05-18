@@ -43,7 +43,7 @@ class MerkleLog:
     operator_sk).  In a multi-operator deployment, independent instances are
     cross-checked via STH gossip.
 
-    Thread safety (LTP-A-028 in docs/SECURITY_AUDIT_2026-05-15.md):
+    Thread safety (LTP-A-028 in docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md):
         ``append`` and ``publish_sth`` acquire an internal ``threading.Lock``
         so concurrent calls from multiple threads are safe — the lock
         serializes tree mutation and STH sequence assignment.  Read-only

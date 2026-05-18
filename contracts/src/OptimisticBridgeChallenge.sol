@@ -60,7 +60,7 @@ contract OptimisticBridgeChallenge {
     uint256 public minOperatorBond;
     uint256 public minChallengerBond;
 
-    // LTP-A-006 Option E (docs/SECURITY_AUDIT_2026-05-15.md): three
+    // LTP-A-006 Option E (docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md): three
     // independent paths to challenge resolution, so a compromised
     // admin cannot single-handedly dismiss a fraud claim.
     //

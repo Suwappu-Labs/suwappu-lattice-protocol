@@ -31,7 +31,7 @@ The Verifpal model intentionally abstracts these components — they are outside
 | ML-KEM-768 reduction | Verifpal has no native KEM primitive; we model it as DH, which has equivalent confidentiality guarantees in the symbolic setting but a different concrete reduction | NIST FIPS 203, plus `tests/test_acvp_mlkem.py` against ACVP test vectors |
 | ML-DSA-65 reduction | Modeled as a generic SIGN primitive | NIST FIPS 204, plus `tests/test_acvp_mldsa.py` |
 | Erasure coding `k-of-n` threshold | Information-theoretic; the symbolic model cannot express "any `k` shares determine the secret, any `k-1` do not" | `tests/test_erasure.py` plus the constructive proof in `docs/WHITEPAPER.md` §5 |
-| Side-channel resistance of the implementation | Symbolic verifiers don't model timing or power channels | `docs/design-decisions/Security/SECURITY_REVIEW-2-24-2026.md` §4, plus the `assert_bls_production()` gate in `src/ltp/bls.py` that blocks the unaudited `py_ecc` keygen fallback under `LTP_ENV=production` |
+| Side-channel resistance of the implementation | Symbolic verifiers don't model timing or power channels | `docs/security/audits/internal/SECURITY_REVIEW-2-24-2026.md` §4, plus the `assert_bls_production()` gate in `src/ltp/bls.py` that blocks the unaudited `py_ecc` keygen fallback under `LTP_ENV=production` |
 | Commitment-network topology | Shard placement, retrieval, gossip — infrastructure-level, not protocol-level | `docs/THREAT_MODEL.md` §3 (Threat Sources) and §4.D (DoS) |
 
 ## Other formal artifacts
@@ -40,10 +40,10 @@ The following adjacent reviews have already been published:
 
 | Document | What it covers |
 |---|---|
-| [`design-decisions/Security/SECURITY_REVIEW-2-24-2026.md`](design-decisions/Security/SECURITY_REVIEW-2-24-2026.md) | Formal security review of the full protocol and implementation, dated 2026-02-24 |
-| [`design-decisions/Security/001-lattice-key-shard-exposure.md`](design-decisions/Security/001-lattice-key-shard-exposure.md) | Attack-chain analysis of the lattice-key shard exposure surface, with Option A-D mitigation comparison |
-| [`design-decisions/Reviews/001/001-Mathematical-Review.md`](design-decisions/Reviews/001/001-Mathematical-Review.md) | Math review #1 (2026-03-19) — flagged 3 critical errors; all resolved per review #2 |
-| [`design-decisions/Reviews/002/002-Mathematical-Review.md`](design-decisions/Reviews/002/002-Mathematical-Review.md) | Math review #2 (2026-03-27) — confirms prior errors fixed; 5 open issues for future work |
+| [`security/audits/internal/SECURITY_REVIEW-2-24-2026.md`](security/audits/internal/SECURITY_REVIEW-2-24-2026.md) | Formal security review of the full protocol and implementation, dated 2026-02-24 |
+| [`security/audits/internal/001-lattice-key-shard-exposure.md`](security/audits/internal/001-lattice-key-shard-exposure.md) | Attack-chain analysis of the lattice-key shard exposure surface, with Option A-D mitigation comparison |
+| [`security/audits/external/whitepaper-reviews/001/001-Mathematical-Review.md`](security/audits/external/whitepaper-reviews/001/001-Mathematical-Review.md) | Math review #1 (2026-03-19) — flagged 3 critical errors; all resolved per review #2 |
+| [`security/audits/external/whitepaper-reviews/002/002-Mathematical-Review.md`](security/audits/external/whitepaper-reviews/002/002-Mathematical-Review.md) | Math review #2 (2026-03-27) — confirms prior errors fixed; 5 open issues for future work |
 | [`THREAT_MODEL.md`](THREAT_MODEL.md) | STRIDE + PQC-specific threat model |
 
 ## How to run the symbolic verification yourself

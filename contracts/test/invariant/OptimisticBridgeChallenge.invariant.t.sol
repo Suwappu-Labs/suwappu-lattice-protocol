@@ -7,7 +7,7 @@ import {OptimisticBridgeChallenge} from "../../src/OptimisticBridgeChallenge.sol
 /// @title OptimisticBridgeChallengeInvariantTest
 /// @notice Foundry stateful invariant suite for the optimistic challenge
 ///         resolver, with focus on the new `finalizeWithFraudProof` path
-///         (LTP-A-001 Option E in docs/SECURITY_AUDIT_2026-05-15.md).
+///         (LTP-A-001 Option E in docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md).
 ///
 /// Invariants pinned:
 ///   I1: bondsConserved — total of operator+challenger bonds across all

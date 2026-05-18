@@ -14,9 +14,9 @@ against systems **owned and operated by Global Settlement Network**.
 
 Campaigns documented under this charter:
 
-- [`docs/security/RED_TEAM_CAMPAIGN_2026-05.md`](docs/security/RED_TEAM_CAMPAIGN_2026-05.md)
+- [`docs/security/audits/internal/RED_TEAM_CAMPAIGN_2026-05.md`](docs/security/audits/internal/RED_TEAM_CAMPAIGN_2026-05.md)
   — May 2026, historical bridge-hack regression suite (33 scenarios). Closed.
-- [`docs/security/RED_TEAM_CAMPAIGN_2026-06.md`](docs/security/RED_TEAM_CAMPAIGN_2026-06.md)
+- [`docs/security/audits/internal/RED_TEAM_CAMPAIGN_2026-06.md`](docs/security/audits/internal/RED_TEAM_CAMPAIGN_2026-06.md)
   — June 2026, economic / griefing attacks on the `OptimisticBridgeChallenge`
   bond mechanism (7 scenarios). R-1 in progress.
 
@@ -101,7 +101,7 @@ this repository as a regression test or a remediation patch.
   acknowledgement timeline).
 - [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) — protocol threat
   model (STRIDE + PQC-specific categories).
-- [`docs/SECURITY_AUDIT_2026-05-15.md`](docs/SECURITY_AUDIT_2026-05-15.md)
+- [`docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md`](docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md)
   — most recent independent audit and the LTP-A-* finding registry.
 - [`docs/FORMAL_VERIFICATION_STATUS.md`](docs/FORMAL_VERIFICATION_STATUS.md)
   — machine-checked vs. paper-proven boundary.

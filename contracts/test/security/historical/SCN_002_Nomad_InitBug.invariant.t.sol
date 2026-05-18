@@ -8,7 +8,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 
 /// @title SCN_002_Nomad_InitBug.invariant
 /// @notice Stateful invariant suite for SCN-002 (Nomad-class init-bug
-///         pattern). See docs/security/campaigns/SCN-002-nomad-init-bug/.
+///         pattern). See docs/security/audits/threat-intel/SCN-002-nomad-init-bug/.
 ///
 /// Properties pinned across any reachable handler call sequence:
 ///

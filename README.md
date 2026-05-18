@@ -335,7 +335,7 @@ See [docs/README.md](docs/README.md) for the full documentation index.
 | [Production Roadmap](docs/plans/2026-05-11-production-roadmap.md) | Current milestones (2026-05-11) |
 | [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) | Docker, Kubernetes, CI/CD |
 | [Bridge MVP](docs/bridge-mvp-scope.md) | Cross-chain bridge scope |
-| [Security Review](docs/design-decisions/Security/SECURITY_REVIEW-2-24-2026.md) | Formal security analysis |
+| [Security Review](docs/security/audits/internal/SECURITY_REVIEW-2-24-2026.md) | Formal security analysis |
 
 ## Test Coverage
 
@@ -383,14 +383,14 @@ For external auditors and security researchers:
 
 - **Reporting a vulnerability:** see [SECURITY.md](SECURITY.md).
 - **Audit-evidence package (start here):**
-  [docs/security/RED_TEAM_REPORT_2026-05.md](docs/security/RED_TEAM_REPORT_2026-05.md)
+  [docs/security/audits/internal/RED_TEAM_REPORT_2026-05.md](docs/security/audits/internal/RED_TEAM_REPORT_2026-05.md)
   — consolidated internal red-team report (May 2026 campaign).
   33 scenarios across 8 attack layers, 1 finding surfaced and
   remediated (LTP-A-031, HIGH). Audit-firm-style format
   (Executive Summary → Scope → Methodology → Threat Model →
   Findings → Defenses Verified → Maturity Self-Assessment →
   Recommended External-Audit Focus Areas).
-- **Standing audit findings:** [docs/SECURITY_AUDIT_2026-05-15.md](docs/SECURITY_AUDIT_2026-05-15.md)
+- **Standing audit findings:** [docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md](docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md)
   — 31 LTP-A-* findings catalog + 20-entry strengths register.
 - **Internal-testing charter:** [SECURITY_TESTING.md](SECURITY_TESTING.md)
   — authorization and scope rules for red-team campaigns.

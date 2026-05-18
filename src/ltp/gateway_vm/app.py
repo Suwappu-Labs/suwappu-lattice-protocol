@@ -53,7 +53,7 @@ def create_app(
     app.state.gateway_tracker = tracker
 
     # Hardening middleware (LTP-A-010 / -011 in
-    # docs/SECURITY_AUDIT_2026-05-15.md). Order matters: body size first
+    # docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md). Order matters: body size first
     # (cheapest), then rate limit, then JWT (most expensive). Starlette
     # runs them in reverse-add order so the last added is outermost.
     app.add_middleware(JWTAuthMiddleware)

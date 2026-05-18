@@ -9,7 +9,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 /// @title SCN_001_Wormhole_AnchorRegistry
 /// @notice Red-team scenario SCN-001 — Wormhole-class "skip signature
 ///         verification" pattern. See
-///         docs/security/campaigns/SCN-001-wormhole-signature-skip/.
+///         docs/security/audits/threat-intel/SCN-001-wormhole-signature-skip/.
 ///
 /// Historical incident: Wormhole bridge, Feb 2022, $326M. The Solana
 /// program failed to validate that a sysvar-instructions account was

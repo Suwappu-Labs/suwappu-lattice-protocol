@@ -9,7 +9,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 /// @title SCN_001_Wormhole_AnchorRegistry.invariant
 /// @notice Stateful invariant suite for SCN-001 (Wormhole-class
 ///         pattern). See
-///         docs/security/campaigns/SCN-001-wormhole-signature-skip/.
+///         docs/security/audits/threat-intel/SCN-001-wormhole-signature-skip/.
 ///
 /// Properties pinned across any reachable handler call sequence:
 ///
