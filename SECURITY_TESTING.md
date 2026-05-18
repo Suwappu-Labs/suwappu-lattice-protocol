@@ -12,8 +12,13 @@ engineering team and its tooling (including AI coding assistants
 operating under direct human supervision) to conduct security tests
 against systems **owned and operated by Global Settlement Network**.
 
-The first such campaign is documented in
-[`docs/security/RED_TEAM_CAMPAIGN_2026-05.md`](docs/security/RED_TEAM_CAMPAIGN_2026-05.md).
+Campaigns documented under this charter:
+
+- [`docs/security/RED_TEAM_CAMPAIGN_2026-05.md`](docs/security/RED_TEAM_CAMPAIGN_2026-05.md)
+  — May 2026, historical bridge-hack regression suite (33 scenarios). Closed.
+- [`docs/security/RED_TEAM_CAMPAIGN_2026-06.md`](docs/security/RED_TEAM_CAMPAIGN_2026-06.md)
+  — June 2026, economic / griefing attacks on the `OptimisticBridgeChallenge`
+  bond mechanism (7 scenarios). R-1 in progress.
 
 Authorization timestamp: 2026-05-16.
 Authorization scope: until superseded by a new charter file in this
