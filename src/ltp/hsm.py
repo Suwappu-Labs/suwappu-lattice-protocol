@@ -101,6 +101,17 @@ class HSMBackend(ABC):
         """
         ...
 
+    @abstractmethod
+    def derive_kek(self, label: str) -> bytes:
+        """
+        Derive a 32-byte Key Encryption Key (KEK) from a stable HSM secret.
+
+        Used by `ltp.keyvault.KeyVault` to obtain a wrapping key when no
+        env var or OS keychain entry resolves. Real HSMs derive KEKs in
+        hardware (e.g., PKCS#11 C_DeriveKey + HKDF inside the module).
+        """
+        ...
+
 
 class SoftwareHSM(HSMBackend):
     """
@@ -129,6 +140,10 @@ class SoftwareHSM(HSMBackend):
             )
         # key_id → {"type": "kem"|"dsa", "public": bytes, "private": bytes}
         self._keys: dict[str, dict] = {}
+        # Per-instance secret seed for derive_kek(). Random per process;
+        # production deployments override this by configuring a real HSM
+        # whose KEK derivation happens in hardware.
+        self._kek_seed: bytes = os.urandom(32)
 
     def generate_kem_keypair(self, key_id: str) -> bytes:
         """Generate ML-KEM keypair, store privately, return public ek."""
@@ -200,6 +215,17 @@ class SoftwareHSM(HSMBackend):
             }
             for kid, info in self._keys.items()
         ]
+
+    def derive_kek(self, label: str) -> bytes:
+        """Derive a 32-byte KEK from the per-instance seed.
+
+        HMAC-SHA3-256(seed, label). Software-only — production HSMs
+        derive in hardware. Used by `ltp.keyvault.KeyVault.from_environment`
+        when no env var or OS keychain entry resolves and the caller
+        passed this HSM as the fallback source.
+        """
+        from .keyvault import _derive_kek_from_seed
+        return _derive_kek_from_seed(self._kek_seed, label)
 
     def get_public_key(self, key_id: str) -> bytes:
         """Get the public component of a stored key."""

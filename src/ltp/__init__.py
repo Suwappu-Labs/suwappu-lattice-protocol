@@ -43,6 +43,7 @@ from .primitives import (
     assert_real_crypto,
 )
 from .keypair import KeyPair, KeyRegistry, SealedBox
+from .keyvault import KeyVault, KeyVaultError
 from .erasure import ErasureCoder
 from .shards import ShardEncryptor
 from .entity import Entity, canonicalize_shape
@@ -179,6 +180,9 @@ __all__ = [
     "KeyPair",
     "KeyRegistry",
     "SealedBox",
+    # KeyVault — at-rest / in-memory key wrapping
+    "KeyVault",
+    "KeyVaultError",
     # Erasure coding
     "ErasureCoder",
     # Shard encryption
