@@ -6,7 +6,17 @@ Fixtures are organized by scope:
   - function: network and protocol (fresh instance per test to avoid state bleed)
 """
 
+import os
+
 import pytest
+
+# LTP-A-032 Phase 4c: the implicit-HSM flag is default-on in production.
+# Many legacy tests still read kp.dk/kp.sk directly or pass kp.sk into
+# helpers that expect raw bytes. Opt those tests out at the suite level
+# until a dedicated migration pass (Phase 4e) rewrites each call site.
+# Tests/files that explicitly want the production default (implicit-HSM
+# on) monkeypatch this env var to a truthy value or unset it.
+os.environ.setdefault("LTP_KEYPAIR_IMPLICIT_HSM", "0")
 
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol, reset_poc_state
 

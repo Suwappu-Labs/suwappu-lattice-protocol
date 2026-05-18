@@ -598,15 +598,34 @@ class CommitmentLog:
 
         self._store = store  # Optional CommitmentLogStore for persistence
 
-        # Restore or generate operator keypair
+        # Restore or generate operator keypair. LTP-A-032 Phase 4c.
+        #
+        # The log operator is the one identity that MUST persist across
+        # restarts — the merkle log keeps signing under the same vk.
+        # Reconciling this with implicit-HSM mode (kp.sk is the sentinel
+        # after generate()) requires generating the bytes OUTSIDE the HSM
+        # first, persisting them via the KeyVault-wrapped log_store, and
+        # then importing those same bytes back into a fresh per-process
+        # SoftwareHSM so subsequent sign() calls route through the HSM.
         if store is not None:
             kp_data = store.load_operator_keypair()
-            if kp_data is not None:
-                vk, sk = kp_data
-                self._operator_kp = KeyPair(ek=b"", dk=b"", vk=vk, sk=sk, label="log-operator")
+            if kp_data is None:
+                # Fresh log: generate plain bytes, persist (wrapped on
+                # disk by Phase 2), then import into an HSM.
+                from .primitives import MLKEM as _MLKEM, MLDSA as _MLDSA
+                ek, dk = _MLKEM.keygen()
+                vk, sk = _MLDSA.keygen()
+                store.store_operator_keypair(vk, sk)
             else:
-                self._operator_kp = KeyPair.generate("log-operator")
-                store.store_operator_keypair(self._operator_kp.vk, self._operator_kp.sk)
+                vk, sk = kp_data
+                # ek/dk for the log operator were never persisted (the
+                # merkle log only needs sk/vk for signing). Generate a
+                # fresh KEM pair on reload — it isn't used by the log.
+                from .primitives import MLKEM as _MLKEM
+                ek, dk = _MLKEM.keygen()
+            self._operator_kp = KeyPair.from_persisted(
+                ek=ek, dk=dk, vk=vk, sk=sk, label="log-operator",
+            )
         else:
             self._operator_kp = KeyPair.generate("log-operator")
 

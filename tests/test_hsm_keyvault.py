@@ -200,3 +200,58 @@ def test_hsm_internal_wrap_uses_different_kek_than_derive():
     external_vault = KeyVault(external_kek)
     with pytest.raises(KeyVaultError, match="authentication failed"):
         external_vault.unwrap(wrapped_sk, aad=b"ltp.hsm:dsa:d1")
+
+
+# ---------------------------------------------------------------------------
+# import_kem_keypair / import_dsa_keypair (Phase 4c)
+# ---------------------------------------------------------------------------
+
+
+def test_import_kem_keypair_then_decaps():
+    """Imported dk must be usable for decaps (used by
+    KeyPair.from_persisted to rebuild operator identity)."""
+    hsm = SoftwareHSM()
+    ek, dk = MLKEM.keygen()
+    hsm.import_kem_keypair("op-kem", ek, dk)
+    ss_a, ct = MLKEM.encaps(ek)
+    ss_b = hsm.kem_decaps("op-kem", ct)
+    assert ss_a == ss_b
+    # And the stored private is wrapped (not the raw dk).
+    assert hsm._keys["op-kem"]["private"] != dk
+    assert len(hsm._keys["op-kem"]["private"]) == len(dk) + 40
+
+
+def test_import_dsa_keypair_then_sign():
+    hsm = SoftwareHSM()
+    vk, sk = MLDSA.keygen()
+    hsm.import_dsa_keypair("op-dsa", vk, sk)
+    sig = hsm.sign("op-dsa", b"payload")
+    assert MLDSA.verify(vk, b"payload", sig) is True
+    assert hsm._keys["op-dsa"]["private"] != sk
+
+
+def test_import_rejects_duplicate_key_id():
+    hsm = SoftwareHSM()
+    ek, dk = MLKEM.keygen()
+    hsm.import_kem_keypair("dupe", ek, dk)
+    with pytest.raises(ValueError, match="already exists"):
+        hsm.import_kem_keypair("dupe", ek, dk)
+    vk, sk = MLDSA.keygen()
+    hsm.import_dsa_keypair("dupe-dsa", vk, sk)
+    with pytest.raises(ValueError, match="already exists"):
+        hsm.import_dsa_keypair("dupe-dsa", vk, sk)
+
+
+def test_imported_blob_per_key_id_aad():
+    """A blob imported into slot X uses the same per-key-id AAD as a
+    generated one, so subsequent sign/decaps with slot X succeeds and
+    cross-slot lifting still fails."""
+    hsm = SoftwareHSM()
+    ek_a, dk_a = MLKEM.keygen()
+    ek_b, dk_b = MLKEM.keygen()
+    hsm.import_kem_keypair("a", ek_a, dk_a)
+    hsm.import_kem_keypair("b", ek_b, dk_b)
+    # Cross-slot lift: a's wrapped blob into b's slot must fail.
+    hsm._keys["b"]["private"] = hsm._keys["a"]["private"]
+    with pytest.raises(KeyVaultError, match="authentication failed"):
+        hsm.kem_decaps("b", b"\x00" * 1088)
