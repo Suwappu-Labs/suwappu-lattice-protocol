@@ -6,7 +6,27 @@ Fixtures are organized by scope:
   - function: network and protocol (fresh instance per test to avoid state bleed)
 """
 
+import os
+
 import pytest
+
+# LTP-A-032 Phase 4c: production runs with `LTP_KEYPAIR_IMPLICIT_HSM`
+# default-on, which makes `KeyPair.generate(hsm=None)` return sentinel-
+# backed keypairs (sk = b"\xfe"*32). The per-module hook below cannot
+# guarantee the env var is set before *session-scoped* keypair fixtures
+# resolve — pytest builds higher-scoped fixtures first within a test's
+# setup phase, so a session-scoped keypair (e.g. `operator` in
+# tests/test_zk_bridge.py, or `alice`/`bob`/`eve` here) is generated
+# before the function-scoped `_legacy_plaintext_keypair` fixture has a
+# chance to set the env var. The cached session fixture then holds an
+# HSM-sentinel keypair for every subsequent test, breaking 175 tests
+# with `ValueError: Invalid sk size: 32 (expected 4032)` from
+# `MLDSA.sign`. Set the opt-out here at import time so all session
+# fixtures generate plaintext keypairs. Phase 4e migrates the listed
+# modules off raw `kp.sk` / `kp.dk` reads; once the list is empty, this
+# `setdefault` can be removed and new tests will exercise the
+# production default again.
+os.environ.setdefault("LTP_KEYPAIR_IMPLICIT_HSM", "0")
 
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol, reset_poc_state
 
