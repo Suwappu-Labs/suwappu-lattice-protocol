@@ -242,7 +242,7 @@ def create_transition_vote(keypair, from_phase: str, to_phase: str) -> Transitio
         + to_phase.encode()
         + keypair.vk
     )
-    sig = MLDSA.sign(keypair.sk, payload)
+    sig = keypair.sign(payload)
     return TransitionVote(
         voter_vk_hash=canonical_hash(keypair.vk),
         from_phase=from_phase,

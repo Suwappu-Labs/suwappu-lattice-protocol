@@ -105,7 +105,7 @@ def create_endorsement(endorser_keypair, applicant_node_id: str) -> EndorsementV
         + applicant_node_id.encode()
         + endorser_keypair.vk
     )
-    sig = MLDSA.sign(endorser_keypair.sk, payload)
+    sig = endorser_keypair.sign(payload)
     return EndorsementVote(
         endorser_vk_hash=canonical_hash(endorser_keypair.vk),
         applicant_node_id=applicant_node_id,

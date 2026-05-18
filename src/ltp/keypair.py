@@ -483,8 +483,9 @@ class KeyRotationManager:
             + struct.pack(">d", now)
         )
 
-        # Sign with old key (proves the rotation was authorized)
-        sig = MLDSA.sign(old_keypair.sk, payload)
+        # Sign with old key (proves the rotation was authorized).
+        # Use KeyPair.sign so HSM-backed kps stay sentinel-only.
+        sig = old_keypair.sign(payload)
 
         # Verify chain integrity
         if not self.verify_chain(old_keypair.label):
@@ -564,7 +565,9 @@ class SealedBox:
         aead_ct = sealed_data[MLKEM.CT_SIZE + AEAD.NONCE_SIZE:]
 
         try:
-            shared_secret = MLKEM.decaps(receiver_keypair.dk, kem_ct)
+            # KeyPair.decaps routes through HSM when the recipient kp is
+            # HSM-backed; falls back to direct MLKEM.decaps otherwise.
+            shared_secret = receiver_keypair.decaps(kem_ct)
         except ValueError:
             raise ValueError(
                 "Cannot unseal — ML-KEM decapsulation failed "

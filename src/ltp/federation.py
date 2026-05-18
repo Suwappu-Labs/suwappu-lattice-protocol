@@ -537,7 +537,7 @@ class NetworkIdentityRecord:
             signature=b"",  # placeholder
         )
 
-        sig = MLDSA.sign(keypair.sk, unsigned.canonical_bytes())
+        sig = keypair.sign(unsigned.canonical_bytes())
 
         return cls(
             network_id=network_id,
@@ -1073,7 +1073,7 @@ class FederationAgreement:
             + struct.pack(">d", now)
             + terms.encode()
         )
-        sig = MLDSA.sign(initiator_keypair.sk, payload)
+        sig = initiator_keypair.sign(payload)
 
         return cls(
             initiator_network_id=initiator_nir.network_id,
@@ -1096,7 +1096,7 @@ class FederationAgreement:
         if responder_keypair.vk != agreement.responder_vk:
             raise ValueError("Responder keypair does not match agreement responder_vk")
 
-        sig = MLDSA.sign(responder_keypair.sk, agreement.canonical_bytes())
+        sig = responder_keypair.sign(agreement.canonical_bytes())
 
         return cls(
             initiator_network_id=agreement.initiator_network_id,
