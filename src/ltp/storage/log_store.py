@@ -98,17 +98,58 @@ class CommitmentLogStore:
         return self._vault
 
     def _migrate_legacy_schema_if_needed(self) -> None:
-        """If an older log_operator table is present (no sk_wrapped column),
-        add the new columns. SQLite ALTER TABLE only supports ADD COLUMN,
-        which is exactly what we need."""
-        cols = {
-            row[1]
-            for row in self._conn.execute(
-                "PRAGMA table_info(log_operator)"
-            ).fetchall()
-        }
+        """Bring legacy log_operator schemas to the Phase 2 shape.
+
+        Two legacy cases handled (Codex P1):
+
+          1. Pre-Phase-2 schema has `sk BLOB NOT NULL` and no
+             `sk_wrapped` / `wrap_version` columns. New writes to this
+             schema would set `sk = NULL` and trigger
+             `sqlite3.IntegrityError`. Solution: rebuild the table
+             without the NOT NULL constraint, preserving any existing
+             row, and add the new columns.
+
+          2. A row created in case 1 may already have been augmented
+             with the new columns (e.g. by a previous instance that
+             skipped the rebuild). We still need to relax `sk NOT NULL`
+             so subsequent migrations can set `sk = NULL`. Treat this
+             the same as case 1 — rebuild if the NOT NULL is present.
+        """
+        info = self._conn.execute("PRAGMA table_info(log_operator)").fetchall()
+        # PRAGMA table_info returns rows of (cid, name, type, notnull, dflt, pk)
+        cols = {row[1]: row for row in info}
+        sk_is_not_null = "sk" in cols and bool(cols["sk"][3])
+        needs_new_cols = "sk_wrapped" not in cols or "wrap_version" not in cols
+
+        if sk_is_not_null:
+            # Rebuild the table with a relaxed schema. SQLite does not
+            # support ALTER COLUMN to drop NOT NULL, so we go through a
+            # rename-create-copy-drop dance inside a transaction.
+            self._conn.execute(
+                "ALTER TABLE log_operator RENAME TO log_operator_legacy"
+            )
+            self._conn.execute("""
+                CREATE TABLE log_operator (
+                    id            INTEGER PRIMARY KEY CHECK (id = 1),
+                    vk            BLOB    NOT NULL,
+                    sk            BLOB,
+                    sk_wrapped    BLOB,
+                    wrap_version  INTEGER
+                )
+            """)
+            # Carry forward the single legacy row, if any.
+            self._conn.execute(
+                "INSERT INTO log_operator (id, vk, sk) "
+                "SELECT id, vk, sk FROM log_operator_legacy"
+            )
+            self._conn.execute("DROP TABLE log_operator_legacy")
+            return
+
+        # Schema already has nullable `sk`; just add columns if missing.
         if "sk_wrapped" not in cols:
-            self._conn.execute("ALTER TABLE log_operator ADD COLUMN sk_wrapped BLOB")
+            self._conn.execute(
+                "ALTER TABLE log_operator ADD COLUMN sk_wrapped BLOB"
+            )
         if "wrap_version" not in cols:
             self._conn.execute(
                 "ALTER TABLE log_operator ADD COLUMN wrap_version INTEGER"
@@ -167,6 +208,8 @@ class CommitmentLogStore:
             "bulk migration.",
             self._db_path,
         )
+        # _migrate_row_inplace re-acquires self._lock; safe because we
+        # already returned from the lock-protected SELECT above.
         self._migrate_row_inplace(legacy_sk)
         return (vk, legacy_sk)
 
@@ -174,10 +217,33 @@ class CommitmentLogStore:
         """Wrap a legacy plaintext sk and overwrite the row.
 
         Called both transparently from load_operator_keypair and
-        explicitly from the migrate_keyvault CLI.
+        explicitly from the migrate_keyvault CLI. Reads + wraps + writes
+        under a single critical section so a concurrent
+        store_operator_keypair cannot interleave a new vk between read
+        and write (Codex P2).
         """
         sk_wrapped = self._get_vault().wrap(bytes(legacy_sk), aad=_AAD_OPERATOR_SK)
         with self._lock:
+            # Re-check the row under the lock: if a concurrent writer
+            # already wrapped (or replaced) the row, our wrapped bytes
+            # are stale — bail out and let the newer row win.
+            row = self._conn.execute(
+                "SELECT sk, sk_wrapped FROM log_operator WHERE id = 1"
+            ).fetchone()
+            if row is None:
+                return  # row deleted underneath us
+            cur_sk, cur_wrapped = row
+            if cur_wrapped is not None:
+                return  # already migrated by another writer
+            if cur_sk is None or bytes(cur_sk) != bytes(legacy_sk):
+                # Underlying sk changed between our read and write;
+                # do not overwrite with stale wrapped bytes.
+                _LOG.warning(
+                    "CommitmentLogStore: legacy sk changed during "
+                    "migration; aborting in-place wrap. Re-run "
+                    "load_operator_keypair to migrate the new value."
+                )
+                return
             self._conn.execute(
                 "UPDATE log_operator "
                 "SET sk = NULL, sk_wrapped = ?, wrap_version = ? "

@@ -138,11 +138,16 @@ def test_wrong_kek_fails_to_load(tmp_db, monkeypatch):
 
 
 def _write_legacy_row(db_path: str, vk: bytes, sk: bytes) -> None:
-    """Simulate a pre-Phase-2 row: plaintext sk in the legacy column."""
+    """Simulate a pre-Phase-2 row: plaintext sk in the legacy column,
+    using the TRUE pre-Phase-2 schema with `sk BLOB NOT NULL` (Codex P2 —
+    earlier fixture used a nullable sk, which masked the constraint bug)."""
     conn = sqlite3.connect(db_path)
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS log_operator (id INTEGER PRIMARY KEY CHECK (id = 1), "
-        "vk BLOB NOT NULL, sk BLOB)"
+        "CREATE TABLE IF NOT EXISTS log_operator ("
+        "id INTEGER PRIMARY KEY CHECK (id = 1), "
+        "vk BLOB NOT NULL, "
+        "sk BLOB NOT NULL"
+        ")"
     )
     conn.execute(
         "INSERT OR REPLACE INTO log_operator (id, vk, sk) VALUES (1, ?, ?)",
@@ -227,6 +232,86 @@ def test_records_api_unaffected(tmp_db):
     assert records[0] == ("entity-1", 0, {"foo": "bar"})
     assert records[1] == ("entity-2", 1, {"baz": 42})
     store.close()
+
+
+def test_legacy_schema_with_sk_not_null_rebuilds(tmp_db):
+    """Regression for Codex P1: pre-Phase-2 schema had
+    `sk BLOB NOT NULL`. _migrate_legacy_schema_if_needed must rebuild
+    the table so subsequent writes can set sk = NULL without
+    sqlite3.IntegrityError."""
+    sk = os.urandom(4032)
+    vk = b"\x88" * 1952
+    _write_legacy_row(tmp_db, vk, sk)  # schema has NOT NULL
+
+    # Construction of CommitmentLogStore must rebuild the schema.
+    store = CommitmentLogStore(tmp_db)
+    # Confirm sk column is now nullable.
+    cols = {row[1]: row for row in store._conn.execute(
+        "PRAGMA table_info(log_operator)").fetchall()}
+    assert cols["sk"][3] == 0  # notnull flag is 0
+    # And the legacy row survived the rebuild.
+    got = store.load_operator_keypair()
+    assert got == (vk, sk)
+    store.close()
+
+
+def test_store_replaces_existing_row_under_legacy_not_null(tmp_db):
+    """Regression for Codex P1: storing a fresh keypair to a DB whose
+    schema started as NOT NULL must succeed (no IntegrityError)."""
+    sk_old = os.urandom(4032)
+    vk_old = b"\x77" * 1952
+    _write_legacy_row(tmp_db, vk_old, sk_old)
+
+    store = CommitmentLogStore(tmp_db)
+    # Replace the row with a fresh keypair.
+    sk_new = os.urandom(4032)
+    vk_new = b"\x99" * 1952
+    store.store_operator_keypair(vk_new, sk_new)
+    assert store.load_operator_keypair() == (vk_new, sk_new)
+    # Underlying sk column is NULL on the new row.
+    raw_sk = store._conn.execute(
+        "SELECT sk FROM log_operator WHERE id=1"
+    ).fetchone()[0]
+    assert raw_sk is None
+    store.close()
+
+
+def test_migration_aborts_if_underlying_sk_changes(tmp_db, caplog):
+    """Regression for Codex P2: if a concurrent writer changes sk
+    between the migration's read and its wrap, the migration must NOT
+    overwrite with stale wrapped bytes."""
+    import logging
+    sk_a = os.urandom(4032)
+    sk_b = os.urandom(4032)
+    _write_legacy_row(tmp_db, b"vk", sk_a)
+
+    store = CommitmentLogStore(tmp_db)
+    # Inject a race: change sk between the read and the in-place wrap.
+    # Easiest reproduction: call _migrate_row_inplace with a stale sk.
+    # First, mutate the underlying row.
+    store._conn.execute("UPDATE log_operator SET sk = ? WHERE id=1", (sk_b,))
+    store._conn.commit()
+    with caplog.at_level(logging.WARNING):
+        store._migrate_row_inplace(sk_a)  # stale value
+    assert any("legacy sk changed" in rec.message for rec in caplog.records)
+    # The underlying row was NOT overwritten with the stale wrap.
+    raw = store._conn.execute(
+        "SELECT sk, sk_wrapped FROM log_operator WHERE id=1"
+    ).fetchone()
+    assert raw[0] == sk_b  # plaintext sk remains the newer value
+    assert raw[1] is None  # no wrapped blob was written
+    store.close()
+
+
+def test_cli_rejects_missing_db_path(tmp_path):
+    """Regression for Codex P2: typoed paths must error, not silently
+    create a new SQLite file and report a no-op."""
+    from ltp.tools.migrate_keyvault import migrate_one, MigrationError
+    nonexistent = str(tmp_path / "does-not-exist.db")
+    with pytest.raises(MigrationError, match="does not exist"):
+        migrate_one(nonexistent)
+    # And no new file was created.
+    assert not os.path.exists(nonexistent)
 
 
 def test_aad_domain_separation(tmp_db):

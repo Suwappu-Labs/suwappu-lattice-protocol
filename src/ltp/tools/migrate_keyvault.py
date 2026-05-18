@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 
 from ..storage.log_store import CommitmentLogStore
@@ -23,10 +24,23 @@ from ..storage.log_store import CommitmentLogStore
 _LOG = logging.getLogger(__name__)
 
 
+class MigrationError(RuntimeError):
+    """Raised when a target DB path is invalid or unreadable."""
+
+
 def migrate_one(db_path: str) -> bool:
     """Migrate a single database. Returns True on a real migration,
     False when the row was already wrapped or absent.
+
+    Raises MigrationError when the path does not exist — SQLite would
+    otherwise silently create a fresh DB, causing a typo to falsely
+    report migration success (Codex P2).
     """
+    if db_path != ":memory:" and not os.path.exists(db_path):
+        raise MigrationError(
+            f"database path does not exist: {db_path!r} "
+            "(refusing to silently create a new SQLite file)"
+        )
     store = CommitmentLogStore(db_path)
     try:
         migrated = store.migrate_operator_keypair()
@@ -58,6 +72,9 @@ def main(argv: list[str] | None = None) -> int:
     for db in args.db_path:
         try:
             migrate_one(db)
+        except MigrationError as exc:
+            _LOG.error("%s", exc)
+            rc = 1
         except Exception as exc:  # noqa: BLE001 — CLI top level
             _LOG.error("migration failed for %s: %s", db, exc)
             rc = 1
