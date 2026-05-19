@@ -4,7 +4,7 @@ Step-by-step ceremony for swapping the v6 implementation behind the
 GSX testnet (chain `103115120`) and Base Sepolia (chain `84532`)
 `LTPAnchorRegistry` proxies with the v7 implementation that's on
 `main` today. Mainnet runs from a different runbook
-([`mainnet-deploy.md`](mainnet-deploy.md), Phase D).
+(`docs/runbooks/mainnet-deploy.md`, Phase D — not yet authored).
 
 > **Roles:** This ceremony needs **both** signers of the 2-of-2
 > `LTPMultiSig` to be available and reachable. Don't start without
@@ -241,5 +241,6 @@ deploy, which would orphan the proxy's storage.
    if either references v6 explicitly.
 3. File the pause-drill time row in the table above.
 4. Phase C (etp-node + etp-gateway services) can now point at the
-   upgraded testnets — see the plan in
-   [`~/.claude/plans/research-on-fixing-this-parallel-treasure.md`](../../../.claude/plans/research-on-fixing-this-parallel-treasure.md).
+   upgraded testnets — Phase C ships the container build pipeline
+   (PR C1) and the etp services Helm chart (PR C2) in the
+   production-rollout sequence.
