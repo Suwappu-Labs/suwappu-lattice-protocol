@@ -248,8 +248,34 @@ your production node endpoints.
 
 ## 7. Alert runbook
 
-Alert names link back from the `runbook:` annotation in
-`deploy/observability/prometheus/alerts.yml`.
+Alert names link back from the `runbook:` annotation in the Prometheus
+rules deployed by `infra/helm/observability/` — the YAML is generated
+from [`src/ltp/observability/alerts.py`](../src/ltp/observability/alerts.py)
+via [`scripts/export_alert_rules.py`](../scripts/export_alert_rules.py),
+which is the single source of truth.
+
+### Pause decision matrix
+
+Each alert below ends with a **Press pause if:** sub-bullet. Pause is
+not the default escalation — only certain alert shapes warrant
+halting the registry. When the matrix says "pause", run:
+
+```bash
+scripts/propose_pause.sh \
+    --rpc-url   "$LTP_RPC_URL" \
+    --multisig  "$LTP_MULTISIG_ADDRESS" \
+    --registry  "$LTP_REGISTRY_ADDRESS"
+```
+
+Cosigners confirm via the multisig dapp; the 0-second Timelock delay
+(verified by `tests/deployment/test_v7_upgrade_dryrun.py` once Phase A
+lands) executes `pause()` immediately on threshold-met. Watch the
+**PAUSE STATUS** Grafana dashboard for the on-chain confirmation.
+
+> ⚠ Never bypass the multisig with a hot key. The pause path is
+> deliberately governance-gated; rushing it through an EOA defeats the
+> security model. Sub-5-minute response is achievable through pre-drilled
+> cosigner availability — see §13 for the v7 pause rehearsal.
 
 ### `#node-down`
 
@@ -270,6 +296,11 @@ Alert names link back from the `runbook:` annotation in
 - Restart: `systemctl restart etp-node`.
 - If start fails repeatedly, freeze the node (disable unit) and escalate.
   Do **not** wipe `/var/lib/etp` — the Merkle log is the chain of custody.
+
+**Press pause if:** Not a pause trigger by itself. Single-node liveness
+loss does not compromise on-chain safety. Pause only if `#node-down`
+correlates with `#nonce-violation` or `#sth-publish-gap` on the same
+node — then the underlying alert dictates the pause decision.
 
 ---
 
@@ -295,6 +326,12 @@ Alert names link back from the `runbook:` annotation in
 - If the log has diverged from peers (compare `/v1/log/sth` across
   nodes), STOP. A forked log is a P0 — engage the core team.
 
+**Press pause if:** Gap exceeds 5 minutes AND `/v1/log/sth` returns a
+hash that differs across ≥2 nodes (forked log). A diverged log means
+the on-chain commitments may no longer match the canonical log;
+pausing the registry prevents further bad anchors from landing while
+the fork is investigated.
+
 ---
 
 ### `#audit-failures`
@@ -316,6 +353,12 @@ Alert names link back from the `runbook:` annotation in
 - If repair can't source a shard quorum, the entity is `DISPUTED`;
   follow the dispute playbook (§9).
 
+**Press pause if:** Failure rate exceeds 20% AND the spread is across
+≥3 peers (i.e., not localized). Widespread audit failure suggests
+shard-store corruption or a network partition; pausing prevents new
+anchors from landing on top of an inconsistent log until repair
+completes.
+
 ---
 
 ### `#key-rotation-failure`
@@ -335,6 +378,10 @@ Alert names link back from the `runbook:` annotation in
   `curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" https://localhost:8080/admin/keys/rotate`.
 - Failures must not be silenced: a node with an expired signing key
   will stop publishing STHs within 24h.
+
+**Press pause if:** Not a pause trigger by itself. A failed rotation is
+operational, not an on-chain safety event. If the failure cascades
+into `#sth-publish-gap`, the gap rule's pause criteria apply.
 
 ---
 
@@ -359,6 +406,10 @@ Alert names link back from the `runbook:` annotation in
 - If the contract is paused (admin MultiSig), wait for unpause — bridge
   records will drain automatically.
 
+**Press pause if:** Not a pause trigger by itself. A stuck bridge is an
+availability issue, not a safety issue — messages can wait. Pause only
+if the bridge is stuck *because* `#nonce-violation` has been observed.
+
 ---
 
 ### `#nonce-violation`
@@ -381,6 +432,11 @@ rewound a signed message — treat as an active attack until disproven.
 - Do NOT restart the node — that may mask the evidence.
 - Preserve logs: `journalctl -u etp-node --since "-30m" > /var/log/etp/incident-$(date +%s).log`.
 - Page the security on-call.
+
+**Press pause if:** **ALWAYS.** A monotonic-nonce violation is the
+canonical "active attack" signal. Pause the registry first, then
+investigate. The 0-second pause Timelock is designed for exactly this
+scenario; multi-minute deliberation is the wrong response.
 
 ---
 

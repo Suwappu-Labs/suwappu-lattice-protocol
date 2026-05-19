@@ -1,0 +1,54 @@
+{{- if .Values.ltp.alerting.pagerdutyEnabled -}}
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: ltp-alerts
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ltp-observability.labels" . | nindent 4 }}
+    alertmanagerConfig: ltp
+spec:
+  route:
+    # Top-level route — group alerts by name + severity so PagerDuty
+    # consolidates flaps and we don't page on every metric scrape.
+    groupBy: ["alertname", "severity"]
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 1h
+    receiver: pagerduty-critical
+    routes:
+      - matchers:
+          - name: severity
+            value: critical
+        receiver: pagerduty-critical
+        continue: false
+      - matchers:
+          - name: severity
+            value: warning
+        receiver: pagerduty-warning
+        continue: false
+
+  receivers:
+    - name: pagerduty-critical
+      pagerdutyConfigs:
+        - routingKey:
+            name: pagerduty-integration-key
+            key: integration-key
+          severity: "critical"
+          description: '{{ `{{ .CommonAnnotations.summary }}` }}'
+          details:
+            - key: alertname
+              value: '{{ `{{ .CommonLabels.alertname }}` }}'
+            - key: runbook
+              value: '{{ `{{ .CommonAnnotations.runbook }}` }}'
+            - key: component
+              value: '{{ `{{ .CommonLabels.component }}` }}'
+
+    - name: pagerduty-warning
+      pagerdutyConfigs:
+        - routingKey:
+            name: pagerduty-integration-key
+            key: integration-key
+          severity: "warning"
+          description: '{{ `{{ .CommonAnnotations.summary }}` }}'
+{{- end }}

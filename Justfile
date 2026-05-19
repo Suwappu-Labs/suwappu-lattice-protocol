@@ -90,6 +90,22 @@ tf-validate env="prod":
     terraform -chdir=infra/terraform/envs/{{env}} init -backend=false
     terraform -chdir=infra/terraform/envs/{{env}} validate
 
+# --- Helm (infra/helm/) ---------------------------------------------------
+
+# Pull chart dependencies and lint a chart
+helm-lint chart="observability":
+    cd infra/helm/{{chart}} && helm dependency update && helm lint .
+
+# Render a chart and pipe through kubeconform — what CI runs
+helm-validate chart="observability":
+    cd infra/helm/{{chart}} && helm dependency update
+    cd infra/helm/{{chart}} && helm template release-name . | kubeconform -strict -summary -ignore-missing-schemas
+
+# Re-render the PrometheusRule from src/ltp/observability/alerts.py
+helm-alert-rules:
+    python3 scripts/export_alert_rules.py > infra/helm/observability/templates/prometheus-rules-generated.yaml
+    @echo "Regenerated infra/helm/observability/templates/prometheus-rules-generated.yaml"
+
 # --- Housekeeping ---------------------------------------------------------
 
 # Remove generated artifacts (delegates to make clean)

@@ -1,0 +1,115 @@
+# LTP observability values.
+#
+# Overrides the kube-prometheus-stack sub-chart where LTP needs
+# specific behavior, and toggles on the LTP-local resources
+# (ServiceMonitor, ExternalSecret, AlertmanagerConfig).
+#
+# Keep this file boring: every non-default value should have a comment
+# explaining why we diverge from the upstream defaults.
+
+# ---------------------------------------------------------------------------
+# LTP-local values (consumed by templates/*.yaml in this chart)
+# ---------------------------------------------------------------------------
+
+ltp:
+  # Namespace where etp-node and etp-gateway will run (Phase C). The
+  # ServiceMonitor here points at this namespace.
+  namespace: ltp
+
+  # External-secrets reads the PagerDuty integration key from this AWS
+  # Secrets Manager entry. The key is provisioned out-of-band — see
+  # docs/OPERATOR_RUNBOOK.md §7.
+  pagerduty:
+    secretsManagerName: "ltp/observability/pagerduty-integration-key"
+    # The external-secrets ServiceAccount (annotated with the IRSA role
+    # ARN from infra/terraform/envs/observability outputs) lives in the
+    # external-secrets namespace.
+    secretStoreRef:
+      name: aws-secretsmanager
+      kind: ClusterSecretStore
+
+  # AlertManager routes everything CRITICAL to PagerDuty; warnings stay
+  # in a Slack channel via the warningsRoute below.
+  alerting:
+    pagerdutyEnabled: true
+    slackWebhookSecretKey: "" # Optional; set after PagerDuty is live
+
+# ---------------------------------------------------------------------------
+# kube-prometheus-stack overrides
+# ---------------------------------------------------------------------------
+
+kube-prometheus-stack:
+  fullnameOverride: ltp-obs
+
+  # Prometheus — modest size for early prod; raise once retention
+  # requirements firm up.
+  prometheus:
+    prometheusSpec:
+      retention: 15d
+      retentionSize: 40GB
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            storageClassName: gp3
+            resources:
+              requests:
+                storage: 50Gi
+      # Auto-discover ServiceMonitors written by this chart and the
+      # etp Helm chart (Phase C).
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
+      ruleSelectorNilUsesHelmValues: false
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "2Gi"
+        limits:
+          memory: "4Gi"
+
+  # Grafana — pre-seeded with the three LTP dashboards (see
+  # templates/grafana-dashboard-*.yaml).
+  grafana:
+    enabled: true
+    adminPassword: "" # Overridden by an ExternalSecret in production
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClassName: gp3
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+        labelValue: "1"
+        # Scan every namespace so dashboards from etp/ chart (Phase C)
+        # land automatically.
+        searchNamespace: ALL
+    defaultDashboardsEnabled: true
+
+  # AlertManager — uses the AlertmanagerConfig CR shipped by this chart
+  # (templates/alertmanager-config.yaml).
+  alertmanager:
+    alertmanagerSpec:
+      storage:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            storageClassName: gp3
+            resources:
+              requests:
+                storage: 5Gi
+      alertmanagerConfigSelector:
+        matchLabels:
+          alertmanagerConfig: ltp
+
+  # Cluster-level scrape targets — keep the upstream defaults; LTP only
+  # adds workload-specific scrapes via its own ServiceMonitors.
+  kubeStateMetrics:
+    enabled: true
+  nodeExporter:
+    enabled: true
+  defaultRules:
+    create: true
+    rules:
+      kubeApiserverSlos: true
+      kubeProxy: false # Not running on EKS Fargate / managed nodes

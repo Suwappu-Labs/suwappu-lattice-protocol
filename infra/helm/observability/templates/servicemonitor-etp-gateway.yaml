@@ -1,0 +1,24 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ltp-etp-gateway
+  namespace: {{ .Values.ltp.namespace }}
+  labels:
+    {{- include "ltp-observability.labels" . | nindent 4 }}
+    monitoring: ltp-etp-gateway
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: etp-gateway
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.ltp.namespace }}
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      honorLabels: true
+      # Gateway emits the etp_gateway_* metric family (see
+      # src/ltp/gateway_vm/metrics.py). Port "metrics" (numeric 9091)
+      # is wired in the etp Helm chart in Phase C.

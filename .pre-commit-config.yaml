@@ -24,6 +24,11 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
         args: [--allow-multiple-documents]
+        # Helm templates are NOT valid YAML pre-render — they contain
+        # {{ ... }} action blocks that the YAML parser rejects. The
+        # `helm` CI workflow runs `helm lint` + `helm template |
+        # kubeconform` which is the right validation for these files.
+        exclude: '^infra/helm/[^/]+/templates/.*\.ya?ml$'
       - id: check-toml
       - id: check-added-large-files
         args: [--maxkb=512]

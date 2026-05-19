@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ltp-etp-node
+  namespace: {{ .Values.ltp.namespace }}
+  labels:
+    {{- include "ltp-observability.labels" . | nindent 4 }}
+    monitoring: ltp-etp-node
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: etp-node
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.ltp.namespace }}
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      honorLabels: true
+      # The etp-node service (PR C2) exposes Prometheus metrics on port
+      # "metrics" (numeric 9090). The endpoint MetricsRegistry in
+      # src/ltp/observability/metrics.py is the source of truth for what
+      # gets emitted; the alert rules in templates/prometheus-rules-
+      # generated.yaml reference these metric names verbatim.

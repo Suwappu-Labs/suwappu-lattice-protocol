@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ltp-dashboard-bridge-health
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ltp-observability.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  bridge-health.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Gateway events observed vs accepted",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            { "expr": "rate(etp_gateway_events_observed[5m])", "refId": "A", "legendFormat": "observed" },
+            { "expr": "rate(etp_gateway_events_accepted[5m])", "refId": "B", "legendFormat": "accepted" }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Replay rejections",
+          "description": "etp_gateway_replay_rejections — detected replay attempts at the gateway VM.",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [{ "expr": "rate(etp_gateway_replay_rejections[5m])", "refId": "A" }]
+        },
+        {
+          "type": "timeseries",
+          "title": "Anchor latency histogram (observed → devnet anchor)",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+          "targets": [
+            { "expr": "histogram_quantile(0.50, rate(etp_gateway_anchor_latency_bucket[5m]))", "legendFormat": "p50", "refId": "A" },
+            { "expr": "histogram_quantile(0.95, rate(etp_gateway_anchor_latency_bucket[5m]))", "legendFormat": "p95", "refId": "B" },
+            { "expr": "histogram_quantile(0.99, rate(etp_gateway_anchor_latency_bucket[5m]))", "legendFormat": "p99", "refId": "C" }
+          ]
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["ltp", "ltp:bridge"],
+      "templating": { "list": [] },
+      "time": { "from": "now-6h", "to": "now" },
+      "title": "LTP — Bridge health",
+      "uid": "ltp-bridge-health",
+      "version": 1
+    }

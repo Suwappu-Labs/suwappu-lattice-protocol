@@ -1,0 +1,4 @@
+# Chart dependencies are re-downloaded by `helm dependency update`.
+# The Chart.lock file (with the resolved digest) IS committed; the
+# downloaded tarball is not.
+*/charts/*.tgz

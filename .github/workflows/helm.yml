@@ -1,0 +1,84 @@
+name: Helm
+
+on:
+  pull_request:
+    paths:
+      - "infra/helm/**"
+      - ".github/workflows/helm.yml"
+      - "scripts/export_alert_rules.py"
+      - "src/ltp/observability/alerts.py"
+  push:
+    branches: [main]
+    paths:
+      - "infra/helm/**"
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: helm lint + kubeconform (${{ matrix.chart }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        chart:
+          - observability
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112  # v4.3.0
+        with:
+          version: "v4.0.1"
+
+      - name: Install kubeconform
+        run: |
+          curl -fsSL -o /tmp/kc.tar.gz \
+              "https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz"
+          tar -xzf /tmp/kc.tar.gz -C /tmp
+          sudo install /tmp/kubeconform /usr/local/bin/kubeconform
+
+      - name: helm dependency update
+        working-directory: infra/helm/${{ matrix.chart }}
+        run: helm dependency update
+
+      - name: helm lint
+        working-directory: infra/helm/${{ matrix.chart }}
+        run: helm lint .
+
+      - name: helm template | kubeconform
+        working-directory: infra/helm/${{ matrix.chart }}
+        run: |
+          helm template release-name . \
+            | kubeconform -strict -summary \
+                -schema-location default \
+                -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{ .Group }}/{{ .ResourceKind }}_{{ .ResourceAPIVersion }}.json' \
+                -ignore-missing-schemas
+
+  alert-rules-fresh:
+    name: PrometheusRule matches src/ltp/observability/alerts.py
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install production crypto deps
+        # `from ltp.observability.alerts import ...` runs `src/ltp/__init__.py`
+        # which transitively imports primitives.py — that file calls
+        # `assert_real_crypto()` at module load and raises without the
+        # pqcrypto + pynacl backends installed. Install the production
+        # extra so the import succeeds.
+        run: pip install -e ".[production]"
+
+      - name: Re-render alert rules
+        run: |
+          python3 scripts/export_alert_rules.py > /tmp/fresh.yaml
+
+      - name: Compare against committed file
+        run: |
+          diff -u infra/helm/observability/templates/prometheus-rules-generated.yaml /tmp/fresh.yaml \
+            || (echo '::error::PrometheusRule out of sync with Python source. Re-run: python3 scripts/export_alert_rules.py > infra/helm/observability/templates/prometheus-rules-generated.yaml' && exit 1)

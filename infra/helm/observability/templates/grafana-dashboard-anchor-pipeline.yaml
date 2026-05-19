@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ltp-dashboard-anchor-pipeline
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ltp-observability.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  anchor-pipeline.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "STH publish gap (seconds)",
+          "description": "etp_sth_publish_gap_seconds — fires the sth_publish_gap alert when > 60s.",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [{ "expr": "etp_sth_publish_gap_seconds", "refId": "A" }]
+        },
+        {
+          "type": "timeseries",
+          "title": "Audit failure rate",
+          "description": "etp_audit_failure_rate — fires when > 5%.",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [{ "expr": "etp_audit_failure_rate", "refId": "A" }]
+        },
+        {
+          "type": "stat",
+          "title": "Nonce violations (replay attacks)",
+          "description": "etp_nonce_violation_total — ANY occurrence pages. CRITICAL.",
+          "gridPos": { "h": 6, "w": 8, "x": 0, "y": 8 },
+          "targets": [{ "expr": "etp_nonce_violation_total", "refId": "A" }],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 1 }
+                ]
+              }
+            }
+          },
+          "options": { "colorMode": "background" }
+        },
+        {
+          "type": "timeseries",
+          "title": "Materialize failures",
+          "gridPos": { "h": 6, "w": 8, "x": 8, "y": 8 },
+          "targets": [{ "expr": "rate(etp_materialize_failure_total[5m])", "refId": "A" }]
+        },
+        {
+          "type": "timeseries",
+          "title": "Bridge message age (seconds)",
+          "gridPos": { "h": 6, "w": 8, "x": 16, "y": 8 },
+          "targets": [{ "expr": "etp_bridge_message_age_seconds", "refId": "A" }]
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["ltp", "ltp:anchor"],
+      "templating": { "list": [] },
+      "time": { "from": "now-6h", "to": "now" },
+      "title": "LTP — Anchor pipeline",
+      "uid": "ltp-anchor-pipeline",
+      "version": 1
+    }
