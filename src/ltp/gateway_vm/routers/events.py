@@ -50,10 +50,12 @@ async def list_events(
             for s in ("pending", "submitted", "confirmed", "finalized", "failed"):
                 events.extend(tracker.get_by_status(s))
 
-        return JSONResponse({
-            "events": [_serialize_record(e) for e in events],
-            "count": len(events),
-        })
+        return JSONResponse(
+            {
+                "events": [_serialize_record(e) for e in events],
+                "count": len(events),
+            }
+        )
     except Exception as exc:
         return _internal_error("list_events", exc)
 

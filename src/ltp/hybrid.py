@@ -32,7 +32,7 @@ import struct
 from dataclasses import dataclass
 from enum import Enum
 
-from .domain import domain_sign, domain_verify, DOMAIN_SIGNED_ENVELOPE
+from .domain import DOMAIN_SIGNED_ENVELOPE, domain_sign, domain_verify
 from .primitives import MLDSA
 
 __all__ = [
@@ -56,8 +56,9 @@ class AlgorithmId(Enum):
     NOT post-quantum safe (broken by Shor's algorithm). It exists
     only for backward compatibility during migration.
     """
-    MLDSA65 = "mldsa65"                          # Pure PQ (recommended)
-    MLDSA65_ED25519_SHA512 = "mldsa65-ed25519"   # Composite — Ed25519 NOT PQ-safe
+
+    MLDSA65 = "mldsa65"  # Pure PQ (recommended)
+    MLDSA65_ED25519_SHA512 = "mldsa65-ed25519"  # Composite — Ed25519 NOT PQ-safe
 
 
 @dataclass
@@ -72,8 +73,8 @@ class CompositeSignature:
         ed_sig: Ed25519 signature (64 bytes)
     """
 
-    ml_sig: bytes   # 3309B ML-DSA-65
-    ed_sig: bytes   # 64B Ed25519
+    ml_sig: bytes  # 3309B ML-DSA-65
+    ed_sig: bytes  # 64B Ed25519
 
     _ML_SIG_SIZE = 3309
     _ED_SIG_SIZE = 64
@@ -87,12 +88,10 @@ class CompositeSignature:
     def from_bytes(cls, data: bytes) -> "CompositeSignature":
         """Parse a composite signature from concatenated bytes."""
         if len(data) != cls.TOTAL_SIZE:
-            raise ValueError(
-                f"composite signature must be {cls.TOTAL_SIZE}B, got {len(data)}"
-            )
+            raise ValueError(f"composite signature must be {cls.TOTAL_SIZE}B, got {len(data)}")
         return cls(
-            ml_sig=data[:cls._ML_SIG_SIZE],
-            ed_sig=data[cls._ML_SIG_SIZE:],
+            ml_sig=data[: cls._ML_SIG_SIZE],
+            ed_sig=data[cls._ML_SIG_SIZE :],
         )
 
 
@@ -114,11 +113,7 @@ def composite_signing_message(message: bytes, context: bytes = b"") -> bytes:
     """
     prehash = hashlib.sha512(message).digest()
     return (
-        _COMPOSITE_PREFIX
-        + _COMPOSITE_LABEL
-        + struct.pack('>H', len(context))
-        + context
-        + prehash
+        _COMPOSITE_PREFIX + _COMPOSITE_LABEL + struct.pack(">H", len(context)) + context + prehash
     )
 
 
@@ -184,6 +179,7 @@ class AlgorithmRegistry:
 
         elif algo_id == AlgorithmId.MLDSA65_ED25519_SHA512:
             import warnings
+
             warnings.warn(
                 "Composite signature (MLDSA65_ED25519_SHA512) includes Ed25519 "
                 "which is NOT post-quantum safe. Use AlgorithmId.MLDSA65 for PQ security.",
@@ -193,9 +189,7 @@ class AlgorithmRegistry:
             ml_sig = domain_sign(domain, sk, m_prime)
             # Ed25519 component: simulated with hash for PoC
             # Production: use actual Ed25519 signing with separate key
-            ed_sig = hashlib.sha512(
-                b"ed25519-poc-sig" + sk[:32] + m_prime
-            ).digest()
+            ed_sig = hashlib.sha512(b"ed25519-poc-sig" + sk[:32] + m_prime).digest()
             composite = CompositeSignature(ml_sig=ml_sig, ed_sig=ed_sig)
             return composite.to_bytes()
 

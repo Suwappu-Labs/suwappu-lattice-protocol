@@ -12,7 +12,6 @@ from src.ltp.gateway.middleware import RateLimiter
 
 
 class TestRateLimiter:
-
     def test_allows_under_limit(self):
         rl = RateLimiter(max_per_minute=10)
         for _ in range(10):
@@ -48,6 +47,7 @@ class TestRateLimiter:
     def test_thread_safety(self):
         """Multiple threads should not corrupt internal state."""
         import threading
+
         rl = RateLimiter(max_per_minute=1000)
         results = []
 

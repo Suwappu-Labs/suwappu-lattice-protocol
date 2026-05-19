@@ -9,10 +9,22 @@ class TestFakeConsensusAdapter:
         from src.ltp.execution.types import OrderedBatch
 
         batches = [
-            OrderedBatch(round=1, epoch=0, transactions=[b"\x01tx1"],
-                         leader_authority=0, timestamp_ms=100, consensus_type="dag"),
-            OrderedBatch(round=2, epoch=0, transactions=[b"\x10tx2"],
-                         leader_authority=1, timestamp_ms=200, consensus_type="dag"),
+            OrderedBatch(
+                round=1,
+                epoch=0,
+                transactions=[b"\x01tx1"],
+                leader_authority=0,
+                timestamp_ms=100,
+                consensus_type="dag",
+            ),
+            OrderedBatch(
+                round=2,
+                epoch=0,
+                transactions=[b"\x10tx2"],
+                leader_authority=1,
+                timestamp_ms=200,
+                consensus_type="dag",
+            ),
         ]
         adapter = FakeConsensusAdapter(batches=batches)
         adapter.start()
@@ -24,6 +36,7 @@ class TestFakeConsensusAdapter:
 
     def test_consensus_type(self):
         from src.ltp.execution.consensus import FakeConsensusAdapter
+
         adapter = FakeConsensusAdapter(batches=[], consensus_type="bft")
         assert adapter.consensus_type() == "bft"
 
@@ -32,8 +45,14 @@ class TestFakeConsensusAdapter:
         from src.ltp.execution.types import OrderedBatch
 
         batches = [
-            OrderedBatch(round=5, epoch=0, transactions=[],
-                         leader_authority=0, timestamp_ms=100, consensus_type="dag"),
+            OrderedBatch(
+                round=5,
+                epoch=0,
+                transactions=[],
+                leader_authority=0,
+                timestamp_ms=100,
+                consensus_type="dag",
+            ),
         ]
         adapter = FakeConsensusAdapter(batches=batches)
         assert adapter.current_round() == 0
@@ -42,11 +61,13 @@ class TestFakeConsensusAdapter:
 
     def test_satisfies_protocol(self):
         from src.ltp.execution.consensus import ConsensusAdapter, FakeConsensusAdapter
+
         adapter = FakeConsensusAdapter(batches=[])
         assert isinstance(adapter, ConsensusAdapter)
 
     def test_stop(self):
         from src.ltp.execution.consensus import FakeConsensusAdapter
+
         adapter = FakeConsensusAdapter(batches=[])
         adapter.start()
         adapter.stop()  # should not raise

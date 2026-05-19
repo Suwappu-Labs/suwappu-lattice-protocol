@@ -15,12 +15,11 @@ from src.ltp.corridor.wire import (
     WireFormatError,
     attestation_payload_from_dict,
     corridor_attestation_from_dict,
-    super_node_from_dict,
-    state_anchor_from_dict,
-    witness_signature_from_dict,
     did_rotation_statement_from_dict,
+    state_anchor_from_dict,
+    super_node_from_dict,
+    witness_signature_from_dict,
 )
-
 
 # ---------------------------------------------------------------------------
 # AttestationPayload
@@ -38,7 +37,6 @@ def _valid_payload() -> dict:
 
 
 class TestAttestationPayloadFromDict:
-
     def test_valid(self):
         attestation_payload_from_dict(_valid_payload())
 
@@ -89,7 +87,6 @@ def _valid_witness() -> dict:
 
 
 class TestWitnessSignatureFromDict:
-
     def test_valid(self):
         witness_signature_from_dict(_valid_witness())
 
@@ -126,7 +123,6 @@ def _valid_corridor_attestation() -> dict:
 
 
 class TestCorridorAttestationFromDict:
-
     def test_valid(self):
         corridor_attestation_from_dict(_valid_corridor_attestation())
 
@@ -167,15 +163,12 @@ class TestCorridorAttestationFromDict:
 
 
 class TestSuperNodeFromDict:
-
     def test_valid(self):
         super_node_from_dict({"authority": 0, "corridor": 0, "bls_public_key": "00" * 48})
 
     def test_bls_pk_wrong_length(self):
         with pytest.raises(WireFormatError, match="bls_public_key.*48 bytes"):
-            super_node_from_dict(
-                {"authority": 0, "corridor": 0, "bls_public_key": "deadbeef"}
-            )
+            super_node_from_dict({"authority": 0, "corridor": 0, "bls_public_key": "deadbeef"})
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +188,6 @@ def _valid_state_anchor() -> dict:
 
 
 class TestStateAnchorFromDict:
-
     def test_valid(self):
         state_anchor_from_dict(_valid_state_anchor())
 
@@ -224,35 +216,40 @@ class TestStateAnchorFromDict:
 
 
 class TestDidRotationStatementFromDict:
-
     def test_valid(self):
-        did_rotation_statement_from_dict({
-            "did": "00" * 32,
-            "old_doc_hash": "11" * 32,
-            "new_doc_hash": "22" * 32,
-            "source_chain": 1,
-            "target_chain": 2,
-            "source_height": 100,
-        })
-
-    def test_did_wrong_length(self):
-        with pytest.raises(WireFormatError, match="did.*32 bytes"):
-            did_rotation_statement_from_dict({
-                "did": "00" * 16,
+        did_rotation_statement_from_dict(
+            {
+                "did": "00" * 32,
                 "old_doc_hash": "11" * 32,
                 "new_doc_hash": "22" * 32,
                 "source_chain": 1,
                 "target_chain": 2,
                 "source_height": 100,
-            })
+            }
+        )
+
+    def test_did_wrong_length(self):
+        with pytest.raises(WireFormatError, match="did.*32 bytes"):
+            did_rotation_statement_from_dict(
+                {
+                    "did": "00" * 16,
+                    "old_doc_hash": "11" * 32,
+                    "new_doc_hash": "22" * 32,
+                    "source_chain": 1,
+                    "target_chain": 2,
+                    "source_height": 100,
+                }
+            )
 
     def test_old_doc_hash_wrong_length(self):
         with pytest.raises(WireFormatError, match="old_doc_hash.*32 bytes"):
-            did_rotation_statement_from_dict({
-                "did": "00" * 32,
-                "old_doc_hash": "abcd",
-                "new_doc_hash": "22" * 32,
-                "source_chain": 1,
-                "target_chain": 2,
-                "source_height": 100,
-            })
+            did_rotation_statement_from_dict(
+                {
+                    "did": "00" * 32,
+                    "old_doc_hash": "abcd",
+                    "new_doc_hash": "22" * 32,
+                    "source_chain": 1,
+                    "target_chain": 2,
+                    "source_height": 100,
+                }
+            )

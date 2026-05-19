@@ -9,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from extract_changelog import extract  # noqa: E402
 
-
 _FIXTURE = """\
 # Changelog
 

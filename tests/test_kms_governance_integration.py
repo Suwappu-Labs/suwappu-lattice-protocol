@@ -11,11 +11,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from src.ltp.cloud.kms import InMemoryKMSBackend
-from src.ltp.governance import TransitionVoteManager, TransitionVote, create_transition_vote
+from src.ltp.governance import TransitionVote, TransitionVoteManager, create_transition_vote
 from src.ltp.keypair import KeyPair
 from src.ltp.node.config import NodeConfig
 from src.ltp.node.main import ETPNode
-
 
 # ---------------------------------------------------------------------------
 # KMS Factory
@@ -23,13 +22,16 @@ from src.ltp.node.main import ETPNode
 
 
 class TestKMSFactory:
-
     def test_memory_backend_from_config(self):
         """kms_backend="memory" creates InMemoryKMSBackend."""
         config = NodeConfig(
-            node_id="kms-test", region="test",
-            listen_port=0, rest_port=0, diagnostics_port=0,
-            require_real_crypto=False, storage_backend="memory",
+            node_id="kms-test",
+            region="test",
+            listen_port=0,
+            rest_port=0,
+            diagnostics_port=0,
+            require_real_crypto=False,
+            storage_backend="memory",
             kms_backend="memory",
         )
         node = ETPNode(config)
@@ -43,9 +45,13 @@ class TestKMSFactory:
     def test_empty_backend_is_none(self):
         """kms_backend="" results in no KMS."""
         config = NodeConfig(
-            node_id="kms-none", region="test",
-            listen_port=0, rest_port=0, diagnostics_port=0,
-            require_real_crypto=False, storage_backend="memory",
+            node_id="kms-none",
+            region="test",
+            listen_port=0,
+            rest_port=0,
+            diagnostics_port=0,
+            require_real_crypto=False,
+            storage_backend="memory",
             kms_backend="",
         )
         node = ETPNode(config)
@@ -58,10 +64,15 @@ class TestKMSFactory:
     def test_aws_without_arn_is_none(self):
         """kms_backend="aws" without kms_key_arn skips initialization."""
         config = NodeConfig(
-            node_id="kms-aws-no-arn", region="test",
-            listen_port=0, rest_port=0, diagnostics_port=0,
-            require_real_crypto=False, storage_backend="memory",
-            kms_backend="aws", kms_key_arn="",
+            node_id="kms-aws-no-arn",
+            region="test",
+            listen_port=0,
+            rest_port=0,
+            diagnostics_port=0,
+            require_real_crypto=False,
+            storage_backend="memory",
+            kms_backend="aws",
+            kms_key_arn="",
         )
         node = ETPNode(config)
         node.start()
@@ -77,7 +88,6 @@ class TestKMSFactory:
 
 
 class TestTransitionVoteManagerOnChain:
-
     def test_accepts_on_chain_client(self):
         """Constructor accepts on_chain_client parameter."""
         mock_client = MagicMock()
@@ -143,7 +153,6 @@ class TestTransitionVoteManagerOnChain:
 
 
 class TestGovernanceConfig:
-
     def test_defaults(self):
         config = NodeConfig()
         assert config.governance_contract_address == ""
@@ -163,7 +172,9 @@ class TestGovernanceConfig:
             os.environ[k] = v
         try:
             config = NodeConfig.from_env()
-            assert config.governance_contract_address == "0x1234567890abcdef1234567890abcdef12345678"
+            assert (
+                config.governance_contract_address == "0x1234567890abcdef1234567890abcdef12345678"
+            )
             assert config.governance_chain_rpc == "http://localhost:8545"
             assert config.governance_chain_id == 103115120
         finally:

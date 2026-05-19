@@ -33,6 +33,7 @@ __all__ = [
 @dataclass(frozen=True)
 class TLSConfig:
     """TLS/mTLS configuration for a service endpoint."""
+
     enabled: bool = False
     cert_path: str = ""
     key_path: str = ""
@@ -78,7 +79,9 @@ class InMemoryCertManager(CertificateManager):
         self._rotations: dict[str, int] = {}
 
     def provision(
-        self, service_id: str, require_client_cert: bool = True,
+        self,
+        service_id: str,
+        require_client_cert: bool = True,
     ) -> TLSConfig:
         """Provision a new certificate for a service."""
         cert_id = str(uuid.uuid4())[:8]
@@ -126,6 +129,7 @@ class NetworkPolicy:
     Defines which callers are allowed or denied access.
     Deny takes precedence over allow.
     """
+
     service_id: str
     allowed_callers: list[str] = field(default_factory=list)
     denied_callers: list[str] = field(default_factory=list)
@@ -197,17 +201,23 @@ class ETPSecurityConfig:
         config = cls()
 
         # Default network access policies from the deployment plan
-        config.policies.register_policy(NetworkPolicy(
-            service_id="shard-node",
-            allowed_callers=["protocol-service"],
-        ))
-        config.policies.register_policy(NetworkPolicy(
-            service_id="log-service",
-            allowed_callers=["protocol-service", "api-gateway"],
-        ))
-        config.policies.register_policy(NetworkPolicy(
-            service_id="api-gateway",
-            allowed_callers=[],  # Empty = accept all
-        ))
+        config.policies.register_policy(
+            NetworkPolicy(
+                service_id="shard-node",
+                allowed_callers=["protocol-service"],
+            )
+        )
+        config.policies.register_policy(
+            NetworkPolicy(
+                service_id="log-service",
+                allowed_callers=["protocol-service", "api-gateway"],
+            )
+        )
+        config.policies.register_policy(
+            NetworkPolicy(
+                service_id="api-gateway",
+                allowed_callers=[],  # Empty = accept all
+            )
+        )
 
         return config

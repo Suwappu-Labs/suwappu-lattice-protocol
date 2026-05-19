@@ -1,7 +1,7 @@
 """Tests for MysticetiProtocol (Spec D1a §2)."""
 
-from ltp.consensus.types import Block, Certificate, EquivocationProof
 from ltp.consensus.protocol import MysticetiProtocol
+from ltp.consensus.types import Block, Certificate, EquivocationProof
 
 
 class TestPropose:

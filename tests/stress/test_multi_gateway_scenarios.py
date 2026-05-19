@@ -2,8 +2,10 @@
 
 import os
 import tempfile
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from src.ltp.keypair import KeyPair
 from tests.stress.conftest import make_raw_log
 
@@ -62,6 +64,7 @@ class TestScenario14_MultipleGateways:
             shared_db = f.name
 
         try:
+
             def make_gw(kp, gw_id):
                 config = GatewayVMConfig(
                     enabled=True,

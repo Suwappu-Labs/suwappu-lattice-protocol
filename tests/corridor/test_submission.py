@@ -5,11 +5,11 @@ from __future__ import annotations
 import pytest
 
 from ltp.corridor import (
+    GENESIS_PARENT,
     AttestationPayload,
     AuthScheme,
     CorridorAnchorError,
     CorridorAttestation,
-    GENESIS_PARENT,
     build_state_anchor_blake3,
     build_state_anchor_keccak256,
     hash_anchor_keccak256,
@@ -82,9 +82,7 @@ def test_parent_chain_link() -> None:
         aggregate_signature=bytes(96),
         signers=att1.signers,
     )
-    b2 = build_state_anchor_keccak256(
-        att2, chain_key=bytes([1] * 32), parent=b1.canonical_hash
-    )
+    b2 = build_state_anchor_keccak256(att2, chain_key=bytes([1] * 32), parent=b1.canonical_hash)
     assert b2.anchor.parent == b1.canonical_hash
     # Re-hashing must match canonical_hash returned by the builder.
     assert hash_anchor_keccak256(b2.anchor) == b2.canonical_hash

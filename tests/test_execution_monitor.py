@@ -2,9 +2,9 @@
 
 import pytest
 
-from src.ltp.execution.execution_monitor import ExecutionMonitor
 from src.ltp.execution.execution_config import ExecutionConfig
 from src.ltp.execution.execution_events import ExecutionEventType
+from src.ltp.execution.execution_monitor import ExecutionMonitor
 from src.ltp.execution.types import BatchResult, TxResult
 
 
@@ -17,10 +17,9 @@ def _success_result(round_num: int = 0, n_tx: int = 3) -> BatchResult:
 
 
 def _mixed_result(round_num: int = 0, successes: int = 2, failures: int = 1) -> BatchResult:
-    results = (
-        [TxResult.accepted(gas_used=100) for _ in range(successes)]
-        + [TxResult.rejected("fail") for _ in range(failures)]
-    )
+    results = [TxResult.accepted(gas_used=100) for _ in range(successes)] + [
+        TxResult.rejected("fail") for _ in range(failures)
+    ]
     return BatchResult(round=round_num, tx_results=results, state_root=object())
 
 
@@ -33,7 +32,6 @@ def _all_fail_result(round_num: int = 0, n_tx: int = 3) -> BatchResult:
 
 
 class TestMonitorBasic:
-
     def test_record_success_no_events(self):
         monitor = ExecutionMonitor(ExecutionConfig())
         events = monitor.record(_success_result(), catastrophic=False)
@@ -61,7 +59,6 @@ class TestMonitorBasic:
 
 
 class TestMonitorFailureRate:
-
     def test_failure_rate_calculation(self):
         monitor = ExecutionMonitor(ExecutionConfig(failure_window=10))
         monitor.record(_mixed_result(successes=7, failures=3), catastrophic=False)
@@ -86,20 +83,23 @@ class TestMonitorFailureRate:
 
 
 class TestMonitorThresholdWarning:
-
     def test_warning_emitted_when_exceeded(self):
         cfg = ExecutionConfig(failure_threshold_pct=30.0, failure_window=10)
         monitor = ExecutionMonitor(cfg)
         monitor.record(_mixed_result(successes=5, failures=5), catastrophic=False)
         events = monitor.record(_mixed_result(successes=5, failures=5), catastrophic=False)
-        warnings = [e for e in events if e.event_type == ExecutionEventType.FAILURE_THRESHOLD_WARNING]
+        warnings = [
+            e for e in events if e.event_type == ExecutionEventType.FAILURE_THRESHOLD_WARNING
+        ]
         assert len(warnings) >= 1
 
     def test_no_warning_below_threshold(self):
         cfg = ExecutionConfig(failure_threshold_pct=50.0, failure_window=10)
         monitor = ExecutionMonitor(cfg)
         events = monitor.record(_mixed_result(successes=8, failures=2), catastrophic=False)
-        warnings = [e for e in events if e.event_type == ExecutionEventType.FAILURE_THRESHOLD_WARNING]
+        warnings = [
+            e for e in events if e.event_type == ExecutionEventType.FAILURE_THRESHOLD_WARNING
+        ]
         assert len(warnings) == 0
 
     def test_multiple_warnings_on_consecutive_breaches(self):
@@ -115,7 +115,6 @@ class TestMonitorThresholdWarning:
 
 
 class TestMonitorHalt:
-
     def test_catastrophic_with_halt_config(self):
         cfg = ExecutionConfig(halt_on_catastrophic=True)
         monitor = ExecutionMonitor(cfg)
@@ -136,7 +135,6 @@ class TestMonitorHalt:
 
 
 class TestMonitorReset:
-
     def test_reset_clears_counters(self):
         monitor = ExecutionMonitor(ExecutionConfig())
         monitor.record(_success_result(n_tx=5), catastrophic=False)

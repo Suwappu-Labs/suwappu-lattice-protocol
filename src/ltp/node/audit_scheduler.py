@@ -122,7 +122,8 @@ class AuditScheduler:
                     )
                     # Auto-evict if strike threshold reached
                     eviction = self._network.auto_evict_if_needed(
-                        node, strike_threshold=self._strike_threshold,
+                        node,
+                        strike_threshold=self._strike_threshold,
                     )
                     if eviction is not None:
                         logger.warning(
@@ -134,14 +135,14 @@ class AuditScheduler:
                         )
                         result["eviction"] = eviction
             except Exception as e:
-                logger.warning(
-                    "AuditScheduler: audit of %s failed: %s", node.node_id, e
+                logger.warning("AuditScheduler: audit of %s failed: %s", node.node_id, e)
+                results.append(
+                    {
+                        "node_id": node.node_id,
+                        "result": "ERROR",
+                        "error": str(e),
+                    }
                 )
-                results.append({
-                    "node_id": node.node_id,
-                    "result": "ERROR",
-                    "error": str(e),
-                })
         return results
 
     @property

@@ -23,11 +23,11 @@ from __future__ import annotations
 
 import hashlib
 import struct
-from dataclasses import dataclass, field as dataclass_field
+from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 
 from . import field as F
 from .merkle import MerkleProof, StarkMerkleTree
-
 
 # FRI domain tag for Fiat-Shamir
 _FRI_DOMAIN = b"GSX-LTP:fri:v1\x00"
@@ -53,6 +53,7 @@ class FRIParams:
 @dataclass(frozen=True)
 class FRILayerProof:
     """Merkle proof for one query at one FRI layer."""
+
     merkle_proof: MerkleProof
     sibling_proof: MerkleProof  # Proof for the paired index
 
@@ -60,6 +61,7 @@ class FRILayerProof:
 @dataclass(frozen=True)
 class FRIProof:
     """Complete FRI proof."""
+
     layer_roots: tuple[bytes, ...]  # Merkle root per folding layer
     layer_sizes: tuple[int, ...]  # Domain size per layer
     final_poly: tuple[int, ...]  # Coefficients of final low-degree polynomial
@@ -92,7 +94,9 @@ def _fiat_shamir_queries(all_roots: list[bytes], domain_size: int, num_queries: 
     return indices
 
 
-def _fold_evaluations(evals: list[int], domain: list[int], alpha: int) -> tuple[list[int], list[int]]:
+def _fold_evaluations(
+    evals: list[int], domain: list[int], alpha: int
+) -> tuple[list[int], list[int]]:
     """
     Fold evaluations: given p(x) at domain points, compute p_next at half domain.
 
@@ -180,9 +184,7 @@ def fri_commit_and_prove(
         challenges.append(alpha)
 
         # Fold
-        current_evals, current_domain = _fold_evaluations(
-            current_evals, current_domain, alpha
-        )
+        current_evals, current_domain = _fold_evaluations(current_evals, current_domain, alpha)
         current_degree = current_degree // 2
 
         # Commit folded layer
@@ -202,9 +204,7 @@ def fri_commit_and_prove(
         final_poly = list(current_evals)
 
     # Query phase
-    query_indices = _fiat_shamir_queries(
-        layer_roots, layer_sizes[0], params.num_queries
-    )
+    query_indices = _fiat_shamir_queries(layer_roots, layer_sizes[0], params.num_queries)
 
     query_proofs: list[tuple[FRILayerProof, ...]] = []
     for q_idx in query_indices:
@@ -302,9 +302,7 @@ def fri_verify(proof: FRIProof, params: FRIParams | None = None) -> bool:
 
                 # Check against next layer's value at the folded index
                 next_layer_proof = proof.query_proofs[q_num][layer_i + 1]
-                actual_folded = int.from_bytes(
-                    next_layer_proof.merkle_proof.leaf_data, "big"
-                )
+                actual_folded = int.from_bytes(next_layer_proof.merkle_proof.leaf_data, "big")
 
                 if expected_folded != actual_folded:
                     return False

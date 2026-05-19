@@ -1,7 +1,9 @@
 """Shared fixtures for gateway stress tests."""
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from src.ltp.keypair import KeyPair
 
 
@@ -10,10 +12,17 @@ def stress_kp():
     return KeyPair.generate("stress-test-gateway")
 
 
-def make_raw_log(tx_hash="0xabc", block_number=100, log_index=0,
-                 contract="0x5083194d9e8EB54Fc397E69A518Be9503C767Dd0",
-                 sender="0xdeadbeef", recipient="0xcafebabe",
-                 payload_hash="sha3-256:abcd1234", amount=100_000_000, nonce=1):
+def make_raw_log(
+    tx_hash="0xabc",
+    block_number=100,
+    log_index=0,
+    contract="0x5083194d9e8EB54Fc397E69A518Be9503C767Dd0",
+    sender="0xdeadbeef",
+    recipient="0xcafebabe",
+    payload_hash="sha3-256:abcd1234",
+    amount=100_000_000,
+    nonce=1,
+):
     """Create a raw EVM log dict."""
     return {
         "transactionHash": tx_hash,
@@ -31,10 +40,18 @@ def make_raw_log(tx_hash="0xabc", block_number=100, log_index=0,
     }
 
 
-def make_service(kp, *, raw_logs=None, current_block=200,
-                 anchor_fn=None, signer_authorized=True,
-                 finality_depth=12, max_retries=5,
-                 challenge_mode="disabled", replay_db_path=":memory:"):
+def make_service(
+    kp,
+    *,
+    raw_logs=None,
+    current_block=200,
+    anchor_fn=None,
+    signer_authorized=True,
+    finality_depth=12,
+    max_retries=5,
+    challenge_mode="disabled",
+    replay_db_path=":memory:",
+):
     """Create a GatewayVMService with injectable dependencies."""
     from src.ltp.gateway_vm.config import GatewayVMConfig
     from src.ltp.gateway_vm.service import GatewayVMService

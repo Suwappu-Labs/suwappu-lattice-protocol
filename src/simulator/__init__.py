@@ -17,14 +17,14 @@ Core components:
   - DockerNodeManager                — optional Docker-based real-process nodes
 """
 
-from .clock import SimClock, Event, EventQueue
-from .topology import Link, Region, Topology
-from .node import SimNode, StorageCapacity
-from .message import Message, MessageBus, MessageType
 from .client import SimClient
-from .network import NetworkSimulator
+from .clock import Event, EventQueue, SimClock
+from .docker_node import DockerNode, DockerNodeManager
+from .message import Message, MessageBus, MessageType
 from .metrics import MetricsCollector, TransferMetrics
-from .docker_node import DockerNodeManager, DockerNode
+from .network import NetworkSimulator
+from .node import SimNode, StorageCapacity
+from .topology import Link, Region, Topology
 
 __all__ = [
     "SimClock",

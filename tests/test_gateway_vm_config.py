@@ -1,6 +1,7 @@
 """Tests for GatewayVMConfig."""
 
 import os
+
 import pytest
 
 

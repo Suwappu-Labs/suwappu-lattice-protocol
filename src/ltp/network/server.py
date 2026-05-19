@@ -12,9 +12,9 @@ from typing import TYPE_CHECKING, Iterator
 
 import grpc
 
+from . import node_service_pb2_grpc as ns_pb2_grpc
 from . import shard_service_pb2 as pb2
 from . import shard_service_pb2_grpc as pb2_grpc
-from . import node_service_pb2_grpc as ns_pb2_grpc
 
 if TYPE_CHECKING:
     from ..commitment import CommitmentNode
@@ -44,9 +44,13 @@ class _ShardServicer(pb2_grpc.ShardServiceServicer):
             return pb2.FetchShardResponse(found=False)
         return pb2.FetchShardResponse(found=True, encrypted_data=data)
 
-    def AuditChallenge(self, request: pb2.AuditChallengeRequest, context) -> pb2.AuditChallengeResponse:
+    def AuditChallenge(
+        self, request: pb2.AuditChallengeRequest, context
+    ) -> pb2.AuditChallengeResponse:
         proof = self._node.respond_to_audit(
-            request.entity_id, request.shard_index, request.nonce,
+            request.entity_id,
+            request.shard_index,
+            request.nonce,
         )
         if proof is None:
             return pb2.AuditChallengeResponse(found=False)
@@ -65,7 +69,9 @@ class _ShardServicer(pb2_grpc.ShardServiceServicer):
             reputation_score=self._node.reputation_score,
         )
 
-    def FetchShardsBatch(self, request: pb2.FetchShardsBatchRequest, context) -> pb2.FetchShardsBatchResponse:
+    def FetchShardsBatch(
+        self, request: pb2.FetchShardsBatchRequest, context
+    ) -> pb2.FetchShardsBatchResponse:
         responses = []
         for req in request.requests:
             data = self._node.fetch_shard(req.entity_id, req.shard_index)
@@ -75,7 +81,9 @@ class _ShardServicer(pb2_grpc.ShardServiceServicer):
                 responses.append(pb2.FetchShardResponse(found=True, encrypted_data=data))
         return pb2.FetchShardsBatchResponse(responses=responses)
 
-    def StoreShardsStream(self, request_iterator: Iterator, context) -> pb2.StoreShardsStreamResponse:
+    def StoreShardsStream(
+        self, request_iterator: Iterator, context
+    ) -> pb2.StoreShardsStreamResponse:
         stored = 0
         failed = 0
         for req in request_iterator:
@@ -130,20 +138,25 @@ class NodeServer:
             **server_opts,
         )
         pb2_grpc.add_ShardServiceServicer_to_server(
-            _ShardServicer(node), self._server,
+            _ShardServicer(node),
+            self._server,
         )
         if node_servicer is not None:
             ns_pb2_grpc.add_NodeServiceServicer_to_server(
-                node_servicer, self._server,
+                node_servicer,
+                self._server,
             )
         if transfer_servicer is not None:
             from . import transfer_service_pb2_grpc as ts_pb2_grpc
+
             ts_pb2_grpc.add_TransferServiceServicer_to_server(
-                transfer_servicer, self._server,
+                transfer_servicer,
+                self._server,
             )
         # Bind port: secure if TLS configured, insecure otherwise
         if tls_config is not None and tls_config.enabled:
             from .credentials import load_server_credentials
+
             try:
                 server_creds = load_server_credentials(tls_config)
             except (FileNotFoundError, PermissionError, ValueError) as e:
@@ -152,7 +165,8 @@ class NodeServer:
             if server_creds is not None:
                 try:
                     bound_port = self._server.add_secure_port(
-                        f"{host}:{port}", server_creds,
+                        f"{host}:{port}",
+                        server_creds,
                     )
                     self._port = bound_port
                     logger.info("gRPC secure port bound (mTLS=%s)", tls_config.require_client_cert)

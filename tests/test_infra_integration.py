@@ -9,9 +9,9 @@ can coexist.
 from __future__ import annotations
 
 import os
-import yaml
 
 import pytest
+import yaml
 
 from src.ltp.cloud.backup import ETPBackupStrategy
 from src.ltp.observability.endpoint import ETPObservability
@@ -26,7 +26,6 @@ DEPLOY_DIR = os.path.join(os.path.dirname(__file__), "..", "deploy")
 
 
 class TestETPBackupStrategy:
-
     def test_default_schedules(self):
         strategy = ETPBackupStrategy()
         assert len(strategy.schedules) == 3
@@ -65,7 +64,6 @@ class TestETPBackupStrategy:
 
 
 class TestConfigConsistency:
-
     def test_k8s_manifests_reference_etp_namespace(self):
         """All K8s manifests reference the 'etp' namespace."""
         k8s_dir = os.path.join(DEPLOY_DIR, "k8s")
@@ -76,7 +74,9 @@ class TestConfigConsistency:
                 for doc in yaml.safe_load_all(f):
                     if doc is None:
                         continue
-                    ns = doc.get("metadata", {}).get("namespace", doc.get("metadata", {}).get("name"))
+                    ns = doc.get("metadata", {}).get(
+                        "namespace", doc.get("metadata", {}).get("name")
+                    )
                     assert ns == "etp", f"{filename} references namespace {ns!r}, expected 'etp'"
 
     def test_helm_service_count_matches_deployment_plan(self):
@@ -99,7 +99,6 @@ class TestConfigConsistency:
 
 
 class TestFullInfraStack:
-
     def test_all_components_coexist(self):
         """Observability + Security + Backup all initialize together."""
         obs = ETPObservability(node_id="infra-test", region="US-East")

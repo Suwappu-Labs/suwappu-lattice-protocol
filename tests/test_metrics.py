@@ -20,14 +20,12 @@ from src.ltp.observability.metrics import (
     create_etp_metrics,
 )
 
-
 # ---------------------------------------------------------------------------
 # Counter
 # ---------------------------------------------------------------------------
 
 
 class TestCounter:
-
     def test_increment(self):
         c = Counter("test_counter")
         c.inc()
@@ -54,7 +52,6 @@ class TestCounter:
 
 
 class TestGauge:
-
     def test_set_and_get(self):
         g = Gauge("temperature")
         g.set(42.5)
@@ -81,7 +78,6 @@ class TestGauge:
 
 
 class TestHistogram:
-
     def test_observe_and_count(self):
         h = Histogram("latency", buckets=(0.1, 0.5, 1.0))
         h.observe(0.05)
@@ -92,15 +88,15 @@ class TestHistogram:
 
     def test_bucket_distribution(self):
         h = Histogram("latency", buckets=(0.1, 0.5, 1.0))
-        h.observe(0.05)   # fits in 0.1, 0.5, 1.0
-        h.observe(0.3)    # fits in 0.5, 1.0
-        h.observe(0.8)    # fits in 1.0
+        h.observe(0.05)  # fits in 0.1, 0.5, 1.0
+        h.observe(0.3)  # fits in 0.5, 1.0
+        h.observe(0.8)  # fits in 1.0
         samples = h._samples()
         assert len(samples) == 1
         buckets = samples[0][1]["buckets"]
-        assert buckets[0.1] == 1   # 0.05 <= 0.1
-        assert buckets[0.5] == 2   # 0.05, 0.3 <= 0.5
-        assert buckets[1.0] == 3   # all three <= 1.0
+        assert buckets[0.1] == 1  # 0.05 <= 0.1
+        assert buckets[0.5] == 2  # 0.05, 0.3 <= 0.5
+        assert buckets[1.0] == 3  # all three <= 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +105,6 @@ class TestHistogram:
 
 
 class TestMetricsRegistry:
-
     def test_register_counter(self):
         reg = MetricsRegistry()
         c = reg.counter("requests_total", "Total requests")
@@ -153,7 +148,6 @@ class TestMetricsRegistry:
 
 
 class TestPrometheusExport:
-
     def test_counter_export(self):
         reg = MetricsRegistry()
         c = reg.counter("http_requests_total", "Total HTTP requests")
@@ -200,7 +194,6 @@ class TestPrometheusExport:
 
 
 class TestETPMetrics:
-
     def test_create_etp_metrics(self):
         reg = MetricsRegistry()
         metrics = create_etp_metrics(reg)

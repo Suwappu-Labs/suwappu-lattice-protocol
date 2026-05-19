@@ -14,18 +14,17 @@ import time
 
 import pytest
 
-from src.ltp.keypair import (
-    KeyPair,
-    KeyState,
-    KeyRotationManager,
-    KeyRotationEvent,
-    InvalidKeyStateTransition,
-    _validate_key_transition,
-)
 from src.ltp.cloud.kms import InMemoryKMSBackend
 from src.ltp.cloud.scheduler import InMemoryScheduler
+from src.ltp.keypair import (
+    InvalidKeyStateTransition,
+    KeyPair,
+    KeyRotationEvent,
+    KeyRotationManager,
+    KeyState,
+    _validate_key_transition,
+)
 from src.ltp.primitives import MLDSA, canonical_hash
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -43,7 +42,6 @@ def alice() -> KeyPair:
 
 
 class TestKeyStateEnum:
-
     def test_all_states_exist(self):
         assert KeyState.PENDING.value == "pending"
         assert KeyState.ACTIVE.value == "active"
@@ -64,7 +62,6 @@ class TestKeyStateEnum:
 
 
 class TestKeyStateTransitions:
-
     def test_pending_to_active(self):
         _validate_key_transition(KeyState.PENDING, KeyState.ACTIVE)
 
@@ -101,7 +98,6 @@ class TestKeyStateTransitions:
 
 
 class TestKeyLifecycleFull:
-
     def test_full_pending_active_retiring_retired_cycle(self):
         """Gate test: full PENDING -> ACTIVE -> RETIRING -> RETIRED lifecycle."""
         mgr = KeyRotationManager()
@@ -122,7 +118,7 @@ class TestKeyLifecycleFull:
         # Complete retirement
         mgr.complete_retirement(kp)
         assert kp.state == KeyState.RETIRED
-        assert kp.dk == b'\x00' * len(kp.dk)
+        assert kp.dk == b"\x00" * len(kp.dk)
 
     def test_chain_verified_throughout_lifecycle(self):
         """Chain integrity maintained through full lifecycle."""
@@ -192,12 +188,15 @@ class TestKeyLifecycleFull:
 
 
 class TestKeyRotationEvent:
-
     def test_event_is_frozen(self):
         event = KeyRotationEvent(
-            old_vk_hash="abc", new_vk_hash="def",
-            old_version=1, new_version=2,
-            rotation_signature=b"sig", timestamp=1.0, label="test",
+            old_vk_hash="abc",
+            new_vk_hash="def",
+            old_version=1,
+            new_version=2,
+            rotation_signature=b"sig",
+            timestamp=1.0,
+            label="test",
         )
         with pytest.raises(AttributeError):
             event.label = "changed"
@@ -221,7 +220,6 @@ class TestKeyRotationEvent:
 
 
 class TestDSTValidation:
-
     def test_rotate_with_dst_produces_event(self):
         mgr = KeyRotationManager()
         kp = KeyPair.generate("dst-test")
@@ -243,7 +241,6 @@ class TestDSTValidation:
 
 
 class TestInMemoryKMSBackend:
-
     def test_create_key(self):
         kms = InMemoryKMSBackend()
         vk = kms.create_key("test-key-1")
@@ -331,7 +328,6 @@ class TestInMemoryKMSBackend:
 
 
 class TestInMemoryScheduler:
-
     def test_schedule_and_tick(self):
         sched = InMemoryScheduler()
         fired = []
@@ -374,7 +370,7 @@ class TestInMemoryScheduler:
         sched = InMemoryScheduler()
         fired = []
         sched.schedule("periodic", lambda: fired.append(1), interval_seconds=10.0)
-        sched.tick(0.0)   # Fire 1
+        sched.tick(0.0)  # Fire 1
         sched.tick(10.0)  # Fire 2
         sched.tick(20.0)  # Fire 3
         assert len(fired) == 3
@@ -394,7 +390,6 @@ class TestInMemoryScheduler:
 
 
 class TestKeyRotationWithKMS:
-
     def test_complete_retirement_delegates_to_kms(self):
         kms = InMemoryKMSBackend()
         kms.create_key("kms-retire-v1")
@@ -423,7 +418,6 @@ class TestKeyRotationWithKMS:
 
 
 class TestKeyRotationWithScheduler:
-
     def test_scheduled_rotation_triggers_on_tick(self):
         sched = InMemoryScheduler()
         mgr = KeyRotationManager(scheduler=sched)

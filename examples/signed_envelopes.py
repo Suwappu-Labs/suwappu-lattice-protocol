@@ -12,10 +12,11 @@ Usage:
     python examples/signed_envelopes.py
 """
 
-from src.ltp import KeyPair, Entity, CommitmentNetwork, LTPProtocol, reset_poc_state
-from src.ltp.envelope import SignedEnvelope
-from src.ltp.domain import DOMAIN_COMMIT_RECORD, signer_fingerprint
 import time
+
+from src.ltp import CommitmentNetwork, Entity, KeyPair, LTPProtocol, reset_poc_state
+from src.ltp.domain import DOMAIN_COMMIT_RECORD, signer_fingerprint
+from src.ltp.envelope import SignedEnvelope
 
 reset_poc_state()
 
@@ -60,9 +61,12 @@ print("\n▸ Drift Validation")
 # Create a stale envelope (2 minutes old)
 stale = SignedEnvelope.create_at(
     domain=DOMAIN_COMMIT_RECORD,
-    signer_vk=alice.vk, signer_sk=alice.sk,
-    signer_id="alice", payload_type="test",
-    payload=b"stale data", timestamp=time.time() - 120,
+    signer_vk=alice.vk,
+    signer_sk=alice.sk,
+    signer_id="alice",
+    payload_type="test",
+    payload=b"stale data",
+    timestamp=time.time() - 120,
 )
 print(f"  Stale envelope (120s old):")
 print(f"    verify():              {stale.verify()}")

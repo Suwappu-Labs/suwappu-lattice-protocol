@@ -1,11 +1,13 @@
 """Tests for CrossVMPrecompile — universal cross-VM state reads."""
 
 import pytest
-from src.ltp.execution.types import TxResult, StateQuery, StateResult
+
+from src.ltp.execution.types import StateQuery, StateResult, TxResult
 
 
 class StatefulExecutor:
     """Executor with queryable state for precompile testing."""
+
     def __init__(self, tag, name, family, state=None):
         self.vm_tag = tag
         self.vm_name = name
@@ -30,17 +32,23 @@ class StatefulExecutor:
 
 class TestCrossVMPrecompile:
     def _build(self, *executors):
-        from src.ltp.execution.registry import VMRegistry
         from src.ltp.execution.precompile import CrossVMPrecompile
+        from src.ltp.execution.registry import VMRegistry
+
         reg = VMRegistry()
         for ex in executors:
             reg.register(ex)
         return CrossVMPrecompile(reg)
 
     def test_read_move_state_from_evm(self):
-        move = StatefulExecutor(0x10, "move", "object", {
-            b"\x01" * 32: b"move_value",
-        })
+        move = StatefulExecutor(
+            0x10,
+            "move",
+            "object",
+            {
+                b"\x01" * 32: b"move_value",
+            },
+        )
         pc = self._build(move)
         result = pc.call(
             input_data=bytes([0x10]) + b"\x01" * 32,
@@ -84,9 +92,14 @@ class TestCrossVMPrecompile:
         assert "native" in result.error
 
     def test_gas_calculation(self):
-        move = StatefulExecutor(0x10, "move", "object", {
-            b"\x01" * 32: b"x" * 100,
-        })
+        move = StatefulExecutor(
+            0x10,
+            "move",
+            "object",
+            {
+                b"\x01" * 32: b"x" * 100,
+            },
+        )
         pc = self._build(move)
         result = pc.call(
             input_data=bytes([0x10]) + b"\x01" * 32,

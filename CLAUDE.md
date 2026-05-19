@@ -35,6 +35,17 @@ make docs-api              # regenerate Python API reference (3.10–3.13)
 
 A docs-only change still needs `make docs-api` to succeed (it gates the CI).
 
+## Dev tooling
+
+- Developer command surface lives in `Justfile` at the repo root. Run
+  `just` (no args) for the menu. The Justfile delegates test/audit/docs
+  targets to `Makefile` so CI parity is unbreakable.
+- Pre-commit is now mandatory: `pre-commit install` runs automatically
+  in the devcontainer and via `just setup`. The hard rule
+  "No `--no-verify` or hook bypasses" has teeth as of Track 2.
+- For full onboarding (devcontainer, hook list, mypy scope), see
+  [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
+
 ## Hard rules
 
 These come from prior audits and repo conventions; violating them gets a PR

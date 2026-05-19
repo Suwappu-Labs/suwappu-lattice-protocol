@@ -6,8 +6,8 @@ Uses mock web3 to avoid network dependency.
 
 from __future__ import annotations
 
-import types
 import sys
+import types
 
 import pytest
 
@@ -47,17 +47,23 @@ def _make_mock_web3(
             class _Funcs:
                 def version(self_inner):
                     class _V:
-                        def call(self_call): return version
+                        def call(self_call):
+                            return version
+
                     return _V()
 
                 def admin(self_inner):
                     class _A:
-                        def call(self_call): return admin
+                        def call(self_call):
+                            return admin
+
                     return _A()
 
                 def paused(self_inner):
                     class _P:
-                        def call(self_call): return paused
+                        def call(self_call):
+                            return paused
+
                     return _P()
 
             self.functions = _Funcs()
@@ -98,7 +104,6 @@ def _make_mock_web3(
 
 
 class TestVerifyDeployment:
-
     def test_verify_happy_path(self, monkeypatch):
         admin_addr = "0x" + "aB" * 20
         mock = _make_mock_web3(version=5, admin=admin_addr, paused=False)

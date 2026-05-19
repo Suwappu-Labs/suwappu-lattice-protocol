@@ -16,6 +16,7 @@ from typing import Optional
 @dataclass
 class ShardMetrics:
     """Metrics for a single shard operation."""
+
     shard_index: int
     target_node: str
     target_region: str
@@ -33,6 +34,7 @@ class TransferMetrics:
     Captures timing, bandwidth, shard distribution, and locality data
     for analysis and benchmarking.
     """
+
     entity_id: str = ""
     entity_size_bytes: int = 0
     sender: str = ""

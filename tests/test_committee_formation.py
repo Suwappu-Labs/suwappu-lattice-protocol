@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from src.ltp.execution.committee.formation import CommitteeFormation
-from src.ltp.execution.committee.types import CommitteeRole
 from src.ltp.execution.committee.policy import CommitteePolicy
+from src.ltp.execution.committee.types import CommitteeRole
 from src.ltp.execution.writer import (
     IdentityTier,
     WriterIdentity,
@@ -17,12 +17,15 @@ from src.ltp.execution.writer_registry import WriterRegistry
 ADMIN_FP = b"\xff" * 32
 
 
-def _enroll_active(reg: WriterRegistry, fp_byte: int,
-                   tier: IdentityTier = IdentityTier.BLS) -> None:
+def _enroll_active(
+    reg: WriterRegistry, fp_byte: int, tier: IdentityTier = IdentityTier.BLS
+) -> None:
     """Enroll and admin-approve a writer with the given fingerprint byte and tier."""
     fp = bytes([fp_byte]) * 32
     bls_pk = bytes([fp_byte]) * 48 if tier in (IdentityTier.BLS, IdentityTier.COMPOSITE) else None
-    mldsa_vk = bytes([fp_byte]) * 32 if tier in (IdentityTier.MLDSA, IdentityTier.COMPOSITE) else None
+    mldsa_vk = (
+        bytes([fp_byte]) * 32 if tier in (IdentityTier.MLDSA, IdentityTier.COMPOSITE) else None
+    )
     identity = WriterIdentity(
         tier=tier,
         fingerprint=fp,
@@ -146,7 +149,9 @@ class TestForceIncludeExclude:
         reg = WriterRegistry()
         fp1 = bytes([1]) * 32
         identity = WriterIdentity(
-            tier=IdentityTier.BLS, fingerprint=fp1, bls_pk=b"\x01" * 48,
+            tier=IdentityTier.BLS,
+            fingerprint=fp1,
+            bls_pk=b"\x01" * 48,
         )
         reg.enroll(identity, timestamp=1000)
         # Writer stays PENDING (not transactable)

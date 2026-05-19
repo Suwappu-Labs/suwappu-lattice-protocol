@@ -3,6 +3,7 @@ Unit tests for ErasureCoder (Reed-Solomon over GF(256)).
 """
 
 import os
+
 import pytest
 
 from src.ltp.erasure import ErasureCoder
@@ -36,7 +37,9 @@ class TestErasureCoder:
         data = b"non-sequential recovery"
         n, k = 8, 4
         shards = ErasureCoder.encode(data, n, k)
-        recovered = ErasureCoder.decode({1: shards[1], 3: shards[3], 5: shards[5], 7: shards[7]}, n, k)
+        recovered = ErasureCoder.decode(
+            {1: shards[1], 3: shards[3], 5: shards[5], 7: shards[7]}, n, k
+        )
         assert recovered == data
 
     def test_decode_with_missing_first_shards(self):
@@ -66,12 +69,15 @@ class TestErasureCoder:
         n, k = 8, 4
         shards = ErasureCoder.encode(data, n, k)
         # Recover from non-sequential shards
-        recovered = ErasureCoder.decode({2: shards[2], 4: shards[4], 6: shards[6], 7: shards[7]}, n, k)
+        recovered = ErasureCoder.decode(
+            {2: shards[2], 4: shards[4], 6: shards[6], 7: shards[7]}, n, k
+        )
         assert recovered == data
 
     def test_all_k_subsets_reconstruct(self):
         """Every combination of k shards must reconstruct correctly."""
         from itertools import combinations
+
         data = b"MDS property verification"
         n, k = 5, 3
         shards = ErasureCoder.encode(data, n, k)

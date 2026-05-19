@@ -1,23 +1,25 @@
 """End-to-end test: consensus → router → attestation → verify."""
 
 import pytest
-from src.ltp.execution.types import OrderedBatch, TxResult, StateQuery, StateResult
+
+from src.ltp.execution.types import OrderedBatch, StateQuery, StateResult, TxResult
 
 
 @pytest.fixture(scope="module")
 def operator_kp():
     from src.ltp import KeyPair
+
     return KeyPair.generate("e2e-operator")
 
 
 class TestE2EExecutionPipeline:
     def test_single_batch_full_pipeline(self, operator_kp):
+        from src.ltp.execution.attestation import AttestationEngine, MultiVMAttestation
         from src.ltp.execution.consensus import FakeConsensusAdapter
+        from src.ltp.execution.executors.bridge import BridgeModule
+        from src.ltp.execution.executors.evm import EVMExecutor
         from src.ltp.execution.registry import VMRegistry
         from src.ltp.execution.router import TransactionRouter
-        from src.ltp.execution.attestation import AttestationEngine, MultiVMAttestation
-        from src.ltp.execution.executors.evm import EVMExecutor
-        from src.ltp.execution.executors.bridge import BridgeModule
         from src.ltp.execution.state_root import MultiVMStateRoot
 
         # 1. Set up executors
@@ -29,9 +31,12 @@ class TestE2EExecutionPipeline:
 
         # 2. Set up consensus
         batch = OrderedBatch(
-            round=1, epoch=0,
-            transactions=[b"\x01evm_tx_1", b"\xE0bridge_op", b"\x01evm_tx_2"],
-            leader_authority=0, timestamp_ms=1000, consensus_type="dag",
+            round=1,
+            epoch=0,
+            transactions=[b"\x01evm_tx_1", b"\xe0bridge_op", b"\x01evm_tx_2"],
+            leader_authority=0,
+            timestamp_ms=1000,
+            consensus_type="dag",
         )
         consensus = FakeConsensusAdapter(batches=[batch])
 
@@ -62,10 +67,10 @@ class TestE2EExecutionPipeline:
             assert attestation.active_vm_tags == [0x01, 0xE0]
 
     def test_mixed_evm_and_move_batch(self, operator_kp):
-        from src.ltp.execution.registry import VMRegistry
-        from src.ltp.execution.router import TransactionRouter
         from src.ltp.execution.executors.evm import EVMExecutor
         from src.ltp.execution.executors.move import MoveExecutor
+        from src.ltp.execution.registry import VMRegistry
+        from src.ltp.execution.router import TransactionRouter
         from src.ltp.execution.state_root import MultiVMStateRoot
         from src.ltp.primitives import canonical_hash_bytes
 
@@ -73,12 +78,15 @@ class TestE2EExecutionPipeline:
             def __init__(self):
                 self._root = canonical_hash_bytes(b"move-genesis")
                 self._n = 0
+
             def execute_transaction(self, tx_bytes):
                 self._n += 1
                 self._root = canonical_hash_bytes(self._root + tx_bytes)
                 return True, self._root
+
             def query_state(self, key):
                 return None
+
             def get_state_root(self):
                 return self._root
 
@@ -88,9 +96,12 @@ class TestE2EExecutionPipeline:
         router = TransactionRouter(registry)
 
         batch = OrderedBatch(
-            round=42, epoch=1,
+            round=42,
+            epoch=1,
             transactions=[b"\x01evm_tx", b"\x10move_tx", b"\x01evm_tx2", b"\x10move_tx2"],
-            leader_authority=0, timestamp_ms=5000, consensus_type="dag",
+            leader_authority=0,
+            timestamp_ms=5000,
+            consensus_type="dag",
         )
         result = router.execute_batch(batch)
 
@@ -101,20 +112,24 @@ class TestE2EExecutionPipeline:
         assert 0x01 in result.state_root.active_families()  # Object (Move)
 
     def test_cross_vm_precompile_in_pipeline(self, operator_kp):
-        from src.ltp.execution.registry import VMRegistry
-        from src.ltp.execution.precompile import CrossVMPrecompile
         from src.ltp.execution.executors.evm import EVMExecutor
+        from src.ltp.execution.precompile import CrossVMPrecompile
+        from src.ltp.execution.registry import VMRegistry
 
         class QueryableMoveExecutor:
             vm_tag = 0x10
             vm_name = "move"
             family = "object"
+
             def execute(self, tx_bytes):
                 return TxResult.accepted()
+
             def state_root(self):
                 return b"\xbb" * 32
+
             def validate_tx(self, tx_bytes):
                 return True
+
             def query_state(self, query: StateQuery) -> StateResult:
                 if query.key == b"\x01" * 32:
                     return StateResult(data=b"move_object_data", found=True)
@@ -134,9 +149,9 @@ class TestE2EExecutionPipeline:
         assert result.data == b"move_object_data"
 
     def test_health_check(self):
-        from src.ltp.execution.registry import VMRegistry
-        from src.ltp.execution.executors.evm import EVMExecutor
         from src.ltp.execution.executors.bridge import BridgeModule
+        from src.ltp.execution.executors.evm import EVMExecutor
+        from src.ltp.execution.registry import VMRegistry
 
         registry = VMRegistry()
         registry.register(EVMExecutor())

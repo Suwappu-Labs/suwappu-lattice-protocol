@@ -17,52 +17,52 @@ import json
 
 import pytest
 
-from src.ltp.enforcement import (
-    # Storage proofs
-    StorageProofStrategy,
-    PDPChallenge,
-    PDPProof,
-    PDPVerifier,
-    # Programmable slashing
-    SlashResult,
-    SlashingCondition,
-    AuditFailureCondition,
-    DataWithholdingCondition,
-    LatencyDegradationCondition,
-    ProofFailureCondition,
-    SlashingConditionRegistry,
-    # Intersubjective disputes
-    DisputeResolution,
-    IntersubjectiveDispute,
-    DisputeRegistry,
-    # VDF
-    VDFConfig,
-    VDFChallenge,
-    VDFResult,
-    VDFVerifier,
-    VDFConstruction,
-    # MEV protection
-    CommitRevealEnforcement,
-    BatchSlashingAccumulator,
-    # Formal verification
-    EnforcementInvariants,
-    # Progressive decentralization
-    DecentralizationMetrics,
-    GovernanceTransition,
-)
 from src.ltp.economics import (
+    WEI_PER_LTP,
     EconomicsConfig,
     EconomicsEngine,
     NodeEconomics,
     SlashingTier,
-    WEI_PER_LTP,
+)
+from src.ltp.enforcement import (
+    AuditFailureCondition,
+    BatchSlashingAccumulator,
+    # MEV protection
+    CommitRevealEnforcement,
+    DataWithholdingCondition,
+    # Progressive decentralization
+    DecentralizationMetrics,
+    DisputeRegistry,
+    # Intersubjective disputes
+    DisputeResolution,
+    # Formal verification
+    EnforcementInvariants,
+    GovernanceTransition,
+    IntersubjectiveDispute,
+    LatencyDegradationCondition,
+    PDPChallenge,
+    PDPProof,
+    PDPVerifier,
+    ProofFailureCondition,
+    SlashingCondition,
+    SlashingConditionRegistry,
+    # Programmable slashing
+    SlashResult,
+    # Storage proofs
+    StorageProofStrategy,
+    VDFChallenge,
+    # VDF
+    VDFConfig,
+    VDFConstruction,
+    VDFResult,
+    VDFVerifier,
 )
 from src.ltp.primitives import canonical_hash
-
 
 # ===========================================================================
 # 1. PDP Storage Proofs
 # ===========================================================================
+
 
 class TestPDPChallenge:
     def test_generate_challenge(self):
@@ -135,7 +135,9 @@ class TestPDPVerifier:
 
         # Node computes proof
         proof = PDPVerifier.compute_proof_from_shards(
-            shards, challenge.shard_indices, challenge.coefficients,
+            shards,
+            challenge.shard_indices,
+            challenge.coefficients,
             challenge.challenge_id,
         )
 
@@ -152,11 +154,14 @@ class TestPDPVerifier:
         challenge = PDPChallenge.generate("entity-2", 8, 4, 100)
 
         # Remove one shard that's in the challenge
-        incomplete_shards = {k: v for k, v in shards.items()
-                            if k not in challenge.shard_indices[:1]}
+        incomplete_shards = {
+            k: v for k, v in shards.items() if k not in challenge.shard_indices[:1]
+        }
 
         proof = PDPVerifier.compute_proof_from_shards(
-            incomplete_shards, challenge.shard_indices, challenge.coefficients,
+            incomplete_shards,
+            challenge.shard_indices,
+            challenge.coefficients,
             challenge.challenge_id,
         )
 
@@ -177,7 +182,9 @@ class TestPDPVerifier:
         corrupted[target] = b"corrupted-data"
 
         proof = PDPVerifier.compute_proof_from_shards(
-            corrupted, challenge.shard_indices, challenge.coefficients,
+            corrupted,
+            challenge.shard_indices,
+            challenge.coefficients,
             challenge.challenge_id,
         )
 
@@ -192,7 +199,9 @@ class TestPDPVerifier:
         challenge = PDPChallenge.generate("entity-4", 8, 4, 100)
 
         proof = PDPVerifier.compute_proof_from_shards(
-            shards, challenge.shard_indices, challenge.coefficients,
+            shards,
+            challenge.shard_indices,
+            challenge.coefficients,
             "wrong-challenge-id",
         )
         assert not verifier.verify_proof("entity-4", challenge, proof)
@@ -202,7 +211,9 @@ class TestPDPVerifier:
         challenge = PDPChallenge.generate("entity-5", 8, 4, 100)
 
         proof = PDPVerifier.compute_proof_from_shards(
-            shards, challenge.shard_indices, challenge.coefficients,
+            shards,
+            challenge.shard_indices,
+            challenge.coefficients,
             challenge.challenge_id,
         )
 
@@ -225,6 +236,7 @@ class TestStorageProofStrategy:
 # ===========================================================================
 # 2. Programmable Slashing Conditions
 # ===========================================================================
+
 
 class TestAuditFailureCondition:
     def test_below_threshold_not_violated(self):
@@ -261,29 +273,35 @@ class TestAuditFailureCondition:
 class TestDataWithholdingCondition:
     def test_withholding_detected(self):
         condition = DataWithholdingCondition()
-        evidence = json.dumps({
-            "refused_fetches": 5,
-            "corroborating_nodes": 3,
-        }).encode()
+        evidence = json.dumps(
+            {
+                "refused_fetches": 5,
+                "corroborating_nodes": 3,
+            }
+        ).encode()
         result = condition.evaluate(evidence)
         assert result.violated
         assert result.severity == "major"
 
     def test_insufficient_corroboration(self):
         condition = DataWithholdingCondition()
-        evidence = json.dumps({
-            "refused_fetches": 5,
-            "corroborating_nodes": 1,
-        }).encode()
+        evidence = json.dumps(
+            {
+                "refused_fetches": 5,
+                "corroborating_nodes": 1,
+            }
+        ).encode()
         result = condition.evaluate(evidence)
         assert not result.violated
 
     def test_few_refused_fetches(self):
         condition = DataWithholdingCondition()
-        evidence = json.dumps({
-            "refused_fetches": 2,
-            "corroborating_nodes": 5,
-        }).encode()
+        evidence = json.dumps(
+            {
+                "refused_fetches": 2,
+                "corroborating_nodes": 5,
+            }
+        ).encode()
         result = condition.evaluate(evidence)
         assert not result.violated
 
@@ -291,28 +309,34 @@ class TestDataWithholdingCondition:
 class TestLatencyDegradationCondition:
     def test_high_latency_violated(self):
         condition = LatencyDegradationCondition(max_avg_latency_ms=50.0)
-        evidence = json.dumps({
-            "avg_latency_ms": 75.0,
-            "sample_count": 20,
-        }).encode()
+        evidence = json.dumps(
+            {
+                "avg_latency_ms": 75.0,
+                "sample_count": 20,
+            }
+        ).encode()
         result = condition.evaluate(evidence)
         assert result.violated
 
     def test_low_latency_not_violated(self):
         condition = LatencyDegradationCondition(max_avg_latency_ms=100.0)
-        evidence = json.dumps({
-            "avg_latency_ms": 30.0,
-            "sample_count": 20,
-        }).encode()
+        evidence = json.dumps(
+            {
+                "avg_latency_ms": 30.0,
+                "sample_count": 20,
+            }
+        ).encode()
         result = condition.evaluate(evidence)
         assert not result.violated
 
     def test_insufficient_samples(self):
         condition = LatencyDegradationCondition(min_samples=10)
-        evidence = json.dumps({
-            "avg_latency_ms": 200.0,
-            "sample_count": 5,
-        }).encode()
+        evidence = json.dumps(
+            {
+                "avg_latency_ms": 200.0,
+                "sample_count": 5,
+            }
+        ).encode()
         result = condition.evaluate(evidence)
         assert not result.violated
 
@@ -320,30 +344,36 @@ class TestLatencyDegradationCondition:
 class TestProofFailureCondition:
     def test_proof_failure_violated(self):
         condition = ProofFailureCondition()
-        evidence = json.dumps({
-            "proof_failures": 3,
-            "total_challenges": 10,
-        }).encode()
+        evidence = json.dumps(
+            {
+                "proof_failures": 3,
+                "total_challenges": 10,
+            }
+        ).encode()
         result = condition.evaluate(evidence)
         assert result.violated
         assert result.severity == "major"
 
     def test_high_failure_rate_critical(self):
         condition = ProofFailureCondition()
-        evidence = json.dumps({
-            "proof_failures": 8,
-            "total_challenges": 10,
-        }).encode()
+        evidence = json.dumps(
+            {
+                "proof_failures": 8,
+                "total_challenges": 10,
+            }
+        ).encode()
         result = condition.evaluate(evidence)
         assert result.violated
         assert result.severity == "critical"
 
     def test_no_failures_not_violated(self):
         condition = ProofFailureCondition()
-        evidence = json.dumps({
-            "proof_failures": 0,
-            "total_challenges": 10,
-        }).encode()
+        evidence = json.dumps(
+            {
+                "proof_failures": 0,
+                "total_challenges": 10,
+            }
+        ).encode()
         result = condition.evaluate(evidence)
         assert not result.violated
 
@@ -391,11 +421,13 @@ class TestSlashingConditionRegistry:
         registry.register(AuditFailureCondition(stake_allocation_bps=5000))
         registry.register(DataWithholdingCondition(stake_allocation_bps=3000))
 
-        evidence = json.dumps({
-            "consecutive_failures": 4,
-            "refused_fetches": 0,
-            "corroborating_nodes": 0,
-        }).encode()
+        evidence = json.dumps(
+            {
+                "consecutive_failures": 4,
+                "refused_fetches": 0,
+                "corroborating_nodes": 0,
+            }
+        ).encode()
 
         results = registry.evaluate_all(evidence)
         assert len(results) == 2
@@ -404,6 +436,7 @@ class TestSlashingConditionRegistry:
 # ===========================================================================
 # 3. Intersubjective Disputes
 # ===========================================================================
+
 
 class TestDisputeRegistry:
     def test_create_dispute(self):
@@ -484,9 +517,14 @@ class TestDisputeRegistry:
     def test_voting_closed_after_deadline(self):
         registry = DisputeRegistry()
         dispute = registry.create_dispute(
-            challenger="A", target="B", target_stake=100_000,
-            evidence_uri="x", evidence_hash="h", dispute_bond=1_500,
-            slash_amount=1_000, current_epoch=100,
+            challenger="A",
+            target="B",
+            target_stake=100_000,
+            evidence_uri="x",
+            evidence_hash="h",
+            dispute_bond=1_500,
+            slash_amount=1_000,
+            current_epoch=100,
         )
 
         # Vote after deadline fails
@@ -495,9 +533,14 @@ class TestDisputeRegistry:
     def test_pending_disputes(self):
         registry = DisputeRegistry()
         registry.create_dispute(
-            challenger="A", target="B", target_stake=100_000,
-            evidence_uri="x", evidence_hash="h", dispute_bond=1_500,
-            slash_amount=1_000, current_epoch=100,
+            challenger="A",
+            target="B",
+            target_stake=100_000,
+            evidence_uri="x",
+            evidence_hash="h",
+            dispute_bond=1_500,
+            slash_amount=1_000,
+            current_epoch=100,
         )
         assert len(registry.pending_disputes) == 1
 
@@ -505,18 +548,27 @@ class TestDisputeRegistry:
 class TestIntersubjectiveDispute:
     def test_approval_ratio(self):
         dispute = IntersubjectiveDispute(
-            dispute_id="d1", challenger="A", target="B",
-            evidence_uri="x", evidence_hash="h",
-            dispute_bond=100, slash_amount=1000,
-            votes_for=70, votes_against=30,
+            dispute_id="d1",
+            challenger="A",
+            target="B",
+            evidence_uri="x",
+            evidence_hash="h",
+            dispute_bond=100,
+            slash_amount=1000,
+            votes_for=70,
+            votes_against=30,
         )
         assert dispute.approval_ratio == pytest.approx(0.7)
 
     def test_zero_votes_ratio(self):
         dispute = IntersubjectiveDispute(
-            dispute_id="d2", challenger="A", target="B",
-            evidence_uri="x", evidence_hash="h",
-            dispute_bond=100, slash_amount=1000,
+            dispute_id="d2",
+            challenger="A",
+            target="B",
+            evidence_uri="x",
+            evidence_hash="h",
+            dispute_bond=100,
+            slash_amount=1000,
         )
         assert dispute.approval_ratio == 0.0
 
@@ -524,6 +576,7 @@ class TestIntersubjectiveDispute:
 # ===========================================================================
 # 4. VDF-Enhanced Audits
 # ===========================================================================
+
 
 class TestVDFVerifier:
     def test_evaluate_and_verify(self):
@@ -577,6 +630,7 @@ class TestVDFVerifier:
 # ===========================================================================
 # 5. MEV-Protected Enforcement
 # ===========================================================================
+
 
 class TestCommitRevealEnforcement:
     def test_commit_and_reveal(self):
@@ -645,12 +699,20 @@ class TestBatchSlashingAccumulator:
     def test_add_and_finalize(self):
         acc = BatchSlashingAccumulator()
         acc.add(
-            epoch=10, node_id="node-1", condition_id="audit_failure",
-            evidence_hash="h1", slash_amount=1000, severity="minor",
+            epoch=10,
+            node_id="node-1",
+            condition_id="audit_failure",
+            evidence_hash="h1",
+            slash_amount=1000,
+            severity="minor",
         )
         acc.add(
-            epoch=10, node_id="node-2", condition_id="data_withholding",
-            evidence_hash="h2", slash_amount=2000, severity="major",
+            epoch=10,
+            node_id="node-2",
+            condition_id="data_withholding",
+            evidence_hash="h2",
+            slash_amount=2000,
+            severity="major",
         )
 
         batch = acc.finalize_epoch(10)
@@ -663,17 +725,35 @@ class TestBatchSlashingAccumulator:
 
     def test_pending_epochs(self):
         acc = BatchSlashingAccumulator()
-        acc.add(epoch=5, node_id="n1", condition_id="c1",
-                evidence_hash="h", slash_amount=100, severity="minor")
-        acc.add(epoch=10, node_id="n2", condition_id="c2",
-                evidence_hash="h", slash_amount=200, severity="major")
+        acc.add(
+            epoch=5,
+            node_id="n1",
+            condition_id="c1",
+            evidence_hash="h",
+            slash_amount=100,
+            severity="minor",
+        )
+        acc.add(
+            epoch=10,
+            node_id="n2",
+            condition_id="c2",
+            evidence_hash="h",
+            slash_amount=200,
+            severity="major",
+        )
 
         assert acc.pending_epochs == [5, 10]
 
     def test_pending_for_epoch_non_destructive(self):
         acc = BatchSlashingAccumulator()
-        acc.add(epoch=5, node_id="n1", condition_id="c1",
-                evidence_hash="h", slash_amount=100, severity="minor")
+        acc.add(
+            epoch=5,
+            node_id="n1",
+            condition_id="c1",
+            evidence_hash="h",
+            slash_amount=100,
+            severity="minor",
+        )
 
         pending = acc.pending_for_epoch(5)
         assert len(pending) == 1
@@ -686,11 +766,15 @@ class TestBatchSlashingAccumulator:
 # 6. Formal Verification Invariants
 # ===========================================================================
 
+
 class TestEnforcementInvariants:
     def test_safety_s1_slashed_requires_violation(self):
         result = SlashResult(
-            violated=False, severity="none", evidence_hash="h",
-            explanation="no violation", condition_id="test",
+            violated=False,
+            severity="none",
+            evidence_hash="h",
+            explanation="no violation",
+            condition_id="test",
         )
         # Slashed when not violated = invariant violation
         assert not EnforcementInvariants.check_safety_s1(result, node_was_slashed=True)
@@ -755,6 +839,7 @@ class TestEnforcementInvariants:
 # ===========================================================================
 # 7. Progressive Decentralization
 # ===========================================================================
+
 
 class TestDecentralizationMetrics:
     def test_hhi_equal_distribution(self):
@@ -869,8 +954,11 @@ class TestGovernanceTransition:
     def test_unknown_transition(self):
         gov = GovernanceTransition()
         metrics = DecentralizationMetrics(
-            active_operators=10, hhi=5000.0, gini_coefficient=0.5,
-            governance_participation=0.1, foundation_veto_active=True,
+            active_operators=10,
+            hhi=5000.0,
+            gini_coefficient=0.5,
+            governance_participation=0.1,
+            foundation_veto_active=True,
         )
         can, unmet = gov.can_transition("maturity", "ultra", metrics)
         assert not can
@@ -879,6 +967,7 @@ class TestGovernanceTransition:
 # ===========================================================================
 # 8. Economics Integration — compute_slash_for_condition
 # ===========================================================================
+
 
 class TestComputeSlashForCondition:
     def test_basic_condition_slash(self):
@@ -916,11 +1005,15 @@ class TestComputeSlashForCondition:
         node = NodeEconomics(node_id="n1", stake=100_000 * WEI_PER_LTP)
 
         slash_no_corr, _ = engine.compute_slash_for_condition(
-            node, condition_allocation_bps=5000, severity="minor",
+            node,
+            condition_allocation_bps=5000,
+            severity="minor",
         )
 
         slash_with_corr, _ = engine.compute_slash_for_condition(
-            node, condition_allocation_bps=5000, severity="minor",
+            node,
+            condition_allocation_bps=5000,
+            severity="minor",
             concurrent_slashed_stake=500_000 * WEI_PER_LTP,
             total_network_stake=1_000_000 * WEI_PER_LTP,
         )
@@ -948,7 +1041,9 @@ class TestComputeSlashForCondition:
         node = NodeEconomics(node_id="n1", stake=100_000 * WEI_PER_LTP)
 
         _, tier = engine.compute_slash_for_condition(
-            node, condition_allocation_bps=5000, severity="unknown",
+            node,
+            condition_allocation_bps=5000,
+            severity="unknown",
         )
         assert tier == SlashingTier.WARNING
 
@@ -957,9 +1052,11 @@ class TestComputeSlashForCondition:
 # 9. CommitmentNetwork PDP Integration
 # ===========================================================================
 
+
 class TestCommitmentNetworkPDP:
     def _setup_network(self):
         from src.ltp.commitment import CommitmentNetwork
+
         network = CommitmentNetwork()
         for i in range(4):
             region = ["us-east", "us-west", "eu-west", "ap-east"][i]

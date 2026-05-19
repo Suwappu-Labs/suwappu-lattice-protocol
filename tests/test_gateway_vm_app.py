@@ -1,7 +1,8 @@
 """Tests for the Gateway VM FastAPI app factory."""
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 from fastapi.testclient import TestClient
 
 from src.ltp.gateway_vm.app import create_app

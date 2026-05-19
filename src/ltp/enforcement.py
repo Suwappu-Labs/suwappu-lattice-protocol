@@ -66,21 +66,24 @@ __all__ = [
 # 1. Proof of Data Possession (PDP) — Cryptographic Storage Verification
 # ===========================================================================
 
+
 class StorageProofStrategy(Enum):
     """Storage proof strategy selection."""
+
     BURST_CHALLENGE = "burst_challenge"  # Current: time-bounded burst (statistical)
-    PDP = "pdp"                         # Proof of Data Possession (cryptographic)
-    HYBRID = "hybrid"                   # PDP with burst challenge fallback
+    PDP = "pdp"  # Proof of Data Possession (cryptographic)
+    HYBRID = "hybrid"  # PDP with burst challenge fallback
 
 
 @dataclass
 class PDPChallenge:
     """A PDP challenge sent to a storage node."""
+
     challenge_id: str
     epoch: int
-    shard_indices: list[int]       # Random subset of indices to challenge
-    coefficients: list[bytes]      # Random coefficients per index
-    deadline_epoch: int            # Must respond before this epoch
+    shard_indices: list[int]  # Random subset of indices to challenge
+    coefficients: list[bytes]  # Random coefficients per index
+    deadline_epoch: int  # Must respond before this epoch
 
     @staticmethod
     def generate(
@@ -124,10 +127,11 @@ class PDPChallenge:
 @dataclass
 class PDPProof:
     """A PDP proof submitted by a storage node (160 bytes target)."""
+
     challenge_id: str
-    aggregate_tag: bytes          # Combined proof over all challenged indices
-    response_time_ms: float       # Actual response time
-    indices_proven: int           # Number of indices covered
+    aggregate_tag: bytes  # Combined proof over all challenged indices
+    response_time_ms: float  # Actual response time
+    indices_proven: int  # Number of indices covered
 
     @property
     def proof_size_bytes(self) -> int:
@@ -146,9 +150,7 @@ class PDPVerifier:
         # entity_id → {shard_index: shard_hash}
         self._commitments: dict[str, dict[int, str]] = {}
 
-    def register_commitment(
-        self, entity_id: str, shard_hashes: dict[int, str]
-    ) -> None:
+    def register_commitment(self, entity_id: str, shard_hashes: dict[int, str]) -> None:
         """Register known shard hashes for verification."""
         self._commitments[entity_id] = shard_hashes
 
@@ -243,11 +245,13 @@ class PDPVerifier:
 # 2. Programmable Slashing Conditions
 # ===========================================================================
 
+
 @dataclass
 class SlashResult:
     """Result of evaluating a slashing condition against evidence."""
+
     violated: bool
-    severity: str                  # Maps to SlashingTier name
+    severity: str  # Maps to SlashingTier name
     evidence_hash: str
     explanation: str
     condition_id: str
@@ -297,6 +301,7 @@ class AuditFailureCondition(SlashingCondition):
 
     def evaluate(self, evidence: bytes) -> SlashResult:
         import json
+
         try:
             data = json.loads(evidence)
         except (json.JSONDecodeError, UnicodeDecodeError):
@@ -352,6 +357,7 @@ class DataWithholdingCondition(SlashingCondition):
 
     def evaluate(self, evidence: bytes) -> SlashResult:
         import json
+
         try:
             data = json.loads(evidence)
         except (json.JSONDecodeError, UnicodeDecodeError):
@@ -365,10 +371,7 @@ class DataWithholdingCondition(SlashingCondition):
 
         refused_fetches = data.get("refused_fetches", 0)
         corroborating_nodes = data.get("corroborating_nodes", 0)
-        violated = (
-            refused_fetches >= 3
-            and corroborating_nodes >= self.min_corroborations
-        )
+        violated = refused_fetches >= 3 and corroborating_nodes >= self.min_corroborations
 
         severity = "major" if violated else "none"
 
@@ -377,8 +380,7 @@ class DataWithholdingCondition(SlashingCondition):
             severity=severity,
             evidence_hash=canonical_hash(evidence),
             explanation=(
-                f"{refused_fetches} refused fetches, "
-                f"{corroborating_nodes} corroborating nodes"
+                f"{refused_fetches} refused fetches, {corroborating_nodes} corroborating nodes"
             ),
             condition_id=self.condition_id,
         )
@@ -408,6 +410,7 @@ class LatencyDegradationCondition(SlashingCondition):
 
     def evaluate(self, evidence: bytes) -> SlashResult:
         import json
+
         try:
             data = json.loads(evidence)
         except (json.JSONDecodeError, UnicodeDecodeError):
@@ -421,10 +424,7 @@ class LatencyDegradationCondition(SlashingCondition):
 
         avg_latency_ms = data.get("avg_latency_ms", 0.0)
         sample_count = data.get("sample_count", 0)
-        violated = (
-            avg_latency_ms > self.max_avg_latency_ms
-            and sample_count >= self.min_samples
-        )
+        violated = avg_latency_ms > self.max_avg_latency_ms and sample_count >= self.min_samples
 
         severity = "minor" if violated else "none"
 
@@ -457,6 +457,7 @@ class ProofFailureCondition(SlashingCondition):
 
     def evaluate(self, evidence: bytes) -> SlashResult:
         import json
+
         try:
             data = json.loads(evidence)
         except (json.JSONDecodeError, UnicodeDecodeError):
@@ -487,9 +488,7 @@ class ProofFailureCondition(SlashingCondition):
             violated=violated,
             severity=severity,
             evidence_hash=canonical_hash(evidence),
-            explanation=(
-                f"{proof_failures}/{total_challenges} PDP proofs failed"
-            ),
+            explanation=(f"{proof_failures}/{total_challenges} PDP proofs failed"),
             condition_id=self.condition_id,
         )
 
@@ -509,9 +508,7 @@ class SlashingConditionRegistry:
     def register(self, condition: SlashingCondition) -> None:
         """Register a slashing condition. Validates total allocation."""
         if condition.condition_id in self._conditions:
-            raise ValueError(
-                f"Condition '{condition.condition_id}' already registered"
-            )
+            raise ValueError(f"Condition '{condition.condition_id}' already registered")
         current_total = sum(c.stake_allocation_bps for c in self._conditions.values())
         if current_total + condition.stake_allocation_bps > self._max_total_bps:
             raise ValueError(
@@ -557,11 +554,13 @@ class SlashingConditionRegistry:
 # 3. Intersubjective Dispute Resolution
 # ===========================================================================
 
+
 class DisputeResolution(Enum):
     """Resolution state of an intersubjective dispute."""
+
     PENDING = "pending"
-    UPHELD = "upheld"       # Majority agrees violation occurred
-    REJECTED = "rejected"   # Majority disagrees
+    UPHELD = "upheld"  # Majority agrees violation occurred
+    REJECTED = "rejected"  # Majority disagrees
 
 
 @dataclass
@@ -574,16 +573,17 @@ class IntersubjectiveDispute:
 
     Resolution requires stake-weighted voting by token holders.
     """
+
     dispute_id: str
-    challenger: str               # Node ID raising the dispute
-    target: str                   # Node ID accused
-    evidence_uri: str             # Off-chain evidence location
-    evidence_hash: str            # Hash of evidence for integrity
-    dispute_bond: int             # Bond posted by challenger
-    slash_amount: int             # Amount to slash if upheld
+    challenger: str  # Node ID raising the dispute
+    target: str  # Node ID accused
+    evidence_uri: str  # Off-chain evidence location
+    evidence_hash: str  # Hash of evidence for integrity
+    dispute_bond: int  # Bond posted by challenger
+    slash_amount: int  # Amount to slash if upheld
     resolution: DisputeResolution = DisputeResolution.PENDING
-    votes_for: int = 0            # Stake-weighted votes to uphold
-    votes_against: int = 0        # Stake-weighted votes to reject
+    votes_for: int = 0  # Stake-weighted votes to uphold
+    votes_against: int = 0  # Stake-weighted votes to reject
     created_epoch: int = 0
     voting_deadline_epoch: int = 0
     resolved_epoch: int = -1
@@ -620,8 +620,8 @@ class DisputeRegistry:
     """
 
     SUPERMAJORITY_THRESHOLD = 0.66  # 66% stake-weighted majority required
-    VOTING_PERIOD_EPOCHS = 168      # 7 days at 1-hour epochs
-    MIN_BOND_RATIO = 0.01           # Minimum 1% of target's stake
+    VOTING_PERIOD_EPOCHS = 168  # 7 days at 1-hour epochs
+    MIN_BOND_RATIO = 0.01  # Minimum 1% of target's stake
 
     def __init__(self) -> None:
         self._disputes: dict[str, IntersubjectiveDispute] = {}
@@ -681,9 +681,7 @@ class DisputeRegistry:
             dispute.votes_against += voter_stake
         return True
 
-    def resolve(
-        self, dispute_id: str, current_epoch: int
-    ) -> Optional[DisputeResolution]:
+    def resolve(self, dispute_id: str, current_epoch: int) -> Optional[DisputeResolution]:
         """
         Resolve a dispute after voting period ends.
 
@@ -707,22 +705,21 @@ class DisputeRegistry:
 
     @property
     def pending_disputes(self) -> list[IntersubjectiveDispute]:
-        return [
-            d for d in self._disputes.values()
-            if d.resolution == DisputeResolution.PENDING
-        ]
+        return [d for d in self._disputes.values() if d.resolution == DisputeResolution.PENDING]
 
 
 # ===========================================================================
 # 4. VDF-Enhanced Audit Timing
 # ===========================================================================
 
+
 class VDFConstruction(Enum):
     """Available VDF constructions."""
-    PIETRZAK = "pietrzak"         # RSA-based, trusted setup — NOT post-quantum (Shor factors N)
-    WESOLOWSKI = "wesolowski"     # RSA-based, trusted setup — NOT post-quantum (Shor factors N)
-    HASH_CHAIN = "hash_chain"     # SHA3-256 iterative hashing — POST-QUANTUM SAFE
-    CLASS_GROUP = "class_group"   # Trustless, partial PQ resistance, research
+
+    PIETRZAK = "pietrzak"  # RSA-based, trusted setup — NOT post-quantum (Shor factors N)
+    WESOLOWSKI = "wesolowski"  # RSA-based, trusted setup — NOT post-quantum (Shor factors N)
+    HASH_CHAIN = "hash_chain"  # SHA3-256 iterative hashing — POST-QUANTUM SAFE
+    CLASS_GROUP = "class_group"  # Trustless, partial PQ resistance, research
 
 
 @dataclass
@@ -732,30 +729,33 @@ class VDFConfig:
     For post-quantum deployments, use construction=HASH_CHAIN.
     Wesolowski/Pietrzak use RSA groups which are broken by Shor's algorithm.
     """
+
     enabled: bool = False
     construction: VDFConstruction = VDFConstruction.HASH_CHAIN  # Default to PQ-safe
-    difficulty: int = 1000          # Sequential steps (~50ms target)
-    group_bits: int = 2048          # Security parameter (RSA constructions only)
+    difficulty: int = 1000  # Sequential steps (~50ms target)
+    group_bits: int = 2048  # Security parameter (RSA constructions only)
 
 
 @dataclass
 class VDFChallenge:
     """A VDF challenge combined with a storage proof challenge."""
+
     challenge_id: str
-    input_seed: bytes               # VDF input (derived from audit context)
-    difficulty: int                  # Sequential steps required
+    input_seed: bytes  # VDF input (derived from audit context)
+    difficulty: int  # Sequential steps required
     shard_entity_id: str
     shard_index: int
-    nonce: bytes                    # Standard audit nonce
+    nonce: bytes  # Standard audit nonce
 
 
 @dataclass
 class VDFResult:
     """Result of a VDF computation (node-side)."""
+
     challenge_id: str
-    vdf_output: bytes               # VDF evaluation result
-    vdf_proof: bytes                # Proof of correct evaluation
-    shard_proof: str                # H(ciphertext || nonce)
+    vdf_output: bytes  # VDF evaluation result
+    vdf_proof: bytes  # Proof of correct evaluation
+    shard_proof: str  # H(ciphertext || nonce)
     computation_time_ms: float
 
 
@@ -819,9 +819,7 @@ class VDFVerifier:
     ) -> VDFChallenge:
         """Generate a VDF-enhanced audit challenge."""
         nonce = os.urandom(16)
-        input_seed = internal_hash_bytes(
-            f"{entity_id}:{shard_index}:{epoch}:vdf".encode() + nonce
-        )
+        input_seed = internal_hash_bytes(f"{entity_id}:{shard_index}:{epoch}:vdf".encode() + nonce)
         challenge_id = canonical_hash(input_seed + struct.pack(">I", self.config.difficulty))
 
         return VDFChallenge(
@@ -862,9 +860,7 @@ class VDFVerifier:
 
         # Proof: hash of all checkpoints (enables O(log T) verification)
         proof_data = b"".join(checkpoints)
-        vdf_proof = hashlib.sha3_256(
-            b"vdf-hash-chain-proof" + proof_data
-        ).digest()
+        vdf_proof = hashlib.sha3_256(b"vdf-hash-chain-proof" + proof_data).digest()
 
         elapsed_ms = (time.monotonic() - t0) * 1000
 
@@ -1036,10 +1032,12 @@ def _compute_wesolowski_proof(x: int, T: int, l: int, N: int) -> int:
 # 5. MEV-Protected Enforcement
 # ===========================================================================
 
+
 @dataclass
 class CommitRevealEntry:
     """A commit-reveal entry for MEV-protected enforcement submissions."""
-    commitment_hash: str          # H(evidence || salt)
+
+    commitment_hash: str  # H(evidence || salt)
     submitter: str
     commit_epoch: int
     revealed: bool = False
@@ -1055,14 +1053,12 @@ class CommitRevealEnforcement:
     commitment (block N) from revelation (block N+1+).
     """
 
-    REVEAL_WINDOW_EPOCHS = 24   # Must reveal within 24 epochs (1 day)
+    REVEAL_WINDOW_EPOCHS = 24  # Must reveal within 24 epochs (1 day)
 
     def __init__(self) -> None:
         self._commitments: dict[str, CommitRevealEntry] = {}
 
-    def commit(
-        self, evidence: bytes, submitter: str, current_epoch: int
-    ) -> str:
+    def commit(self, evidence: bytes, submitter: str, current_epoch: int) -> str:
         """
         Submit a commitment to enforcement evidence.
 
@@ -1121,9 +1117,9 @@ class CommitRevealEnforcement:
     def cleanup_expired(self, current_epoch: int) -> int:
         """Remove expired unrevealed commitments. Returns count removed."""
         expired = [
-            h for h, e in self._commitments.items()
-            if not e.revealed
-            and current_epoch > e.commit_epoch + self.REVEAL_WINDOW_EPOCHS
+            h
+            for h, e in self._commitments.items()
+            if not e.revealed and current_epoch > e.commit_epoch + self.REVEAL_WINDOW_EPOCHS
         ]
         for h in expired:
             del self._commitments[h]
@@ -1133,6 +1129,7 @@ class CommitRevealEnforcement:
 @dataclass
 class BatchSlashEntry:
     """A single slashing action in an epoch batch."""
+
     node_id: str
     condition_id: str
     evidence_hash: str
@@ -1192,6 +1189,7 @@ class BatchSlashingAccumulator:
 # ===========================================================================
 # 6. Formal Verification Invariants
 # ===========================================================================
+
 
 class EnforcementInvariants:
     """
@@ -1283,7 +1281,8 @@ class EnforcementInvariants:
         for the same node in the same epoch.
         """
         matching = [
-            p for p in pending_slashes_this_epoch
+            p
+            for p in pending_slashes_this_epoch
             if getattr(p, "node_id", None) == node_id
             and getattr(p, "_offense_event_id", None) == offense_event_id
         ]
@@ -1340,6 +1339,7 @@ class EnforcementInvariants:
 # 7. Progressive Decentralization
 # ===========================================================================
 
+
 @dataclass
 class DecentralizationMetrics:
     """
@@ -1347,9 +1347,10 @@ class DecentralizationMetrics:
 
     Used to gate phase transitions and prevent premature decentralization.
     """
+
     active_operators: int
-    hhi: float                      # Herfindahl-Hirschman Index (0-10000)
-    gini_coefficient: float         # Token distribution inequality (0-1)
+    hhi: float  # Herfindahl-Hirschman Index (0-10000)
+    gini_coefficient: float  # Token distribution inequality (0-1)
     governance_participation: float  # Fraction of tokens voting (0-1)
     foundation_veto_active: bool
 
@@ -1394,6 +1395,7 @@ class DecentralizationMetrics:
 @dataclass
 class PhaseTransitionRequirements:
     """Requirements that must be met for a governance phase transition."""
+
     min_operators: int
     max_hhi: float
     max_gini: float
@@ -1411,15 +1413,15 @@ class GovernanceTransition:
     # Requirements for each transition
     BOOTSTRAP_TO_GROWTH = PhaseTransitionRequirements(
         min_operators=5,
-        max_hhi=10_000.0,    # No concentration limit during bootstrap
-        max_gini=1.0,         # No distribution limit during bootstrap
+        max_hhi=10_000.0,  # No concentration limit during bootstrap
+        max_gini=1.0,  # No distribution limit during bootstrap
         min_governance_participation=0.0,
     )
 
     GROWTH_TO_MATURITY = PhaseTransitionRequirements(
         min_operators=100,
-        max_hhi=2_500.0,      # Must be unconcentrated
-        max_gini=0.65,        # Reasonable token distribution
+        max_hhi=2_500.0,  # Must be unconcentrated
+        max_gini=0.65,  # Reasonable token distribution
         min_governance_participation=0.15,  # 15% participation minimum
     )
 
@@ -1451,15 +1453,11 @@ class GovernanceTransition:
 
         unmet = []
         if metrics.active_operators < reqs.min_operators:
-            unmet.append(
-                f"Operators: {metrics.active_operators} < {reqs.min_operators}"
-            )
+            unmet.append(f"Operators: {metrics.active_operators} < {reqs.min_operators}")
         if metrics.hhi > reqs.max_hhi:
             unmet.append(f"HHI: {metrics.hhi:.0f} > {reqs.max_hhi:.0f}")
         if metrics.gini_coefficient > reqs.max_gini:
-            unmet.append(
-                f"Gini: {metrics.gini_coefficient:.2f} > {reqs.max_gini:.2f}"
-            )
+            unmet.append(f"Gini: {metrics.gini_coefficient:.2f} > {reqs.max_gini:.2f}")
         if metrics.governance_participation < reqs.min_governance_participation:
             unmet.append(
                 f"Governance participation: "

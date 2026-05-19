@@ -24,7 +24,6 @@ from ltp.hsm import SoftwareHSM
 from ltp.keyvault import KeyVault, KeyVaultError
 from ltp.primitives import MLDSA, MLKEM
 
-
 # ---------------------------------------------------------------------------
 # private bytes are wrapped at rest
 # ---------------------------------------------------------------------------

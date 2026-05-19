@@ -100,7 +100,8 @@ class AnchorVerifier:
                 "anchor_confirmation_depth=%d is set but anchor_finality_depth "
                 "is at default (%d). Using confirmation_depth as finality_depth. "
                 "Please migrate to anchor_finality_depth.",
-                cd, fd,
+                cd,
+                fd,
             )
             self._config.anchor_finality_depth = cd
         self._running = True
@@ -187,7 +188,8 @@ class AnchorVerifier:
             except Exception as exc:
                 logger.warning(
                     "AnchorVerifier: receipt query failed for %s: %s",
-                    tx_hash, exc,
+                    tx_hash,
+                    exc,
                 )
                 max_retries = self._config.anchor_max_rpc_retries
                 for eid in entity_ids:
@@ -241,9 +243,7 @@ class AnchorVerifier:
                     self._tracker.mark_confirmed(eid, block_number, gas_used)
                     result.confirmed += 1
                 except (KeyError, ValueError) as exc:
-                    logger.warning(
-                        "AnchorVerifier: confirm %s failed: %s", eid, exc
-                    )
+                    logger.warning("AnchorVerifier: confirm %s failed: %s", eid, exc)
 
     def _phase_finalize(self, result: AnchorVerifyResult) -> None:
         """Phase 2: check finality depth for CONFIRMED entities."""
@@ -257,7 +257,8 @@ class AnchorVerifier:
             current_block = self._client.get_block_number()
         except Exception as exc:
             logger.error(
-                "AnchorVerifier: block number query failed: %s", exc,
+                "AnchorVerifier: block number query failed: %s",
+                exc,
             )
             result.error = str(exc)
             return
@@ -272,19 +273,19 @@ class AnchorVerifier:
                 except (KeyError, ValueError) as exc:
                     logger.warning(
                         "AnchorVerifier: finalize %s failed: %s",
-                        rec.entity_id, exc,
+                        rec.entity_id,
+                        exc,
                     )
                     continue
                 result.finalized += 1
             elif confirmations < 0:
                 try:
-                    self._tracker.mark_failed(
-                        rec.entity_id, "chain reorg detected"
-                    )
+                    self._tracker.mark_failed(rec.entity_id, "chain reorg detected")
                 except (KeyError, ValueError) as exc:
                     logger.warning(
                         "AnchorVerifier: reorg-fail %s failed: %s",
-                        rec.entity_id, exc,
+                        rec.entity_id,
+                        exc,
                     )
                     continue
                 result.failed += 1
@@ -318,9 +319,7 @@ def reconcile_on_startup(
             digest = domain_hash_bytes(DOMAIN_ANCHOR_DIGEST, record.to_bytes())
             digest_to_entity[digest] = entity_id
         except Exception as exc:
-            logger.warning(
-                "reconcile_on_startup: skip %s: %s", entity_id, exc
-            )
+            logger.warning("reconcile_on_startup: skip %s: %s", entity_id, exc)
 
     if not digest_to_entity:
         return 0

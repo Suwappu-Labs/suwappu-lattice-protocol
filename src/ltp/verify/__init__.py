@@ -8,15 +8,15 @@ who need to verify trust artifacts without running an LTP node.
 Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.8
 """
 
-from .results import VerificationResult
 from .core import (
-    verify_envelope,
-    verify_receipt,
-    verify_merkle_proof,
-    verify_sth,
     verify_commitment_chain,
+    verify_envelope,
+    verify_merkle_proof,
+    verify_receipt,
+    verify_sth,
     verify_zk_bridge_proof,
 )
+from .results import VerificationResult
 
 __all__ = [
     "VerificationResult",

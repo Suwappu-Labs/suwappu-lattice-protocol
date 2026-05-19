@@ -22,11 +22,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable, Optional
 
-from .clock import SimClock, EventQueue, Event, EventType
-from .topology import Topology, Region, Link
-from .node import SimNode, StorageCapacity
-from .message import MessageBus, MessageType, Message
+from .clock import Event, EventQueue, EventType, SimClock
+from .message import Message, MessageBus, MessageType
 from .metrics import MetricsCollector
+from .node import SimNode, StorageCapacity
+from .topology import Link, Region, Topology
 
 __all__ = ["DSTRunner", "DSTResult", "PropertyViolation"]
 
@@ -35,9 +35,11 @@ __all__ = ["DSTRunner", "DSTResult", "PropertyViolation"]
 # Result Types
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PropertyViolation:
     """A property invariant that was violated during simulation."""
+
     property_name: str
     step: int
     description: str
@@ -47,6 +49,7 @@ class PropertyViolation:
 @dataclass
 class DSTResult:
     """Results of a deterministic simulation run."""
+
     seed: int
     steps_executed: int
     events_processed: int
@@ -67,6 +70,7 @@ class DSTResult:
 # Fault Types
 # ---------------------------------------------------------------------------
 
+
 class FaultType(Enum):
     NODE_CRASH = "node_crash"
     NODE_RECOVERY = "node_recovery"
@@ -83,6 +87,7 @@ class FaultType(Enum):
 # ---------------------------------------------------------------------------
 # DST Runner
 # ---------------------------------------------------------------------------
+
 
 class DSTRunner:
     """
@@ -134,7 +139,9 @@ class DSTRunner:
 
     def _setup_topology(self, num_nodes: int, num_regions: int) -> None:
         """Create a standard multi-region topology with nodes."""
-        region_names = ["us-east", "eu-west", "ap-south", "us-west", "eu-east", "ap-north"][:num_regions]
+        region_names = ["us-east", "eu-west", "ap-south", "us-west", "eu-east", "ap-north"][
+            :num_regions
+        ]
 
         for name in region_names:
             region = self.topology.add_region(name, intra_latency_ms=self.rng.uniform(1, 5))
@@ -178,11 +185,11 @@ class DSTRunner:
 
     # --- Properties ---
 
-    def _prop_at_least_one_online(self, _runner: 'DSTRunner') -> bool:
+    def _prop_at_least_one_online(self, _runner: "DSTRunner") -> bool:
         """At least one node must be online at all times."""
         return any(n.online for n in self.nodes.values())
 
-    def _prop_log_monotonic(self, _runner: 'DSTRunner') -> bool:
+    def _prop_log_monotonic(self, _runner: "DSTRunner") -> bool:
         """Commitment log length never decreases (append-only)."""
         current = len(self._committed_entities)
         if current < self._log_length:
@@ -190,18 +197,18 @@ class DSTRunner:
         self._log_length = current
         return True
 
-    def _prop_no_negative_storage(self, _runner: 'DSTRunner') -> bool:
+    def _prop_no_negative_storage(self, _runner: "DSTRunner") -> bool:
         """No node has negative used storage."""
         return all(n.capacity.used_bytes >= 0 for n in self.nodes.values())
 
-    def _prop_node_ids_unique(self, _runner: 'DSTRunner') -> bool:
+    def _prop_node_ids_unique(self, _runner: "DSTRunner") -> bool:
         """All node IDs are distinct."""
         ids = [n.node_id for n in self.nodes.values()]
         return len(ids) == len(set(ids))
 
     # --- Public API ---
 
-    def add_property(self, name: str, check_fn: Callable[['DSTRunner'], bool]) -> None:
+    def add_property(self, name: str, check_fn: Callable[["DSTRunner"], bool]) -> None:
         """Register a property invariant to check every simulation step."""
         self._properties.append((name, check_fn))
 
@@ -256,35 +263,41 @@ class DSTRunner:
                 properties_checked += 1
                 try:
                     if not check_fn(self):
-                        violations.append(PropertyViolation(
+                        violations.append(
+                            PropertyViolation(
+                                property_name=prop_name,
+                                step=step,
+                                description=f"Property '{prop_name}' violated at step {step}",
+                                context={
+                                    "time_ms": self.clock.now,
+                                    "online_nodes": len(self.online_nodes),
+                                    "offline_nodes": len(self.offline_nodes),
+                                },
+                            )
+                        )
+                except Exception as e:
+                    violations.append(
+                        PropertyViolation(
                             property_name=prop_name,
                             step=step,
-                            description=f"Property '{prop_name}' violated at step {step}",
-                            context={
-                                "time_ms": self.clock.now,
-                                "online_nodes": len(self.online_nodes),
-                                "offline_nodes": len(self.offline_nodes),
-                            }
-                        ))
-                except Exception as e:
-                    violations.append(PropertyViolation(
-                        property_name=prop_name,
-                        step=step,
-                        description=f"Property check raised: {e}",
-                        context={"exception": str(e)},
-                    ))
+                            description=f"Property check raised: {e}",
+                            context={"exception": str(e)},
+                        )
+                    )
 
             # 6. Log event
-            self._event_log.append({
-                "step": step,
-                "time_ms": self.clock.now,
-                "online_nodes": len(self.online_nodes),
-                "offline_nodes": len(self.offline_nodes),
-                "events_queued": self.events.pending,
-                "faults_total": self._faults_injected,
-                "entities_committed": len(self._committed_entities),
-                "violations_total": len(violations),
-            })
+            self._event_log.append(
+                {
+                    "step": step,
+                    "time_ms": self.clock.now,
+                    "online_nodes": len(self.online_nodes),
+                    "offline_nodes": len(self.offline_nodes),
+                    "events_queued": self.events.pending,
+                    "faults_total": self._faults_injected,
+                    "entities_committed": len(self._committed_entities),
+                    "violations_total": len(violations),
+                }
+            )
 
         duration = (_time.perf_counter() - start_time) * 1000
 
@@ -330,7 +343,7 @@ class DSTRunner:
         if len(self.regions) > 1:
             faults.extend([FaultType.NETWORK_PARTITION, FaultType.PARTITION_HEAL])
         faults.extend([FaultType.LINK_DEGRADE, FaultType.CLOCK_SKEW])
-        if hasattr(self, '_commitment_network') and self._commitment_network is not None:
+        if hasattr(self, "_commitment_network") and self._commitment_network is not None:
             faults.extend([FaultType.AUDIT_TICK, FaultType.SHARD_CORRUPTION])
 
         if not faults:
@@ -385,20 +398,22 @@ class DSTRunner:
             self._log_fault(step, "clock_skew", f"+{skew:.0f}ms")
 
         elif fault_type == FaultType.AUDIT_TICK:
-            if hasattr(self, '_audit_scheduler') and self._audit_scheduler is not None:
+            if hasattr(self, "_audit_scheduler") and self._audit_scheduler is not None:
                 self._audit_epoch += 1
                 results = self._audit_scheduler.tick(self._audit_epoch)
                 for r in results:
                     if "eviction" in r:
-                        self._eviction_history.append({
-                            "step": step,
-                            "epoch": self._audit_epoch,
-                            **r["eviction"],
-                        })
+                        self._eviction_history.append(
+                            {
+                                "step": step,
+                                "epoch": self._audit_epoch,
+                                **r["eviction"],
+                            }
+                        )
                 self._log_fault(step, "audit_tick", f"epoch={self._audit_epoch}")
 
         elif fault_type == FaultType.SHARD_CORRUPTION:
-            if hasattr(self, '_commitment_network') and self._commitment_network is not None:
+            if hasattr(self, "_commitment_network") and self._commitment_network is not None:
                 active = [n for n in self._commitment_network.nodes if not n.evicted]
                 if active:
                     node = self.rng.choice(active)
@@ -410,12 +425,14 @@ class DSTRunner:
 
     def _log_fault(self, step: int, fault_type: str, target: str) -> None:
         """Record a fault injection event."""
-        self._event_log.append({
-            "step": step,
-            "fault": fault_type,
-            "target": target,
-            "time_ms": self.clock.now,
-        })
+        self._event_log.append(
+            {
+                "step": step,
+                "fault": fault_type,
+                "target": target,
+                "time_ms": self.clock.now,
+            }
+        )
 
     # --- Commitment Network Integration ---
 
@@ -436,7 +453,8 @@ class DSTRunner:
         self._commitment_network = commitment_network
         self._protocol = protocol
         self._audit_scheduler = AuditScheduler(
-            commitment_network, local_node_id,
+            commitment_network,
+            local_node_id,
             strike_threshold=strike_threshold,
         )
         self._audit_epoch = 0
@@ -444,15 +462,15 @@ class DSTRunner:
 
         self.add_property("entity_available", self._prop_entity_available)
 
-    def _prop_entity_available(self, _runner: 'DSTRunner') -> bool:
+    def _prop_entity_available(self, _runner: "DSTRunner") -> bool:
         """Committed entities remain fetchable (k-of-n shards accessible)."""
-        if not hasattr(self, '_commitment_network') or self._commitment_network is None:
+        if not hasattr(self, "_commitment_network") or self._commitment_network is None:
             return True
         network = self._commitment_network
         for node in network.nodes:
             if node.evicted:
                 continue
-            for (eid, _sidx) in network._node_shard_index.get(node.node_id, set()):
+            for eid, _sidx in network._node_shard_index.get(node.node_id, set()):
                 if node.fetch_shard(eid, _sidx) is None:
                     return False
         return True
@@ -460,7 +478,7 @@ class DSTRunner:
     @property
     def eviction_history(self) -> list[dict]:
         """Return the eviction event history (for reproducibility checks)."""
-        if hasattr(self, '_eviction_history'):
+        if hasattr(self, "_eviction_history"):
             return list(self._eviction_history)
         return []
 

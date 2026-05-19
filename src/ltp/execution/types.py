@@ -9,6 +9,7 @@ from enum import Enum
 @dataclass(frozen=True)
 class OrderedBatch:
     """Canonical batch of ordered transactions from any consensus engine."""
+
     round: int
     epoch: int
     transactions: list[bytes]
@@ -20,6 +21,7 @@ class OrderedBatch:
 @dataclass(frozen=True)
 class TxResult:
     """Result of executing a single transaction."""
+
     success: bool
     gas_used: int = 0
     error: str = ""
@@ -41,6 +43,7 @@ class TxResult:
 @dataclass(frozen=True)
 class StateQuery:
     """Family-aware cross-VM state query."""
+
     target_vm: int
     query_type: str  # "storage" | "object" | "account" | "utxo" | "contract"
     key: bytes
@@ -49,6 +52,7 @@ class StateQuery:
 @dataclass(frozen=True)
 class StateResult:
     """Response to a state query."""
+
     data: bytes
     found: bool
 
@@ -60,6 +64,7 @@ class StateResult:
 @dataclass
 class BatchResult:
     """Result of executing an entire OrderedBatch."""
+
     round: int
     tx_results: list[TxResult] = field(default_factory=list)
     state_root: object = None  # MultiVMStateRoot, set by router
@@ -67,11 +72,12 @@ class BatchResult:
 
 class OperationType(Enum):
     """Types of operations a writer can perform on a VM (Spec C2 §6.1)."""
-    TRANSFER    = "transfer"
-    DEPLOY      = "deploy"
-    CALL        = "call"
+
+    TRANSFER = "transfer"
+    DEPLOY = "deploy"
+    CALL = "call"
     STATE_MODIFY = "state_modify"
-    STATE_READ  = "state_read"
+    STATE_READ = "state_read"
 
 
 # Operation type byte tags for gated transaction format:

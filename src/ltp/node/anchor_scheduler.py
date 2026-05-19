@@ -162,13 +162,13 @@ class AnchorScheduler:
             try:
                 submission = self._record_to_submission(entity_id, record)
             except Exception as exc:
-                logger.warning(
-                    "AnchorScheduler: skipping record %s: %s", entity_id, exc
-                )
+                logger.warning("AnchorScheduler: skipping record %s: %s", entity_id, exc)
                 continue
 
             self._tracker.mark_pending(
-                entity_id, submission.anchor_digest, chain_id=self._chain_id,
+                entity_id,
+                submission.anchor_digest,
+                chain_id=self._chain_id,
             )
             self._pending_batch.append((entity_id, submission))
             if self._batch_oldest_at is None:
@@ -182,8 +182,7 @@ class AnchorScheduler:
         elif (
             self._pending_batch
             and self._batch_oldest_at is not None
-            and (time.monotonic() - self._batch_oldest_at)
-            >= self._config.anchor_max_wait_seconds
+            and (time.monotonic() - self._batch_oldest_at) >= self._config.anchor_max_wait_seconds
         ):
             should_submit = True
 
@@ -287,14 +286,9 @@ class AnchorScheduler:
         for _, sub in batch:
             if sub.signer_vk_hash not in seq_snapshot:
                 # Record the value *before* this batch incremented it
-                seq_snapshot[sub.signer_vk_hash] = (
-                    self._signer_sequences.get(sub.signer_vk_hash, 0)
-                    - sum(
-                        1
-                        for _, s in batch
-                        if s.signer_vk_hash == sub.signer_vk_hash
-                    )
-                )
+                seq_snapshot[sub.signer_vk_hash] = self._signer_sequences.get(
+                    sub.signer_vk_hash, 0
+                ) - sum(1 for _, s in batch if s.signer_vk_hash == sub.signer_vk_hash)
 
         result.batch_size = len(submissions)
 
@@ -315,9 +309,7 @@ class AnchorScheduler:
             )
         except Exception as exc:
             result.error = "batch submission failed (see logs)"
-            logger.error(
-                "AnchorScheduler: batch submission failed: %s", exc
-            )
+            logger.error("AnchorScheduler: batch submission failed: %s", exc)
 
             # Mark all entities FAILED — redact RPC details from tracker
             for eid in entity_ids:

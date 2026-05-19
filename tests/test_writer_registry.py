@@ -13,23 +13,25 @@ from src.ltp.execution.writer import (
 from src.ltp.execution.writer_config import RegistryConfig
 from src.ltp.execution.writer_registry import WriterRegistry
 
-
 # ---------------------------------------------------------------------------
 # Test helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_mldsa_identity(label: str = "reg-test"):
     """Create a fresh ML-DSA writer identity from a generated KeyPair."""
     from src.ltp.execution.writer import WriterIdentity
     from src.ltp.keypair import KeyPair
+
     kp = KeyPair.generate(label)
     return WriterIdentity.from_keypair(kp)
 
 
 def _make_bls_identity():
     """Create a fresh BLS writer identity from a BLSKeyPair."""
-    from src.ltp.execution.writer import WriterIdentity
     from src.ltp.bls_keys import BLSKeyPair
+    from src.ltp.execution.writer import WriterIdentity
+
     bls_kp = BLSKeyPair.generate("reg-bls-test")
     bls_id = bls_kp.to_identity()
     return WriterIdentity.from_bls_identity(bls_id)
@@ -58,6 +60,7 @@ TS = 1_000_000  # A deterministic base timestamp (milliseconds)
 # ---------------------------------------------------------------------------
 # TestEnrollment
 # ---------------------------------------------------------------------------
+
 
 class TestEnrollment:
     """enroll() — create a PENDING writer record."""
@@ -108,6 +111,7 @@ class TestEnrollment:
 # TestAdminApproval
 # ---------------------------------------------------------------------------
 
+
 class TestAdminApproval:
     """approve() — PENDING → ACTIVE via admin path."""
 
@@ -148,6 +152,7 @@ class TestAdminApproval:
 # ---------------------------------------------------------------------------
 # TestSponsorFlow
 # ---------------------------------------------------------------------------
+
 
 class TestSponsorFlow:
     """sponsor() — collect sponsors until threshold; PENDING → PROBATION."""
@@ -224,6 +229,7 @@ class TestSponsorFlow:
 # ---------------------------------------------------------------------------
 # TestStateTransitions
 # ---------------------------------------------------------------------------
+
 
 class TestStateTransitions:
     """suspend, reinstate, revoke, renew, promote."""
@@ -325,6 +331,7 @@ class TestStateTransitions:
 # TestAuditTrail
 # ---------------------------------------------------------------------------
 
+
 class TestAuditTrail:
     """transition_log entries must be accurate and immutable."""
 
@@ -368,15 +375,16 @@ class TestAuditTrail:
         assert len(record.transition_log) == 3
         states = [(e.from_state, e.to_state) for e in record.transition_log]
         assert states == [
-            (WriterState.PENDING,    WriterState.ACTIVE),
-            (WriterState.ACTIVE,     WriterState.SUSPENDED),
-            (WriterState.SUSPENDED,  WriterState.ACTIVE),
+            (WriterState.PENDING, WriterState.ACTIVE),
+            (WriterState.ACTIVE, WriterState.SUSPENDED),
+            (WriterState.SUSPENDED, WriterState.ACTIVE),
         ]
 
 
 # ---------------------------------------------------------------------------
 # TestActiveWriters
 # ---------------------------------------------------------------------------
+
 
 class TestActiveWriters:
     """active_writers() — returns only ACTIVE and PROBATION writers."""

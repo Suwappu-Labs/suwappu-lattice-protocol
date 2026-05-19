@@ -4,14 +4,14 @@ Exercises: config → validate_config → create_app → TestClient → /gateway
 No real RPC, web3, or crypto required.
 """
 
-import pytest
 from unittest.mock import MagicMock
 
+import pytest
 from fastapi.testclient import TestClient
 
+from src.ltp.gateway_vm.app import create_app
 from src.ltp.gateway_vm.boot import validate_config
 from src.ltp.gateway_vm.config import GatewayVMConfig
-from src.ltp.gateway_vm.app import create_app
 from src.ltp.gateway_vm.tracker import GatewayTracker
 
 

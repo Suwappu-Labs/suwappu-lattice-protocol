@@ -19,8 +19,8 @@ __all__ = [
 
 class EpochStrategy(str, Enum):
     ROUND_COUNT = "round_count"
-    TIME_BASED  = "time_based"
-    MANUAL      = "manual"
+    TIME_BASED = "time_based"
+    MANUAL = "manual"
 
 
 class FloorMode(str, Enum):
@@ -29,15 +29,15 @@ class FloorMode(str, Enum):
 
 
 class StandbyStrategy(str, Enum):
-    PRIORITY_QUEUE   = "priority_queue"
-    FIFO             = "fifo"
+    PRIORITY_QUEUE = "priority_queue"
+    FIFO = "fifo"
     ADMIN_DESIGNATED = "admin_designated"
 
 
 class EvictionMode(str, Enum):
-    IMMEDIATE          = "immediate"
+    IMMEDIATE = "immediate"
     IMMEDIATE_BACKFILL = "immediate_backfill"
-    EPOCH_BOUNDARY     = "epoch_boundary"
+    EPOCH_BOUNDARY = "epoch_boundary"
 
 
 @dataclass

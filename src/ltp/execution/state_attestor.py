@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from .execution_config import ExecutionConfig
 
@@ -45,7 +45,10 @@ class StateAttestor:
         """Sign the state root using best available mode."""
         if batch_result.state_root is None:
             return AttestationResult(
-                state_root=None, round=batch_result.round, epoch=epoch, mode="none",
+                state_root=None,
+                round=batch_result.round,
+                epoch=epoch,
+                mode="none",
             )
 
         state_root = batch_result.state_root
@@ -86,10 +89,7 @@ class StateAttestor:
     def attestation_mode(self) -> str:
         """Current mode based on key availability."""
         has_mldsa = self._engine is not None
-        has_bls = (
-            self._cm is not None
-            and hasattr(self._cm, "has_dkg_result")
-        )
+        has_bls = self._cm is not None and hasattr(self._cm, "has_dkg_result")
         if has_mldsa and has_bls:
             return "dual"
         elif has_mldsa:

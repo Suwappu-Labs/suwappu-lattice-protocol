@@ -1,0 +1,51 @@
+# LTP pre-commit hooks. Track 2 of the LayerZero/Tempo benchmarking audit.
+#
+# LTP-A-025: hook revisions are SHA-pinned, not tagged. Re-resolve via
+#   gh api repos/<owner>/<repo>/git/refs/tags/<tag> --jq '.object.sha'
+# before bumping.
+#
+# Mypy is intentionally NOT in this config. The codebase has ~900
+# strict-mode errors today; mypy is installed as a dev dependency and
+# runnable via `just typecheck` against a curated `files` list in
+# pyproject.toml. A follow-up PR will land per-module annotations and
+# add the mypy hook here once the targeted modules stay clean.
+
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit]
+fail_fast: false
+
+repos:
+  # Hygiene — pre-commit-hooks v5.0.0
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b  # v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.md$'  # markdownlint owns trailing whitespace in .md
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=512]
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # Python lint + format — ruff-pre-commit v0.15.13
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: 5e2fb545eba1ea9dc051f6f962d52fe8f76a9794  # v0.15.13
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # Solidity lint — local hook because there is no official solhint
+  # pre-commit mirror. Version pinned to match CI (contracts.yml).
+  - repo: local
+    hooks:
+      - id: solhint
+        name: solhint
+        entry: bash -c 'cd contracts && npx -y solhint@5.0.3 "src/**/*.sol" --max-warnings=0'
+        language: system
+        files: '\.sol$'
+        pass_filenames: false

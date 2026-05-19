@@ -21,7 +21,7 @@ __all__ = [
 
 
 class CommitteeRole(str, Enum):
-    ACTIVE  = "active"
+    ACTIVE = "active"
     STANDBY = "standby"
 
 
@@ -45,10 +45,10 @@ class CommitteeRoster:
 
 
 class EpochTrigger(str, Enum):
-    ROUND_COUNT  = "round_count"
+    ROUND_COUNT = "round_count"
     ADMIN_SIGNAL = "admin_signal"
-    EMERGENCY    = "emergency"
-    TIME_BASED   = "time_based"
+    EMERGENCY = "emergency"
+    TIME_BASED = "time_based"
 
 
 @dataclass(frozen=True)
@@ -62,10 +62,10 @@ class EpochRecord:
 
 
 class EvictionReason(str, Enum):
-    REVOKED    = "revoked"
-    SUSPENDED  = "suspended"
-    EXPIRED    = "expired"
-    ADMIN      = "admin"
+    REVOKED = "revoked"
+    SUSPENDED = "suspended"
+    EXPIRED = "expired"
+    ADMIN = "admin"
 
 
 @dataclass(frozen=True)
@@ -79,8 +79,8 @@ class EvictionEvent:
 
 
 class CommitteeEvent(str, Enum):
-    MEMBER_EVICTED     = "member_evicted"
-    MEMBER_BACKFILLED  = "member_backfilled"
-    COMMITTEE_HALTED   = "committee_halted"
-    BELOW_FLOOR        = "below_floor"
-    FLOOR_RESTORED     = "floor_restored"
+    MEMBER_EVICTED = "member_evicted"
+    MEMBER_BACKFILLED = "member_backfilled"
+    COMMITTEE_HALTED = "committee_halted"
+    BELOW_FLOOR = "below_floor"
+    FLOOR_RESTORED = "floor_restored"

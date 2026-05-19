@@ -63,8 +63,7 @@ class OnChainCommitment:
             )
         if len(self.payload_root) != SHA3_256_BYTES:
             raise EnvelopeSizeError(
-                f"payload_root must be {SHA3_256_BYTES} bytes; "
-                f"got {len(self.payload_root)}"
+                f"payload_root must be {SHA3_256_BYTES} bytes; got {len(self.payload_root)}"
             )
         if len(self.sealed_session_key) not in (
             ML_KEM_768_CT_BYTES,
@@ -78,11 +77,7 @@ class OnChainCommitment:
 
     @property
     def total_bytes(self) -> int:
-        return (
-            len(self.sealed_session_key)
-            + len(self.aggregate_signature)
-            + len(self.payload_root)
-        )
+        return len(self.sealed_session_key) + len(self.aggregate_signature) + len(self.payload_root)
 
     def assert_strict_total(self) -> None:
         """Enforce the exact §10.2 constant. Only ML-KEM-1024 + 96 + 32 = 1,696
@@ -111,9 +106,7 @@ class OnChainCommitment:
             if len(blob) == expected:
                 return cls(
                     sealed_session_key=blob[:kem_size],
-                    aggregate_signature=blob[
-                        kem_size : kem_size + BLS_G2_COMPRESSED_BYTES
-                    ],
+                    aggregate_signature=blob[kem_size : kem_size + BLS_G2_COMPRESSED_BYTES],
                     payload_root=blob[kem_size + BLS_G2_COMPRESSED_BYTES :],
                 )
         raise EnvelopeSizeError(

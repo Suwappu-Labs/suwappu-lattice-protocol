@@ -113,11 +113,11 @@ class TestKeyRotation:
         """retire() overwrites dk and sk with zeros."""
         mgr = KeyRotationManager()
         kp = KeyPair.generate("alice")
-        assert kp.dk != b'\x00' * len(kp.dk)
+        assert kp.dk != b"\x00" * len(kp.dk)
 
         mgr.retire(kp)
-        assert kp.dk == b'\x00' * len(kp.dk)
-        assert kp.sk == b'\x00' * len(kp.sk)
+        assert kp.dk == b"\x00" * len(kp.dk)
+        assert kp.sk == b"\x00" * len(kp.sk)
 
     def test_is_expired_never_expires(self):
         """Key with expires_at=0 never expires."""

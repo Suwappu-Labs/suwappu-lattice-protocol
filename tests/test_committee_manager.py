@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from src.ltp.execution.committee.manager import CommitteeManager
-from src.ltp.execution.committee.types import CommitteeEvent
 from src.ltp.execution.committee.policy import CommitteePolicy, EpochStrategy, FloorMode
+from src.ltp.execution.committee.types import CommitteeEvent
 from src.ltp.execution.writer import IdentityTier, WriterIdentity, WriterState
 from src.ltp.execution.writer_recovery import EmergencyState
 from src.ltp.execution.writer_registry import WriterRegistry
@@ -19,7 +19,9 @@ def _setup(n_writers=3, epoch_length=100, **policy_kwargs):
     for i in range(1, n_writers + 1):
         fp = bytes([i]) * 32
         identity = WriterIdentity(
-            tier=IdentityTier.BLS, fingerprint=fp, bls_pk=bytes([i]) * 48,
+            tier=IdentityTier.BLS,
+            fingerprint=fp,
+            bls_pk=bytes([i]) * 48,
         )
         reg.enroll(identity, timestamp=1000 + i)
         reg.approve(fp, admin_fp=ADMIN_FP, timestamp=2000 + i)
@@ -64,7 +66,9 @@ class TestCommitteeManagerEviction:
         mgr.tick(100, 5000)
         fp_new = bytes([99]) * 32
         identity = WriterIdentity(
-            tier=IdentityTier.BLS, fingerprint=fp_new, bls_pk=bytes([99]) * 48,
+            tier=IdentityTier.BLS,
+            fingerprint=fp_new,
+            bls_pk=bytes([99]) * 48,
         )
         reg.enroll(identity, timestamp=9000)
         reg.approve(fp_new, admin_fp=ADMIN_FP, timestamp=9001)
@@ -76,8 +80,10 @@ class TestCommitteeManagerEviction:
 class TestCommitteeManagerHalt:
     def test_is_halted_when_hard_floor_breached(self):
         mgr, reg, _ = _setup(
-            n_writers=2, epoch_length=100,
-            min_committee_size=2, floor_mode=FloorMode.HARD,
+            n_writers=2,
+            epoch_length=100,
+            min_committee_size=2,
+            floor_mode=FloorMode.HARD,
         )
         mgr.tick(100, 5000)
         assert not mgr.is_halted

@@ -11,9 +11,9 @@ state machine that smart contracts use to track trust artifacts.
 Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.9-2.10
 """
 
-from .state import EntityState, VALID_TRANSITIONS, validate_transition
-from .submission import AnchorSubmission
 from .chain_config import ChainConfig, create_anchor_client
+from .state import VALID_TRANSITIONS, EntityState, validate_transition
+from .submission import AnchorSubmission
 
 __all__ = [
     "EntityState",
@@ -40,6 +40,7 @@ def get_anchor_client(
             mismatch, or missing contract code.
     """
     from .client import AnchorClient
+
     client = AnchorClient(rpc_url, contract_address, private_key, chain_id)
     if verify_live_config:
         client.verify_live_configuration()

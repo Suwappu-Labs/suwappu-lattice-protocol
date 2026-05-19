@@ -22,6 +22,7 @@ import struct
 _zfec_available = False
 try:
     import zfec as _zfec_mod
+
     _zfec_available = True
 except ImportError:
     _zfec_mod = None
@@ -83,7 +84,7 @@ class ErasureCoder:
     def _pad(data: bytes, k: int) -> bytes:
         remainder = len(data) % k
         if remainder:
-            data += b'\x00' * (k - remainder)
+            data += b"\x00" * (k - remainder)
         return data
 
     @classmethod
@@ -101,11 +102,11 @@ class ErasureCoder:
         if n > 256:
             raise ValueError("GF(256) supports at most 256 evaluation points")
 
-        length_prefix = struct.pack('>Q', len(data))
+        length_prefix = struct.pack(">Q", len(data))
         prefixed = length_prefix + data
         padded = cls._pad(prefixed, k)
         chunk_size = len(padded) // k
-        data_chunks = [padded[i * chunk_size:(i + 1) * chunk_size] for i in range(k)]
+        data_chunks = [padded[i * chunk_size : (i + 1) * chunk_size] for i in range(k)]
 
         # Fast path: zfec C backend
         if _zfec_available:
@@ -197,8 +198,8 @@ class ErasureCoder:
             share_data = [shards[idx] for idx in indices]
             decoded_chunks = decoder.decode(share_data, indices)
             result = b"".join(decoded_chunks)
-            original_length = struct.unpack('>Q', result[:8])[0]
-            return result[8:8 + original_length]
+            original_length = struct.unpack(">Q", result[:8])[0]
+            return result[8 : 8 + original_length]
 
         # Pure Python GF(256) fallback
         cls._init_gf()
@@ -216,5 +217,5 @@ class ErasureCoder:
                 reconstructed[m * chunk_size + byte_pos] = val
 
         result = bytes(reconstructed)
-        original_length = struct.unpack('>Q', result[:8])[0]
-        return result[8:8 + original_length]
+        original_length = struct.unpack(">Q", result[:8])[0]
+        return result[8 : 8 + original_length]

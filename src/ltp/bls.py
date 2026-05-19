@@ -27,6 +27,7 @@ __all__ = [
 _blst_available = False
 try:
     import blst as _blst_mod
+
     _blst_available = True
 except ImportError:
     pass
@@ -35,6 +36,7 @@ _py_ecc_bls_available = False
 try:
     from py_ecc.bls import G2ProofOfPossession as _py_ecc_bls
     from py_ecc.optimized_bls12_381 import curve_order as _BLS_CURVE_ORDER
+
     _py_ecc_bls_available = True
 except ImportError:
     pass
@@ -65,8 +67,7 @@ def assert_bls_production() -> None:
     """
     if not _blst_available:
         raise RuntimeError(
-            "Production BLS backend (blst) not available. "
-            "Install with: pip install blst"
+            "Production BLS backend (blst) not available. Install with: pip install blst"
         )
 
 
@@ -92,8 +93,8 @@ class BLS:
       SIG: 96 bytes (compressed G2 point)
     """
 
-    PK_SIZE = 48   # Compressed G1 public key
-    SK_SIZE = 32   # Scalar signing key
+    PK_SIZE = 48  # Compressed G1 public key
+    SK_SIZE = 32  # Scalar signing key
     SIG_SIZE = 96  # G2 signature
 
     @classmethod
@@ -175,7 +176,9 @@ class BLS:
         raise RuntimeError("No BLS backend available")
 
     @classmethod
-    def aggregate_verify_same_message(cls, pks: list[bytes], message: bytes, agg_sig: bytes) -> bool:
+    def aggregate_verify_same_message(
+        cls, pks: list[bytes], message: bytes, agg_sig: bytes
+    ) -> bool:
         """Fast-path: verify aggregate when all signers signed the same message."""
         if len(agg_sig) != cls.SIG_SIZE:
             return False
@@ -216,14 +219,18 @@ class BLS:
         return bytes(agg)
 
     @classmethod
-    def _aggregate_verify_py_ecc(cls, pks: list[bytes], messages: list[bytes], agg_sig: bytes) -> bool:
+    def _aggregate_verify_py_ecc(
+        cls, pks: list[bytes], messages: list[bytes], agg_sig: bytes
+    ) -> bool:
         try:
             return _py_ecc_bls.AggregateVerify(pks, messages, agg_sig)
         except Exception:
             return False
 
     @classmethod
-    def _fast_aggregate_verify_py_ecc(cls, pks: list[bytes], message: bytes, agg_sig: bytes) -> bool:
+    def _fast_aggregate_verify_py_ecc(
+        cls, pks: list[bytes], message: bytes, agg_sig: bytes
+    ) -> bool:
         try:
             return _py_ecc_bls.FastAggregateVerify(pks, message, agg_sig)
         except Exception:
@@ -264,7 +271,9 @@ class BLS:
         return agg.compress()
 
     @classmethod
-    def _aggregate_verify_blst(cls, pks: list[bytes], messages: list[bytes], agg_sig: bytes) -> bool:
+    def _aggregate_verify_blst(
+        cls, pks: list[bytes], messages: list[bytes], agg_sig: bytes
+    ) -> bool:
         try:
             sig_affine = _blst_mod.P2_Affine(agg_sig)
             ctx = _blst_mod.Pairing(True)

@@ -31,6 +31,7 @@ validated at boot) is a related operational defense.
 
 Maps to LTP-A-004 + LTP-A-013.
 """
+
 from __future__ import annotations
 
 import os
@@ -39,7 +40,6 @@ from unittest import mock
 import pytest
 
 from ltp.hsm import HSMBackend, SoftwareHSM
-
 
 # ---------------------------------------------------------------------------
 # L1 — SoftwareHSM refuses production
@@ -96,15 +96,18 @@ def test_L2_HSMBackend_abstract_interface_has_no_export_method():
     list_keys, get_public_key, generate_keypair. None of these
     return private key material.
     """
-    forbidden = {"export_private", "export_sk", "export_dk",
-                 "get_private_key", "raw_sk", "raw_dk", "dump_keys"}
-    public_methods = {
-        name for name in dir(HSMBackend)
-        if not name.startswith("_")
+    forbidden = {
+        "export_private",
+        "export_sk",
+        "export_dk",
+        "get_private_key",
+        "raw_sk",
+        "raw_dk",
+        "dump_keys",
     }
+    public_methods = {name for name in dir(HSMBackend) if not name.startswith("_")}
     assert public_methods.isdisjoint(forbidden), (
-        f"HSMBackend leaks a private-key export method: "
-        f"{public_methods & forbidden}"
+        f"HSMBackend leaks a private-key export method: {public_methods & forbidden}"
     )
 
 

@@ -1,8 +1,11 @@
 """WriterGate — layered universal + per-VM enforcement (Spec C2 §9)."""
+
 from __future__ import annotations
+
 from typing import Optional
+
 from .types import OperationType
-from .writer import WriterRecord, TRANSACTABLE_STATES
+from .writer import TRANSACTABLE_STATES, WriterRecord
 from .writer_auth import AuthorizationResult, DispatchDecision, WriterAuthorizer
 from .writer_config import RegistryConfig
 from .writer_epoch import EpochTracker
@@ -24,11 +27,14 @@ class WriterGate:
     PolicyEngine evaluation.
     """
 
-    def __init__(self, registry: WriterRegistry,
-                 emergency: Optional[EmergencyState] = None,
-                 epoch_tracker: Optional[EpochTracker] = None,
-                 config: Optional[RegistryConfig] = None,
-                 snapshot_store: Optional[PolicySnapshotStore] = None) -> None:
+    def __init__(
+        self,
+        registry: WriterRegistry,
+        emergency: Optional[EmergencyState] = None,
+        epoch_tracker: Optional[EpochTracker] = None,
+        config: Optional[RegistryConfig] = None,
+        snapshot_store: Optional[PolicySnapshotStore] = None,
+    ) -> None:
         self._registry = registry
         self._emergency = emergency or EmergencyState()
         self._epoch = epoch_tracker or EpochTracker()
@@ -66,7 +72,9 @@ class WriterGate:
             return DispatchDecision(allowed=False, reason="writer not found")
         # 4. Writer active/probation?
         if record.state not in TRANSACTABLE_STATES:
-            return DispatchDecision(allowed=False, reason=f"writer not active (state={record.state.value})")
+            return DispatchDecision(
+                allowed=False, reason=f"writer not active (state={record.state.value})"
+            )
         # 5. Dispatch override? (force-allow or force-block)
         override = self._emergency.get_dispatch_override(writer_fp)
         if override is not None:
@@ -78,16 +86,21 @@ class WriterGate:
             return DispatchDecision(allowed=False, reason=f"VM 0x{vm_tag:02X} frozen")
         return DispatchDecision(allowed=True, writer_record=record)
 
-    def vm_authorize(self, record: WriterRecord, executor: object,
-                     operation: OperationType, tx_bytes: bytes) -> DispatchDecision:
+    def vm_authorize(
+        self, record: WriterRecord, executor: object, operation: OperationType, tx_bytes: bytes
+    ) -> DispatchDecision:
         """Per-VM: custom authorizer or declarative policy."""
         vm_tag = getattr(executor, "vm_tag", None)
         bypassed = vm_tag is not None and self._emergency.is_authorizer_bypassed(vm_tag)
         # Custom authorizer?
         if not bypassed and isinstance(executor, WriterAuthorizer):
             result = executor.authorize_writer(record, operation, tx_bytes)
-            return DispatchDecision(allowed=result.allowed, reason=result.reason,
-                                    fee_multiplier=result.fee_multiplier, writer_record=record)
+            return DispatchDecision(
+                allowed=result.allowed,
+                reason=result.reason,
+                fee_multiplier=result.fee_multiplier,
+                writer_record=record,
+            )
         # Declarative policy
         if vm_tag is not None and vm_tag in self._policies:
             policy = self._policies[vm_tag]
@@ -97,7 +110,12 @@ class WriterGate:
         tag = vm_tag or 0x00
         tx_count = self._epoch.get_tx_count(fp, tag)
         writer_count = len(self._registry.active_writers())
-        result_p = self._engine.evaluate(record, operation, policy,
-                                         tx_count=tx_count, writer_count=writer_count)
-        return DispatchDecision(allowed=result_p.allowed, reason=result_p.reason,
-                                fee_multiplier=result_p.fee_multiplier, writer_record=record)
+        result_p = self._engine.evaluate(
+            record, operation, policy, tx_count=tx_count, writer_count=writer_count
+        )
+        return DispatchDecision(
+            allowed=result_p.allowed,
+            reason=result_p.reason,
+            fee_multiplier=result_p.fee_multiplier,
+            writer_record=record,
+        )

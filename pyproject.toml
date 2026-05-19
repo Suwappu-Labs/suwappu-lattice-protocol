@@ -118,6 +118,10 @@ dev = [
     "dnspython>=2.4.0,<3.0",
     "pip-audit>=2.7.0,<3.0",
     "pdoc>=14.0,<16.0",
+    # Track 2 — lint / type / pre-commit toolchain
+    "ruff>=0.15,<0.16",
+    "mypy>=1.13,<2",
+    "pre-commit>=4.0,<5",
 ]
 
 [project.scripts]
@@ -136,3 +140,86 @@ pythonpath = [".", "src"]
 markers = [
     "smoke: post-deploy smoke tests that require a live gateway (skip if not reachable)",
 ]
+
+# ---------------------------------------------------------------------------
+# Lint / format — Ruff (Track 2, LayerZero/Tempo parity)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [
+    "docs/security/audits/external/whitepaper-reviews",
+    "docs/plans/archive",
+    "out",          # foundry build artifacts
+    "broadcast",    # foundry deployment logs
+]
+
+[tool.ruff.lint]
+# Track 2 PR starts with the real-bug rule set (Pyflakes + pycodestyle).
+# B (bugbear) and UP (modernization) introduce >1500 violations on the
+# existing crypto codebase — they're queued for a follow-up sweep that
+# can autofix in isolation. The rules below are similarly queued; this
+# PR ships the *tooling* and the auto-fixable I001 import sort.
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E501",  # line-length handled by formatter
+    "F401",  # unused-import — 395 sites; most are test fixtures or lazy re-exports, follow-up
+    "F403",  # `from module import *` — wildcard imports, 1 site, follow-up
+    "F405",  # undefined-local-with-import-star — 7 sites paired with F403, follow-up
+    "F541",  # f-string-missing-placeholders — 84 sites, autofixable in follow-up
+    "F811",  # redefined-while-unused — 3 sites, follow-up
+    "F821",  # undefined-name — 30 sites, all forward-ref strings in lazy-imported type hints (correct pattern); follow-up will add `from __future__ import annotations`
+    "F841",  # unused-variable — 67 sites in test fixtures, follow-up
+    "E402",  # module-import-not-at-top — 28 sites in scripts/, follow-up
+    "E702",  # multiple-statements-on-one-line — 1 site, follow-up
+    "E731",  # lambda-assignment — 7 sites, follow-up
+    "E741",  # ambiguous-variable-name (l, I, O) — 3 sites, follow-up
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]      # assert False in tests is fine
+"scripts/**" = ["E402"]    # CLI scripts often need import-after-setup
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+# ---------------------------------------------------------------------------
+# Type checking — mypy strict on src/ltp/ (Track 2)
+# ---------------------------------------------------------------------------
+[tool.mypy]
+# Track 2 PR starts with mypy ENABLED but scoped to security-critical
+# modules only. The full codebase has 907 strict-mode errors across 142
+# files — annotating it is a project, not a PR. The follow-up sweep
+# broadens `files` one submodule at a time.
+#
+# `follow_imports = silent` is the keystone: it lets mypy resolve
+# imported types for accuracy without surfacing errors from files
+# outside the curated `files` list. Once a submodule reaches zero
+# errors under this scope, we'll add it to `files` and tighten further.
+python_version = "3.12"
+files = [
+    "src/ltp/primitives.py",   # ML-KEM / ML-DSA primitives — must stay typed
+    "src/ltp/keypair.py",      # KeyPair surface — touched by every consumer
+]
+follow_imports = "silent"
+warn_return_any = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+show_error_codes = true
+show_column_numbers = true
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "pqcrypto.*",
+    "nacl.*",
+    "py_ecc.*",
+    "zfec.*",
+    "blake3.*",
+    "eth_abi.*",
+    "eth_account.*",
+    "pdoc.*",
+]
+ignore_missing_imports = true

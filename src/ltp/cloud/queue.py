@@ -102,8 +102,11 @@ class InMemoryQueue(MessageQueue):
         with self._lock:
             # Return defensive copies to prevent mutation leaking back
             return [
-                {"message_id": m["message_id"], "group_id": m["group_id"],
-                 "payload": dict(m["payload"])}
+                {
+                    "message_id": m["message_id"],
+                    "group_id": m["group_id"],
+                    "payload": dict(m["payload"]),
+                }
                 for m in self._groups.get(group_id, [])
             ]
 

@@ -4,27 +4,28 @@ Covers identity tiers, writer state machine, transitions, identity
 construction, transition log entries, approval paths, and writer records.
 """
 
-import pytest
 import time
 
+import pytest
+
+from src.ltp.bls_keys import BLSKeyPair
 from src.ltp.execution.writer import (
-    IdentityTier,
-    WriterState,
     TRANSACTABLE_STATES,
     VALID_WRITER_TRANSITIONS,
-    validate_writer_transition,
+    ApprovalPath,
+    IdentityTier,
     TransitionEntry,
     WriterIdentity,
-    ApprovalPath,
     WriterRecord,
+    WriterState,
+    validate_writer_transition,
 )
 from src.ltp.keypair import KeyPair
-from src.ltp.bls_keys import BLSKeyPair
-
 
 # ---------------------------------------------------------------------------
 # TestIdentityTier
 # ---------------------------------------------------------------------------
+
 
 class TestIdentityTier:
     """IdentityTier enum — three cryptographic identity modes."""
@@ -45,6 +46,7 @@ class TestIdentityTier:
 # ---------------------------------------------------------------------------
 # TestWriterState
 # ---------------------------------------------------------------------------
+
 
 class TestWriterState:
     """WriterState enum — six lifecycle states."""
@@ -72,6 +74,7 @@ class TestWriterState:
 # ---------------------------------------------------------------------------
 # TestWriterTransitions
 # ---------------------------------------------------------------------------
+
 
 class TestWriterTransitions:
     """VALID_WRITER_TRANSITIONS frozenset and validate_writer_transition()."""
@@ -143,6 +146,7 @@ class TestWriterTransitions:
 # TestWriterIdentity
 # ---------------------------------------------------------------------------
 
+
 class TestWriterIdentity:
     """WriterIdentity construction from keypairs and BLS identities."""
 
@@ -188,6 +192,7 @@ class TestWriterIdentity:
 # ---------------------------------------------------------------------------
 # TestTransitionEntry
 # ---------------------------------------------------------------------------
+
 
 class TestTransitionEntry:
     """TransitionEntry frozen dataclass."""
@@ -236,6 +241,7 @@ class TestTransitionEntry:
 # TestApprovalPath
 # ---------------------------------------------------------------------------
 
+
 class TestApprovalPath:
     """ApprovalPath enum — three approval modes."""
 
@@ -252,6 +258,7 @@ class TestApprovalPath:
 # ---------------------------------------------------------------------------
 # TestWriterRecord
 # ---------------------------------------------------------------------------
+
 
 class TestWriterRecord:
     """WriterRecord mutable dataclass and can_transact property."""
@@ -352,9 +359,11 @@ class TestWriterRecord:
 # RegistryConfig + ProbationModifiers (Task 2)
 # ---------------------------------------------------------------------------
 
+
 class TestRegistryConfig:
     def test_defaults(self):
         from src.ltp.execution.writer_config import RegistryConfig
+
         cfg = RegistryConfig()
         assert cfg.sponsor_threshold == 2
         assert cfg.probation_epochs == 10
@@ -362,6 +371,7 @@ class TestRegistryConfig:
 
     def test_custom_config(self):
         from src.ltp.execution.writer_config import RegistryConfig
+
         cfg = RegistryConfig(sponsor_threshold=3, probation_epochs=20, default_expiry_epochs=100)
         assert cfg.sponsor_threshold == 3
         assert cfg.probation_epochs == 20
@@ -369,6 +379,7 @@ class TestRegistryConfig:
 
     def test_probation_modifiers_defaults(self):
         from src.ltp.execution.writer_config import ProbationModifiers
+
         mods = ProbationModifiers()
         assert mods.rate_limit_divisor == 2
         assert mods.fee_multiplier_factor == 2.0
@@ -376,6 +387,7 @@ class TestRegistryConfig:
 
     def test_config_has_probation_modifiers(self):
         from src.ltp.execution.writer_config import RegistryConfig
+
         cfg = RegistryConfig()
         assert cfg.probation_modifiers is not None
         assert cfg.probation_modifiers.rate_limit_divisor == 2

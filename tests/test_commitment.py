@@ -3,6 +3,7 @@ Tests for CommitmentRecord, CommitmentLog, CommitmentNetwork, and audit protocol
 """
 
 import os
+
 import pytest
 
 from src.ltp.commitment import (
@@ -16,10 +17,10 @@ from src.ltp.entity import Entity
 from src.ltp.keypair import KeyPair
 from src.ltp.primitives import canonical_hash
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_record(keypair: KeyPair) -> CommitmentRecord:
     entity_id = canonical_hash(os.urandom(32))
@@ -28,8 +29,13 @@ def _make_record(keypair: KeyPair) -> CommitmentRecord:
         sender_id=keypair.label,
         shard_map_root=canonical_hash(b"root"),
         content_hash=canonical_hash(b"content"),
-        encoding_params={"n": 8, "k": 4, "algorithm": "reed-solomon-gf256",
-                         "gf_poly": "0x11d", "eval": "vandermonde-powers-of-0x02"},
+        encoding_params={
+            "n": 8,
+            "k": 4,
+            "algorithm": "reed-solomon-gf256",
+            "gf_poly": "0x11d",
+            "eval": "vandermonde-powers-of-0x02",
+        },
         shape="text/plain",
         shape_hash=canonical_hash(b"text/plain"),
         timestamp=1740000000.0,
@@ -41,6 +47,7 @@ def _make_record(keypair: KeyPair) -> CommitmentRecord:
 # ---------------------------------------------------------------------------
 # CommitmentRecord
 # ---------------------------------------------------------------------------
+
 
 class TestCommitmentRecord:
     def test_sign_and_verify(self):
@@ -92,6 +99,7 @@ class TestCommitmentRecord:
 # ---------------------------------------------------------------------------
 # CommitmentLog
 # ---------------------------------------------------------------------------
+
 
 class TestCommitmentLog:
     def test_append_and_fetch(self):
@@ -187,6 +195,7 @@ class TestCommitmentLog:
 # CommitmentNetwork — shard distribution and retrieval
 # ---------------------------------------------------------------------------
 
+
 class TestCommitmentNetwork:
     def test_add_node(self, network):
         assert len(network.nodes) == 6
@@ -215,6 +224,7 @@ class TestCommitmentNetwork:
     def test_evict_node(self, network, alice):
         """Evicting a node should trigger shard repair."""
         from src.ltp.protocol import LTPProtocol
+
         protocol = LTPProtocol(network)
         entity = Entity(content=b"repair test", shape="x-ltp/test")
         entity_id, record, cek = protocol.commit(entity, alice, n=8, k=4)
@@ -235,9 +245,11 @@ class TestCommitmentNetwork:
 # Audit protocol
 # ---------------------------------------------------------------------------
 
+
 class TestAuditProtocol:
     def test_audit_result_type(self, network, alice):
         from src.ltp.protocol import LTPProtocol
+
         protocol = LTPProtocol(network)
         entity = Entity(content=b"audit target", shape="x-ltp/test")
         protocol.commit(entity, alice, n=8, k=4)
@@ -247,6 +259,7 @@ class TestAuditProtocol:
 
     def test_healthy_nodes_pass_audit(self, network, alice):
         from src.ltp.protocol import LTPProtocol
+
         protocol = LTPProtocol(network)
         entity = Entity(content=b"healthy test", shape="x-ltp/test")
         protocol.commit(entity, alice, n=8, k=4)
@@ -257,6 +270,7 @@ class TestAuditProtocol:
 
     def test_degraded_node_fails_audit(self, network, alice):
         from src.ltp.protocol import LTPProtocol
+
         protocol = LTPProtocol(network)
         entity = Entity(content=b"degraded audit", shape="x-ltp/test")
         protocol.commit(entity, alice, n=8, k=4)
@@ -275,6 +289,7 @@ class TestAuditProtocol:
 
     def test_burst_audit_produces_more_challenges(self, network, alice):
         from src.ltp.protocol import LTPProtocol
+
         protocol = LTPProtocol(network)
         entity = Entity(content=b"burst audit", shape="x-ltp/test")
         protocol.commit(entity, alice, n=8, k=4)
@@ -286,6 +301,7 @@ class TestAuditProtocol:
 
     def test_audit_result_fields(self, network, alice):
         from src.ltp.protocol import LTPProtocol
+
         protocol = LTPProtocol(network)
         entity = Entity(content=b"field test", shape="x-ltp/test")
         protocol.commit(entity, alice, n=8, k=4)
@@ -305,6 +321,7 @@ class TestAuditProtocol:
 # Correlated failure
 # ---------------------------------------------------------------------------
 
+
 class TestCorrelatedFailure:
     def test_region_failure_and_restore(self, network):
         affected = network.region_failure("US-East")
@@ -314,6 +331,7 @@ class TestCorrelatedFailure:
 
     def test_availability_under_region_failure(self, network, alice):
         from src.ltp.protocol import LTPProtocol
+
         protocol = LTPProtocol(network)
         entity = Entity(content=b"regional failure test", shape="x-ltp/test")
         entity_id, record, _ = protocol.commit(entity, alice, n=8, k=4)
@@ -321,11 +339,13 @@ class TestCorrelatedFailure:
         regions = sorted(set(nd.region for nd in network.nodes))
         for region in regions:
             avail = network.availability_under_region_failure(entity_id, 8, 4, region)
-            assert avail["can_reconstruct"] is True, \
+            assert avail["can_reconstruct"] is True, (
                 f"Entity cannot be reconstructed after {region} failure"
+            )
 
     def test_cross_region_placement(self, network, alice):
         from src.ltp.protocol import LTPProtocol
+
         protocol = LTPProtocol(network)
         entity = Entity(content=b"placement test", shape="x-ltp/test")
         entity_id, record, _ = protocol.commit(entity, alice, n=8, k=4)
@@ -338,6 +358,7 @@ class TestCorrelatedFailure:
 # ---------------------------------------------------------------------------
 # TTL-Based Shard Eviction (Whitepaper §5.4.4)
 # ---------------------------------------------------------------------------
+
 
 class TestShardTTL:
     """Tests for shard TTL, expiry, and renewal mechanisms."""
@@ -407,7 +428,11 @@ class TestShardTTL:
 
         shards = [b"shard-0", b"shard-1", b"shard-2", b"shard-3"]
         network.distribute_encrypted_shards_with_ttl(
-            "entity-1", shards, epoch=10, ttl_epochs=100, replicas=2,
+            "entity-1",
+            shards,
+            epoch=10,
+            ttl_epochs=100,
+            replicas=2,
         )
 
         result = network.evict_expired_shards(current_epoch=50)
@@ -424,7 +449,11 @@ class TestShardTTL:
 
         shards = [b"shard-0", b"shard-1"]
         network.distribute_encrypted_shards_with_ttl(
-            "entity-1", shards, epoch=10, ttl_epochs=100, replicas=2,
+            "entity-1",
+            shards,
+            epoch=10,
+            ttl_epochs=100,
+            replicas=2,
         )
 
         renewed = network.renew_entity_ttl("entity-1", additional_epochs=100)
@@ -436,18 +465,28 @@ class TestShardTTL:
 
     def test_commitment_record_ttl_field(self):
         record = CommitmentRecord(
-            entity_id="e1", sender_id="s1", shard_map_root="root",
-            content_hash="hash", encoding_params={"n": 8, "k": 4},
-            shape="text/plain", shape_hash="sh", timestamp=1.0,
+            entity_id="e1",
+            sender_id="s1",
+            shard_map_root="root",
+            content_hash="hash",
+            encoding_params={"n": 8, "k": 4},
+            shape="text/plain",
+            shape_hash="sh",
+            timestamp=1.0,
             ttl_epochs=720,
         )
         assert record.ttl_epochs == 720
 
     def test_commitment_record_default_permanent(self):
         record = CommitmentRecord(
-            entity_id="e1", sender_id="s1", shard_map_root="root",
-            content_hash="hash", encoding_params={"n": 8, "k": 4},
-            shape="text/plain", shape_hash="sh", timestamp=1.0,
+            entity_id="e1",
+            sender_id="s1",
+            shard_map_root="root",
+            content_hash="hash",
+            encoding_params={"n": 8, "k": 4},
+            shape="text/plain",
+            shape_hash="sh",
+            timestamp=1.0,
         )
         assert record.ttl_epochs is None
 

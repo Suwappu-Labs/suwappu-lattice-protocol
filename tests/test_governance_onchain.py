@@ -11,15 +11,14 @@ from __future__ import annotations
 import pytest
 
 from src.ltp.governance_client import (
-    OnChainGovernanceClient,
+    _PHASE_NAMES,
     PHASE_BOOTSTRAP,
     PHASE_GROWTH,
     PHASE_MATURITY,
-    _PHASE_NAMES,
-    _make_transition_key,
+    OnChainGovernanceClient,
     _keccak256,
+    _make_transition_key,
 )
-
 
 # ---------------------------------------------------------------------------
 # Phase Constants
@@ -27,7 +26,6 @@ from src.ltp.governance_client import (
 
 
 class TestPhaseConstants:
-
     def test_bootstrap_hash(self):
         expected = _keccak256(b"bootstrap")
         assert PHASE_BOOTSTRAP == expected
@@ -58,7 +56,6 @@ class TestPhaseConstants:
 
 
 class TestTransitionKey:
-
     def test_key_is_32_bytes(self):
         key = _make_transition_key("bootstrap", "growth")
         assert isinstance(key, bytes)
@@ -86,7 +83,6 @@ class TestTransitionKey:
 
 
 class TestClientConstruction:
-
     def test_read_only_client(self):
         """Client without operator key should work for view calls."""
         # This will fail to connect but should construct fine

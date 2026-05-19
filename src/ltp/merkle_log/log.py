@@ -28,9 +28,9 @@ Multi-operator gossip (production):
 
 from __future__ import annotations
 
-from .tree import MerkleTree
-from .sth import SignedTreeHead
 from .proof import InclusionProof
+from .sth import SignedTreeHead
+from .tree import MerkleTree
 
 __all__ = ["MerkleLog"]
 
@@ -61,8 +61,9 @@ class MerkleLog:
             operator_sk: ML-DSA-65 signing key (private — never leaves this object).
         """
         import threading
+
         self._tree = MerkleTree()
-        self._records: list[bytes] = []   # raw record bytes, parallel to tree leaves
+        self._records: list[bytes] = []  # raw record bytes, parallel to tree leaves
         self._operator_vk = operator_vk
         self._operator_sk = operator_sk
         self._sths: list[SignedTreeHead] = []
@@ -148,9 +149,7 @@ class MerkleLog:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def detect_equivocation(
-        sth1: SignedTreeHead, sth2: SignedTreeHead
-    ) -> bool:
+    def detect_equivocation(sth1: SignedTreeHead, sth2: SignedTreeHead) -> bool:
         """
         Return True if the two STHs constitute a cryptographic equivocation proof.
 
@@ -187,9 +186,7 @@ class MerkleLog:
         """
         return self._tree.consistency_proof(old_size)
 
-    def verify_append_only(
-        self, older_sth: SignedTreeHead, newer_sth: SignedTreeHead
-    ) -> bool:
+    def verify_append_only(self, older_sth: SignedTreeHead, newer_sth: SignedTreeHead) -> bool:
         """
         Verify that newer_sth represents an append-only extension of older_sth.
 
@@ -206,8 +203,10 @@ class MerkleLog:
             return False
         if older_sth.tree_size == 0:
             from ..primitives import canonical_hash_bytes
-            return older_sth.root_hash == canonical_hash_bytes(b'')
+
+            return older_sth.root_hash == canonical_hash_bytes(b"")
         from .tree import verify_consistency
+
         proof = self._tree.consistency_proof(older_sth.tree_size)
         return verify_consistency(
             older_sth.tree_size,

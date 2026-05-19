@@ -64,9 +64,7 @@ class GatewayVMService:
         start_block: int = 0,
     ) -> None:
         if operator_keypair is None:
-            raise TypeError(
-                "operator_keypair is required — gateway attestations must be signed"
-            )
+            raise TypeError("operator_keypair is required — gateway attestations must be signed")
         self._config = config
         self._keypair = operator_keypair
         self._log = StructuredLogger(
@@ -137,10 +135,12 @@ class GatewayVMService:
             name=f"gateway-vm-{self._config.gateway_id}",
         )
         self._thread.start()
-        self._log.info("service started",
-                       source_chain=self._config.source_chain_id,
-                       dest_chain=self._config.dest_chain_id,
-                       interval=self._config.poll_interval_seconds)
+        self._log.info(
+            "service started",
+            source_chain=self._config.source_chain_id,
+            dest_chain=self._config.dest_chain_id,
+            interval=self._config.poll_interval_seconds,
+        )
 
     def stop(self) -> None:
         """Signal shutdown and join thread."""
@@ -171,9 +171,11 @@ class GatewayVMService:
                 remaining_retries: list[tuple[GatewayAttestation, BridgeEvent, int]] = []
                 for attestation, event, attempts in self._retry_queue:
                     if attempts >= self._config.max_retries:
-                        self._log.warning("max retries exceeded, dropping",
-                                          event_id=event.event_id[:32],
-                                          max_retries=self._config.max_retries)
+                        self._log.warning(
+                            "max retries exceeded, dropping",
+                            event_id=event.event_id[:32],
+                            max_retries=self._config.max_retries,
+                        )
                         result.anchor_failures += 1
                         continue
                     result.retries_attempted += 1
@@ -202,10 +204,12 @@ class GatewayVMService:
                             self._metrics["etp_gateway_events_rejected"].inc(
                                 labels={"reason": reason.split(":")[0]}
                             )
-                        self._log.info("event rejected",
-                                       event_id=event.event_id[:32],
-                                       tx_hash=event.tx_hash[:16],
-                                       reason=reason)
+                        self._log.info(
+                            "event rejected",
+                            event_id=event.event_id[:32],
+                            tx_hash=event.tx_hash[:16],
+                            reason=reason,
+                        )
                         continue
 
                     # --- 4. Create attestation ---
@@ -261,10 +265,12 @@ class GatewayVMService:
         try:
             self._anchor_fn(attestation)
         except Exception as exc:
-            self._log.warning("anchor failed",
-                              event_id=event.event_id[:32],
-                              tx_hash=event.tx_hash[:16],
-                              error=str(exc))
+            self._log.warning(
+                "anchor failed",
+                event_id=event.event_id[:32],
+                tx_hash=event.tx_hash[:16],
+                error=str(exc),
+            )
             result.anchor_failures += 1
             if not _from_retry:
                 self._retry_queue.append((attestation, event, 1))
@@ -279,8 +285,6 @@ class GatewayVMService:
 
         # Open challenge window for optimistic mode
         if self._challenge_manager is not None:
-            self._challenge_manager.open_challenge_window(
-                event.event_id, attestation.digest[:32]
-            )
+            self._challenge_manager.open_challenge_window(event.event_id, attestation.digest[:32])
 
         return True

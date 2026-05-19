@@ -5,12 +5,12 @@ Tests all 6 RFC 6962-compatible endpoints.
 """
 
 import json
-import urllib.request
 import urllib.error
+import urllib.request
 
 import pytest
 
-from src.ltp import KeyPair, Entity, CommitmentNetwork, LTPProtocol, reset_poc_state
+from src.ltp import CommitmentNetwork, Entity, KeyPair, LTPProtocol, reset_poc_state
 from src.ltp.rest_server import CommitmentLogRestServer
 
 
@@ -149,7 +149,8 @@ class TestErrorHandling:
         server._server.commitment_log = None
         try:
             resp = urllib.request.urlopen(
-                f"{server.url}/ct/v1/get-sth", timeout=5,
+                f"{server.url}/ct/v1/get-sth",
+                timeout=5,
             )
             assert False, "Should have raised"
         except urllib.error.HTTPError as e:

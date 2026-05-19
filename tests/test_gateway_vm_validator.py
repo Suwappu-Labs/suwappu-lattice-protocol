@@ -59,9 +59,16 @@ class TestChainIdCheck:
         event = BridgeEvent(
             source_chain_id=1,  # wrong — expected 84532
             bridge_contract="0x5083194d9e8EB54Fc397E69A518Be9503C767Dd0",
-            tx_hash="0xabc", block_number=100, log_index=0,
-            event_name="AnchorCreated", sender="0xaa", recipient="0xbb",
-            payload_hash="sha3-256:ff", amount=0, nonce=0, timestamp=1700000000.0,
+            tx_hash="0xabc",
+            block_number=100,
+            log_index=0,
+            event_name="AnchorCreated",
+            sender="0xaa",
+            recipient="0xbb",
+            payload_hash="sha3-256:ff",
+            amount=0,
+            nonce=0,
+            timestamp=1700000000.0,
         )
         ok, reason = v.validate(event)
         assert ok is False
@@ -76,9 +83,16 @@ class TestBridgeContractCheck:
         event = BridgeEvent(
             source_chain_id=84532,
             bridge_contract="0xUNAUTHORIZED",  # wrong contract
-            tx_hash="0xabc", block_number=100, log_index=0,
-            event_name="AnchorCreated", sender="0xaa", recipient="0xbb",
-            payload_hash="sha3-256:ff", amount=0, nonce=0, timestamp=1700000000.0,
+            tx_hash="0xabc",
+            block_number=100,
+            log_index=0,
+            event_name="AnchorCreated",
+            sender="0xaa",
+            recipient="0xbb",
+            payload_hash="sha3-256:ff",
+            amount=0,
+            nonce=0,
+            timestamp=1700000000.0,
         )
         ok, reason = v.validate(event)
         assert ok is False
@@ -105,7 +119,9 @@ class TestReplayCheck:
         v = _make_validator()
         event = _make_valid_event()
         # Pre-mark as processed
-        v._replay_db.mark_processed(event.event_id, tx_hash=event.tx_hash, block_number=event.block_number)
+        v._replay_db.mark_processed(
+            event.event_id, tx_hash=event.tx_hash, block_number=event.block_number
+        )
         ok, reason = v.validate(event)
         assert ok is False
         assert "replay" in reason.lower()
@@ -128,10 +144,16 @@ class TestPayloadHashCheck:
         event = BridgeEvent(
             source_chain_id=84532,
             bridge_contract="0x5083194d9e8EB54Fc397E69A518Be9503C767Dd0",
-            tx_hash="0xabc", block_number=100, log_index=0,
-            event_name="AnchorCreated", sender="0xaa", recipient="0xbb",
+            tx_hash="0xabc",
+            block_number=100,
+            log_index=0,
+            event_name="AnchorCreated",
+            sender="0xaa",
+            recipient="0xbb",
             payload_hash="",  # empty — invalid
-            amount=0, nonce=0, timestamp=1700000000.0,
+            amount=0,
+            nonce=0,
+            timestamp=1700000000.0,
         )
         ok, reason = v.validate(event)
         assert ok is False

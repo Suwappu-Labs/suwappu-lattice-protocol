@@ -39,33 +39,37 @@ class ExecutionMonitor:
 
         if catastrophic and self._config.halt_on_catastrophic:
             self._halt = True
-            events.append(ExecutionEvent(
-                event_type=ExecutionEventType.EXECUTION_HALTED,
-                round=batch_result.round,
-                epoch=0,
-                timestamp_ms=0,
-                payload={
-                    "round": batch_result.round,
-                    "epoch": 0,
-                    "reason": "catastrophic_error",
-                    "error": "batch execution raised exception",
-                },
-            ))
+            events.append(
+                ExecutionEvent(
+                    event_type=ExecutionEventType.EXECUTION_HALTED,
+                    round=batch_result.round,
+                    epoch=0,
+                    timestamp_ms=0,
+                    payload={
+                        "round": batch_result.round,
+                        "epoch": 0,
+                        "reason": "catastrophic_error",
+                        "error": "batch execution raised exception",
+                    },
+                )
+            )
 
         rate = self.failure_rate()
         if rate > self._config.failure_threshold_pct / 100.0:
-            events.append(ExecutionEvent(
-                event_type=ExecutionEventType.FAILURE_THRESHOLD_WARNING,
-                round=batch_result.round,
-                epoch=0,
-                timestamp_ms=0,
-                payload={
-                    "failure_rate": rate,
-                    "threshold": self._config.failure_threshold_pct,
-                    "window": self._config.failure_window,
-                    "round": batch_result.round,
-                },
-            ))
+            events.append(
+                ExecutionEvent(
+                    event_type=ExecutionEventType.FAILURE_THRESHOLD_WARNING,
+                    round=batch_result.round,
+                    epoch=0,
+                    timestamp_ms=0,
+                    payload={
+                        "failure_rate": rate,
+                        "threshold": self._config.failure_threshold_pct,
+                        "window": self._config.failure_window,
+                        "round": batch_result.round,
+                    },
+                )
+            )
 
         return events
 
@@ -101,14 +105,16 @@ class ExecutionMonitor:
         self._total_tx_failure = 0
         self._halt = False
 
-        return [ExecutionEvent(
-            event_type=ExecutionEventType.EPOCH_METRICS_RESET,
-            round=0,
-            epoch=new_epoch,
-            timestamp_ms=0,
-            payload={
-                "old_epoch": old_epoch,
-                "new_epoch": new_epoch,
-                "total_batches_prev": prev_batches,
-            },
-        )]
+        return [
+            ExecutionEvent(
+                event_type=ExecutionEventType.EPOCH_METRICS_RESET,
+                round=0,
+                epoch=new_epoch,
+                timestamp_ms=0,
+                payload={
+                    "old_epoch": old_epoch,
+                    "new_epoch": new_epoch,
+                    "total_batches_prev": prev_batches,
+                },
+            )
+        ]

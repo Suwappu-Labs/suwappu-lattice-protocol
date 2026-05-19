@@ -19,44 +19,49 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable, Optional
 
-
 # ---------------------------------------------------------------------------
 # Finality model
 # ---------------------------------------------------------------------------
 
+
 class FinalityModel(Enum):
     """How a backend guarantees commitment finality."""
-    INSTANT = "instant"                  # local / single-operator (no consensus)
-    SINGLE_SLOT = "single-slot"          # Base L1-style: 1-slot deterministic finality
-    PROBABILISTIC = "probabilistic"      # Ethereum PoS: ~2 epochs (~12.8 min)
-    ECONOMIC = "economic"                # restaking / EigenLayer style
+
+    INSTANT = "instant"  # local / single-operator (no consensus)
+    SINGLE_SLOT = "single-slot"  # Base L1-style: 1-slot deterministic finality
+    PROBABILISTIC = "probabilistic"  # Ethereum PoS: ~2 epochs (~12.8 min)
+    ECONOMIC = "economic"  # restaking / EigenLayer style
 
 
 # ---------------------------------------------------------------------------
 # Backend capabilities descriptor
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class BackendCapabilities:
     """Declarative descriptor of what a backend supports."""
+
     finality: FinalityModel
-    max_tps: int                         # theoretical max commitments / second
-    has_native_storage_proofs: bool       # hardware-level or protocol-level PoS
-    has_slashing: bool                    # economic penalties for misbehavior
-    has_node_registry: bool               # on-chain node admission / eviction
-    supports_zk_verification: bool        # can verify ZK proofs on-chain
-    estimated_finality_seconds: float     # expected time to finality
-    gas_cost_per_commit: Optional[int]    # gas units (None for gasless backends)
+    max_tps: int  # theoretical max commitments / second
+    has_native_storage_proofs: bool  # hardware-level or protocol-level PoS
+    has_slashing: bool  # economic penalties for misbehavior
+    has_node_registry: bool  # on-chain node admission / eviction
+    supports_zk_verification: bool  # can verify ZK proofs on-chain
+    estimated_finality_seconds: float  # expected time to finality
+    gas_cost_per_commit: Optional[int]  # gas units (None for gasless backends)
 
 
 # ---------------------------------------------------------------------------
 # Backend configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BackendConfig:
     """Configuration for instantiating a commitment backend."""
-    backend_type: str = "local"           # "local", "base-l1", "ethereum"
+
+    backend_type: str = "local"  # "local", "base-l1", "ethereum"
 
     # --- Network endpoints ---
     rpc_url: Optional[str] = None
@@ -64,41 +69,42 @@ class BackendConfig:
     contract_address: Optional[str] = None
 
     # --- Base L1 specific ---
-    base_l1_parallel_threads: int = 16    # parallel EVM execution threads
-    base_l1_block_time_ms: int = 500      # target block time
-    base_l1_state_trie: str = "verkle"    # "verkle" or "mpt" (Merkle Patricia Trie)
+    base_l1_parallel_threads: int = 16  # parallel EVM execution threads
+    base_l1_block_time_ms: int = 500  # target block time
+    base_l1_state_trie: str = "verkle"  # "verkle" or "mpt" (Merkle Patricia Trie)
 
     # --- Ethereum specific ---
-    eth_confirmations: int = 1            # blocks to wait for soft finality
-    eth_finality_mode: str = "safe"       # "latest", "safe", "finalized"
-    eth_gas_limit: int = 300_000          # per-commitment gas limit
-    eth_use_l2: bool = False              # deploy on L2 (Base, Arbitrum, etc.)
-    eth_l2_name: Optional[str] = None     # "base", "arbitrum", "optimism"
+    eth_confirmations: int = 1  # blocks to wait for soft finality
+    eth_finality_mode: str = "safe"  # "latest", "safe", "finalized"
+    eth_gas_limit: int = 300_000  # per-commitment gas limit
+    eth_use_l2: bool = False  # deploy on L2 (Base, Arbitrum, etc.)
+    eth_l2_name: Optional[str] = None  # "base", "arbitrum", "optimism"
 
     # --- Operator keys ---
     operator_private_key: Optional[str] = None
     operator_address: Optional[str] = None
 
     # --- Economics ---
-    min_stake_wei: int = 0                # minimum stake for node admission
-    slash_fraction_bps: int = 1000        # basis points slashed on audit failure (10%)
+    min_stake_wei: int = 0  # minimum stake for node admission
+    slash_fraction_bps: int = 1000  # basis points slashed on audit failure (10%)
     enable_economics_engine: bool = False  # enable full economic incentive model
-    economics_epoch_seconds: int = 3600   # epoch duration for reward cycles
+    economics_epoch_seconds: int = 3600  # epoch duration for reward cycles
 
     # --- Compliance (SOC 2, FedRAMP, GDPR, Basel) ---
-    enable_compliance: bool = False       # enable institutional compliance features
+    enable_compliance: bool = False  # enable institutional compliance features
     compliance_frameworks: list = field(default_factory=list)  # target frameworks
     compliance_crypto_mode: str = "default"  # "default", "fips", "hybrid"
-    compliance_enable_rbac: bool = False   # role-based access control
+    compliance_enable_rbac: bool = False  # role-based access control
     compliance_enable_geo_fence: bool = False  # jurisdiction-constrained placement
     compliance_enable_audit_log: bool = False  # immutable audit logging
-    compliance_enable_gdpr: bool = False   # GDPR deletion capability
-    compliance_siem_format: str = "json"   # "json", "cef", "json-ld"
+    compliance_enable_gdpr: bool = False  # GDPR deletion capability
+    compliance_siem_format: str = "json"  # "json", "cef", "json-ld"
 
 
 # ---------------------------------------------------------------------------
 # Abstract backend
 # ---------------------------------------------------------------------------
+
 
 class CommitmentBackend(abc.ABC):
     """
@@ -255,10 +261,7 @@ class CommitmentBackend(abc.ABC):
         Default implementation falls back to sequential appends.
         On-chain backends should override to amortize gas costs.
         """
-        return [
-            self.append_commitment(eid, rec, sig, vk)
-            for eid, rec, sig, vk in commitments
-        ]
+        return [self.append_commitment(eid, rec, sig, vk) for eid, rec, sig, vk in commitments]
 
     # --- Finality callbacks ---
 

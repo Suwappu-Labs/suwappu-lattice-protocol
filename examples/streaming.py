@@ -18,9 +18,9 @@ reset_poc_state()
 alice = KeyPair.generate("alice")
 
 config = StreamConfig(
-    chunk_size_bytes=256,       # Small chunks for demo (default: 64KB)
-    max_concurrent_chunks=2,    # Parallel chunk processing
-    pipeline_enabled=True,      # Pipeline distribution
+    chunk_size_bytes=256,  # Small chunks for demo (default: 64KB)
+    max_concurrent_chunks=2,  # Parallel chunk processing
+    pipeline_enabled=True,  # Pipeline distribution
 )
 print(f"▸ Stream Config")
 print(f"  Chunk size:      {config.chunk_size_bytes} bytes")

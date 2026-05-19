@@ -4,8 +4,10 @@ Exercises the full gateway VM pipeline with mock RPC but real
 cryptography, real SQLite replay DB, and real attestation signing.
 """
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from src.ltp.keypair import KeyPair
 
 

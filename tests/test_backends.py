@@ -8,21 +8,21 @@ interface contract is satisfied uniformly.  Backend-specific tests follow.
 import pytest
 
 from src.ltp.backends import (
-    BackendConfig,
     BackendCapabilities,
+    BackendConfig,
+    BaseL1Backend,
     CommitmentBackend,
     EthereumBackend,
     LocalBackend,
-    BaseL1Backend,
     create_backend,
 )
 from src.ltp.backends.base import FinalityModel
 from src.ltp.primitives import canonical_hash
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def local_backend():
@@ -31,32 +31,38 @@ def local_backend():
 
 @pytest.fixture
 def base_l1_backend():
-    return create_backend(BackendConfig(
-        backend_type="base-l1",
-        base_l1_parallel_threads=16,
-        base_l1_block_time_ms=500,
-        operator_address="validator-test",
-    ))
+    return create_backend(
+        BackendConfig(
+            backend_type="base-l1",
+            base_l1_parallel_threads=16,
+            base_l1_block_time_ms=500,
+            operator_address="validator-test",
+        )
+    )
 
 
 @pytest.fixture
 def ethereum_backend():
-    return create_backend(BackendConfig(
-        backend_type="ethereum",
-        eth_finality_mode="latest",
-        eth_confirmations=1,
-    ))
+    return create_backend(
+        BackendConfig(
+            backend_type="ethereum",
+            eth_finality_mode="latest",
+            eth_confirmations=1,
+        )
+    )
 
 
 @pytest.fixture
 def ethereum_l2_backend():
-    return create_backend(BackendConfig(
-        backend_type="ethereum",
-        eth_use_l2=True,
-        eth_l2_name="base",
-        eth_finality_mode="latest",
-        eth_confirmations=0,
-    ))
+    return create_backend(
+        BackendConfig(
+            backend_type="ethereum",
+            eth_use_l2=True,
+            eth_l2_name="base",
+            eth_finality_mode="latest",
+            eth_confirmations=0,
+        )
+    )
 
 
 ALL_BACKENDS = ["local_backend", "base_l1_backend", "ethereum_backend"]
@@ -74,6 +80,7 @@ def _sample_record(entity_id: str = None) -> tuple[str, bytes, bytes, bytes]:
 # ---------------------------------------------------------------------------
 # Factory tests
 # ---------------------------------------------------------------------------
+
 
 class TestFactory:
     def test_create_local(self):
@@ -96,6 +103,7 @@ class TestFactory:
 # ---------------------------------------------------------------------------
 # Interface contract tests (parameterized across all backends)
 # ---------------------------------------------------------------------------
+
 
 class TestBackendContract:
     """Every backend must satisfy these interface requirements."""
@@ -164,6 +172,7 @@ class TestBackendContract:
 # Local backend specific tests
 # ---------------------------------------------------------------------------
 
+
 class TestLocalBackend:
     def test_instant_finality(self, local_backend):
         eid, rec, sig, vk = _sample_record()
@@ -184,6 +193,7 @@ class TestLocalBackend:
 # ---------------------------------------------------------------------------
 # Base L1 specific tests
 # ---------------------------------------------------------------------------
+
 
 class TestBaseL1Backend:
     def test_single_slot_finality(self, base_l1_backend):
@@ -242,10 +252,12 @@ class TestBaseL1Backend:
         assert base_l1_backend.total_staked < initial_staked
 
     def test_min_stake_enforcement(self):
-        backend = create_backend(BackendConfig(
-            backend_type="base-l1",
-            min_stake_wei=5000,
-        ))
+        backend = create_backend(
+            BackendConfig(
+                backend_type="base-l1",
+                min_stake_wei=5000,
+            )
+        )
         assert backend.register_node("under-stake", "US-East", stake_wei=1000) is False
         assert backend.register_node("ok-stake", "US-East", stake_wei=5000) is True
 
@@ -266,6 +278,7 @@ class TestBaseL1Backend:
 # ---------------------------------------------------------------------------
 # Ethereum backend specific tests
 # ---------------------------------------------------------------------------
+
 
 class TestEthereumBackend:
     def test_probabilistic_finality(self, ethereum_backend):
@@ -321,11 +334,13 @@ class TestEthereumBackend:
         assert slashed == 10_000  # 10% of 100,000
 
     def test_finality_mode_latest(self):
-        backend = create_backend(BackendConfig(
-            backend_type="ethereum",
-            eth_finality_mode="latest",
-            eth_confirmations=0,
-        ))
+        backend = create_backend(
+            BackendConfig(
+                backend_type="ethereum",
+                eth_finality_mode="latest",
+                eth_confirmations=0,
+            )
+        )
         eid, rec, sig, vk = _sample_record()
         backend.append_commitment(eid, rec, sig, vk)
         assert backend.is_finalized(eid) is True
@@ -346,13 +361,16 @@ class TestEthereumBackend:
 # Comparison tests — verify relative properties across backends
 # ---------------------------------------------------------------------------
 
+
 class TestBackendComparison:
     def test_base_l1_faster_finality_than_ethereum_safe(self, base_l1_backend):
         """Compare Base L1 finality against Ethereum in 'safe' mode (realistic)."""
-        eth_safe = create_backend(BackendConfig(
-            backend_type="ethereum",
-            eth_finality_mode="safe",
-        ))
+        eth_safe = create_backend(
+            BackendConfig(
+                backend_type="ethereum",
+                eth_finality_mode="safe",
+            )
+        )
         base_l1_caps = base_l1_backend.capabilities()
         eth_caps = eth_safe.capabilities()
         assert base_l1_caps.estimated_finality_seconds < eth_caps.estimated_finality_seconds
@@ -368,9 +386,7 @@ class TestBackendComparison:
         assert base_l1_caps.has_slashing is True
         assert eth_caps.has_slashing is True
 
-    def test_base_l1_has_native_proofs_ethereum_does_not(
-        self, base_l1_backend, ethereum_backend
-    ):
+    def test_base_l1_has_native_proofs_ethereum_does_not(self, base_l1_backend, ethereum_backend):
         assert base_l1_backend.capabilities().has_native_storage_proofs is True
         assert ethereum_backend.capabilities().has_native_storage_proofs is False
 

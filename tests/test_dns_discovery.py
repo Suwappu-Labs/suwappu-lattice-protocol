@@ -33,7 +33,9 @@ def other_operator() -> KeyPair:
     return KeyPair.generate("dns-test-other-operator")
 
 
-def _nir(op: KeyPair, endpoint: str = "a.example.com", name: str = "Test Net") -> NetworkIdentityRecord:
+def _nir(
+    op: KeyPair, endpoint: str = "a.example.com", name: str = "Test Net"
+) -> NetworkIdentityRecord:
     return NetworkIdentityRecord.create(op, b"\xaa" * 32, 0, name, endpoint)
 
 
@@ -43,7 +45,6 @@ def _nir(op: KeyPair, endpoint: str = "a.example.com", name: str = "Test Net") -
 
 
 class TestNIRSerialization:
-
     def test_round_trip_preserves_all_fields(self, operator):
         nir = _nir(operator)
         txt = DNSDiscoveryService._serialize_nir(nir)
@@ -79,7 +80,6 @@ class TestNIRSerialization:
 
 
 class TestLocalCacheDNSProvider:
-
     def test_publish_and_query_single_record(self):
         p = LocalCacheDNSProvider()
         assert p.publish_txt("_etp-nir.a.example.com", "record-1") is True
@@ -118,7 +118,6 @@ class TestLocalCacheDNSProvider:
 
 
 class TestDiscoveryServiceWithProvider:
-
     def test_publish_writes_to_provider(self, operator):
         provider = LocalCacheDNSProvider()
         svc = DNSDiscoveryService(domain="etp.test", provider=provider)
@@ -159,23 +158,34 @@ class TestDiscoveryServiceWithProvider:
 
     def test_tampered_record_rejected(self, operator):
         """TXT records whose signatures fail ML-DSA verify must be dropped."""
+
         class TamperingProvider(DNSProvider):
-            def publish_txt(self, name, value): return True
-            def delete_txt(self, name): return True
+            def publish_txt(self, name, value):
+                return True
+
+            def delete_txt(self, name):
+                return True
+
             def query_txt(self, name):
                 # Return a NIR with a bogus signature
                 import json
-                return [json.dumps({
-                    "v": 1,
-                    "network_id": "deadbeef",
-                    "operator_vk": "00" * 1952,
-                    "genesis_sth_root": "11" * 32,
-                    "genesis_sth_sequence": 0,
-                    "display_name": "Attacker",
-                    "discovery_endpoint": "evil.example.com",
-                    "created_at": 0.0,
-                    "signature": "ff" * 3309,
-                }, separators=(",", ":"))]
+
+                return [
+                    json.dumps(
+                        {
+                            "v": 1,
+                            "network_id": "deadbeef",
+                            "operator_vk": "00" * 1952,
+                            "genesis_sth_root": "11" * 32,
+                            "genesis_sth_sequence": 0,
+                            "display_name": "Attacker",
+                            "discovery_endpoint": "evil.example.com",
+                            "created_at": 0.0,
+                            "signature": "ff" * 3309,
+                        },
+                        separators=(",", ":"),
+                    )
+                ]
 
         svc = DNSDiscoveryService(domain="evil.example.com", provider=TamperingProvider())
         svc._domain_index["evil.example.com"] = []
@@ -185,9 +195,14 @@ class TestDiscoveryServiceWithProvider:
 
     def test_malformed_txt_silently_ignored(self, operator):
         class MalformedProvider(DNSProvider):
-            def publish_txt(self, name, value): return True
-            def delete_txt(self, name): return True
-            def query_txt(self, name): return ["not-json", "", "{}"]
+            def publish_txt(self, name, value):
+                return True
+
+            def delete_txt(self, name):
+                return True
+
+            def query_txt(self, name):
+                return ["not-json", "", "{}"]
 
         svc = DNSDiscoveryService(domain="mal.example.com", provider=MalformedProvider())
         svc._domain_index["mal.example.com"] = []
@@ -202,11 +217,10 @@ class TestDiscoveryServiceWithProvider:
 
 
 class TestRealDNSPath:
-
     def test_dns_query_timeout_returns_empty(self, monkeypatch):
         """When dnspython raises, _query_real_dns returns []."""
-        import dns.resolver
         import dns.exception
+        import dns.resolver
 
         def raise_timeout(*args, **kwargs):
             raise dns.exception.Timeout()
@@ -251,6 +265,7 @@ class TestRealDNSPath:
             if name == "_etp-nir.real.example.com" and rdtype == "TXT":
                 return FakeAnswer()
             import dns.exception
+
             raise dns.exception.Timeout()
 
         monkeypatch.setattr(dns.resolver, "resolve", fake_resolve)
@@ -267,7 +282,6 @@ class TestRealDNSPath:
 
 
 class TestDefaultProvider:
-
     def test_default_provider_is_local_cache(self):
         svc = DNSDiscoveryService()
         assert isinstance(svc._provider, LocalCacheDNSProvider)

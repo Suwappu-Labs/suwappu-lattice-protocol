@@ -4,33 +4,30 @@ from __future__ import annotations
 
 import pytest
 
-from src.ltp.zk.ec_backend import bls12_381_available
 from src.ltp.execution.committee.dkg.scalar_poly import ScalarField, ScalarPoly
+from src.ltp.zk.ec_backend import bls12_381_available
 
-pytestmark = pytest.mark.skipif(
-    not bls12_381_available(), reason="py_ecc not installed"
-)
+pytestmark = pytest.mark.skipif(not bls12_381_available(), reason="py_ecc not installed")
 
 
 from src.ltp.execution.committee.dkg.vss import PedersenVSS  # noqa: E402
-
 
 R = ScalarField.R
 
 
 class TestGenerators:
-
     def test_g_and_h_are_distinct(self):
         from src.ltp.execution.committee.dkg.vss import G_POINT, H_POINT
+
         assert G_POINT != H_POINT
 
     def test_h_is_not_identity(self):
         from src.ltp.execution.committee.dkg.vss import H_POINT
+
         assert H_POINT is not None
 
 
 class TestGenerateCommitments:
-
     def test_returns_correct_count(self):
         secret_poly = ScalarPoly([10, 20])
         blinding_poly = ScalarPoly([30, 40])
@@ -53,7 +50,6 @@ class TestGenerateCommitments:
 
 
 class TestCreateShare:
-
     def test_share_matches_poly_evaluation(self):
         secret_poly = ScalarPoly([10, 20, 30])
         blinding_poly = ScalarPoly([5, 15, 25])
@@ -71,7 +67,6 @@ class TestCreateShare:
 
 
 class TestVerifyShare:
-
     def test_valid_share_verifies(self):
         secret_poly = ScalarPoly([10, 20])
         blinding_poly = ScalarPoly([5, 15])

@@ -34,11 +34,11 @@ _NONCE_RETRIES = 3
 
 # Rate limiter defaults
 _DEFAULT_MAX_TPS = 10  # max transactions per second
-_DEFAULT_BURST = 20    # burst allowance (token bucket capacity)
+_DEFAULT_BURST = 20  # burst allowance (token bucket capacity)
 
 # Circuit breaker defaults
-_DEFAULT_FAILURE_THRESHOLD = 5   # consecutive failures to trip breaker
-_DEFAULT_COOLDOWN_SECONDS = 30   # seconds to wait before retrying after trip
+_DEFAULT_FAILURE_THRESHOLD = 5  # consecutive failures to trip breaker
+_DEFAULT_COOLDOWN_SECONDS = 30  # seconds to wait before retrying after trip
 
 
 class CircuitBreaker:
@@ -80,9 +80,9 @@ class CircuitBreaker:
             if self._consecutive_failures >= self._failure_threshold:
                 self._tripped_at = time.monotonic()
                 logger.warning(
-                    "[CircuitBreaker] TRIPPED after %d consecutive failures. "
-                    "Cooldown: %ds",
-                    self._consecutive_failures, self._cooldown_seconds,
+                    "[CircuitBreaker] TRIPPED after %d consecutive failures. Cooldown: %ds",
+                    self._consecutive_failures,
+                    self._cooldown_seconds,
                 )
 
     @property
@@ -123,6 +123,7 @@ class TokenBucketRateLimiter:
         elapsed = now - self._last_refill
         self._tokens = min(self._burst, self._tokens + elapsed * self._max_tps)
         self._last_refill = now
+
 
 # Minimal ABI for LTPAnchorRegistry — only the functions we call.
 _REGISTRY_ABI = [
@@ -282,8 +283,7 @@ class AnchorClient:
             from web3 import Web3
         except ImportError as e:
             raise ImportError(
-                "web3 is required for on-chain anchoring. "
-                "Install with: pip install 'ltp[chain]'"
+                "web3 is required for on-chain anchoring. Install with: pip install 'ltp[chain]'"
             ) from e
 
         self._w3 = Web3(Web3.HTTPProvider(rpc_url))
@@ -319,12 +319,11 @@ class AnchorClient:
                   {prefix}ANCHOR_FAILURE_THRESHOLD, {prefix}ANCHOR_COOLDOWN_SECONDS,
                   {prefix}ANCHOR_TX_TIMEOUT
         """
+
         def _get(name: str, default: str | None = None) -> str:
             val = os.environ.get(f"{prefix}{name}", default)
             if val is None:
-                raise EnvironmentError(
-                    f"Missing required env var: {prefix}{name}"
-                )
+                raise EnvironmentError(f"Missing required env var: {prefix}{name}")
             return val
 
         client = cls(
@@ -335,7 +334,9 @@ class AnchorClient:
             tx_timeout=int(_get("ANCHOR_TX_TIMEOUT", str(_TX_RECEIPT_TIMEOUT))),
             max_tps=float(_get("ANCHOR_MAX_TPS", str(_DEFAULT_MAX_TPS))),
             burst=int(_get("ANCHOR_BURST", str(_DEFAULT_BURST))),
-            failure_threshold=int(_get("ANCHOR_FAILURE_THRESHOLD", str(_DEFAULT_FAILURE_THRESHOLD))),
+            failure_threshold=int(
+                _get("ANCHOR_FAILURE_THRESHOLD", str(_DEFAULT_FAILURE_THRESHOLD))
+            ),
             cooldown_seconds=float(_get("ANCHOR_COOLDOWN_SECONDS", str(_DEFAULT_COOLDOWN_SECONDS))),
         )
 
@@ -357,29 +358,26 @@ class AnchorClient:
         """
         # 1. RPC connectivity
         if not self._w3.is_connected():
-            raise RuntimeError(
-                f"RPC endpoint unreachable: {self._w3.provider.endpoint_uri}"
-            )
+            raise RuntimeError(f"RPC endpoint unreachable: {self._w3.provider.endpoint_uri}")
 
         # 2. Chain ID match
         remote_chain_id = self._w3.eth.chain_id
         if remote_chain_id != self._chain_id:
             raise RuntimeError(
-                f"Chain ID mismatch: configured={self._chain_id}, "
-                f"remote={remote_chain_id}"
+                f"Chain ID mismatch: configured={self._chain_id}, remote={remote_chain_id}"
             )
 
         # 3. Contract has deployed code
         code = self._w3.eth.get_code(self._contract.address)
         if code == b"" or code == b"\x00":
             raise RuntimeError(
-                f"No contract deployed at {self._contract.address} "
-                f"on chain {self._chain_id}"
+                f"No contract deployed at {self._contract.address} on chain {self._chain_id}"
             )
 
         logger.info(
             "[AnchorClient] Live configuration verified: chain=%d, contract=%s",
-            self._chain_id, self._contract.address,
+            self._chain_id,
+            self._contract.address,
         )
 
     def _send_tx(self, fn) -> dict:
@@ -412,20 +410,20 @@ class AnchorClient:
         for attempt in range(_NONCE_RETRIES):
             try:
                 with self._nonce_lock:
-                    nonce = self._w3.eth.get_transaction_count(
-                        self._account.address, "pending"
-                    )
+                    nonce = self._w3.eth.get_transaction_count(self._account.address, "pending")
                     estimated_gas = fn.estimate_gas({"from": self._account.address})
                     # 20% headroom on gas estimate
                     gas_limit = int(estimated_gas * 1.2)
 
-                    tx = fn.build_transaction({
-                        "from": self._account.address,
-                        "nonce": nonce,
-                        "chainId": self._chain_id,
-                        "gas": gas_limit,
-                        "gasPrice": self._w3.eth.gas_price,
-                    })
+                    tx = fn.build_transaction(
+                        {
+                            "from": self._account.address,
+                            "nonce": nonce,
+                            "chainId": self._chain_id,
+                            "gas": gas_limit,
+                            "gasPrice": self._w3.eth.gas_price,
+                        }
+                    )
                     signed = self._account.sign_transaction(tx)
                     tx_hash = self._w3.eth.send_raw_transaction(signed.raw_transaction)
 
@@ -434,9 +432,7 @@ class AnchorClient:
                 )
                 if receipt["status"] == 0:
                     self._circuit_breaker.record_failure()
-                    raise RuntimeError(
-                        f"Transaction reverted: {tx_hash.hex()}"
-                    )
+                    raise RuntimeError(f"Transaction reverted: {tx_hash.hex()}")
 
                 self._circuit_breaker.record_success()
                 return receipt
@@ -472,21 +468,23 @@ class AnchorClient:
     def batch_anchor(self, submissions: list["AnchorSubmission"]) -> str:
         """Anchor multiple submissions in a single transaction. Returns tx hash hex."""
         digests = [s.anchor_digest for s in submissions]
-        entity_ids = [
-            getattr(s, "entity_id_hash", s.anchor_digest) for s in submissions
-        ]
+        entity_ids = [getattr(s, "entity_id_hash", s.anchor_digest) for s in submissions]
         roots = [s.merkle_root for s in submissions]
         policies = [s.policy_hash for s in submissions]
         signers = [s.signer_vk_hash for s in submissions]
         sequences = [s.sequence for s in submissions]
         valid_untils = [s.valid_until for s in submissions]
-        receipt_types = [
-            _RECEIPT_TYPE_ORDINALS.get(s.receipt_type, 0) for s in submissions
-        ]
+        receipt_types = [_RECEIPT_TYPE_ORDINALS.get(s.receipt_type, 0) for s in submissions]
 
         fn = self._contract.functions.batchAnchor(
-            digests, entity_ids, roots, policies, signers,
-            sequences, valid_untils, receipt_types,
+            digests,
+            entity_ids,
+            roots,
+            policies,
+            signers,
+            sequences,
+            valid_untils,
+            receipt_types,
         )
         receipt = self._send_tx(fn)
         return receipt["transactionHash"].hex()
@@ -501,7 +499,11 @@ class AnchorClient:
     ) -> str:
         """Transition an entity's state on-chain. Returns tx hash hex."""
         fn = self._contract.functions.transitionState(
-            entity_id_hash, new_state, signer_vk_hash, sequence, valid_until,
+            entity_id_hash,
+            new_state,
+            signer_vk_hash,
+            sequence,
+            valid_until,
         )
         receipt = self._send_tx(fn)
         return receipt["transactionHash"].hex()
@@ -525,6 +527,7 @@ class AnchorClient:
     def entity_state(self, entity_id_hash: bytes) -> "EntityState":
         """Get the on-chain entity state for an entity ID hash."""
         from ..anchor.state import EntityState
+
         raw = self._contract.functions.getEntityState(entity_id_hash).call()
         return EntityState(raw)
 
@@ -558,13 +561,9 @@ class AnchorClient:
         receipt = self._send_tx(fn)
         return receipt["transactionHash"].hex()
 
-    def reassign_entity_signer(
-        self, entity_id_hash: bytes, new_signer_vk_hash: bytes
-    ) -> str:
+    def reassign_entity_signer(self, entity_id_hash: bytes, new_signer_vk_hash: bytes) -> str:
         """Reassign an entity's bound signer. Returns tx hash hex."""
-        fn = self._contract.functions.reassignEntitySigner(
-            entity_id_hash, new_signer_vk_hash
-        )
+        fn = self._contract.functions.reassignEntitySigner(entity_id_hash, new_signer_vk_hash)
         receipt = self._send_tx(fn)
         return receipt["transactionHash"].hex()
 
@@ -575,5 +574,6 @@ class AnchorClient:
     def get_entity_states(self, entity_id_hashes: list[bytes]) -> list["EntityState"]:
         """Batch get entity states for multiple entity ID hashes."""
         from ..anchor.state import EntityState
+
         raw_states = self._contract.functions.getEntityStates(entity_id_hashes).call()
         return [EntityState(s) for s in raw_states]

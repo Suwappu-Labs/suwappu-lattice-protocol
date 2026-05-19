@@ -6,12 +6,10 @@ import pytest
 
 from src.ltp.execution.committee.dkg.scalar_poly import ScalarField, ScalarPoly
 
-
-R = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+R = 0x73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001
 
 
 class TestScalarField:
-
     def test_add_basic(self):
         assert ScalarField.add(3, 5) == 8
 
@@ -45,7 +43,6 @@ class TestScalarField:
 
 
 class TestScalarPoly:
-
     def test_constant_poly(self):
         p = ScalarPoly([42])
         assert p.evaluate(0) == 42
@@ -88,9 +85,7 @@ class TestScalarPoly:
         reconstructed = 0
         for i in subset:
             li = ScalarPoly.lagrange_coefficient(i, subset)
-            reconstructed = ScalarField.add(
-                reconstructed, ScalarField.mul(shares[i], li)
-            )
+            reconstructed = ScalarField.add(reconstructed, ScalarField.mul(shares[i], li))
         assert reconstructed == secret
 
     def test_lagrange_3_of_5(self):
@@ -102,9 +97,7 @@ class TestScalarPoly:
         reconstructed = 0
         for i in subset:
             li = ScalarPoly.lagrange_coefficient(i, subset)
-            reconstructed = ScalarField.add(
-                reconstructed, ScalarField.mul(shares[i], li)
-            )
+            reconstructed = ScalarField.add(reconstructed, ScalarField.mul(shares[i], li))
         assert reconstructed == secret
 
     def test_lagrange_insufficient_shares_fails(self):

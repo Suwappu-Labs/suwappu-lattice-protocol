@@ -44,10 +44,11 @@ __all__ = [
 
 class ZKBridgeBackend(Enum):
     """Backend discriminator for ZK bridge proof systems."""
-    SIMULATED = "simulated"    # Hash-based PoC (SNARK-style, 64B)
-    SP1 = "sp1"                # Succinct SP1 zkVM (future)
-    RISC_ZERO = "risc_zero"    # RISC Zero zkVM (future)
-    STARK = "stark"            # Post-quantum hash-only proofs (128B simulated)
+
+    SIMULATED = "simulated"  # Hash-based PoC (SNARK-style, 64B)
+    SP1 = "sp1"  # Succinct SP1 zkVM (future)
+    RISC_ZERO = "risc_zero"  # RISC Zero zkVM (future)
+    STARK = "stark"  # Post-quantum hash-only proofs (128B simulated)
 
 
 @dataclass(frozen=True)
@@ -57,10 +58,11 @@ class ZKBridgePublicInputs:
     These are the values the verifier sees. The witness (ML-DSA signature,
     full VK, signable payload) is private to the prover.
     """
-    sth_root_hash: bytes       # 32B Merkle root from STH
-    operator_vk_hash: bytes    # 32B SHA3-256 of operator ML-DSA VK
-    tree_size: int             # Number of leaves at signing time
-    sth_sequence: int          # STH sequence number
+
+    sth_root_hash: bytes  # 32B Merkle root from STH
+    operator_vk_hash: bytes  # 32B SHA3-256 of operator ML-DSA VK
+    tree_size: int  # Number of leaves at signing time
+    sth_sequence: int  # STH sequence number
 
     def to_bytes(self) -> bytes:
         """Deterministic canonical encoding for proof computation."""
@@ -91,10 +93,11 @@ class ZKBridgeProof:
       [0:32]  proof_hash — H(DOMAIN + witness_data + "proof")
       [32:64] verify_tag — H(DOMAIN + public_inputs + proof_hash + "sim-verify")
     """
+
     proof_bytes: bytes
     backend: ZKBridgeBackend
     public_inputs: ZKBridgePublicInputs
-    proof_id: str              # H(proof_bytes).hex() for dedup
+    proof_id: str  # H(proof_bytes).hex() for dedup
 
     @property
     def proof_size_bytes(self) -> int:
@@ -120,8 +123,7 @@ class ZKBridgeProver(ABC):
 
     @property
     @abstractmethod
-    def backend(self) -> ZKBridgeBackend:
-        ...
+    def backend(self) -> ZKBridgeBackend: ...
 
     # Shared helpers for zkVM-backed provers (SP1, RISC Zero).
 
@@ -300,9 +302,7 @@ class STARKBridgeProver(ZKBridgeProver):
         """Generate a real FRI-based STARK proof of STH signature validity."""
         # Step 1: Soundness pre-check
         if not sth.verify():
-            raise ValueError(
-                "Cannot generate STARK proof for invalid STH signature"
-            )
+            raise ValueError("Cannot generate STARK proof for invalid STH signature")
 
         # Step 2: Extract public inputs
         public_inputs = ZKBridgePublicInputs.from_sth(sth)
@@ -323,8 +323,7 @@ class STARKBridgeProver(ZKBridgeProver):
 
         # Step 4: Add blinding polynomial for zero-knowledge
         blinding_coeffs = [
-            int.from_bytes(os.urandom(7), "big") % F.P
-            for _ in range(len(witness_elems))
+            int.from_bytes(os.urandom(7), "big") % F.P for _ in range(len(witness_elems))
         ]
         combined = F.poly_add(witness_elems, F.poly_mul_scalar(blinding_coeffs, F.exp(2, 40)))
 
@@ -342,9 +341,7 @@ class STARKBridgeProver(ZKBridgeProver):
         public_inputs_hash = canonical_hash_bytes(
             DOMAIN_ZK_BRIDGE + public_inputs.to_bytes() + b"stark-public"
         )
-        witness_hash = canonical_hash_bytes(
-            DOMAIN_ZK_BRIDGE + witness_bytes + b"stark-witness"
-        )
+        witness_hash = canonical_hash_bytes(DOMAIN_ZK_BRIDGE + witness_bytes + b"stark-witness")
 
         # Step 7: Assemble proof bytes with version-3 header
         header = struct.pack(
@@ -356,7 +353,12 @@ class STARKBridgeProver(ZKBridgeProver):
         # Proof = header + public_inputs_hash + witness_hash + FRI Merkle roots + verify_tag
         fri_roots = b"".join(fri_proof.layer_roots)
         verify_tag = canonical_hash_bytes(
-            DOMAIN_ZK_BRIDGE + header + public_inputs_hash + witness_hash + fri_roots + b"stark-verify"
+            DOMAIN_ZK_BRIDGE
+            + header
+            + public_inputs_hash
+            + witness_hash
+            + fri_roots
+            + b"stark-verify"
         )
         proof_bytes = header + public_inputs_hash + witness_hash + fri_roots + verify_tag
 
@@ -388,10 +390,7 @@ def _verify_stark(proof: ZKBridgeProof) -> bool:
         all_layers = data[:96]
         claimed_tag = data[96:128]
         expected_tag = canonical_hash_bytes(
-            DOMAIN_ZK_BRIDGE
-            + proof.public_inputs.to_bytes()
-            + all_layers
-            + b"stark-verify"
+            DOMAIN_ZK_BRIDGE + proof.public_inputs.to_bytes() + all_layers + b"stark-verify"
         )
         return hmac.compare_digest(claimed_tag, expected_tag)
 
@@ -408,10 +407,10 @@ def _verify_stark(proof: ZKBridgeProof) -> bool:
             return False
 
         fri_end = 8 + (num_rounds * 64)
-        pre_transcript = data[:fri_end + 64]
-        transcript_hash = data[fri_end + 64:fri_end + 96]
-        claimed_tag = data[fri_end + 96:fri_end + 128]
-        public_inputs_hash = data[fri_end + 32:fri_end + 64]
+        pre_transcript = data[: fri_end + 64]
+        transcript_hash = data[fri_end + 64 : fri_end + 96]
+        claimed_tag = data[fri_end + 96 : fri_end + 128]
+        public_inputs_hash = data[fri_end + 32 : fri_end + 64]
 
         expected_pi_hash = canonical_hash_bytes(
             DOMAIN_ZK_BRIDGE + proof.public_inputs.to_bytes() + b"stark-public"
@@ -440,8 +439,8 @@ def _verify_stark(proof: ZKBridgeProof) -> bool:
         header = data[:8]
         public_inputs_hash = data[8:40]
         witness_hash = data[40:72]
-        fri_roots = data[72:72 + num_rounds * 32]
-        claimed_tag = data[72 + num_rounds * 32:72 + num_rounds * 32 + 32]
+        fri_roots = data[72 : 72 + num_rounds * 32]
+        claimed_tag = data[72 + num_rounds * 32 : 72 + num_rounds * 32 + 32]
 
         # Verify public inputs hash
         expected_pi_hash = canonical_hash_bytes(
@@ -452,7 +451,12 @@ def _verify_stark(proof: ZKBridgeProof) -> bool:
 
         # Verify tag binds all components
         expected_tag = canonical_hash_bytes(
-            DOMAIN_ZK_BRIDGE + header + public_inputs_hash + witness_hash + fri_roots + b"stark-verify"
+            DOMAIN_ZK_BRIDGE
+            + header
+            + public_inputs_hash
+            + witness_hash
+            + fri_roots
+            + b"stark-verify"
         )
         return hmac.compare_digest(claimed_tag, expected_tag)
 

@@ -7,22 +7,31 @@ across internal-lane backends.
 """
 
 import os
+
 import pytest
 
-from src.ltp.primitives import (
-    AEAD, MLKEM, MLDSA,
-    canonical_hash, internal_hash,
-    set_security_profile, get_security_profile,
-    set_compliance_strict,
-    _pqcrypto_kem_available, _pqcrypto_sign_available, _pynacl_available,
-)
+from src.ltp.commitment import CommitmentRecord
 from src.ltp.dual_lane import (
-    SecurityProfile, HashFunction, COMPLIANCE_APPROVED,
+    COMPLIANCE_APPROVED,
+    HashFunction,
+    SecurityProfile,
 )
 from src.ltp.dual_lane.hashing import _blake3_available
-from src.ltp.keypair import KeyPair, SealedBox
 from src.ltp.entity import Entity
-from src.ltp.commitment import CommitmentRecord
+from src.ltp.keypair import KeyPair, SealedBox
+from src.ltp.primitives import (
+    AEAD,
+    MLDSA,
+    MLKEM,
+    _pqcrypto_kem_available,
+    _pqcrypto_sign_available,
+    _pynacl_available,
+    canonical_hash,
+    get_security_profile,
+    internal_hash,
+    set_compliance_strict,
+    set_security_profile,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -47,6 +56,7 @@ def reset_poc_tables():
 # =========================================================================
 # A. Lane boundary enforcement
 # =========================================================================
+
 
 class TestLaneBoundaryEnforcement:
     """Prove the compliance wall holds regardless of what's installed."""
@@ -106,6 +116,7 @@ class TestLaneBoundaryEnforcement:
 # B. Trust anchor independence from internal lane
 # =========================================================================
 
+
 class TestTrustAnchorLaneIndependence:
     """Prove that trust anchors never depend on the internal lane."""
 
@@ -124,8 +135,13 @@ class TestTrustAnchorLaneIndependence:
             sender_id=kp.label,
             shard_map_root=canonical_hash(b"root"),
             content_hash=canonical_hash(b"content"),
-            encoding_params={"n": 8, "k": 4, "algorithm": "reed-solomon-gf256",
-                             "gf_poly": "0x11d", "eval": "vandermonde-powers-of-0x02"},
+            encoding_params={
+                "n": 8,
+                "k": 4,
+                "algorithm": "reed-solomon-gf256",
+                "gf_poly": "0x11d",
+                "eval": "vandermonde-powers-of-0x02",
+            },
             shape="text/plain",
             shape_hash=canonical_hash(b"text/plain"),
             timestamp=1740000000.0,
@@ -147,6 +163,7 @@ class TestTrustAnchorLaneIndependence:
 # =========================================================================
 # C. Protocol-shape assertions at backend boundaries
 # =========================================================================
+
 
 class TestProtocolShapeAssertions:
     """Verify primitive sizes match FIPS 203/204 specifications."""
@@ -199,7 +216,7 @@ class TestProtocolShapeAssertions:
         sealed = SealedBox.seal(b"payload", kp.ek)
         # kem_ct || nonce || aead_ct || aead_tag
         assert len(sealed) >= MLKEM.CT_SIZE + AEAD.NONCE_SIZE + AEAD._tag_size()
-        kem_ct = sealed[:MLKEM.CT_SIZE]
+        kem_ct = sealed[: MLKEM.CT_SIZE]
         assert len(kem_ct) == 1088
 
     def test_sealed_box_roundtrip(self):
@@ -239,6 +256,7 @@ class TestProtocolShapeAssertions:
 # D. Trust-artifact invariance across internal-lane backends
 # =========================================================================
 
+
 class TestTrustArtifactInvariance:
     """Prove canonical trust artifacts are identical regardless of internal lane."""
 
@@ -271,8 +289,13 @@ class TestTrustArtifactInvariance:
             sender_id=kp.label,
             shard_map_root=canonical_hash(b"root"),
             content_hash=canonical_hash(b"content"),
-            encoding_params={"n": 8, "k": 4, "algorithm": "reed-solomon-gf256",
-                             "gf_poly": "0x11d", "eval": "vandermonde-powers-of-0x02"},
+            encoding_params={
+                "n": 8,
+                "k": 4,
+                "algorithm": "reed-solomon-gf256",
+                "gf_poly": "0x11d",
+                "eval": "vandermonde-powers-of-0x02",
+            },
             shape="text/plain",
             shape_hash=canonical_hash(b"text/plain"),
             timestamp=1740000000.0,

@@ -4,41 +4,38 @@
 # source: transfer_service.proto
 # Protobuf Python Version: 6.31.1
 """Generated protocol buffer code."""
+
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pool as _descriptor_pool
 from google.protobuf import runtime_version as _runtime_version
 from google.protobuf import symbol_database as _symbol_database
 from google.protobuf.internal import builder as _builder
+
 _runtime_version.ValidateProtobufRuntimeVersion(
-    _runtime_version.Domain.PUBLIC,
-    6,
-    31,
-    1,
-    '',
-    'transfer_service.proto'
+    _runtime_version.Domain.PUBLIC, 6, 31, 1, "", "transfer_service.proto"
 )
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
 
 
-
-
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16transfer_service.proto\x12\x0cltp.transfer\"Z\n\rCommitRequest\x12\x0f\n\x07\x63ontent\x18\x01 \x01(\x0c\x12\r\n\x05shape\x18\x02 \x01(\t\x12\t\n\x01n\x18\x03 \x01(\x05\x12\t\n\x01k\x18\x04 \x01(\x05\x12\x13\n\x0breceiver_ek\x18\x05 \x01(\x0c\"\\\n\x0e\x43ommitResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x11\n\tentity_id\x18\x02 \x01(\t\x12\x17\n\x0ftransfer_bundle\x18\x03 \x01(\x0c\x12\r\n\x05\x65rror\x18\x04 \x01(\t\"-\n\x12MaterializeRequest\x12\x17\n\x0ftransfer_bundle\x18\x01 \x01(\x0c\"Y\n\x13MaterializeResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\x0c\x12\x11\n\tentity_id\x18\x03 \x01(\t\x12\r\n\x05\x65rror\x18\x04 \x01(\t2\xb6\x01\n\x0fTransferService\x12I\n\x0c\x43ommitEntity\x12\x1b.ltp.transfer.CommitRequest\x1a\x1c.ltp.transfer.CommitResponse\x12X\n\x11MaterializeEntity\x12 .ltp.transfer.MaterializeRequest\x1a!.ltp.transfer.MaterializeResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
+    b'\n\x16transfer_service.proto\x12\x0cltp.transfer"Z\n\rCommitRequest\x12\x0f\n\x07\x63ontent\x18\x01 \x01(\x0c\x12\r\n\x05shape\x18\x02 \x01(\t\x12\t\n\x01n\x18\x03 \x01(\x05\x12\t\n\x01k\x18\x04 \x01(\x05\x12\x13\n\x0breceiver_ek\x18\x05 \x01(\x0c"\\\n\x0e\x43ommitResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x11\n\tentity_id\x18\x02 \x01(\t\x12\x17\n\x0ftransfer_bundle\x18\x03 \x01(\x0c\x12\r\n\x05\x65rror\x18\x04 \x01(\t"-\n\x12MaterializeRequest\x12\x17\n\x0ftransfer_bundle\x18\x01 \x01(\x0c"Y\n\x13MaterializeResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\x0c\x12\x11\n\tentity_id\x18\x03 \x01(\t\x12\r\n\x05\x65rror\x18\x04 \x01(\t2\xb6\x01\n\x0fTransferService\x12I\n\x0c\x43ommitEntity\x12\x1b.ltp.transfer.CommitRequest\x1a\x1c.ltp.transfer.CommitResponse\x12X\n\x11MaterializeEntity\x12 .ltp.transfer.MaterializeRequest\x1a!.ltp.transfer.MaterializeResponseb\x06proto3'
+)
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
-_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'transfer_service_pb2', _globals)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, "transfer_service_pb2", _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-  DESCRIPTOR._loaded_options = None
-  _globals['_COMMITREQUEST']._serialized_start=40
-  _globals['_COMMITREQUEST']._serialized_end=130
-  _globals['_COMMITRESPONSE']._serialized_start=132
-  _globals['_COMMITRESPONSE']._serialized_end=224
-  _globals['_MATERIALIZEREQUEST']._serialized_start=226
-  _globals['_MATERIALIZEREQUEST']._serialized_end=271
-  _globals['_MATERIALIZERESPONSE']._serialized_start=273
-  _globals['_MATERIALIZERESPONSE']._serialized_end=362
-  _globals['_TRANSFERSERVICE']._serialized_start=365
-  _globals['_TRANSFERSERVICE']._serialized_end=547
+    DESCRIPTOR._loaded_options = None
+    _globals["_COMMITREQUEST"]._serialized_start = 40
+    _globals["_COMMITREQUEST"]._serialized_end = 130
+    _globals["_COMMITRESPONSE"]._serialized_start = 132
+    _globals["_COMMITRESPONSE"]._serialized_end = 224
+    _globals["_MATERIALIZEREQUEST"]._serialized_start = 226
+    _globals["_MATERIALIZEREQUEST"]._serialized_end = 271
+    _globals["_MATERIALIZERESPONSE"]._serialized_start = 273
+    _globals["_MATERIALIZERESPONSE"]._serialized_end = 362
+    _globals["_TRANSFERSERVICE"]._serialized_start = 365
+    _globals["_TRANSFERSERVICE"]._serialized_end = 547
 # @@protoc_insertion_point(module_scope)

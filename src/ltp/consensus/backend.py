@@ -5,9 +5,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Iterator
 
-from .types import CommitDecision
-from .faults import FaultConfig
 from .engine import LocalMysticetiEngine
+from .faults import FaultConfig
+from .types import CommitDecision
 
 __all__ = ["ConsensusBackend", "LocalConsensusBackend"]
 

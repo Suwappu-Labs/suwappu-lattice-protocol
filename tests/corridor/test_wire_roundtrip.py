@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 
 from ltp.corridor import (
+    DA_SLA_DEFAULT,
     AttestationPayload,
     AuthScheme,
     Cid,
     Commitment,
     CorridorAttestation,
-    DA_SLA_DEFAULT,
     DidRotationStatement,
     StateAnchor,
     WitnessSignature,

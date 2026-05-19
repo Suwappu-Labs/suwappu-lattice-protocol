@@ -56,19 +56,25 @@ class TestConsensusEvent:
     def test_each_event_type_has_distinct_payload_keys(self):
         """Verify expected payload shapes per event type."""
         epoch_payload = {
-            "old_epoch": 0, "new_epoch": 1,
-            "validator_count": 4, "dkg_completed": True,
+            "old_epoch": 0,
+            "new_epoch": 1,
+            "validator_count": 4,
+            "dkg_completed": True,
         }
         evicted_payload = {
-            "writer_fp": b"\x01" * 32, "validator_index": 2,
-            "reason": "crash", "remaining_active": 3,
+            "writer_fp": b"\x01" * 32,
+            "validator_index": 2,
+            "reason": "crash",
+            "remaining_active": 3,
         }
         attested_payload = {
-            "round": 5, "batch_digest": b"\xab" * 32,
+            "round": 5,
+            "batch_digest": b"\xab" * 32,
             "signature": b"\xcd" * 96,
         }
         rebuilt_payload = {
-            "epoch": 2, "validator_count": 7,
+            "epoch": 2,
+            "validator_count": 7,
             "quorum_threshold": 5,
         }
 
@@ -80,7 +86,9 @@ class TestConsensusEvent:
         ]:
             event = ConsensusEvent(
                 event_type=event_type,
-                epoch=1, round=0, timestamp_ms=0,
+                epoch=1,
+                round=0,
+                timestamp_ms=0,
                 payload=payload,
             )
             assert event.payload == payload

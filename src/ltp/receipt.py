@@ -26,14 +26,14 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 
-from .encoding import CanonicalEncoder
 from .domain import (
-    DOMAIN_APPROVAL_RECEIPT,
     DOMAIN_ANCHOR_DIGEST,
+    DOMAIN_APPROVAL_RECEIPT,
     domain_hash_bytes,
     domain_sign,
     domain_verify,
 )
+from .encoding import CanonicalEncoder
 from .primitives import canonical_hash, canonical_hash_bytes
 
 __all__ = ["ReceiptType", "ApprovalReceipt"]
@@ -41,6 +41,7 @@ __all__ = ["ReceiptType", "ApprovalReceipt"]
 
 class ReceiptType(Enum):
     """Types of protocol actions that produce receipts."""
+
     COMMIT = "COMMIT"
     MATERIALIZE = "MATERIALIZE"
     SHARD_AUDIT_PASS = "SHARD_AUDIT_PASS"

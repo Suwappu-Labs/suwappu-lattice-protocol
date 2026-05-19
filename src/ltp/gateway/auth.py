@@ -28,10 +28,11 @@ __all__ = ["JWTClaims", "create_jwt", "verify_jwt"]
 @dataclass
 class JWTClaims:
     """Decoded JWT claims."""
-    sub: str          # node_id
-    iss: str          # signer kid hex (32-byte fingerprint)
-    exp: float        # expiry timestamp
-    iat: float        # issued-at timestamp
+
+    sub: str  # node_id
+    iss: str  # signer kid hex (32-byte fingerprint)
+    exp: float  # expiry timestamp
+    iat: float  # issued-at timestamp
 
 
 def _b64url_encode(data: bytes) -> str:

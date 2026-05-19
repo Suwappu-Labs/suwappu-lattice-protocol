@@ -21,13 +21,13 @@ import struct
 import time
 from dataclasses import dataclass
 
-from .encoding import CanonicalEncoder
 from .domain import (
     DOMAIN_SIGNED_ENVELOPE,
     domain_sign,
     domain_verify,
     signer_fingerprint,
 )
+from .encoding import CanonicalEncoder
 from .primitives import canonical_hash, canonical_hash_bytes
 
 __all__ = ["SignedEnvelope"]

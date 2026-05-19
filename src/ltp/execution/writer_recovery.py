@@ -31,19 +31,21 @@ __all__ = [
 # EmergencyAction
 # ---------------------------------------------------------------------------
 
+
 class EmergencyAction(Enum):
     """Recovery actions available to privileged operators."""
-    FREEZE_REGISTRY    = "freeze_registry"
-    UNFREEZE_REGISTRY  = "unfreeze_registry"
-    FREEZE_VM          = "freeze_vm"
-    UNFREEZE_VM        = "unfreeze_vm"
-    BYPASS_AUTHORIZER  = "bypass_authorizer"
-    CLEAR_BYPASS       = "clear_bypass"
-    FORCE_REVOKE       = "force_revoke"
-    ROLLBACK_POLICY    = "rollback_policy"
-    ROTATE_OWNER       = "rotate_owner"
-    OVERRIDE_DISPATCH  = "override_dispatch"
-    CLEAR_OVERRIDE     = "clear_override"
+
+    FREEZE_REGISTRY = "freeze_registry"
+    UNFREEZE_REGISTRY = "unfreeze_registry"
+    FREEZE_VM = "freeze_vm"
+    UNFREEZE_VM = "unfreeze_vm"
+    BYPASS_AUTHORIZER = "bypass_authorizer"
+    CLEAR_BYPASS = "clear_bypass"
+    FORCE_REVOKE = "force_revoke"
+    ROLLBACK_POLICY = "rollback_policy"
+    ROTATE_OWNER = "rotate_owner"
+    OVERRIDE_DISPATCH = "override_dispatch"
+    CLEAR_OVERRIDE = "clear_override"
     FORCE_EPOCH_ADVANCE = "force_epoch_advance"
 
 
@@ -51,20 +53,23 @@ class EmergencyAction(Enum):
 # EmergencyIntervention
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class EmergencyIntervention:
     """Immutable audit record for a single emergency action."""
-    action:       EmergencyAction
-    actor_fp:     bytes
-    reason:       str
-    timestamp:    int
-    scope:        Optional[int] = None   # vm_tag for VM-scoped actions
-    auto_expires: Optional[int] = None   # epoch/timestamp when effect expires
+
+    action: EmergencyAction
+    actor_fp: bytes
+    reason: str
+    timestamp: int
+    scope: Optional[int] = None  # vm_tag for VM-scoped actions
+    auto_expires: Optional[int] = None  # epoch/timestamp when effect expires
 
 
 # ---------------------------------------------------------------------------
 # EmergencyState
 # ---------------------------------------------------------------------------
+
 
 class EmergencyState:
     """Tracks active emergency interventions and exposes guard predicates.
@@ -104,8 +109,8 @@ class EmergencyState:
 
     def freeze_registry(
         self,
-        actor_fp:  bytes,
-        reason:    str,
+        actor_fp: bytes,
+        reason: str,
         timestamp: int,
     ) -> None:
         self._registry_frozen = True
@@ -120,7 +125,7 @@ class EmergencyState:
 
     def unfreeze_registry(
         self,
-        actor_fp:  bytes,
+        actor_fp: bytes,
         timestamp: int,
     ) -> None:
         self._registry_frozen = False
@@ -139,9 +144,9 @@ class EmergencyState:
 
     def freeze_vm(
         self,
-        vm_tag:    int,
-        actor_fp:  bytes,
-        reason:    str,
+        vm_tag: int,
+        actor_fp: bytes,
+        reason: str,
         timestamp: int,
     ) -> None:
         self._frozen_vms.add(vm_tag)
@@ -157,8 +162,8 @@ class EmergencyState:
 
     def unfreeze_vm(
         self,
-        vm_tag:    int,
-        actor_fp:  bytes,
+        vm_tag: int,
+        actor_fp: bytes,
         timestamp: int,
     ) -> None:
         self._frozen_vms.discard(vm_tag)
@@ -178,9 +183,9 @@ class EmergencyState:
 
     def bypass_authorizer(
         self,
-        vm_tag:    int,
-        actor_fp:  bytes,
-        reason:    str,
+        vm_tag: int,
+        actor_fp: bytes,
+        reason: str,
         timestamp: int,
     ) -> None:
         self._bypassed_authorizers.add(vm_tag)
@@ -196,8 +201,8 @@ class EmergencyState:
 
     def clear_bypass(
         self,
-        vm_tag:    int,
-        actor_fp:  bytes,
+        vm_tag: int,
+        actor_fp: bytes,
         timestamp: int,
     ) -> None:
         self._bypassed_authorizers.discard(vm_tag)
@@ -218,10 +223,10 @@ class EmergencyState:
     def force_revoke(
         self,
         writer_fp: bytes,
-        actor_fp:  bytes,
-        reason:    str,
+        actor_fp: bytes,
+        reason: str,
         timestamp: int,
-        registry:  object,
+        registry: object,
     ) -> None:
         """Force-revoke a writer, bypassing normal RBAC checks.
 
@@ -234,9 +239,11 @@ class EmergencyState:
         """
         # Import here to avoid circular dependency at module level
         from .writer_registry import WriterRegistry as _WR
+
         assert isinstance(registry, _WR)
-        registry.revoke(writer_fp, reason=f"EMERGENCY: {reason}", actor_fp=actor_fp,
-                        timestamp=timestamp)
+        registry.revoke(
+            writer_fp, reason=f"EMERGENCY: {reason}", actor_fp=actor_fp, timestamp=timestamp
+        )
         self.interventions.append(
             EmergencyIntervention(
                 action=EmergencyAction.FORCE_REVOKE,
@@ -253,9 +260,9 @@ class EmergencyState:
     def set_dispatch_override(
         self,
         writer_fp: bytes,
-        allow:     bool,
-        actor_fp:  bytes,
-        reason:    str,
+        allow: bool,
+        actor_fp: bytes,
+        reason: str,
         timestamp: int,
     ) -> None:
         """Set a one-shot dispatch override for a specific writer."""
@@ -272,7 +279,7 @@ class EmergencyState:
     def clear_dispatch_override(
         self,
         writer_fp: bytes,
-        actor_fp:  bytes,
+        actor_fp: bytes,
         timestamp: int,
     ) -> None:
         """Remove a dispatch override for a specific writer."""
@@ -291,11 +298,13 @@ class EmergencyState:
 # PolicySnapshotStore
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class _PolicySnapshot:
     """Internal append-only record for a single policy version."""
-    version:   int
-    policy:    VMWriterPolicy
+
+    version: int
+    policy: VMWriterPolicy
     timestamp: int
 
 
@@ -316,8 +325,8 @@ class PolicySnapshotStore:
 
     def snapshot(
         self,
-        vm_tag:    int,
-        policy:    VMWriterPolicy,
+        vm_tag: int,
+        policy: VMWriterPolicy,
         timestamp: int,
     ) -> int:
         """Deep-copy *policy* and store it as the next version.
@@ -344,9 +353,7 @@ class PolicySnapshotStore:
         """
         snaps = self._history.get(vm_tag)
         if snaps is None or version >= len(snaps) or version < 0:
-            raise KeyError(
-                f"no snapshot at version {version} for vm_tag {vm_tag}"
-            )
+            raise KeyError(f"no snapshot at version {version} for vm_tag {vm_tag}")
         return copy.deepcopy(snaps[version].policy)
 
     def version_count(self, vm_tag: int) -> int:
@@ -358,6 +365,7 @@ class PolicySnapshotStore:
 # RecoveryQuorum
 # ---------------------------------------------------------------------------
 
+
 class RecoveryQuorum:
     """Threshold-gated approval mechanism for sensitive recovery operations.
 
@@ -368,8 +376,8 @@ class RecoveryQuorum:
 
     def __init__(self, recovery_keys: list[bytes], threshold: int) -> None:
         self._recovery_keys: frozenset[bytes] = frozenset(recovery_keys)
-        self._threshold:     int              = threshold
-        self._votes:         set[bytes]       = set()
+        self._threshold: int = threshold
+        self._votes: set[bytes] = set()
 
     # ------------------------------------------------------------------
     # Public API
@@ -382,9 +390,7 @@ class RecoveryQuorum:
             ValueError: if *key_fp* is not a recognised recovery key.
         """
         if key_fp not in self._recovery_keys:
-            raise ValueError(
-                f"key fingerprint {key_fp!r} is not a registered recovery key"
-            )
+            raise ValueError(f"key fingerprint {key_fp!r} is not a registered recovery key")
         self._votes.add(key_fp)
 
     def is_met(self) -> bool:

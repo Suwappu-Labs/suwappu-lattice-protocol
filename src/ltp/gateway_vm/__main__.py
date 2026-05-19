@@ -16,7 +16,6 @@ import sys
 from .boot import validate_config
 from .config import GatewayVMConfig
 
-
 _OPERATOR_KEY_RE = re.compile(r"^0x[0-9a-fA-F]{64}$")
 
 
@@ -96,9 +95,7 @@ def main() -> None:
             ],
         }
     ]
-    _bridge_contract = w3_source.eth.contract(
-        address=_bridge_addr, abi=_BRIDGE_ABI
-    )
+    _bridge_contract = w3_source.eth.contract(address=_bridge_addr, abi=_BRIDGE_ABI)
     _bridge_transfer_event = _bridge_contract.events.BridgeTransfer()
 
     # Alchemy limits eth_getLogs to small block ranges.
@@ -148,8 +145,8 @@ def main() -> None:
     # --- Operator keypair (ML-DSA-65 for attestation signing) ---
     # Load a pre-generated keypair if available (stable vkHash across restarts),
     # otherwise generate a fresh one (development/testing only).
-    import json
     import base64
+    import json
 
     keypair_path = os.environ.get("ETP_GATEWAY_VM_KEYPAIR_PATH", "")
     if keypair_path and os.path.exists(keypair_path):

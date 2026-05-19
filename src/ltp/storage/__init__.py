@@ -9,13 +9,17 @@ Provides:
 """
 
 from .base import ShardStore
-from .memory import MemoryShardStore
-from .sqlite import SQLiteShardStore
 from .filesystem import FileShardStore
 from .log_store import CommitmentLogStore
+from .memory import MemoryShardStore
 from .rocksdb import RocksDBShardStore
+from .sqlite import SQLiteShardStore
 
 __all__ = [
-    "ShardStore", "MemoryShardStore", "SQLiteShardStore", "FileShardStore",
-    "RocksDBShardStore", "CommitmentLogStore",
+    "ShardStore",
+    "MemoryShardStore",
+    "SQLiteShardStore",
+    "FileShardStore",
+    "RocksDBShardStore",
+    "CommitmentLogStore",
 ]

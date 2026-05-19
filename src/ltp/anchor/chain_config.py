@@ -28,11 +28,11 @@ class ChainConfig:
     """Immutable configuration for a single target chain."""
 
     chain_id: int
-    label: str                    # "gsx_testnet", "base_sepolia"
+    label: str  # "gsx_testnet", "base_sepolia"
     rpc_url: str
     registry_address: str
-    operator_key: str             # Raw private key (development) or empty if using KMS
-    operator_kms_key_id: str = "" # KMS key ARN/ID for production (overrides operator_key)
+    operator_key: str  # Raw private key (development) or empty if using KMS
+    operator_kms_key_id: str = ""  # KMS key ARN/ID for production (overrides operator_key)
     confirmation_depth: int = 3
     finality_depth: int = 1
     max_tps: float = 10.0
@@ -53,6 +53,7 @@ class ChainConfig:
             raise ValueError("operator_key or operator_kms_key_id is required")
         if self.operator_key and not self.operator_kms_key_id:
             import warnings
+
             warnings.warn(
                 "Using plaintext operator_key — production should use KMS",
                 stacklevel=2,
@@ -102,6 +103,7 @@ class ChainConfig:
         Reads {PREFIX}_CHAIN_ID, {PREFIX}_RPC_URL, {PREFIX}_REGISTRY_ADDRESS,
         {PREFIX}_OPERATOR_KEY, and optional tuning vars.
         """
+
         def _get(name: str, default: str | None = None) -> str:
             val = os.environ.get(f"{prefix}{name}", default)
             if val is None:
@@ -144,7 +146,8 @@ def create_anchor_client(chain: ChainConfig, kms_backend=None) -> "AnchorClient"
         # will use KMS for signing via the kms_backend parameter
         logger.info(
             "Using KMS key %s for chain %s",
-            chain.operator_kms_key_id[:20], chain.label,
+            chain.operator_kms_key_id[:20],
+            chain.label,
         )
 
     return AnchorClient(

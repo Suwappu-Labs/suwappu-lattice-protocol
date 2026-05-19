@@ -13,9 +13,8 @@ import pytest
 
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol
 from src.ltp.entity import Entity
-from src.ltp.node.auditor_rotation import AuditorRotation
 from src.ltp.node.audit_scheduler import AuditScheduler
-
+from src.ltp.node.auditor_rotation import AuditorRotation
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -38,7 +37,6 @@ def receiver() -> KeyPair:
 
 
 class TestAuditorRotation:
-
     def test_select_auditor_deterministic(self):
         """Same inputs → same auditor every time."""
         rot = AuditorRotation(["op-1", "op-2", "op-3"], seed=b"test")
@@ -72,9 +70,7 @@ class TestAuditorRotation:
         for epoch in range(50):
             for node_id in operators:
                 auditor = rot.select_auditor(epoch, node_id)
-                assert auditor != node_id, (
-                    f"Epoch {epoch}: {node_id} assigned to audit itself"
-                )
+                assert auditor != node_id, f"Epoch {epoch}: {node_id} assigned to audit itself"
 
     def test_seed_changes_selection(self):
         """Different seeds produce different assignments."""
@@ -82,7 +78,8 @@ class TestAuditorRotation:
         rot_b = AuditorRotation(["op-1", "op-2", "op-3"], seed=b"seed-b")
         # At least one assignment should differ over 10 epochs
         diffs = sum(
-            1 for e in range(10)
+            1
+            for e in range(10)
             if rot_a.select_auditor(e, "node-x") != rot_b.select_auditor(e, "node-x")
         )
         assert diffs > 0
@@ -93,7 +90,6 @@ class TestAuditorRotation:
 
 
 class TestAuditAssignments:
-
     def test_assignments_cover_all_nodes(self):
         rot = AuditorRotation(["op-1", "op-2"])
         nodes = ["n-1", "n-2", "n-3", "n-4"]
@@ -128,7 +124,6 @@ class TestAuditAssignments:
 
 
 class TestResponseDeadline:
-
     def test_configurable_max_response(self, sender, receiver):
         """audit_node accepts max_response_seconds parameter."""
         net = CommitmentNetwork()
@@ -156,10 +151,14 @@ class TestBurstChallengeToEviction:
         """commit → kill shards → 3 burst audits → eviction → repair → reconstruct."""
         net = CommitmentNetwork()
         for nid, region in [
-            ("bc-0", "US-East"), ("bc-1", "US-East"),
-            ("bc-2", "US-West"), ("bc-3", "US-West"),
-            ("bc-4", "EU-West"), ("bc-5", "EU-West"),
-            ("bc-6", "AP-East"), ("bc-7", "AP-East"),
+            ("bc-0", "US-East"),
+            ("bc-1", "US-East"),
+            ("bc-2", "US-West"),
+            ("bc-3", "US-West"),
+            ("bc-4", "EU-West"),
+            ("bc-5", "EU-West"),
+            ("bc-6", "AP-East"),
+            ("bc-7", "AP-East"),
         ]:
             net.add_node(nid, region)
         protocol = LTPProtocol(net)
@@ -184,7 +183,9 @@ class TestBurstChallengeToEviction:
 
         # Run burst audit via AuditScheduler — enough ticks to accumulate 3 strikes
         scheduler = AuditScheduler(
-            net, local_node_id="external", strike_threshold=3,
+            net,
+            local_node_id="external",
+            strike_threshold=3,
         )
 
         for epoch in range(1, 11):
@@ -212,7 +213,6 @@ class TestBurstChallengeToEviction:
 
 
 class TestAuditSchedulerWithRotation:
-
     def test_rotation_limits_audit_scope(self, sender):
         """With rotation, scheduler only audits assigned targets."""
         net = CommitmentNetwork()
@@ -256,7 +256,8 @@ class TestAuditSchedulerWithRotation:
         protocol.commit(entity, sender)
 
         scheduler = AuditScheduler(
-            net, local_node_id="external",
+            net,
+            local_node_id="external",
         )
         results = scheduler.tick(1)
         audited_ids = {r["node_id"] for r in results}

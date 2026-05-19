@@ -5,27 +5,28 @@ WriterAuthorizer Protocol — including a concrete implementation that
 rejects DEPLOY and allows TRANSFER.
 """
 
-import pytest
 import time
 
+import pytest
+
+from src.ltp.execution.types import OperationType
+from src.ltp.execution.writer import (
+    ApprovalPath,
+    IdentityTier,
+    WriterIdentity,
+    WriterRecord,
+    WriterState,
+)
 from src.ltp.execution.writer_auth import (
     AuthorizationResult,
     DispatchDecision,
     WriterAuthorizer,
 )
-from src.ltp.execution.types import OperationType
-from src.ltp.execution.writer import (
-    IdentityTier,
-    WriterIdentity,
-    ApprovalPath,
-    WriterRecord,
-    WriterState,
-)
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class NoDeployAuthorizer:
     """Rejects DEPLOY; allows everything else. Used across multiple tests."""
@@ -71,6 +72,7 @@ def _fake_record() -> WriterRecord:
 # Test 1 — AuthorizationResult allowed with defaults
 # ---------------------------------------------------------------------------
 
+
 class TestAuthorizationResultAllowed:
     """AuthorizationResult with allowed=True uses correct default fields."""
 
@@ -90,6 +92,7 @@ class TestAuthorizationResultAllowed:
 # ---------------------------------------------------------------------------
 # Test 2 — AuthorizationResult rejected with reason
 # ---------------------------------------------------------------------------
+
 
 class TestAuthorizationResultRejected:
     """AuthorizationResult with allowed=False carries reason and custom fields."""
@@ -115,6 +118,7 @@ class TestAuthorizationResultRejected:
 # ---------------------------------------------------------------------------
 # Test 3 — DispatchDecision fields
 # ---------------------------------------------------------------------------
+
 
 class TestDispatchDecision:
     """DispatchDecision carries allowed, optional reason, multiplier, and record."""
@@ -147,6 +151,7 @@ class TestDispatchDecision:
 # Test 4 — Custom class implementing WriterAuthorizer passes isinstance check
 # ---------------------------------------------------------------------------
 
+
 class TestWriterAuthorizerProtocolConforming:
     """A class with both required methods satisfies the runtime-checkable Protocol."""
 
@@ -173,6 +178,7 @@ class TestWriterAuthorizerProtocolConforming:
 # Test 5 — Plain class without required methods does NOT pass isinstance check
 # ---------------------------------------------------------------------------
 
+
 class TestWriterAuthorizerProtocolNonConforming:
     """A class missing required methods must not satisfy the Protocol."""
 
@@ -189,6 +195,7 @@ class TestWriterAuthorizerProtocolNonConforming:
         class PartialAuthorizer:
             def authorize_writer(self, writer, operation, tx_bytes):
                 return AuthorizationResult(allowed=True)
+
             # Missing: on_writer_state_change
 
         obj = PartialAuthorizer()

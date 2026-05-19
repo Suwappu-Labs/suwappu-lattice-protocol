@@ -13,36 +13,37 @@ the ``dual_lane`` subpackage and re-exported here for backward compatibility.
 
 from __future__ import annotations
 
+from .dual_lane import (
+    COMPLIANCE_APPROVED as _COMPLIANCE_APPROVED,
+)
+
 # ---------------------------------------------------------------------------
 # Re-export dual-lane architecture (backward compatibility)
 # ---------------------------------------------------------------------------
-
 from .dual_lane import (
-    HashFunction,
     CryptoLane,
+    HashFunction,
     SecurityProfile,
-    COMPLIANCE_APPROVED as _COMPLIANCE_APPROVED,
     _blake3_available,
     _hash_digest,
     canonical_hash,
     canonical_hash_bytes,
+    get_compliance_strict,
     internal_hash,
     internal_hash_bytes,
     set_compliance_strict,
-    get_compliance_strict,
 )
 from .dual_lane import hashing as _dl_hashing
-
 
 # ---------------------------------------------------------------------------
 # Real backend detection
 # ---------------------------------------------------------------------------
 
 # ML-KEM fixed sizes per security level
-_REAL_KEM_EK = 1184      # Level 3: ML-KEM-768
+_REAL_KEM_EK = 1184  # Level 3: ML-KEM-768
 _REAL_KEM_DK = 2400
 _REAL_KEM_CT = 1088
-_REAL_KEM5_EK = 1568     # Level 5: ML-KEM-1024
+_REAL_KEM5_EK = 1568  # Level 5: ML-KEM-1024
 _REAL_KEM5_DK = 3168
 _REAL_KEM5_CT = 1568
 
@@ -50,10 +51,15 @@ _REAL_KEM5_CT = 1568
 _pqcrypto_kem_available = False
 try:
     from pqcrypto.kem.ml_kem_768 import (
-        generate_keypair as _kem_keygen,
-        encrypt as _kem_encrypt,       # returns (ct, ss) — note order!
         decrypt as _kem_decrypt,
     )
+    from pqcrypto.kem.ml_kem_768 import (
+        encrypt as _kem_encrypt,  # returns (ct, ss) — note order!
+    )
+    from pqcrypto.kem.ml_kem_768 import (
+        generate_keypair as _kem_keygen,
+    )
+
     _pqcrypto_kem_available = True
 except ImportError:
     pass
@@ -62,19 +68,24 @@ except ImportError:
 _pqcrypto_kem5_available = False
 try:
     from pqcrypto.kem.ml_kem_1024 import (
-        generate_keypair as _kem5_keygen,
-        encrypt as _kem5_encrypt,
         decrypt as _kem5_decrypt,
     )
+    from pqcrypto.kem.ml_kem_1024 import (
+        encrypt as _kem5_encrypt,
+    )
+    from pqcrypto.kem.ml_kem_1024 import (
+        generate_keypair as _kem5_keygen,
+    )
+
     _pqcrypto_kem5_available = True
 except ImportError:
     pass
 
 # ML-DSA fixed sizes per security level
-_REAL_DSA_VK = 1952      # Level 3: ML-DSA-65
+_REAL_DSA_VK = 1952  # Level 3: ML-DSA-65
 _REAL_DSA_SK = 4032
 _REAL_DSA_SIG = 3309
-_REAL_DSA5_VK = 2592     # Level 5: ML-DSA-87
+_REAL_DSA5_VK = 2592  # Level 5: ML-DSA-87
 _REAL_DSA5_SK = 4896
 _REAL_DSA5_SIG = 4627
 
@@ -83,9 +94,14 @@ _pqcrypto_sign_available = False
 try:
     from pqcrypto.sign.ml_dsa_65 import (
         generate_keypair as _dsa_keygen,
+    )
+    from pqcrypto.sign.ml_dsa_65 import (
         sign as _dsa_sign,
+    )
+    from pqcrypto.sign.ml_dsa_65 import (
         verify as _dsa_verify,
     )
+
     _pqcrypto_sign_available = True
 except ImportError:
     pass
@@ -95,9 +111,14 @@ _pqcrypto_sign5_available = False
 try:
     from pqcrypto.sign.ml_dsa_87 import (
         generate_keypair as _dsa5_keygen,
+    )
+    from pqcrypto.sign.ml_dsa_87 import (
         sign as _dsa5_sign,
+    )
+    from pqcrypto.sign.ml_dsa_87 import (
         verify as _dsa5_verify,
     )
+
     _pqcrypto_sign5_available = True
 except ImportError:
     pass
@@ -105,9 +126,12 @@ except ImportError:
 _pynacl_available = False
 try:
     from nacl.bindings import (
-        crypto_aead_xchacha20poly1305_ietf_encrypt as _nacl_encrypt,
         crypto_aead_xchacha20poly1305_ietf_decrypt as _nacl_decrypt,
     )
+    from nacl.bindings import (
+        crypto_aead_xchacha20poly1305_ietf_encrypt as _nacl_encrypt,
+    )
+
     _pynacl_available = True
 except ImportError:
     pass
@@ -115,17 +139,27 @@ except ImportError:
 # BLS12-381 availability (delegated to bls.py for implementation)
 from .bls import _blst_available, _py_ecc_bls_available
 
-
 __all__ = [
-    "SecurityProfile", "HashFunction", "CryptoLane",
-    "canonical_hash", "canonical_hash_bytes",
-    "internal_hash", "internal_hash_bytes",
-    "AEAD", "MLKEM", "MLDSA",
-    "get_security_profile", "set_security_profile",
-    "set_crypto_provider", "get_crypto_provider",
-    "set_compliance_strict", "get_compliance_strict",
-    "_pqcrypto_kem_available", "_pqcrypto_kem5_available",
-    "_pqcrypto_sign_available", "_pqcrypto_sign5_available",
+    "SecurityProfile",
+    "HashFunction",
+    "CryptoLane",
+    "canonical_hash",
+    "canonical_hash_bytes",
+    "internal_hash",
+    "internal_hash_bytes",
+    "AEAD",
+    "MLKEM",
+    "MLDSA",
+    "get_security_profile",
+    "set_security_profile",
+    "set_crypto_provider",
+    "get_crypto_provider",
+    "set_compliance_strict",
+    "get_compliance_strict",
+    "_pqcrypto_kem_available",
+    "_pqcrypto_kem5_available",
+    "_pqcrypto_sign_available",
+    "_pqcrypto_sign5_available",
     "_pynacl_available",
     "_blst_available",
     "_py_ecc_bls_available",
@@ -154,7 +188,6 @@ def get_crypto_provider():
     return _crypto_provider
 
 
-
 def assert_real_crypto() -> None:
     """Assert that all production crypto backends are available.
 
@@ -177,7 +210,8 @@ def assert_real_crypto() -> None:
         missing.append("XChaCha20-Poly1305 (pynacl)")
     if missing:
         raise RuntimeError(
-            "Production crypto backends missing: " + ", ".join(missing)
+            "Production crypto backends missing: "
+            + ", ".join(missing)
             + ". Install with: pip install -e '.[production]'"
         )
 
@@ -231,6 +265,7 @@ _dl_hashing._get_crypto_provider = get_crypto_provider
 # XChaCha20-Poly1305 via pynacl (24-byte nonce, 16-byte Poly1305 tag).
 # ---------------------------------------------------------------------------
 
+
 class AEAD:
     """
     XChaCha20-Poly1305 authenticated encryption.
@@ -241,7 +276,7 @@ class AEAD:
     """
 
     NONCE_SIZE = 24  # XChaCha20 nonce
-    TAG_SIZE = 16    # Poly1305 tag
+    TAG_SIZE = 16  # Poly1305 tag
 
     @classmethod
     def _tag_size(cls) -> int:
@@ -270,7 +305,9 @@ class AEAD:
         return ct
 
     @classmethod
-    def decrypt(cls, key: bytes, ciphertext_with_tag: bytes, nonce: bytes, aad: bytes = b"") -> bytes:
+    def decrypt(
+        cls, key: bytes, ciphertext_with_tag: bytes, nonce: bytes, aad: bytes = b""
+    ) -> bytes:
         """
         Verify tag, then decrypt → plaintext. Raises ValueError if tampered.
 
@@ -293,6 +330,7 @@ class AEAD:
 #   Level 5 (ML-KEM-1024): ek=1568, dk=3168, ct=1568, ss=32
 # ---------------------------------------------------------------------------
 
+
 class MLKEM:
     """
     ML-KEM Key Encapsulation Mechanism (FIPS 203 / Kyber).
@@ -307,10 +345,10 @@ class MLKEM:
     """
 
     # Default Level 3 sizes (updated by _sync_profile)
-    EK_SIZE = 1184   # Encapsulation key size (bytes)
-    DK_SIZE = 2400   # Decapsulation key size (bytes)
-    CT_SIZE = 1088   # Ciphertext size (bytes)
-    SS_SIZE = 32     # Shared secret size (bytes)
+    EK_SIZE = 1184  # Encapsulation key size (bytes)
+    DK_SIZE = 2400  # Decapsulation key size (bytes)
+    CT_SIZE = 1088  # Ciphertext size (bytes)
+    SS_SIZE = 32  # Shared secret size (bytes)
 
     @classmethod
     def _sync_profile(cls, profile: SecurityProfile) -> None:
@@ -362,12 +400,12 @@ class MLKEM:
         if cls._is_level5():
             ct, ss = _kem5_encrypt(ek)
         else:
-            ct, ss = _kem_encrypt(ek)   # pqcrypto order: (ct, ss)
+            ct, ss = _kem_encrypt(ek)  # pqcrypto order: (ct, ss)
         if len(ct) != cls.CT_SIZE:
             raise RuntimeError(f"ML-KEM ct size mismatch: {len(ct)} != {cls.CT_SIZE}")
         if len(ss) != cls.SS_SIZE:
             raise RuntimeError(f"ML-KEM ss size mismatch: {len(ss)} != {cls.SS_SIZE}")
-        return ss, ct                    # our order: (ss, ct)
+        return ss, ct  # our order: (ss, ct)
 
     @classmethod
     def decaps(cls, dk: bytes, ciphertext: bytes) -> bytes:
@@ -402,6 +440,7 @@ class MLKEM:
 #   Level 5 (ML-DSA-87): vk=2592, sk=4896, sig=4627
 # ---------------------------------------------------------------------------
 
+
 class MLDSA:
     """
     ML-DSA Digital Signature Algorithm (FIPS 204 / Dilithium).
@@ -415,8 +454,8 @@ class MLDSA:
       - Verify(vk, message, signature) → bool
     """
 
-    VK_SIZE = 1952   # Verification key (public) size
-    SK_SIZE = 4032   # Signing key (private) size
+    VK_SIZE = 1952  # Verification key (public) size
+    SK_SIZE = 4032  # Signing key (private) size
     SIG_SIZE = 3309  # Signature size
 
     @classmethod

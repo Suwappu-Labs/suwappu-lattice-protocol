@@ -11,16 +11,16 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.ltp.commitment import CommitmentNetwork
+from src.ltp.domain import signer_fingerprint
 from src.ltp.gateway.app import GatewayConfig, create_app
 from src.ltp.gateway.auth import create_jwt
 from src.ltp.keypair import KeyPair, KeyRegistry
 from src.ltp.protocol import LTPProtocol, TransferState
-from src.ltp.domain import signer_fingerprint
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def alice():
@@ -79,15 +79,14 @@ def headers(alice):
 
 
 class TestTransferAuth:
-
     def test_commit_requires_auth(self, client):
         resp = client.post("/v1/commit", json={"content": base64.b64encode(b"hello").decode()})
         assert resp.status_code == 401
 
     def test_lattice_requires_auth(self, client):
-        resp = client.post("/v1/lattice", json={
-            "entity_id": "test", "cek_hex": "aa", "receiver_ek_hex": "bb"
-        })
+        resp = client.post(
+            "/v1/lattice", json={"entity_id": "test", "cek_hex": "aa", "receiver_ek_hex": "bb"}
+        )
         assert resp.status_code == 401
 
     def test_materialize_requires_auth(self, client):
@@ -105,7 +104,6 @@ class TestTransferAuth:
 
 
 class TestCommit:
-
     def test_commit_returns_entity_id(self, client, headers):
         content = base64.b64encode(b"hello world").decode()
         resp = client.post("/v1/commit", json={"content": content}, headers=headers)
@@ -152,7 +150,6 @@ class TestCommit:
 
 
 class TestLattice:
-
     def _commit(self, client, headers):
         content = base64.b64encode(b"lattice test payload").decode()
         resp = client.post("/v1/commit", json={"content": content}, headers=headers)
@@ -160,11 +157,15 @@ class TestLattice:
 
     def test_lattice_valid(self, client, headers, bob):
         commit = self._commit(client, headers)
-        resp = client.post("/v1/lattice", json={
-            "entity_id": commit["entity_id"],
-            "cek_hex": commit["cek_hex"],
-            "receiver_ek_hex": bob.ek.hex(),
-        }, headers=headers)
+        resp = client.post(
+            "/v1/lattice",
+            json={
+                "entity_id": commit["entity_id"],
+                "cek_hex": commit["cek_hex"],
+                "receiver_ek_hex": bob.ek.hex(),
+            },
+            headers=headers,
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["success"] is True
@@ -172,32 +173,44 @@ class TestLattice:
         assert len(data["sealed_key_hex"]) > 0
 
     def test_lattice_unknown_entity(self, client, headers):
-        resp = client.post("/v1/lattice", json={
-            "entity_id": "nonexistent",
-            "cek_hex": "aa" * 32,
-            "receiver_ek_hex": "bb" * 32,
-        }, headers=headers)
+        resp = client.post(
+            "/v1/lattice",
+            json={
+                "entity_id": "nonexistent",
+                "cek_hex": "aa" * 32,
+                "receiver_ek_hex": "bb" * 32,
+            },
+            headers=headers,
+        )
         assert resp.status_code == 404
 
     def test_lattice_invalid_cek_hex(self, client, headers):
         # First commit so entity exists, then use bad cek hex
         content = base64.b64encode(b"cek test").decode()
         commit = client.post("/v1/commit", json={"content": content}, headers=headers).json()
-        resp = client.post("/v1/lattice", json={
-            "entity_id": commit["entity_id"],
-            "cek_hex": "not-hex",
-            "receiver_ek_hex": "aa" * 32,
-        }, headers=headers)
+        resp = client.post(
+            "/v1/lattice",
+            json={
+                "entity_id": commit["entity_id"],
+                "cek_hex": "not-hex",
+                "receiver_ek_hex": "aa" * 32,
+            },
+            headers=headers,
+        )
         assert resp.status_code == 400
 
     def test_lattice_invalid_receiver_ek_hex(self, client, headers):
         content = base64.b64encode(b"ek test").decode()
         commit = client.post("/v1/commit", json={"content": content}, headers=headers).json()
-        resp = client.post("/v1/lattice", json={
-            "entity_id": commit["entity_id"],
-            "cek_hex": "aa" * 32,
-            "receiver_ek_hex": "not-hex",
-        }, headers=headers)
+        resp = client.post(
+            "/v1/lattice",
+            json={
+                "entity_id": commit["entity_id"],
+                "cek_hex": "aa" * 32,
+                "receiver_ek_hex": "not-hex",
+            },
+            headers=headers,
+        )
         assert resp.status_code == 400
 
 
@@ -207,18 +220,25 @@ class TestLattice:
 
 
 class TestMaterialize:
-
     def test_materialize_invalid_hex(self, client, headers):
-        resp = client.post("/v1/materialize", json={
-            "sealed_key_hex": "not-hex",
-        }, headers=headers)
+        resp = client.post(
+            "/v1/materialize",
+            json={
+                "sealed_key_hex": "not-hex",
+            },
+            headers=headers,
+        )
         assert resp.status_code == 400
 
     def test_materialize_bad_sealed_key(self, client, headers):
         """Random bytes won't unseal."""
-        resp = client.post("/v1/materialize", json={
-            "sealed_key_hex": "aa" * 100,
-        }, headers=headers)
+        resp = client.post(
+            "/v1/materialize",
+            json={
+                "sealed_key_hex": "aa" * 100,
+            },
+            headers=headers,
+        )
         assert resp.status_code == 422
 
 
@@ -228,7 +248,6 @@ class TestMaterialize:
 
 
 class TestFullRoundtrip:
-
     def test_commit_lattice_materialize(self, client, headers, alice):
         """Full three-phase transfer via REST: commit → lattice → materialize."""
         original = b"The quick brown fox jumps over the lazy dog"
@@ -241,19 +260,27 @@ class TestFullRoundtrip:
         assert commit_data["success"] is True
 
         # Phase 2: LATTICE (seal to self — alice→alice)
-        resp = client.post("/v1/lattice", json={
-            "entity_id": commit_data["entity_id"],
-            "cek_hex": commit_data["cek_hex"],
-            "receiver_ek_hex": alice.ek.hex(),
-        }, headers=headers)
+        resp = client.post(
+            "/v1/lattice",
+            json={
+                "entity_id": commit_data["entity_id"],
+                "cek_hex": commit_data["cek_hex"],
+                "receiver_ek_hex": alice.ek.hex(),
+            },
+            headers=headers,
+        )
         assert resp.status_code == 200
         lattice_data = resp.json()
         assert lattice_data["success"] is True
 
         # Phase 3: MATERIALIZE
-        resp = client.post("/v1/materialize", json={
-            "sealed_key_hex": lattice_data["sealed_key_hex"],
-        }, headers=headers)
+        resp = client.post(
+            "/v1/materialize",
+            json={
+                "sealed_key_hex": lattice_data["sealed_key_hex"],
+            },
+            headers=headers,
+        )
         assert resp.status_code == 200
         mat_data = resp.json()
         assert mat_data["success"] is True
@@ -270,7 +297,6 @@ class TestFullRoundtrip:
 
 
 class TestSessionListing:
-
     def test_list_transfers_empty(self, client, headers):
         resp = client.get("/v1/transfers", headers=headers)
         assert resp.status_code == 200

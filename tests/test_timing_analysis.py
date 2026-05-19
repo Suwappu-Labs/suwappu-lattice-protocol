@@ -23,10 +23,10 @@ import time
 
 import pytest
 
-from src.ltp.primitives import AEAD, MLKEM, MLDSA
 from src.ltp import KeyPair, reset_poc_state
-from src.ltp.shards import ShardEncryptor
 from src.ltp.keypair import SealedBox
+from src.ltp.primitives import AEAD, MLDSA, MLKEM
+from src.ltp.shards import ShardEncryptor
 
 
 def measure_ns(func, iterations=100):
@@ -52,8 +52,8 @@ class TestAEADTiming:
         """Encryption time should not depend on plaintext content (only length)."""
         key = os.urandom(32)
         nonce = os.urandom(AEAD.NONCE_SIZE)
-        pt_zeros = b'\x00' * 1000
-        pt_ones = b'\xff' * 1000
+        pt_zeros = b"\x00" * 1000
+        pt_ones = b"\xff" * 1000
         pt_random = os.urandom(1000)
 
         mean_z, std_z, _ = measure_ns(lambda: AEAD.encrypt(key, pt_zeros, nonce))
@@ -66,10 +66,12 @@ class TestAEADTiming:
         max_std = max(std_z, std_o, std_r)
 
         print(f"\n  Encrypt timing (1000B):")
-        print(f"    zeros:  {mean_z/1000:.1f}μs ±{std_z/1000:.1f}μs")
-        print(f"    ones:   {mean_o/1000:.1f}μs ±{std_o/1000:.1f}μs")
-        print(f"    random: {mean_r/1000:.1f}μs ±{std_r/1000:.1f}μs")
-        print(f"    delta:  {(max_mean-min_mean)/1000:.1f}μs ({(max_mean-min_mean)/max_mean*100:.1f}%)")
+        print(f"    zeros:  {mean_z / 1000:.1f}μs ±{std_z / 1000:.1f}μs")
+        print(f"    ones:   {mean_o / 1000:.1f}μs ±{std_o / 1000:.1f}μs")
+        print(f"    random: {mean_r / 1000:.1f}μs ±{std_r / 1000:.1f}μs")
+        print(
+            f"    delta:  {(max_mean - min_mean) / 1000:.1f}μs ({(max_mean - min_mean) / max_mean * 100:.1f}%)"
+        )
 
     def test_decrypt_timing_valid_vs_invalid(self):
         """Decrypt should take similar time for valid and invalid tags.
@@ -97,10 +99,10 @@ class TestAEADTiming:
         mean_v, std_v, _ = measure_ns(try_valid)
         mean_i, std_i, _ = measure_ns(try_invalid)
 
-        ratio = mean_v / mean_i if mean_i > 0 else float('inf')
+        ratio = mean_v / mean_i if mean_i > 0 else float("inf")
         print(f"\n  Decrypt timing (valid vs invalid tag):")
-        print(f"    valid:   {mean_v/1000:.1f}μs ±{std_v/1000:.1f}μs")
-        print(f"    invalid: {mean_i/1000:.1f}μs ±{std_i/1000:.1f}μs")
+        print(f"    valid:   {mean_v / 1000:.1f}μs ±{std_v / 1000:.1f}μs")
+        print(f"    invalid: {mean_i / 1000:.1f}μs ±{std_i / 1000:.1f}μs")
         print(f"    ratio:   {ratio:.2f}x")
         print(f"    NOTE: Ratio >1.5x indicates timing leak (PoC skips decrypt on invalid tag)")
 
@@ -122,8 +124,8 @@ class TestMLKEMTiming:
         mean_2, std_2, _ = measure_ns(lambda: MLKEM.encaps(kp2.ek), iterations=50)
 
         print(f"\n  ML-KEM encaps timing:")
-        print(f"    key 1: {mean_1/1000:.1f}μs ±{std_1/1000:.1f}μs")
-        print(f"    key 2: {mean_2/1000:.1f}μs ±{std_2/1000:.1f}μs")
+        print(f"    key 1: {mean_1 / 1000:.1f}μs ±{std_1 / 1000:.1f}μs")
+        print(f"    key 2: {mean_2 / 1000:.1f}μs ±{std_2 / 1000:.1f}μs")
 
     def test_decaps_timing_poc_lookup_leak(self):
         """PoC decaps uses dict.get() which is NOT constant-time.
@@ -143,6 +145,7 @@ class TestMLKEMTiming:
 
         # Invalid decaps (wrong ciphertext)
         fake_ct = os.urandom(MLKEM.CT_SIZE)
+
         def try_invalid():
             try:
                 MLKEM.decaps(kp.dk, fake_ct)
@@ -152,10 +155,10 @@ class TestMLKEMTiming:
         mean_v, std_v, _ = measure_ns(try_valid, iterations=50)
         mean_i, std_i, _ = measure_ns(try_invalid, iterations=50)
 
-        ratio = mean_v / mean_i if mean_i > 0 else float('inf')
+        ratio = mean_v / mean_i if mean_i > 0 else float("inf")
         print(f"\n  ML-KEM decaps timing (PoC dict lookup leak):")
-        print(f"    valid ct:   {mean_v/1000:.1f}μs ±{std_v/1000:.1f}μs")
-        print(f"    invalid ct: {mean_i/1000:.1f}μs ±{std_i/1000:.1f}μs")
+        print(f"    valid ct:   {mean_v / 1000:.1f}μs ±{std_v / 1000:.1f}μs")
+        print(f"    invalid ct: {mean_i / 1000:.1f}μs ±{std_i / 1000:.1f}μs")
         print(f"    ratio:      {ratio:.2f}x")
         print(f"    NOTE: PoC uses dict.get() — timing leaks whether ct is valid")
         print(f"    MITIGATION: Real pqcrypto backend uses constant-time lattice math")
@@ -191,10 +194,10 @@ class TestMLDSATiming:
         mean_v, std_v, _ = measure_ns(try_valid, iterations=50)
         mean_f, std_f, _ = measure_ns(try_forged, iterations=50)
 
-        ratio = mean_v / mean_f if mean_f > 0 else float('inf')
+        ratio = mean_v / mean_f if mean_f > 0 else float("inf")
         print(f"\n  ML-DSA verify timing (PoC dict lookup leak):")
-        print(f"    valid sig:  {mean_v/1000:.1f}μs ±{std_v/1000:.1f}μs")
-        print(f"    forged sig: {mean_f/1000:.1f}μs ±{std_f/1000:.1f}μs")
+        print(f"    valid sig:  {mean_v / 1000:.1f}μs ±{std_v / 1000:.1f}μs")
+        print(f"    forged sig: {mean_f / 1000:.1f}μs ±{std_f / 1000:.1f}μs")
         print(f"    ratio:      {ratio:.2f}x")
         print(f"    NOTE: PoC uses dict.get() — timing leaks sig validity")
         print(f"    MITIGATION: Dummy hmac.compare_digest on miss (reduces signal)")
@@ -228,6 +231,7 @@ class TestHKDFNonceDerivation:
         """Different salts produce different PRKs (domain separation)."""
         import hashlib
         import hmac as hmac_lib
+
         cek = os.urandom(32)
 
         prk_shard = hmac_lib.new(b"ETP-SHARD-NONCE-v1", cek, hashlib.sha256).digest()
@@ -260,8 +264,8 @@ class TestHKDFNonceDerivation:
         )
 
         print(f"\n  HKDF nonce timing:")
-        print(f"    short entity_id: {mean_s/1000:.1f}μs ±{std_s/1000:.1f}μs")
-        print(f"    long entity_id:  {mean_l/1000:.1f}μs ±{std_l/1000:.1f}μs")
+        print(f"    short entity_id: {mean_s / 1000:.1f}μs ±{std_s / 1000:.1f}μs")
+        print(f"    long entity_id:  {mean_l / 1000:.1f}μs ±{std_l / 1000:.1f}μs")
         print(f"    NOTE: HMAC-SHA256 is constant-time; variation is from Python overhead")
 
 
@@ -295,9 +299,9 @@ class TestSealedBoxTiming:
         mean_b, std_b, _ = measure_ns(try_bob, iterations=50)
         mean_e, std_e, _ = measure_ns(try_eve, iterations=50)
 
-        ratio = mean_b / mean_e if mean_e > 0 else float('inf')
+        ratio = mean_b / mean_e if mean_e > 0 else float("inf")
         print(f"\n  SealedBox unseal timing:")
-        print(f"    correct key: {mean_b/1000:.1f}μs ±{std_b/1000:.1f}μs")
-        print(f"    wrong key:   {mean_e/1000:.1f}μs ±{std_e/1000:.1f}μs")
+        print(f"    correct key: {mean_b / 1000:.1f}μs ±{std_b / 1000:.1f}μs")
+        print(f"    wrong key:   {mean_e / 1000:.1f}μs ±{std_e / 1000:.1f}μs")
         print(f"    ratio:       {ratio:.2f}x")
         print(f"    NOTE: PoC dict lookup causes timing difference; real ML-KEM is constant-time")

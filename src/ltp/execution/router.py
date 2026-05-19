@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from .registry import VMRegistry
 from .state_root import MultiVMStateRoot
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 class ExecutorUnavailable(RuntimeError):
     """Raised when a registered VM executor can't produce a state root."""
+
     pass
 
 
@@ -34,8 +35,7 @@ class TransactionRouter:
     tx_bytes[0] is the vm_tag and tx_bytes[1:] is the payload.
     """
 
-    def __init__(self, registry: VMRegistry,
-                 writer_gate: Optional[WriterGate] = None) -> None:
+    def __init__(self, registry: VMRegistry, writer_gate: Optional[WriterGate] = None) -> None:
         self._registry = registry
         self._gate = writer_gate
 
@@ -66,8 +66,7 @@ class TransactionRouter:
                 root = executor.state_root()
             except Exception as exc:
                 raise ExecutorUnavailable(
-                    f"executor '{executor.vm_name}' (0x{executor.vm_tag:02X}) "
-                    f"unavailable: {exc}"
+                    f"executor '{executor.vm_name}' (0x{executor.vm_tag:02X}) unavailable: {exc}"
                 ) from exc
             vm_roots[executor.vm_tag] = root
 
@@ -108,7 +107,7 @@ class TransactionRouter:
 
         # Strip the writer fingerprint prefix to reach vm_tag + payload
         tag = tx_bytes[WRITER_FP_SIZE]
-        payload = tx_bytes[WRITER_FP_SIZE + 1:]
+        payload = tx_bytes[WRITER_FP_SIZE + 1 :]
 
         executor = self._registry.get(tag)
         if executor is None:
@@ -116,9 +115,7 @@ class TransactionRouter:
 
         # Phase 2: per-VM authorization
         operation = infer_operation_type(payload)
-        vm_decision = self._gate.vm_authorize(
-            decision.writer_record, executor, operation, payload
-        )
+        vm_decision = self._gate.vm_authorize(decision.writer_record, executor, operation, payload)
         if not vm_decision.allowed:
             return TxResult.rejected(f"writer_gate:{vm_decision.reason}")
 

@@ -62,12 +62,15 @@ async def commit_entity(req: CommitRequest, request: Request):
     # Enforce maximum entity content size (100 MiB)
     if len(content) > 100 * 1024 * 1024:
         return JSONResponse(
-            CommitResponse(success=False, error="Content exceeds maximum size (100 MiB)").model_dump(),
+            CommitResponse(
+                success=False, error="Content exceeds maximum size (100 MiB)"
+            ).model_dump(),
             status_code=413,
         )
 
     # Build Entity
     from src.ltp.entity import Entity
+
     entity = Entity(content=content, shape=req.shape)
 
     n = req.n if req.n > 0 else None
@@ -83,8 +86,10 @@ async def commit_entity(req: CommitRequest, request: Request):
         )
 
     # Register session so lattice can retrieve CEK
-    from src.ltp.protocol import TransferSession, TransferState
     import time as _time
+
+    from src.ltp.protocol import TransferSession, TransferState
+
     with protocol._session_lock:
         session = TransferSession(
             entity_id=entity_id,
@@ -96,6 +101,7 @@ async def commit_entity(req: CommitRequest, request: Request):
         protocol._sessions[entity_id] = session
 
     from src.ltp.primitives import canonical_hash
+
     commitment_ref = canonical_hash(record.to_bytes())
 
     return CommitResponse(
@@ -121,7 +127,9 @@ async def lattice_seal(req: LatticeRequest, request: Request):
     record = protocol.network.log.fetch(req.entity_id)
     if record is None:
         return JSONResponse(
-            LatticeResponse(success=False, error=f"Entity {req.entity_id[:32]}... not found in log").model_dump(),
+            LatticeResponse(
+                success=False, error=f"Entity {req.entity_id[:32]}... not found in log"
+            ).model_dump(),
             status_code=404,
         )
 
@@ -145,6 +153,7 @@ async def lattice_seal(req: LatticeRequest, request: Request):
 
     # Build a receiver keypair stub with only the ek (for sealing)
     from src.ltp.keypair import KeyPair
+
     receiver_kp = KeyPair(ek=receiver_ek, dk=b"", vk=b"", sk=b"", label="rest-receiver")
 
     try:
@@ -166,6 +175,7 @@ async def lattice_seal(req: LatticeRequest, request: Request):
     session = protocol.get_session(req.entity_id)
     if session is not None:
         from src.ltp.protocol import TransferState
+
         session.sealed_key = sealed
         session.transition(TransferState.SEALED)
 
@@ -207,7 +217,9 @@ async def materialize_entity(req: MaterializeRequest, request: Request):
 
     if content is None:
         return JSONResponse(
-            MaterializeResponse(success=False, error="Materialization failed (unseal, verify, or reconstruct error)").model_dump(),
+            MaterializeResponse(
+                success=False, error="Materialization failed (unseal, verify, or reconstruct error)"
+            ).model_dump(),
             status_code=422,
         )
 
@@ -238,21 +250,22 @@ async def list_transfers(
 
     if state:
         from src.ltp.protocol import TransferState
+
         try:
             filter_state = TransferState[state.upper()]
         except KeyError:
             valid = [s.name for s in TransferState]
-            return JSONResponse(
-                error_response(400, f"Invalid state: {state}. Valid: {valid}"), 400
-            )
+            return JSONResponse(error_response(400, f"Invalid state: {state}. Valid: {valid}"), 400)
         sessions = protocol.list_sessions(state=filter_state)
     else:
         sessions = protocol.list_sessions()
 
-    return JSONResponse({
-        "count": len(sessions),
-        "sessions": [session_to_dict(s) for s in sessions],
-    })
+    return JSONResponse(
+        {
+            "count": len(sessions),
+            "sessions": [session_to_dict(s) for s in sessions],
+        }
+    )
 
 
 @router.get("/transfers/{entity_id}")

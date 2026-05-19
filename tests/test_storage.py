@@ -10,12 +10,12 @@ import tempfile
 
 import pytest
 
-from src.ltp.storage import MemoryShardStore, SQLiteShardStore, FileShardStore
-
+from src.ltp.storage import FileShardStore, MemoryShardStore, SQLiteShardStore
 
 # ---------------------------------------------------------------------------
 # Fixtures: each backend gets the same test suite
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def memory_store():
@@ -48,6 +48,7 @@ ALL_STORES = ["memory_store", "sqlite_store", "file_store"]
 # ---------------------------------------------------------------------------
 # Shared interface tests (run against every backend)
 # ---------------------------------------------------------------------------
+
 
 class TestShardStoreInterface:
     """Tests that run against all ShardStore implementations."""
@@ -147,6 +148,7 @@ class TestShardStoreInterface:
 # Backend-specific tests
 # ---------------------------------------------------------------------------
 
+
 class TestSQLiteSpecific:
     def test_persistence_across_connections(self, tmp_path):
         db_path = str(tmp_path / "persist.db")
@@ -160,10 +162,7 @@ class TestSQLiteSpecific:
         store2.close()
 
     def test_bulk_insert(self, sqlite_store):
-        entries = [
-            (("bulk-entity", i), f"bulk-{i}".encode())
-            for i in range(50)
-        ]
+        entries = [(("bulk-entity", i), f"bulk-{i}".encode()) for i in range(50)]
         count = sqlite_store.bulk_insert(entries)
         assert count == 50
         assert len(sqlite_store) == 50
@@ -202,6 +201,7 @@ class TestFileStoreSpecific:
         """Verify no .tmp files remain after write."""
         file_store[("e1", 0)] = b"atomic"
         import glob
+
         tmp_files = glob.glob(str(file_store._base_dir / "**/*.tmp"), recursive=True)
         assert len(tmp_files) == 0
 
@@ -210,9 +210,11 @@ class TestFileStoreSpecific:
 # CommitmentNode integration
 # ---------------------------------------------------------------------------
 
+
 class TestCommitmentNodeWithStore:
     def test_node_with_memory_store(self):
         from src.ltp.commitment import CommitmentNode
+
         node = CommitmentNode("n1", "US-East")
         assert isinstance(node.shards, MemoryShardStore)
         node.store_shard("eid", 0, b"data")
@@ -220,6 +222,7 @@ class TestCommitmentNodeWithStore:
 
     def test_node_with_sqlite_store(self):
         from src.ltp.commitment import CommitmentNode
+
         store = SQLiteShardStore(":memory:")
         node = CommitmentNode("n1", "US-East", shard_store=store)
         node.store_shard("eid", 0, b"sqlite-data")
@@ -229,6 +232,7 @@ class TestCommitmentNodeWithStore:
 
     def test_node_with_file_store(self, tmp_path):
         from src.ltp.commitment import CommitmentNode
+
         store = FileShardStore(str(tmp_path / "node_shards"))
         node = CommitmentNode("n1", "US-East", shard_store=store)
         node.store_shard("eid", 0, b"file-data")
@@ -237,9 +241,9 @@ class TestCommitmentNodeWithStore:
     def test_full_protocol_with_sqlite(self):
         """Complete COMMIT → MATERIALIZE with SQLite shard storage."""
         from src.ltp.commitment import CommitmentNetwork, CommitmentNode
-        from src.ltp.protocol import LTPProtocol
         from src.ltp.entity import Entity
         from src.ltp.keypair import KeyPair
+        from src.ltp.protocol import LTPProtocol
 
         net = CommitmentNetwork()
         for i in range(6):

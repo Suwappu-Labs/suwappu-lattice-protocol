@@ -11,16 +11,16 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
+from src.ltp.commitment import CommitmentLog, CommitmentRecord
+from src.ltp.domain import signer_fingerprint
 from src.ltp.gateway.app import GatewayConfig, GatewayServer, create_app
 from src.ltp.gateway.auth import create_jwt
-from src.ltp.commitment import CommitmentLog, CommitmentRecord
 from src.ltp.keypair import KeyPair
-from src.ltp.domain import signer_fingerprint
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def keypair():
@@ -79,7 +79,6 @@ def auth_headers(keypair):
 
 
 class TestHealthEndpoint:
-
     def test_health_returns_ok(self, client):
         resp = client.get("/health")
         assert resp.status_code == 200
@@ -99,7 +98,6 @@ class TestHealthEndpoint:
 
 
 class TestCTLogEndpoints:
-
     def test_get_sth_empty_log(self, client):
         resp = client.get("/ct/v1/get-sth")
         assert resp.status_code == 200
@@ -177,7 +175,6 @@ class TestCTLogEndpoints:
 
 
 class TestCatchAll:
-
     def test_unknown_route_returns_404(self, client):
         resp = client.get("/nonexistent")
         assert resp.status_code == 404
@@ -195,7 +192,6 @@ class TestCatchAll:
 
 
 class TestJWTEnforcement:
-
     def test_anchor_routes_require_auth(self, auth_client):
         resp = auth_client.get("/anchor/stats")
         assert resp.status_code == 401
@@ -227,7 +223,6 @@ class TestJWTEnforcement:
 
 
 class TestRateLimiting:
-
     def test_rate_limiter_allows_under_limit(self):
         config = GatewayConfig(rate_limit_enabled=True, rate_limit_per_minute=10, jwt_enabled=False)
         application = create_app(config)
@@ -260,7 +255,6 @@ class TestRateLimiting:
 
 
 class TestGatewayServer:
-
     def test_server_starts_and_stops(self, keypair, commitment_log):
         server = GatewayServer(
             config=GatewayConfig(port=0),
@@ -274,6 +268,7 @@ class TestGatewayServer:
             assert server.url.startswith("http://")
 
             import urllib.request
+
             resp = urllib.request.urlopen(f"{server.url}/health")
             data = json.loads(resp.read())
             assert data["status"] == "ok"

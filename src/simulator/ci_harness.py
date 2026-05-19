@@ -24,6 +24,7 @@ __all__ = ["DSTCIHarness", "DSTCIResult"]
 @dataclass
 class DSTCIResult:
     """Result of a CI DST run across multiple seeds."""
+
     seeds_run: int
     total_violations: int
     passed: bool
@@ -88,19 +89,27 @@ def main() -> int:
     """CLI entry point. Returns exit code (0 = pass, 1 = fail)."""
     parser = argparse.ArgumentParser(description="ETP DST CI Harness")
     parser.add_argument(
-        "--seeds", type=str, default="42",
+        "--seeds",
+        type=str,
+        default="42",
         help="Comma-separated seed list (default: 42)",
     )
     parser.add_argument(
-        "--steps", type=int, default=500,
+        "--steps",
+        type=int,
+        default=500,
         help="Steps per seed (default: 500)",
     )
     parser.add_argument(
-        "--fault-rate", type=float, default=0.1,
+        "--fault-rate",
+        type=float,
+        default=0.1,
         help="Fault injection rate (default: 0.1)",
     )
     parser.add_argument(
-        "--max-violations", type=int, default=0,
+        "--max-violations",
+        type=int,
+        default=0,
         help="Max allowed violations across all seeds (default: 0)",
     )
     args = parser.parse_args()
@@ -120,7 +129,9 @@ def main() -> int:
     print(f"DST CI Harness: {result.seeds_run} seeds, {result.total_violations} violations")
     for detail in result.details:
         status = "PASS" if detail["passed"] else "FAIL"
-        print(f"  Seed {detail['seed']}: {status} ({detail['violations']} violations, {detail['faults_injected']} faults)")
+        print(
+            f"  Seed {detail['seed']}: {status} ({detail['violations']} violations, {detail['faults_injected']} faults)"
+        )
 
     if result.passed:
         print("RESULT: PASS")

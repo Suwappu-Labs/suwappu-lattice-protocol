@@ -21,15 +21,15 @@ from src.ltp.commitment import CommitmentNetwork, CommitmentNode
 from src.ltp.entity import Entity
 from src.ltp.erasure import ErasureCoder
 from src.ltp.keypair import KeyPair
+from src.ltp.merkle_log.tree import MerkleTree
 from src.ltp.primitives import canonical_hash
 from src.ltp.protocol import LTPProtocol
-from src.ltp.shards import ShardEncryptor, _CEK_TRACKING_LIMIT
-from src.ltp.merkle_log.tree import MerkleTree
-
+from src.ltp.shards import _CEK_TRACKING_LIMIT, ShardEncryptor
 
 # ---------------------------------------------------------------------------
 # Merkle tree root caching
 # ---------------------------------------------------------------------------
+
 
 class TestMerkleRootCaching:
     def test_root_cached_after_first_call(self):
@@ -82,6 +82,7 @@ class TestMerkleRootCaching:
 # Placement cache
 # ---------------------------------------------------------------------------
 
+
 class TestPlacementCache:
     def test_placement_is_cached(self):
         net = CommitmentNetwork()
@@ -128,6 +129,7 @@ class TestPlacementCache:
 # Audit reverse index
 # ---------------------------------------------------------------------------
 
+
 class TestAuditReverseIndex:
     def test_reverse_index_populated_on_distribute(self):
         net = CommitmentNetwork()
@@ -145,8 +147,10 @@ class TestAuditReverseIndex:
     def test_audit_uses_reverse_index(self):
         net = CommitmentNetwork()
         for nid, region in [
-            ("node-0", "US-East"), ("node-1", "US-West"),
-            ("node-2", "EU-West"), ("node-3", "EU-East"),
+            ("node-0", "US-East"),
+            ("node-1", "US-West"),
+            ("node-2", "EU-West"),
+            ("node-3", "EU-East"),
         ]:
             net.add_node(nid, region)
 
@@ -167,6 +171,7 @@ class TestAuditReverseIndex:
 # ---------------------------------------------------------------------------
 # Erasure coding optimization
 # ---------------------------------------------------------------------------
+
 
 class TestErasureOptimization:
     def test_encode_decode_still_correct(self):
@@ -208,6 +213,7 @@ class TestErasureOptimization:
 # CEK tracking bounded memory
 # ---------------------------------------------------------------------------
 
+
 class TestCEKTrackingBounded:
     def test_tracking_limit_exists(self):
         assert _CEK_TRACKING_LIMIT == 100_000
@@ -234,6 +240,7 @@ class TestCEKTrackingBounded:
 # Backend batch commit
 # ---------------------------------------------------------------------------
 
+
 class TestBackendBatchCommit:
     def test_base_l1_batch_commit(self):
         backend = create_backend(BackendConfig(backend_type="base-l1"))
@@ -256,11 +263,13 @@ class TestBackendBatchCommit:
         assert len(block_nums) == 1  # all in one block
 
     def test_ethereum_batch_commit(self):
-        backend = create_backend(BackendConfig(
-            backend_type="ethereum",
-            eth_finality_mode="latest",
-            eth_confirmations=0,
-        ))
+        backend = create_backend(
+            BackendConfig(
+                backend_type="ethereum",
+                eth_finality_mode="latest",
+                eth_confirmations=0,
+            )
+        )
         initial_gas = backend.total_gas_used
         commitments = []
         for i in range(5):
@@ -277,11 +286,13 @@ class TestBackendBatchCommit:
         assert batch_gas < individual_gas
 
     def test_ethereum_batch_produces_single_tx(self):
-        backend = create_backend(BackendConfig(
-            backend_type="ethereum",
-            eth_finality_mode="latest",
-            eth_confirmations=0,
-        ))
+        backend = create_backend(
+            BackendConfig(
+                backend_type="ethereum",
+                eth_finality_mode="latest",
+                eth_confirmations=0,
+            )
+        )
         initial_tx_count = backend.transaction_count
         commitments = []
         for i in range(3):
@@ -300,14 +311,17 @@ class TestBackendBatchCommit:
         backend.append_commitment(eid, rec, b"\x00" * 64, b"\x01" * 32)
 
         with pytest.raises(ValueError, match="already committed"):
-            backend.append_commitments_batch([
-                (eid, rec, b"\x00" * 64, b"\x01" * 32),
-            ])
+            backend.append_commitments_batch(
+                [
+                    (eid, rec, b"\x00" * 64, b"\x01" * 32),
+                ]
+            )
 
 
 # ---------------------------------------------------------------------------
 # Backend finality callback
 # ---------------------------------------------------------------------------
+
 
 class TestFinalityCallback:
     def test_callback_fires_when_finalized(self):
@@ -330,6 +344,7 @@ class TestFinalityCallback:
 # Shard map root computation
 # ---------------------------------------------------------------------------
 
+
 class TestShardMapRoot:
     def test_shard_map_root_uses_bytes_join(self):
         """Verify distribute uses bytes-based join for shard map root."""
@@ -347,14 +362,18 @@ class TestShardMapRoot:
 # End-to-end: full protocol still works with optimizations
 # ---------------------------------------------------------------------------
 
+
 class TestOptimizedProtocolE2E:
     def test_full_transfer_with_optimizations(self):
         """Complete COMMIT → LATTICE → MATERIALIZE cycle with all optimizations."""
         net = CommitmentNetwork()
         for nid, region in [
-            ("n-0", "US-East"), ("n-1", "US-West"),
-            ("n-2", "EU-West"), ("n-3", "EU-East"),
-            ("n-4", "AP-East"), ("n-5", "AP-South"),
+            ("n-0", "US-East"),
+            ("n-1", "US-West"),
+            ("n-2", "EU-West"),
+            ("n-3", "EU-East"),
+            ("n-4", "AP-East"),
+            ("n-5", "AP-South"),
         ]:
             net.add_node(nid, region)
 
@@ -388,8 +407,10 @@ class TestOptimizedProtocolE2E:
         """Audit should use reverse index after commit."""
         net = CommitmentNetwork()
         for nid, region in [
-            ("n-0", "US-East"), ("n-1", "US-West"),
-            ("n-2", "EU-West"), ("n-3", "EU-East"),
+            ("n-0", "US-East"),
+            ("n-1", "US-West"),
+            ("n-2", "EU-West"),
+            ("n-3", "EU-East"),
         ]:
             net.add_node(nid, region)
 

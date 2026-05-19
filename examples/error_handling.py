@@ -9,13 +9,17 @@ Usage:
 """
 
 import os
+
 from src.ltp import (
-    KeyPair, Entity, CommitmentNetwork, LTPProtocol,
+    CommitmentNetwork,
+    Entity,
+    KeyPair,
+    LTPProtocol,
     reset_poc_state,
 )
+from src.ltp.keypair import SealedBox
 from src.ltp.primitives import AEAD
 from src.ltp.shards import ShardEncryptor
-from src.ltp.keypair import SealedBox
 
 reset_poc_state()
 
@@ -65,13 +69,13 @@ except ValueError:
 # ── Error 4: Degenerate CEK rejected ─────────────────────────────────────
 print("\n▸ Error 4: Degenerate CEK")
 try:
-    ShardEncryptor.validate_cek(b'\x00' * 32)  # All-zeros
+    ShardEncryptor.validate_cek(b"\x00" * 32)  # All-zeros
     print("  ERROR: should have failed!")
 except ValueError:
     print(f"  Rejected: all-zero CEK is degenerate ✓")
 
 try:
-    ShardEncryptor.validate_cek(b'\xff' * 32)  # All-ones
+    ShardEncryptor.validate_cek(b"\xff" * 32)  # All-ones
     print("  ERROR: should have failed!")
 except ValueError:
     print(f"  Rejected: all-ones CEK is degenerate ✓")

@@ -26,6 +26,7 @@ class EntityState(IntEnum):
 
     Integer values are used in Solidity mappings (uint8).
     """
+
     UNKNOWN = 0
     COMMITTED = 1
     ANCHORED = 2
@@ -34,21 +35,23 @@ class EntityState(IntEnum):
     DELETED = 5
 
 
-VALID_TRANSITIONS: frozenset[tuple[EntityState, EntityState]] = frozenset({
-    # Happy path
-    (EntityState.UNKNOWN, EntityState.COMMITTED),
-    (EntityState.COMMITTED, EntityState.ANCHORED),
-    (EntityState.ANCHORED, EntityState.MATERIALIZED),
-    # Dispute path (from any active state)
-    (EntityState.COMMITTED, EntityState.DISPUTED),
-    (EntityState.ANCHORED, EntityState.DISPUTED),
-    (EntityState.MATERIALIZED, EntityState.DISPUTED),
-    # Deletion path (from any state except UNKNOWN)
-    (EntityState.COMMITTED, EntityState.DELETED),
-    (EntityState.ANCHORED, EntityState.DELETED),
-    (EntityState.MATERIALIZED, EntityState.DELETED),
-    (EntityState.DISPUTED, EntityState.DELETED),
-})
+VALID_TRANSITIONS: frozenset[tuple[EntityState, EntityState]] = frozenset(
+    {
+        # Happy path
+        (EntityState.UNKNOWN, EntityState.COMMITTED),
+        (EntityState.COMMITTED, EntityState.ANCHORED),
+        (EntityState.ANCHORED, EntityState.MATERIALIZED),
+        # Dispute path (from any active state)
+        (EntityState.COMMITTED, EntityState.DISPUTED),
+        (EntityState.ANCHORED, EntityState.DISPUTED),
+        (EntityState.MATERIALIZED, EntityState.DISPUTED),
+        # Deletion path (from any state except UNKNOWN)
+        (EntityState.COMMITTED, EntityState.DELETED),
+        (EntityState.ANCHORED, EntityState.DELETED),
+        (EntityState.MATERIALIZED, EntityState.DELETED),
+        (EntityState.DISPUTED, EntityState.DELETED),
+    }
+)
 
 
 def validate_transition(

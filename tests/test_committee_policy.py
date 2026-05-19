@@ -7,9 +7,9 @@ import pytest
 from src.ltp.execution.committee.policy import (
     CommitteePolicy,
     EpochStrategy,
+    EvictionMode,
     FloorMode,
     StandbyStrategy,
-    EvictionMode,
 )
 from src.ltp.execution.writer import IdentityTier
 

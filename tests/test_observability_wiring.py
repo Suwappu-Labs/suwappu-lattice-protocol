@@ -10,8 +10,7 @@ from fastapi.testclient import TestClient
 
 from src.ltp.gateway.app import GatewayConfig, create_app
 from src.ltp.observability.endpoint import ETPObservability
-from src.ltp.observability.metrics import create_etp_metrics, MetricsRegistry
-
+from src.ltp.observability.metrics import MetricsRegistry, create_etp_metrics
 
 # ---------------------------------------------------------------------------
 # /metrics endpoint
@@ -19,7 +18,6 @@ from src.ltp.observability.metrics import create_etp_metrics, MetricsRegistry
 
 
 class TestMetricsEndpoint:
-
     def test_metrics_returns_prometheus_text(self):
         config = GatewayConfig(jwt_enabled=False)
         app = create_app(config)
@@ -64,7 +62,6 @@ class TestMetricsEndpoint:
 
 
 class TestNewMetrics:
-
     def test_bridge_metrics_registered(self):
         registry = MetricsRegistry()
         metrics = create_etp_metrics(registry)
@@ -123,7 +120,6 @@ class TestNewMetrics:
 
 
 class TestObservabilityFacade:
-
     def test_facade_has_all_metrics(self):
         obs = ETPObservability(node_id="test", region="test")
         assert "bridge_records_bridged" in obs.metrics

@@ -1,114 +1,227 @@
 """Multi-VM execution layer (Gate 4, Specs B + C2)."""
 
-from .types import OrderedBatch, BatchResult, TxResult, StateQuery, StateResult, OperationType, infer_operation_type
-from .model import (
-    ExecutionModel, family_from_tag,
-    VM_TAG_EVM, VM_TAG_TVM, VM_TAG_MOVE, VM_TAG_SVM,
-    VM_TAG_BITCOIN, VM_TAG_PLUTUS, VM_TAG_CANTON,
-    VM_TAG_BRIDGE, VM_TAG_PRECOMPILE,
-    VM_FAMILY_ACCOUNT, VM_FAMILY_OBJECT, VM_FAMILY_REGISTER,
-    VM_FAMILY_UTXO, VM_FAMILY_LEDGER_NATIVE, VM_FAMILY_SYSTEM,
-    FAMILY_NAMES,
-)
-from .registry import VMRegistry
-from .router import TransactionRouter, ExecutorUnavailable
-from .state_root import MultiVMStateRoot
-from .precompile import CrossVMPrecompile, PrecompileResult
-from .consensus import ConsensusAdapter, FakeConsensusAdapter
-from .attestation import AttestationEngine, MultiVMAttestation, AttestationAggregator
-
-# Writer Registry (Spec C2)
-from .writer import (
-    IdentityTier, WriterState, WriterIdentity, WriterRecord,
-    ApprovalPath, TransitionEntry,
-    VALID_WRITER_TRANSITIONS, TRANSACTABLE_STATES, validate_writer_transition,
-)
-from .writer_config import RegistryConfig, ProbationModifiers
-from .writer_roles import (
-    RegistryAction, ScopedPermission, RegistryRole, RoleAssignment,
-    builtin_owner, builtin_admin, builtin_sponsor,
-)
-from .writer_registry import WriterRegistry
-from .writer_policy import VMWriterPolicy, PolicyEngine, PolicyResult
-from .writer_auth import AuthorizationResult, DispatchDecision, WriterAuthorizer
-from .writer_recovery import (
-    EmergencyAction, EmergencyIntervention, EmergencyState,
-    PolicySnapshotStore, RecoveryQuorum,
-)
-from .writer_epoch import EpochTracker, check_expirations, promote_due_probations
-from .writer_gate import WriterGate
+from .attestation import AttestationAggregator, AttestationEngine, MultiVMAttestation
 
 # Committee Formation (Spec C3a)
 from .committee import (
-    CommitteeRole, CommitteeMember, CommitteeRoster,
-    EpochTrigger, EpochRecord,
-    EvictionReason, EvictionEvent, CommitteeEvent,
-    EpochStrategy, FloorMode, StandbyStrategy, EvictionMode,
-    CommitteePolicy,
-    CommitteeFormation, EpochManager,
-    EvictionHandler, StandbySelector,
+    CommitteeEvent,
+    CommitteeFormation,
     CommitteeManager,
+    CommitteeMember,
+    CommitteePolicy,
+    CommitteeRole,
+    CommitteeRoster,
+    EpochManager,
+    EpochRecord,
+    EpochStrategy,
+    EpochTrigger,
+    EvictionEvent,
+    EvictionHandler,
+    EvictionMode,
+    EvictionReason,
+    FloorMode,
+    StandbySelector,
+    StandbyStrategy,
 )
 
 # DKG (Spec C3b) + Threshold Signing (Spec C3c)
 from .committee.dkg import (
-    DKGState, DKGPhase,
-    DKGCommitment, DKGShare, DKGComplaint,
-    DKGResult, DKGSessionConfig,
-    ScalarField, ScalarPoly,
-    DKGTransport, FakeDKGTransport,
+    DOMAIN_ATTESTATION,
+    DOMAIN_CROSS_VM,
+    DOMAIN_STATE_ROOT,
+    DKGCommitment,
+    DKGComplaint,
     DKGKeyRegistry,
-    ThresholdSigningKey, PartialSignature,
-    DOMAIN_ATTESTATION, DOMAIN_STATE_ROOT, DOMAIN_CROSS_VM,
+    DKGPhase,
+    DKGResult,
+    DKGSessionConfig,
+    DKGShare,
+    DKGState,
+    DKGTransport,
+    FakeDKGTransport,
+    PartialSignature,
+    ScalarField,
+    ScalarPoly,
+    ThresholdSigningKey,
+)
+from .consensus import ConsensusAdapter, FakeConsensusAdapter
+from .model import (
+    FAMILY_NAMES,
+    VM_FAMILY_ACCOUNT,
+    VM_FAMILY_LEDGER_NATIVE,
+    VM_FAMILY_OBJECT,
+    VM_FAMILY_REGISTER,
+    VM_FAMILY_SYSTEM,
+    VM_FAMILY_UTXO,
+    VM_TAG_BITCOIN,
+    VM_TAG_BRIDGE,
+    VM_TAG_CANTON,
+    VM_TAG_EVM,
+    VM_TAG_MOVE,
+    VM_TAG_PLUTUS,
+    VM_TAG_PRECOMPILE,
+    VM_TAG_SVM,
+    VM_TAG_TVM,
+    ExecutionModel,
+    family_from_tag,
+)
+from .precompile import CrossVMPrecompile, PrecompileResult
+from .registry import VMRegistry
+from .router import ExecutorUnavailable, TransactionRouter
+from .state_root import MultiVMStateRoot
+from .types import (
+    BatchResult,
+    OperationType,
+    OrderedBatch,
+    StateQuery,
+    StateResult,
+    TxResult,
+    infer_operation_type,
+)
+
+# Writer Registry (Spec C2)
+from .writer import (
+    TRANSACTABLE_STATES,
+    VALID_WRITER_TRANSITIONS,
+    ApprovalPath,
+    IdentityTier,
+    TransitionEntry,
+    WriterIdentity,
+    WriterRecord,
+    WriterState,
+    validate_writer_transition,
+)
+from .writer_auth import AuthorizationResult, DispatchDecision, WriterAuthorizer
+from .writer_config import ProbationModifiers, RegistryConfig
+from .writer_epoch import EpochTracker, check_expirations, promote_due_probations
+from .writer_gate import WriterGate
+from .writer_policy import PolicyEngine, PolicyResult, VMWriterPolicy
+from .writer_recovery import (
+    EmergencyAction,
+    EmergencyIntervention,
+    EmergencyState,
+    PolicySnapshotStore,
+    RecoveryQuorum,
+)
+from .writer_registry import WriterRegistry
+from .writer_roles import (
+    RegistryAction,
+    RegistryRole,
+    RoleAssignment,
+    ScopedPermission,
+    builtin_admin,
+    builtin_owner,
+    builtin_sponsor,
 )
 
 __all__ = [
     # Execution layer (Spec B)
-    "OrderedBatch", "BatchResult", "TxResult", "StateQuery", "StateResult", "OperationType",
-    "ExecutionModel", "family_from_tag",
-    "VM_TAG_EVM", "VM_TAG_TVM", "VM_TAG_MOVE", "VM_TAG_SVM",
-    "VM_TAG_BITCOIN", "VM_TAG_PLUTUS", "VM_TAG_CANTON",
-    "VM_TAG_BRIDGE", "VM_TAG_PRECOMPILE",
-    "VM_FAMILY_ACCOUNT", "VM_FAMILY_OBJECT", "VM_FAMILY_REGISTER",
-    "VM_FAMILY_UTXO", "VM_FAMILY_LEDGER_NATIVE", "VM_FAMILY_SYSTEM",
+    "OrderedBatch",
+    "BatchResult",
+    "TxResult",
+    "StateQuery",
+    "StateResult",
+    "OperationType",
+    "ExecutionModel",
+    "family_from_tag",
+    "VM_TAG_EVM",
+    "VM_TAG_TVM",
+    "VM_TAG_MOVE",
+    "VM_TAG_SVM",
+    "VM_TAG_BITCOIN",
+    "VM_TAG_PLUTUS",
+    "VM_TAG_CANTON",
+    "VM_TAG_BRIDGE",
+    "VM_TAG_PRECOMPILE",
+    "VM_FAMILY_ACCOUNT",
+    "VM_FAMILY_OBJECT",
+    "VM_FAMILY_REGISTER",
+    "VM_FAMILY_UTXO",
+    "VM_FAMILY_LEDGER_NATIVE",
+    "VM_FAMILY_SYSTEM",
     "FAMILY_NAMES",
     "VMRegistry",
-    "TransactionRouter", "ExecutorUnavailable",
+    "TransactionRouter",
+    "ExecutorUnavailable",
     "MultiVMStateRoot",
-    "CrossVMPrecompile", "PrecompileResult",
-    "ConsensusAdapter", "FakeConsensusAdapter",
-    "AttestationEngine", "MultiVMAttestation", "AttestationAggregator",
+    "CrossVMPrecompile",
+    "PrecompileResult",
+    "ConsensusAdapter",
+    "FakeConsensusAdapter",
+    "AttestationEngine",
+    "MultiVMAttestation",
+    "AttestationAggregator",
     # Writer Registry (Spec C2)
-    "IdentityTier", "WriterState", "WriterIdentity", "WriterRecord",
-    "ApprovalPath", "TransitionEntry",
-    "VALID_WRITER_TRANSITIONS", "TRANSACTABLE_STATES", "validate_writer_transition",
-    "RegistryConfig", "ProbationModifiers",
-    "RegistryAction", "ScopedPermission", "RegistryRole", "RoleAssignment",
-    "builtin_owner", "builtin_admin", "builtin_sponsor",
+    "IdentityTier",
+    "WriterState",
+    "WriterIdentity",
+    "WriterRecord",
+    "ApprovalPath",
+    "TransitionEntry",
+    "VALID_WRITER_TRANSITIONS",
+    "TRANSACTABLE_STATES",
+    "validate_writer_transition",
+    "RegistryConfig",
+    "ProbationModifiers",
+    "RegistryAction",
+    "ScopedPermission",
+    "RegistryRole",
+    "RoleAssignment",
+    "builtin_owner",
+    "builtin_admin",
+    "builtin_sponsor",
     "WriterRegistry",
-    "VMWriterPolicy", "PolicyEngine", "PolicyResult",
-    "AuthorizationResult", "DispatchDecision", "WriterAuthorizer",
-    "EmergencyAction", "EmergencyIntervention", "EmergencyState",
-    "PolicySnapshotStore", "RecoveryQuorum",
-    "EpochTracker", "check_expirations", "promote_due_probations",
+    "VMWriterPolicy",
+    "PolicyEngine",
+    "PolicyResult",
+    "AuthorizationResult",
+    "DispatchDecision",
+    "WriterAuthorizer",
+    "EmergencyAction",
+    "EmergencyIntervention",
+    "EmergencyState",
+    "PolicySnapshotStore",
+    "RecoveryQuorum",
+    "EpochTracker",
+    "check_expirations",
+    "promote_due_probations",
     "WriterGate",
     # Committee Formation (Spec C3a)
-    "CommitteeRole", "CommitteeMember", "CommitteeRoster",
-    "EpochTrigger", "EpochRecord",
-    "EvictionReason", "EvictionEvent", "CommitteeEvent",
-    "EpochStrategy", "FloorMode", "StandbyStrategy", "EvictionMode",
+    "CommitteeRole",
+    "CommitteeMember",
+    "CommitteeRoster",
+    "EpochTrigger",
+    "EpochRecord",
+    "EvictionReason",
+    "EvictionEvent",
+    "CommitteeEvent",
+    "EpochStrategy",
+    "FloorMode",
+    "StandbyStrategy",
+    "EvictionMode",
     "CommitteePolicy",
-    "CommitteeFormation", "EpochManager",
-    "EvictionHandler", "StandbySelector",
+    "CommitteeFormation",
+    "EpochManager",
+    "EvictionHandler",
+    "StandbySelector",
     "CommitteeManager",
     # DKG (Spec C3b)
-    "DKGState", "DKGPhase",
-    "DKGCommitment", "DKGShare", "DKGComplaint",
-    "DKGResult", "DKGSessionConfig",
-    "ScalarField", "ScalarPoly",
-    "DKGTransport", "FakeDKGTransport",
+    "DKGState",
+    "DKGPhase",
+    "DKGCommitment",
+    "DKGShare",
+    "DKGComplaint",
+    "DKGResult",
+    "DKGSessionConfig",
+    "ScalarField",
+    "ScalarPoly",
+    "DKGTransport",
+    "FakeDKGTransport",
     "DKGKeyRegistry",
     # Threshold Signing (Spec C3c)
-    "ThresholdSigningKey", "PartialSignature",
-    "DOMAIN_ATTESTATION", "DOMAIN_STATE_ROOT", "DOMAIN_CROSS_VM",
+    "ThresholdSigningKey",
+    "PartialSignature",
+    "DOMAIN_ATTESTATION",
+    "DOMAIN_STATE_ROOT",
+    "DOMAIN_CROSS_VM",
 ]

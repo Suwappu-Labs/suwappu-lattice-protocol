@@ -27,14 +27,16 @@ __all__ = [
 @dataclass
 class WorkflowStep:
     """A single step in a multi-step workflow."""
+
     step_id: str
-    handler: Callable[[dict], dict]   # Takes context, returns updated context
+    handler: Callable[[dict], dict]  # Takes context, returns updated context
     description: str = ""
 
 
 @dataclass
 class WorkflowResult:
     """Result of a workflow execution."""
+
     workflow_id: str
     success: bool
     steps_completed: int
@@ -52,7 +54,9 @@ class WorkflowOrchestrator(ABC):
 
     @abstractmethod
     def register_workflow(
-        self, workflow_id: str, steps: list[WorkflowStep],
+        self,
+        workflow_id: str,
+        steps: list[WorkflowStep],
     ) -> None:
         """Register a multi-step workflow definition."""
         ...
@@ -86,7 +90,9 @@ class InMemoryOrchestrator(WorkflowOrchestrator):
         self._execution_counts: dict[str, int] = {}
 
     def register_workflow(
-        self, workflow_id: str, steps: list[WorkflowStep],
+        self,
+        workflow_id: str,
+        steps: list[WorkflowStep],
     ) -> None:
         with self._lock:
             if workflow_id in self._workflows:
@@ -124,9 +130,7 @@ class InMemoryOrchestrator(WorkflowOrchestrator):
                 )
 
         with self._lock:
-            self._execution_counts[workflow_id] = (
-                self._execution_counts.get(workflow_id, 0) + 1
-            )
+            self._execution_counts[workflow_id] = self._execution_counts.get(workflow_id, 0) + 1
 
         return WorkflowResult(
             workflow_id=workflow_id,

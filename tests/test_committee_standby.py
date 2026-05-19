@@ -4,21 +4,25 @@ from __future__ import annotations
 
 import pytest
 
+from src.ltp.execution.committee.policy import (
+    CommitteePolicy,
+    StandbyStrategy,
+)
 from src.ltp.execution.committee.standby import StandbySelector, score_member
 from src.ltp.execution.committee.types import (
     CommitteeMember,
     CommitteeRole,
     CommitteeRoster,
 )
-from src.ltp.execution.committee.policy import (
-    CommitteePolicy,
-    StandbyStrategy,
-)
 from src.ltp.execution.writer import IdentityTier
 
 
-def _member(fp_byte: int, tier: IdentityTier = IdentityTier.BLS,
-            joined_epoch: int = 0, role: CommitteeRole = CommitteeRole.STANDBY) -> CommitteeMember:
+def _member(
+    fp_byte: int,
+    tier: IdentityTier = IdentityTier.BLS,
+    joined_epoch: int = 0,
+    role: CommitteeRole = CommitteeRole.STANDBY,
+) -> CommitteeMember:
     return CommitteeMember(
         writer_fp=bytes([fp_byte]) * 32,
         bls_pk=bytes([fp_byte]) * 48,
@@ -30,9 +34,12 @@ def _member(fp_byte: int, tier: IdentityTier = IdentityTier.BLS,
 
 def _roster(active: list[CommitteeMember], standby: list[CommitteeMember]) -> CommitteeRoster:
     return CommitteeRoster(
-        vm_tag=0x01, epoch=1,
-        active_members=list(active), standby_members=list(standby),
-        formed_at=1000, formation_round=100,
+        vm_tag=0x01,
+        epoch=1,
+        active_members=list(active),
+        standby_members=list(standby),
+        formed_at=1000,
+        formation_round=100,
     )
 
 

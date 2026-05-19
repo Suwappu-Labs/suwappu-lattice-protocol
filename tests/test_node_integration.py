@@ -12,10 +12,10 @@ import pytest
 from src.ltp.node.config import NodeConfig
 from src.ltp.node.main import ETPNode
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def base_config():
@@ -23,8 +23,8 @@ def base_config():
     return NodeConfig(
         node_id="test-node",
         region="test",
-        listen_port=0,     # Ephemeral
-        rest_port=0,       # Ephemeral
+        listen_port=0,  # Ephemeral
+        rest_port=0,  # Ephemeral
         diagnostics_port=0,  # Ephemeral — avoid port collisions
         require_real_crypto=False,
         storage_backend="memory",
@@ -44,7 +44,6 @@ def base_config():
 
 
 class TestLegacyMode:
-
     def test_legacy_startup_shutdown(self, base_config):
         """Node starts and stops cleanly with only legacy components."""
         node = ETPNode(base_config)
@@ -65,7 +64,6 @@ class TestLegacyMode:
 
 
 class TestGatewayIntegration:
-
     def test_gateway_enabled_starts_server(self, base_config):
         base_config.gateway_enabled = True
         base_config.gateway_port = 0  # Ephemeral
@@ -93,7 +91,6 @@ class TestGatewayIntegration:
 
 
 class TestGossipIntegration:
-
     def test_gossip_enabled_starts_protocol(self, base_config):
         base_config.gossip_enabled = True
         node = ETPNode(base_config)
@@ -128,7 +125,6 @@ class TestGossipIntegration:
 
 
 class TestObservabilityIntegration:
-
     def test_observability_initialized_by_default(self, base_config):
         """observability_enabled=True by default."""
         node = ETPNode(base_config)
@@ -154,7 +150,6 @@ class TestObservabilityIntegration:
 
 
 class TestShutdownOrder:
-
     def test_all_components_stop(self, base_config):
         """Enable everything and verify clean shutdown."""
         base_config.gateway_enabled = True
@@ -183,7 +178,6 @@ class TestShutdownOrder:
 
 
 class TestNodeConfigIntegration:
-
     def test_observability_default_on(self):
         config = NodeConfig()
         assert config.observability_enabled is True

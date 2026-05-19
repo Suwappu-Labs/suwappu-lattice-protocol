@@ -22,8 +22,15 @@ _MAGIC = b"ETPB"
 _VERSION = 1
 _MAX_SEALED_KEY_SIZE = 65536  # ML-KEM ciphertext is 1088 bytes; generous upper bound
 _REQUIRED_RECORD_KEYS = (
-    "entity_id", "sender_id", "shard_map_root", "content_hash",
-    "encoding_params", "shape", "shape_hash", "timestamp", "signature",
+    "entity_id",
+    "sender_id",
+    "shard_map_root",
+    "content_hash",
+    "encoding_params",
+    "shape",
+    "shape_hash",
+    "timestamp",
+    "signature",
     "sender_vk",
 )
 

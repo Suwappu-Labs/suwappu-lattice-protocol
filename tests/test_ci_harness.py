@@ -7,9 +7,9 @@ Tests DSTCIHarness execution, result aggregation, CI config validation.
 from __future__ import annotations
 
 import os
-import yaml
 
 import pytest
+import yaml
 
 from src.simulator.ci_harness import DSTCIHarness, DSTCIResult
 
@@ -22,7 +22,6 @@ DEPLOY_DIR = os.path.join(os.path.dirname(__file__), "..", "deploy")
 
 
 class TestDSTCIHarness:
-
     def test_clean_run_passes(self):
         """Zero fault rate, all seeds should pass."""
         harness = DSTCIHarness(seeds=[42, 123], steps=100, fault_rate=0.0)
@@ -69,7 +68,6 @@ class TestDSTCIHarness:
 
 
 class TestCIResult:
-
     def test_result_captures_details(self):
         result = DSTCIResult(
             seeds_run=3,
@@ -98,7 +96,6 @@ class TestCIResult:
 
 
 class TestCIConfigValidation:
-
     def test_ci_yaml_parseable(self):
         path = os.path.join(DEPLOY_DIR, "ci", "test.yml")
         with open(path) as f:

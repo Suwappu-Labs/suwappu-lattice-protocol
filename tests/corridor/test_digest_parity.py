@@ -21,7 +21,6 @@ from ltp.corridor import (
     sha3_256_domain,
 )
 
-
 # Reference digests reproduced from the byte layout of
 # `gsx-dag/crates/gsx-ltp` (see attestation.rs, da.rs, did_stark.rs). The
 # values come from the Python sha3_256_domain implementation, which is the

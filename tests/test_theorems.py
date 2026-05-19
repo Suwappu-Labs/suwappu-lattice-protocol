@@ -21,10 +21,10 @@ from src.ltp import (
     canonical_hash,
 )
 
-
 # ---------------------------------------------------------------------------
 # Theorem 4 — SINT: Shard Integrity / Tamper Detection
 # ---------------------------------------------------------------------------
+
 
 class TestSINT:
     """Theorem 4: AEAD authentication detects any shard modification."""
@@ -51,9 +51,10 @@ class TestSINT:
 
     def test_aead_rejects_flipped_tag(self, network):
         """A flip in the AEAD authentication tag must be rejected."""
-        from src.ltp.shards import ShardEncryptor
-        from src.ltp.primitives import AEAD
         import pytest
+
+        from src.ltp.primitives import AEAD
+        from src.ltp.shards import ShardEncryptor
 
         cek = ShardEncryptor.generate_cek()
         entity_id = canonical_hash(os.urandom(32))
@@ -68,6 +69,7 @@ class TestSINT:
 
     def test_wrong_cek_rejected_by_aead(self):
         from src.ltp.shards import ShardEncryptor
+
         cek = ShardEncryptor.generate_cek()
         wrong_cek = ShardEncryptor.generate_cek()
         entity_id = canonical_hash(os.urandom(32))
@@ -100,6 +102,7 @@ class TestSINT:
 # ---------------------------------------------------------------------------
 # Theorem 7 — TSEC: Threshold Secrecy
 # ---------------------------------------------------------------------------
+
 
 class TestTSEC:
     """Theorem 7: k-1 shards reveal zero information (information-theoretic)."""
@@ -161,6 +164,7 @@ class TestTSEC:
     def test_chi_squared_uniformity_of_k_minus_1_shards(self, messages):
         """k-1 shard bytes should be statistically uniform (no plaintext bias)."""
         import random
+
         random.seed(42)
         large_msg = bytes(random.randint(0, 255) for _ in range(16384))
         large_shards = ErasureCoder.encode(large_msg, self.N, self.K)
@@ -208,14 +212,13 @@ class TestTSEC:
 
         # But reconstruction from k-1 shards must fail
         with pytest.raises((AssertionError, Exception)):
-            ErasureCoder.decode(
-                {i: shards_0[i] for i in compromised}, self.N, self.K
-            )
+            ErasureCoder.decode({i: shards_0[i] for i in compromised}, self.N, self.K)
 
 
 # ---------------------------------------------------------------------------
 # Theorem 3 — IMM: Entity Immutability
 # ---------------------------------------------------------------------------
+
 
 class TestIMM:
     """Theorem 3: EntityID is collision-resistant; any modification changes the ID."""
@@ -269,7 +272,8 @@ class TestIMM:
         e = Entity(content=content, shape="text/plain")
         eid_base = e.compute_id(kp_a.vk, ts)
 
-        flipped = bytearray(content); flipped[0] ^= 0x01
+        flipped = bytearray(content)
+        flipped[0] ^= 0x01
         eid_v1 = Entity(content=bytes(flipped), shape="text/plain").compute_id(kp_a.vk, ts)
         eid_v2 = Entity(content=content, shape="text/html").compute_id(kp_a.vk, ts)
         eid_v3 = e.compute_id(kp_a.vk, ts + 1.0)
@@ -282,7 +286,7 @@ class TestIMM:
         kp = KeyPair.generate("collision-tester")
         seen: set[str] = set()
         for i in range(10_000):
-            content = os.urandom(32) + struct.pack('>I', i)
+            content = os.urandom(32) + struct.pack(">I", i)
             e = Entity(content=content, shape="x-ltp/collision-test")
             eid = e.compute_id(kp.vk, float(i))
             assert eid not in seen, f"EntityID collision at index {i}"

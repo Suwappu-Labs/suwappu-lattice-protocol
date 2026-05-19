@@ -15,10 +15,10 @@ Security properties:
   - Replay protection (per-sender monotonic nonces)
 """
 
-from .message import BridgeMessage, BridgeCommitment, RelayPacket
 from .anchor import L1Anchor
-from .relayer import Relayer
 from .materializer import L2Materializer
+from .message import BridgeCommitment, BridgeMessage, RelayPacket
+from .relayer import Relayer
 
 __all__ = [
     "BridgeMessage",
@@ -31,14 +31,14 @@ __all__ = [
 
 # LiveBridge requires web3 — import lazily to avoid hard dependency
 # Optimistic bridge types are always available (no external deps)
+from .challenge import ChallengeManager, ChallengeRecord, ChallengeStatus
 from .fraud_proof import (
     FraudProofType,
-    InvalidSignatureFraudProof,
     InconsistentSTHFraudProof,
     InvalidMerkleProofFraudProof,
+    InvalidSignatureFraudProof,
 )
-from .challenge import ChallengeManager, ChallengeStatus, ChallengeRecord
-from .watcher import WatcherService, STHStore, WatcherTickResult
+from .watcher import STHStore, WatcherService, WatcherTickResult
 
 __all__ += [
     "FraudProofType",
@@ -55,12 +55,12 @@ __all__ += [
 
 # ZK bridge types
 from .zk_bridge import (
-    ZKBridgeBackend,
-    ZKBridgePublicInputs,
-    ZKBridgeProof,
-    ZKBridgeProver,
     SimulatedZKBridgeProver,
     STARKBridgeProver,
+    ZKBridgeBackend,
+    ZKBridgeProof,
+    ZKBridgeProver,
+    ZKBridgePublicInputs,
     ZKBridgeVerifier,
 )
 
@@ -78,5 +78,6 @@ __all__ += [
 def __getattr__(name):
     if name in ("LiveBridge", "LiveBridgeResult"):
         from .live import LiveBridge, LiveBridgeResult
+
         return {"LiveBridge": LiveBridge, "LiveBridgeResult": LiveBridgeResult}[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

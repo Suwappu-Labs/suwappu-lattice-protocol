@@ -1,7 +1,9 @@
 """Stress scenarios 3, 9: RPC downtime and devnet write failures."""
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from tests.stress.conftest import make_raw_log, make_service
 
 

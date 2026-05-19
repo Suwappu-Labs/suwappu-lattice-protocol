@@ -87,9 +87,7 @@ class SP1ZKBridgeProver(ZKBridgeProver):
         """
         # Step 1: Soundness pre-check
         if not sth.verify():
-            raise ValueError(
-                "Cannot generate SP1 proof for invalid STH signature"
-            )
+            raise ValueError("Cannot generate SP1 proof for invalid STH signature")
 
         # Step 2: Extract public inputs
         public_inputs = ZKBridgePublicInputs.from_sth(sth)
@@ -124,6 +122,7 @@ class SP1ZKBridgeProver(ZKBridgeProver):
     def _mock_proof(self, sth, public_inputs: ZKBridgePublicInputs) -> bytes:
         """Real STARK-based fallback proof when SP1 toolchain is not available."""
         from ._stark_fallback import stark_fallback_proof_bytes
+
         return stark_fallback_proof_bytes(sth)
 
     def _local_proof(self, stdin_data: bytes) -> bytes:
@@ -177,13 +176,9 @@ class SP1ZKBridgeProver(ZKBridgeProver):
                 "Set network_api_key parameter or SP1_NETWORK_API_KEY env var."
             )
 
-        api_url = os.environ.get(
-            "SP1_NETWORK_API_URL", "https://rpc.succinct.xyz"
-        )
+        api_url = os.environ.get("SP1_NETWORK_API_URL", "https://rpc.succinct.xyz")
         if not api_url.startswith("https://"):
-            raise ValueError(
-                f"SP1 Network API requires HTTPS. Refused: {api_url[:40]}"
-            )
+            raise ValueError(f"SP1 Network API requires HTTPS. Refused: {api_url[:40]}")
         headers = {"Authorization": f"Bearer {self._network_api_key}"}
 
         # Load ELF binary
@@ -227,9 +222,7 @@ class SP1ZKBridgeProver(ZKBridgeProver):
                     headers=headers,
                 )
                 if status_resp.status_code != 200:
-                    raise RuntimeError(
-                        f"SP1 Network status check failed: {status_resp.text}"
-                    )
+                    raise RuntimeError(f"SP1 Network status check failed: {status_resp.text}")
                 status = status_resp.json().get("status", "")
                 if status == "completed":
                     break
@@ -248,9 +241,7 @@ class SP1ZKBridgeProver(ZKBridgeProver):
                 headers=headers,
             )
             if proof_resp.status_code != 200:
-                raise RuntimeError(
-                    f"SP1 Network proof fetch failed: {proof_resp.text}"
-                )
+                raise RuntimeError(f"SP1 Network proof fetch failed: {proof_resp.text}")
 
             logger.info("SP1 Network proof received: %d bytes", len(proof_resp.content))
             return proof_resp.content

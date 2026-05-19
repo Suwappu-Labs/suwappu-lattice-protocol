@@ -6,15 +6,15 @@ Tests bilateral signed agreements for VERIFIED -> FEDERATED trust upgrade.
 
 from __future__ import annotations
 
-import pytest
-
 import struct
+
+import pytest
 
 from src.ltp import KeyPair
 from src.ltp.federation import (
     FederationAgreement,
-    FederationRegistry,
     FederationConfig,
+    FederationRegistry,
     NetworkIdentityRecord,
     TrustLevel,
 )
@@ -48,14 +48,22 @@ def net_b_kp() -> KeyPair:
 @pytest.fixture
 def nir_a(net_a_kp):
     return NetworkIdentityRecord.create(
-        net_a_kp, b"\xaa" * 32, 0, "Network A", "https://net-a.example.com",
+        net_a_kp,
+        b"\xaa" * 32,
+        0,
+        "Network A",
+        "https://net-a.example.com",
     )
 
 
 @pytest.fixture
 def nir_b(net_b_kp):
     return NetworkIdentityRecord.create(
-        net_b_kp, b"\xbb" * 32, 0, "Network B", "https://net-b.example.com",
+        net_b_kp,
+        b"\xbb" * 32,
+        0,
+        "Network B",
+        "https://net-b.example.com",
     )
 
 
@@ -65,7 +73,6 @@ def nir_b(net_b_kp):
 
 
 class TestFederationAgreement:
-
     def test_initiate_creates_half_signed(self, net_a_kp, nir_a, nir_b):
         agreement = FederationAgreement.initiate(net_a_kp, nir_a, nir_b)
         assert agreement.initiator_network_id == nir_a.network_id
@@ -115,7 +122,10 @@ class TestFederationAgreement:
 
     def test_agreement_with_terms(self, net_a_kp, net_b_kp, nir_a, nir_b):
         half = FederationAgreement.initiate(
-            net_a_kp, nir_a, nir_b, terms="Rate limit: 100 req/min",
+            net_a_kp,
+            nir_a,
+            nir_b,
+            terms="Rate limit: 100 req/min",
         )
         full = FederationAgreement.countersign(half, net_b_kp)
         assert full.terms == "Rate limit: 100 req/min"
@@ -128,7 +138,6 @@ class TestFederationAgreement:
 
 
 class TestFederateWithAgreement:
-
     def _setup_verified_registry(self, nir_a, nir_b, net_b_kp):
         """Create a registry from A's perspective with B as VERIFIED."""
         reg = FederationRegistry()
@@ -187,23 +196,36 @@ class TestFederateWithAgreement:
 
 
 class TestAgreementFlow:
-
     def test_full_flow_nir_to_federation(self, net_a_kp, net_b_kp):
         """End-to-end: create NIRs -> register -> verify STH -> agree -> federate."""
         nir_a = NetworkIdentityRecord.create(
-            net_a_kp, b"\x11" * 32, 0, "Alpha", "https://alpha.net",
+            net_a_kp,
+            b"\x11" * 32,
+            0,
+            "Alpha",
+            "https://alpha.net",
         )
         nir_b = NetworkIdentityRecord.create(
-            net_b_kp, b"\x22" * 32, 0, "Beta", "https://beta.net",
+            net_b_kp,
+            b"\x22" * 32,
+            0,
+            "Beta",
+            "https://beta.net",
         )
 
         # Network A's registry
         reg_a = FederationRegistry()
         reg_a.set_local_network_id(nir_a.network_id)
         reg_a.register_from_nir(nir_b)
-        reg_a.verify_sth(nir_b.network_id, _make_signed_sth(
-            net_b_kp.sk, root="xyz", count=5,
-        ), current_epoch=1)
+        reg_a.verify_sth(
+            nir_b.network_id,
+            _make_signed_sth(
+                net_b_kp.sk,
+                root="xyz",
+                count=5,
+            ),
+            current_epoch=1,
+        )
 
         # Initiate agreement from A
         half = FederationAgreement.initiate(net_a_kp, nir_a, nir_b)
@@ -225,7 +247,6 @@ class TestAgreementFlow:
 
 
 class TestAuditFixes:
-
     def test_self_federation_rejected(self, net_a_kp, nir_a):
         """Cannot federate a network with itself."""
         with pytest.raises(ValueError, match="Cannot federate.*itself"):

@@ -4,8 +4,10 @@ Tests both directions of the gateway pipeline with independent configs,
 replay DBs, and attestation writers.
 """
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from src.ltp.keypair import KeyPair
 
 
@@ -53,7 +55,8 @@ class TestBaseSepoliaToGSX:
         )
 
         base_log = _make_raw_log(
-            "0xbase_tx_001", 100,
+            "0xbase_tx_001",
+            100,
             "0x79eF1B7914f98C5C1404617449AB1f377c475996",
         )
         anchor_fn = MagicMock(return_value="0xgsx_anchor_tx")
@@ -94,7 +97,8 @@ class TestGSXToBaseSepolia:
         )
 
         gsx_log = _make_raw_log(
-            "0xgsx_tx_001", 500,
+            "0xgsx_tx_001",
+            500,
             "0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4",
         )
         anchor_fn = MagicMock(return_value="0xbase_anchor_tx")
@@ -128,37 +132,41 @@ class TestBidirectionalIsolation:
         base_config = GatewayVMConfig(
             source_chain_id=84532,
             source_bridge_contract="0x79eF1B7914f98C5C1404617449AB1f377c475996",
-            finality_depth=12, dest_chain_id=103115120,
+            finality_depth=12,
+            dest_chain_id=103115120,
             replay_db_path=":memory:",
         )
         gsx_config = GatewayVMConfig(
             source_chain_id=103115120,
             source_bridge_contract="0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4",
-            finality_depth=6, dest_chain_id=84532,
+            finality_depth=6,
+            dest_chain_id=84532,
             replay_db_path=":memory:",
         )
 
-        base_log = _make_raw_log("0xshared_hash", 100,
-                                  "0x79eF1B7914f98C5C1404617449AB1f377c475996")
-        gsx_log = _make_raw_log("0xshared_hash", 100,
-                                 "0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4")
+        base_log = _make_raw_log("0xshared_hash", 100, "0x79eF1B7914f98C5C1404617449AB1f377c475996")
+        gsx_log = _make_raw_log("0xshared_hash", 100, "0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4")
 
         base_anchor = MagicMock(return_value="0xb")
         gsx_anchor = MagicMock(return_value="0xg")
 
         svc_base = GatewayVMService(
-            config=base_config, operator_keypair=base_to_gsx_kp,
+            config=base_config,
+            operator_keypair=base_to_gsx_kp,
             fetch_logs=lambda fb, tb: [base_log],
             get_source_block_number=lambda: 200,
             get_dest_block_number=lambda: 999,
-            anchor_fn=base_anchor, is_signer_authorized=lambda: True,
+            anchor_fn=base_anchor,
+            is_signer_authorized=lambda: True,
         )
         svc_gsx = GatewayVMService(
-            config=gsx_config, operator_keypair=gsx_to_base_kp,
+            config=gsx_config,
+            operator_keypair=gsx_to_base_kp,
             fetch_logs=lambda fb, tb: [gsx_log],
             get_source_block_number=lambda: 200,
             get_dest_block_number=lambda: 999,
-            anchor_fn=gsx_anchor, is_signer_authorized=lambda: True,
+            anchor_fn=gsx_anchor,
+            is_signer_authorized=lambda: True,
         )
 
         r_base = svc_base.tick()

@@ -39,6 +39,7 @@ def _clean_env(monkeypatch):
     monkeypatch.delenv("LTP_ENV", raising=False)
     import sys
     import types
+
     fake = types.ModuleType("keyring")
     fake.get_password = lambda service, username: None  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "keyring", fake)
@@ -194,12 +195,15 @@ def test_from_environment_keyring_runtime_error_falls_through(monkeypatch, caplo
     backend is configured. KeyVault must catch those broadly and fall
     through to the documented HSM / dev-ephemeral path instead of
     crashing init."""
+    import logging
     import sys
     import types
-    import logging
+
     fake = types.ModuleType("keyring")
+
     def _broken(service, username):
         raise RuntimeError("NoKeyringError: No recommended backend")
+
     fake.get_password = _broken  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "keyring", fake)
     monkeypatch.delenv("LTP_KEY_ENCRYPTION_KEY", raising=False)
@@ -209,15 +213,11 @@ def test_from_environment_keyring_runtime_error_falls_through(monkeypatch, caplo
     # Construction succeeded via the dev-ephemeral path; keyring failure
     # was logged but did not raise.
     assert isinstance(vault, KeyVault)
-    assert any(
-        "OS keychain lookup failed" in rec.message for rec in caplog.records
-    )
+    assert any("OS keychain lookup failed" in rec.message for rec in caplog.records)
 
 
 def test_from_environment_rejects_wrong_length(monkeypatch):
-    monkeypatch.setenv(
-        "LTP_KEY_ENCRYPTION_KEY", base64.b64encode(b"too short").decode()
-    )
+    monkeypatch.setenv("LTP_KEY_ENCRYPTION_KEY", base64.b64encode(b"too short").decode())
     with pytest.raises(KeyVaultError, match="must decode to 32 bytes"):
         KeyVault.from_environment()
 
@@ -238,15 +238,11 @@ def test_from_environment_production_no_source_fails(monkeypatch):
         KeyVault.from_environment()
 
 
-def test_from_environment_dev_no_source_warns_and_returns_ephemeral(
-    monkeypatch, caplog
-):
+def test_from_environment_dev_no_source_warns_and_returns_ephemeral(monkeypatch, caplog):
     monkeypatch.setenv("LTP_ENV", "development")
     with caplog.at_level(logging.WARNING):
         vault = KeyVault.from_environment()
-    assert any(
-        "no KEK source resolved" in rec.message for rec in caplog.records
-    )
+    assert any("no KEK source resolved" in rec.message for rec in caplog.records)
     # Ephemeral KEK still works for wrap/unwrap within process lifetime.
     wrapped = vault.wrap(b"dev")
     assert vault.unwrap(wrapped) == b"dev"

@@ -3,17 +3,17 @@
 import pytest
 
 from src.ltp.streaming import (
-    StreamState,
-    StreamConfig,
-    StreamChunk,
-    StreamManifest,
     EntityStream,
+    StreamChunk,
+    StreamConfig,
+    StreamManifest,
+    StreamState,
 )
-
 
 # ---------------------------------------------------------------------------
 # StreamConfig
 # ---------------------------------------------------------------------------
+
 
 class TestStreamConfig:
     def test_defaults(self):
@@ -29,11 +29,10 @@ class TestStreamConfig:
 # StreamChunk
 # ---------------------------------------------------------------------------
 
+
 class TestStreamChunk:
     def test_size_bytes(self):
-        chunk = StreamChunk(
-            stream_id="s1", sequence=0, data=b"hello", chunk_entity_id="cid"
-        )
+        chunk = StreamChunk(stream_id="s1", sequence=0, data=b"hello", chunk_entity_id="cid")
         assert chunk.size_bytes == 5
         assert chunk.committed is False
         assert chunk.committed_epoch == -1
@@ -42,6 +41,7 @@ class TestStreamChunk:
 # ---------------------------------------------------------------------------
 # StreamManifest
 # ---------------------------------------------------------------------------
+
 
 class TestStreamManifest:
     def test_is_complete(self):
@@ -70,6 +70,7 @@ class TestStreamManifest:
 # ---------------------------------------------------------------------------
 # EntityStream — open/close lifecycle
 # ---------------------------------------------------------------------------
+
 
 class TestEntityStreamLifecycle:
     def setup_method(self):
@@ -106,6 +107,7 @@ class TestEntityStreamLifecycle:
 # ---------------------------------------------------------------------------
 # EntityStream — add_chunk
 # ---------------------------------------------------------------------------
+
 
 class TestEntityStreamAddChunk:
     def setup_method(self):
@@ -166,6 +168,7 @@ class TestEntityStreamAddChunk:
 # EntityStream — mark_chunk_committed
 # ---------------------------------------------------------------------------
 
+
 class TestEntityStreamCommit:
     def setup_method(self):
         self.es = EntityStream()
@@ -201,6 +204,7 @@ class TestEntityStreamCommit:
 # ---------------------------------------------------------------------------
 # EntityStream — finalize
 # ---------------------------------------------------------------------------
+
 
 class TestEntityStreamFinalize:
     def setup_method(self):
@@ -260,7 +264,7 @@ class TestEntityStreamFinalize:
 
     def test_manifest_total_size(self):
         self.es.add_chunk(self.sid, b"aaaa")  # 4 bytes
-        self.es.add_chunk(self.sid, b"bb")     # 2 bytes
+        self.es.add_chunk(self.sid, b"bb")  # 2 bytes
         self.es.close_stream(self.sid)
         manifest = self.es.finalize_stream(self.sid)
         assert manifest.total_size == 6
@@ -275,6 +279,7 @@ class TestEntityStreamFinalize:
 # ---------------------------------------------------------------------------
 # EntityStream — reassemble
 # ---------------------------------------------------------------------------
+
 
 class TestEntityStreamReassemble:
     def setup_method(self):
@@ -309,6 +314,7 @@ class TestEntityStreamReassemble:
 # ---------------------------------------------------------------------------
 # EntityStream — pipeline schedule
 # ---------------------------------------------------------------------------
+
 
 class TestEntityStreamPipeline:
     def test_pipeline_schedule_small(self):
@@ -349,6 +355,7 @@ class TestEntityStreamPipeline:
 # ---------------------------------------------------------------------------
 # EntityStream — multiple streams
 # ---------------------------------------------------------------------------
+
 
 class TestEntityStreamMultiple:
     def test_independent_streams(self):

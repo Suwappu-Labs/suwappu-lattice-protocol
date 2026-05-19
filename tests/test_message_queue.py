@@ -13,14 +13,12 @@ import pytest
 
 from src.ltp.cloud.queue import InMemoryQueue
 
-
 # ---------------------------------------------------------------------------
 # Basic InMemoryQueue operations
 # ---------------------------------------------------------------------------
 
 
 class TestInMemoryQueue:
-
     def test_enqueue_returns_message_id(self):
         q = InMemoryQueue()
         msg_id = q.enqueue("epoch-1", {"node_id": "n1", "amount": 100})
@@ -116,7 +114,6 @@ class TestInMemoryQueue:
 
 
 class TestQueueFIFOOrdering:
-
     def test_fifo_order_preserved(self):
         q = InMemoryQueue()
         for i in range(10):
@@ -148,7 +145,6 @@ class TestQueueFIFOOrdering:
 
 
 class TestQueueThreadSafety:
-
     def test_concurrent_enqueue(self):
         q = InMemoryQueue()
         errors = []
@@ -161,8 +157,7 @@ class TestQueueThreadSafety:
                 errors.append(e)
 
         threads = [
-            threading.Thread(target=enqueue_batch, args=("g1", i * 100, 50))
-            for i in range(5)
+            threading.Thread(target=enqueue_batch, args=("g1", i * 100, 50)) for i in range(5)
         ]
         for t in threads:
             t.start()
@@ -179,7 +174,6 @@ class TestQueueThreadSafety:
 
 
 class TestAuditFixes:
-
     def test_peek_snapshot_isolation(self):
         """peek() returns copies — mutations don't leak back to queue."""
         q = InMemoryQueue()

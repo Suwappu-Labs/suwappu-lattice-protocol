@@ -60,9 +60,7 @@ def main(argv: list[str] | None = None) -> int:
         nargs="+",
         help="One or more CommitmentLogStore SQLite databases to migrate.",
     )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Verbose logging."
-    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Verbose logging.")
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,

@@ -25,11 +25,15 @@ from src.ltp.primitives import canonical_hash_bytes
 def sth():
     log = CommitmentLog()
     record = CommitmentRecord(
-        entity_id="r0-test", sender_id="s",
-        content_hash="h", shard_map_root="r",
+        entity_id="r0-test",
+        sender_id="s",
+        content_hash="h",
+        shard_map_root="r",
         encoding_params={"n": 5, "k": 3},
-        shape="test", shape_hash="sh",
-        timestamp=time.time(), signature=b"\x00" * 64,
+        shape="test",
+        shape_hash="sh",
+        timestamp=time.time(),
+        signature=b"\x00" * 64,
     )
     log.append(record)
     return log.latest_sth
@@ -41,7 +45,6 @@ def prover():
 
 
 class TestBackend:
-
     def test_backend_is_risc_zero(self, prover):
         assert prover.backend == ZKBridgeBackend.RISC_ZERO
 
@@ -50,7 +53,6 @@ class TestBackend:
 
 
 class TestMockProof:
-
     def test_returns_proof(self, prover, sth):
         proof = prover.prove_sth_signature(sth)
         assert isinstance(proof, ZKBridgeProof)
@@ -66,8 +68,11 @@ class TestMockProof:
 
     def test_invalid_sth_raises(self, prover):
         from src.ltp.merkle_log.sth import SignedTreeHead
+
         bad = SignedTreeHead(
-            sequence=1, tree_size=1, timestamp=0.0,
+            sequence=1,
+            tree_size=1,
+            timestamp=0.0,
             root_hash=b"\x00" * 32,
             operator_vk=b"\x00" * 1952,
             signature=b"\x00" * 3309,
@@ -84,6 +89,7 @@ class TestMockProof:
     def test_different_from_sp1_mock(self, sth):
         """RISC Zero mock proofs are distinguishable from SP1 mock proofs."""
         from src.ltp.bridge.sp1_prover import SP1ZKBridgeProver
+
         r0 = RiscZeroZKBridgeProver(prove_mode="mock").prove_sth_signature(sth)
         sp1 = SP1ZKBridgeProver(prove_mode="mock").prove_sth_signature(sth)
         assert r0.proof_bytes != sp1.proof_bytes

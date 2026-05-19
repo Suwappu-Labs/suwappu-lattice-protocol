@@ -25,7 +25,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from .primitives import canonical_hash, MLKEM, MLDSA
+from .primitives import MLDSA, MLKEM, canonical_hash
 
 __all__ = ["HSMBackend", "SoftwareHSM"]
 
@@ -150,6 +150,7 @@ class SoftwareHSM(HSMBackend):
         # backend. The PoC keystore is fine for dev/CI but lacks the
         # constant-time and tamper-resistance guarantees expected in prod.
         import os as _os
+
         env = _os.environ.get("LTP_ENV", "").lower()
         provider = _os.environ.get("ETP_HSM_PROVIDER", "").lower()
         if env == "production" and provider == "software":
@@ -175,9 +176,8 @@ class SoftwareHSM(HSMBackend):
         # is no bootstrap dependency (a SoftwareHSM that backs the app
         # KeyVault still bootstraps cleanly).
         from .keyvault import KeyVault, _derive_kek_from_seed
-        self._vault: KeyVault = KeyVault(
-            _derive_kek_from_seed(self._kek_seed, "ltp.hsm:wrap")
-        )
+
+        self._vault: KeyVault = KeyVault(_derive_kek_from_seed(self._kek_seed, "ltp.hsm:wrap"))
 
     # AAD domain separators for the per-HSM vault. Per-key-id binding
     # prevents a wrapped blob from being lifted to a different slot.
@@ -223,9 +223,7 @@ class SoftwareHSM(HSMBackend):
             raise KeyError(f"Key ID '{key_id}' not found in HSM")
         if entry["type"] != "dsa":
             raise TypeError(f"Key '{key_id}' is type '{entry['type']}', not 'dsa'")
-        sk_plain = bytearray(
-            self._vault.unwrap(entry["private"], aad=self._aad(key_id, "dsa"))
-        )
+        sk_plain = bytearray(self._vault.unwrap(entry["private"], aad=self._aad(key_id, "dsa")))
         try:
             return MLDSA.sign(bytes(sk_plain), message)
         finally:
@@ -240,9 +238,7 @@ class SoftwareHSM(HSMBackend):
             raise KeyError(f"Key ID '{key_id}' not found in HSM")
         if entry["type"] != "kem":
             raise TypeError(f"Key '{key_id}' is type '{entry['type']}', not 'kem'")
-        dk_plain = bytearray(
-            self._vault.unwrap(entry["private"], aad=self._aad(key_id, "kem"))
-        )
+        dk_plain = bytearray(self._vault.unwrap(entry["private"], aad=self._aad(key_id, "kem")))
         try:
             return MLKEM.decaps(bytes(dk_plain), kem_ciphertext)
         finally:
@@ -315,6 +311,7 @@ class SoftwareHSM(HSMBackend):
         passed this HSM as the fallback source.
         """
         from .keyvault import _derive_kek_from_seed
+
         return _derive_kek_from_seed(self._kek_seed, label)
 
     def get_public_key(self, key_id: str) -> bytes:
@@ -346,4 +343,5 @@ class SoftwareHSM(HSMBackend):
 # Import here to avoid circular dependency at module level
 def get_security_profile():
     from .primitives import get_security_profile as _gsp
+
     return _gsp()

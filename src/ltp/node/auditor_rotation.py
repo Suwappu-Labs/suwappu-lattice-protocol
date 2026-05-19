@@ -45,11 +45,7 @@ class AuditorRotation:
         If the selected operator IS the target node, advances to the next
         operator in the rotation to prevent self-audit.
         """
-        h = internal_hash_bytes(
-            self._seed
-            + struct.pack(">Q", epoch)
-            + target_node_id.encode()
-        )
+        h = internal_hash_bytes(self._seed + struct.pack(">Q", epoch) + target_node_id.encode())
         idx = int.from_bytes(h[:8], "big") % len(self._operators)
         selected = self._operators[idx]
 
@@ -61,7 +57,9 @@ class AuditorRotation:
         return selected
 
     def audit_assignments(
-        self, epoch: int, all_nodes: list[str],
+        self,
+        epoch: int,
+        all_nodes: list[str],
     ) -> dict[str, list[str]]:
         """Return {auditor_id: [target_node_ids]} for an epoch.
 

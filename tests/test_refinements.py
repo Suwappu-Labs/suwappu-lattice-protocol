@@ -13,24 +13,24 @@ import time
 import pytest
 
 from src.ltp.commitment import (
+    EVICTION_COOLDOWN_SECONDS,
+    MIN_STAKE_LTP,
+    STAKE_LOCKUP_SECONDS,
+    WITHHOLDING_SCHEDULE,
     AuditResult,
     CommitmentNetwork,
     CommitmentNode,
-    StorageEndowment,
     StakeEscrow,
-    MIN_STAKE_LTP,
-    STAKE_LOCKUP_SECONDS,
-    EVICTION_COOLDOWN_SECONDS,
-    WITHHOLDING_SCHEDULE,
+    StorageEndowment,
 )
 from src.ltp.entity import Entity
 from src.ltp.keypair import KeyPair
 from src.ltp.protocol import LTPProtocol
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def alice() -> KeyPair:
@@ -56,6 +56,7 @@ def network() -> CommitmentNetwork:
 # ===========================================================================
 # 1. BURN-NOT-REDISTRIBUTE (Sia-inspired §6.4)
 # ===========================================================================
+
 
 class TestStorageEndowment:
     """Tests for the StorageEndowment class itself."""
@@ -204,14 +205,22 @@ class TestBurnNotRedistribute:
 # 2. ERASURE-CODED AUDIT — Corrupt shard identification (Storj-inspired)
 # ===========================================================================
 
+
 class TestCorruptShardIdentification:
     """Verify audit identifies specific corrupt/missing shards."""
 
     def test_audit_result_has_corrupt_shards_field(self):
         result = AuditResult(
-            node_id="test", challenged=0, passed=0, failed=0,
-            missing=0, suspicious_latency=0, burst_size=1,
-            avg_response_us=0.0, result="PASS", strikes=0,
+            node_id="test",
+            challenged=0,
+            passed=0,
+            failed=0,
+            missing=0,
+            suspicious_latency=0,
+            burst_size=1,
+            avg_response_us=0.0,
+            result="PASS",
+            strikes=0,
         )
         assert hasattr(result, "corrupt_shards")
         assert result.corrupt_shards == []
@@ -237,9 +246,7 @@ class TestCorruptShardIdentification:
 
         target = network.nodes[0]
         # Record which shards this node holds
-        held_shards = [
-            (eid, idx) for (eid, idx) in target.shards.keys()
-        ]
+        held_shards = [(eid, idx) for (eid, idx) in target.shards.keys()]
 
         if not held_shards:
             pytest.skip("Target node holds no shards for this entity")
@@ -307,6 +314,7 @@ class TestCorruptShardIdentification:
 # ===========================================================================
 # 3. GRADUATED WITHHOLDING (Storj-inspired §6.3)
 # ===========================================================================
+
 
 class TestWithholdingSchedule:
     """Verify the WITHHOLDING_SCHEDULE constant."""
@@ -408,8 +416,8 @@ class TestAccrueEarnings:
         now = 1_000_000.0
         node.registered_at = now
 
-        node.accrue_earnings(100.0, now=now + 1)   # 75% rate
-        node.accrue_earnings(200.0, now=now + 2)   # 75% rate
+        node.accrue_earnings(100.0, now=now + 1)  # 75% rate
+        node.accrue_earnings(200.0, now=now + 2)  # 75% rate
         assert node.withheld_earnings == pytest.approx(225.0)  # 75 + 150
         assert node.total_earnings == 300.0
 
@@ -510,8 +518,7 @@ class TestWithheldEarningsForfeiture:
         net.evict_node(node, now=now + 100)
 
         forfeit_burns = [
-            b for b in net.endowment.burn_history
-            if b["reason"] == "withheld_earnings_forfeiture"
+            b for b in net.endowment.burn_history if b["reason"] == "withheld_earnings_forfeiture"
         ]
         assert len(forfeit_burns) == 1
         assert forfeit_burns[0]["amount"] == 750.0  # 75% of 1000
@@ -521,6 +528,7 @@ class TestWithheldEarningsForfeiture:
 # ===========================================================================
 # Integration: all three refinements together
 # ===========================================================================
+
 
 class TestRefinementsIntegration:
     def test_full_lifecycle_with_refinements(self, alice):
@@ -533,16 +541,16 @@ class TestRefinementsIntegration:
 
         # Set up healthy nodes
         for nid, reg in [
-            ("h-1", "US-East"), ("h-2", "US-West"),
-            ("h-3", "EU-West"), ("h-4", "EU-East"),
+            ("h-1", "US-East"),
+            ("h-2", "US-West"),
+            ("h-3", "EU-West"),
+            ("h-4", "EU-East"),
             ("h-5", "AP-East"),
         ]:
             net.register_node(nid, reg, stake=5_000, now=now)
 
         # Register attacker
-        attacker = net.register_node(
-            "attacker", "AP-South", stake=8_000, now=now
-        )
+        attacker = net.register_node("attacker", "AP-South", stake=8_000, now=now)
 
         # Commit data
         protocol = LTPProtocol(net)

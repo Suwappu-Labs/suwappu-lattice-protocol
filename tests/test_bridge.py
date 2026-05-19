@@ -17,7 +17,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol
-from src.ltp.bridge.live import LiveBridge, LiveBridgeResult
 from src.ltp.bridge import (
     BridgeMessage,
     L1Anchor,
@@ -25,7 +24,7 @@ from src.ltp.bridge import (
     Relayer,
     RelayPacket,
 )
-
+from src.ltp.bridge.live import LiveBridge, LiveBridgeResult
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -76,9 +75,7 @@ def relayer(bridge_protocol: LTPProtocol) -> Relayer:
 
 
 @pytest.fixture
-def l2_materializer(
-    bridge_protocol: LTPProtocol, l2_verifier: KeyPair
-) -> L2Materializer:
+def l2_materializer(bridge_protocol: LTPProtocol, l2_verifier: KeyPair) -> L2Materializer:
     return L2Materializer(
         bridge_protocol,
         l2_verifier,
@@ -237,9 +234,7 @@ class TestChainValidation:
         packet = relayer.relay(commitment, cek, l2_verifier)
 
         # Materializer is for "optimism", packet says "arbitrum"
-        materializer = L2Materializer(
-            bridge_protocol, l2_verifier, chain_id="optimism"
-        )
+        materializer = L2Materializer(bridge_protocol, l2_verifier, chain_id="optimism")
         materializer.set_l1_block_height(100)
         result = materializer.materialize(packet)
         assert result is None
@@ -299,9 +294,7 @@ class TestTampering:
 
         # Eve tries to materialize with her own key
         eve = KeyPair.generate("eve-bridge-attacker")
-        materializer = L2Materializer(
-            bridge_protocol, eve, chain_id="optimism"
-        )
+        materializer = L2Materializer(bridge_protocol, eve, chain_id="optimism")
         materializer.set_l1_block_height(100)
         result = materializer.materialize(packet)
         assert result is None
@@ -365,6 +358,7 @@ class TestMessageSerialization:
 
 class _MockEntityState(IntEnum):
     """Minimal EntityState mock matching src/ltp/anchor/state.py."""
+
     UNKNOWN = 0
     COMMITTED = 1
     ANCHORED = 2
@@ -410,9 +404,12 @@ class TestCrossChainLiveBridge:
     def protocol(self):
         net = CommitmentNetwork()
         for nid, region in [
-            ("xc-1", "US-East"), ("xc-2", "US-West"),
-            ("xc-3", "EU-West"), ("xc-4", "EU-East"),
-            ("xc-5", "AP-East"), ("xc-6", "AP-South"),
+            ("xc-1", "US-East"),
+            ("xc-2", "US-West"),
+            ("xc-3", "EU-West"),
+            ("xc-4", "EU-East"),
+            ("xc-5", "AP-East"),
+            ("xc-6", "AP-South"),
         ]:
             net.add_node(nid, region)
         return LTPProtocol(net)
@@ -444,9 +441,7 @@ class TestCrossChainLiveBridge:
             nonce=nonce,
         )
 
-    def test_dual_client_l1_only(
-        self, protocol, operator_kp, verifier_kp, l1_mock, l2_mock
-    ):
+    def test_dual_client_l1_only(self, protocol, operator_kp, verifier_kp, l1_mock, l2_mock):
         """Two mocks, dual_write=False: anchor called on L1 only."""
         bridge = LiveBridge(
             protocol=protocol,
@@ -470,9 +465,7 @@ class TestCrossChainLiveBridge:
         # L2 mock should NOT have been called
         assert l2_mock._anchor_call_count == 0
 
-    def test_dual_client_dual_write(
-        self, protocol, operator_kp, verifier_kp, l1_mock, l2_mock
-    ):
+    def test_dual_client_dual_write(self, protocol, operator_kp, verifier_kp, l1_mock, l2_mock):
         """Two mocks, dual_write=True: anchor called on both chains."""
         bridge = LiveBridge(
             protocol=protocol,
@@ -494,9 +487,7 @@ class TestCrossChainLiveBridge:
         assert l1_mock._anchor_call_count == 1
         assert l2_mock._anchor_call_count == 1
 
-    def test_cross_chain_result_fields(
-        self, protocol, operator_kp, verifier_kp, l1_mock, l2_mock
-    ):
+    def test_cross_chain_result_fields(self, protocol, operator_kp, verifier_kp, l1_mock, l2_mock):
         """Verify cross_chain, chain IDs, and block heights are correct."""
         bridge = LiveBridge(
             protocol=protocol,
@@ -567,7 +558,8 @@ class TestCrossChainLiveBridge:
 
     def test_from_chain_configs_factory(self, protocol, operator_kp, verifier_kp):
         """Construct via from_chain_configs class method."""
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock, patch
+
         from src.ltp.anchor.chain_config import ChainConfig
 
         l1_config = ChainConfig(

@@ -9,19 +9,18 @@ from __future__ import annotations
 
 import pytest
 
+from src.ltp.cloud.orchestrator import InMemoryOrchestrator, WorkflowStep
+from src.ltp.cloud.queue import InMemoryQueue
+from src.ltp.economics import (
+    WEI_PER_LTP,
+    EconomicsConfig,
+    EconomicsEngine,
+    NodeEconomics,
+)
 from src.ltp.enforcement_pipeline import (
     EnforcementPipeline,
     EnforcementPipelineConfig,
 )
-from src.ltp.economics import (
-    EconomicsConfig,
-    EconomicsEngine,
-    NodeEconomics,
-    WEI_PER_LTP,
-)
-from src.ltp.cloud.queue import InMemoryQueue
-from src.ltp.cloud.orchestrator import InMemoryOrchestrator, WorkflowStep
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -64,7 +63,6 @@ def _make_audit_failure(node_id: str = "node-1", strikes: int = 4) -> dict:
 
 
 class TestEnforcementWithQueue:
-
     def test_violation_enqueued_to_message_queue(self):
         """When message_queue is set, violations go through it."""
         queue = InMemoryQueue()
@@ -120,7 +118,6 @@ class TestEnforcementWithQueue:
 
 
 class TestEnforcementWithOrchestrator:
-
     def test_orchestrator_can_wrap_finalization(self):
         """Demonstrate that finalize_epoch can be wrapped as a workflow step."""
         queue = InMemoryQueue()
@@ -136,21 +133,29 @@ class TestEnforcementWithOrchestrator:
         # Register finalize as a workflow step
         def finalize_step(ctx: dict) -> dict:
             result = pipeline.finalize_epoch(
-                ctx["epoch"], ctx["nodes"], ctx["engine"],
+                ctx["epoch"],
+                ctx["nodes"],
+                ctx["engine"],
             )
             ctx["finalize_result"] = result
             return ctx
 
-        orch.register_workflow("enforcement-finalize", [
-            WorkflowStep("finalize", finalize_step, "Finalize epoch enforcement"),
-        ])
+        orch.register_workflow(
+            "enforcement-finalize",
+            [
+                WorkflowStep("finalize", finalize_step, "Finalize epoch enforcement"),
+            ],
+        )
 
         # Execute workflow
-        wf_result = orch.execute("enforcement-finalize", {
-            "epoch": 200,
-            "nodes": [node],
-            "engine": engine,
-        })
+        wf_result = orch.execute(
+            "enforcement-finalize",
+            {
+                "epoch": 200,
+                "nodes": [node],
+                "engine": engine,
+            },
+        )
         assert wf_result.success is True
         assert wf_result.steps_completed == 1
         assert wf_result.final_context["finalize_result"]["batch_entries"] >= 1
@@ -158,9 +163,12 @@ class TestEnforcementWithOrchestrator:
     def test_orchestrator_tracks_execution(self):
         """Orchestrator metadata shows execution count."""
         orch = InMemoryOrchestrator()
-        orch.register_workflow("test-wf", [
-            WorkflowStep("noop", lambda ctx: ctx),
-        ])
+        orch.register_workflow(
+            "test-wf",
+            [
+                WorkflowStep("noop", lambda ctx: ctx),
+            ],
+        )
         orch.execute("test-wf", {})
         orch.execute("test-wf", {})
 
@@ -174,7 +182,6 @@ class TestEnforcementWithOrchestrator:
 
 
 class TestEndToEndViolationToSlash:
-
     def test_full_violation_to_stake_deduction(self):
         """Complete flow: audit failure → queue → finalize → pending slash → stake deducted."""
         queue = InMemoryQueue()

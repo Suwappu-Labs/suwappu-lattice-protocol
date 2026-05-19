@@ -10,14 +10,13 @@ from __future__ import annotations
 import random
 
 import pytest
-from hypothesis import given, settings, assume
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol
 from src.ltp.entity import Entity
 from src.ltp.node.audit_scheduler import AuditScheduler
 from src.simulator.dst import DSTRunner, FaultType
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -77,7 +76,8 @@ class TestDSTAuditEvictionProperty:
 
         runner = DSTRunner(seed=42, fault_rate=0.05, num_nodes=8)
         runner.set_commitment_network(
-            network, protocol,
+            network,
+            protocol,
             strike_threshold=3,
         )
 
@@ -192,7 +192,5 @@ class TestHypothesisKOfNSurvival:
 
         # Should reconstruct (with repair + fallback fetch)
         result = protocol.materialize(sealed_key, receiver)
-        assert result is not None, (
-            f"Entity must survive {kill_count} eviction(s) with n={n}, k={k}"
-        )
+        assert result is not None, f"Entity must survive {kill_count} eviction(s) with n={n}, k={k}"
         assert result == content

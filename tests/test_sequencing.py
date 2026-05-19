@@ -1,10 +1,11 @@
 """Tests for Sequence Tracker (sequencing.py)."""
 
 import time
+
 import pytest
 
-from src.ltp.sequencing import SequenceTracker
 from src.ltp import KeyPair, reset_poc_state
+from src.ltp.sequencing import SequenceTracker
 
 
 @pytest.fixture(autouse=True)
@@ -34,7 +35,10 @@ class TestMonotonicEnforcement:
 
     def test_first_sequence_accepted(self, tracker, alice):
         ok, reason = tracker.validate_and_advance(
-            alice.vk, 0, "base-testnet", time.time() + 3600,
+            alice.vk,
+            0,
+            "base-testnet",
+            time.time() + 3600,
         )
         assert ok
         assert reason == ""
@@ -71,7 +75,10 @@ class TestChainBinding:
     def test_wrong_chain_rejected(self, tracker, alice):
         future = time.time() + 3600
         ok, reason = tracker.validate_and_advance(
-            alice.vk, 0, "wrong-chain", future,
+            alice.vk,
+            0,
+            "wrong-chain",
+            future,
         )
         assert not ok
         assert "chain mismatch" in reason
@@ -79,7 +86,10 @@ class TestChainBinding:
     def test_correct_chain_accepted(self, tracker, alice):
         future = time.time() + 3600
         ok, _ = tracker.validate_and_advance(
-            alice.vk, 0, "base-testnet", future,
+            alice.vk,
+            0,
+            "base-testnet",
+            future,
         )
         assert ok
 
@@ -90,7 +100,10 @@ class TestTemporalExpiry:
     def test_expired_rejected(self, tracker, alice):
         past = time.time() - 1  # Already expired
         ok, reason = tracker.validate_and_advance(
-            alice.vk, 0, "base-testnet", past,
+            alice.vk,
+            0,
+            "base-testnet",
+            past,
         )
         assert not ok
         assert "expired" in reason
@@ -98,7 +111,10 @@ class TestTemporalExpiry:
     def test_future_accepted(self, tracker, alice):
         future = time.time() + 3600
         ok, _ = tracker.validate_and_advance(
-            alice.vk, 0, "base-testnet", future,
+            alice.vk,
+            0,
+            "base-testnet",
+            future,
         )
         assert ok
 
@@ -159,9 +175,9 @@ class TestBatchValidation:
         future = time.time() + 3600
         past = time.time() - 1
         items = [
-            (alice.vk, 0, "base-testnet", future),   # OK
-            (bob.vk, 0, "wrong-chain", future),        # Chain mismatch
-            (alice.vk, 1, "base-testnet", past),       # Expired
+            (alice.vk, 0, "base-testnet", future),  # OK
+            (bob.vk, 0, "wrong-chain", future),  # Chain mismatch
+            (alice.vk, 1, "base-testnet", past),  # Expired
         ]
         results = tracker.validate_batch(items)
         assert results[0][0] is True

@@ -13,15 +13,14 @@ import pytest
 
 from src.ltp import CommitmentNetwork, KeyPair
 from src.ltp.node.admission import (
+    AdmissionRecord,
     AdmissionState,
     EndorsementVote,
-    AdmissionRecord,
-    NodeAdmissionManager,
     InvalidAdmissionTransition,
+    NodeAdmissionManager,
     create_endorsement,
     verify_endorsement,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -54,7 +53,6 @@ def applicant() -> KeyPair:
 
 
 class TestAdmissionState:
-
     def test_all_states_exist(self):
         assert AdmissionState.APPLYING.value == "applying"
         assert AdmissionState.ENDORSED.value == "endorsed"
@@ -73,7 +71,6 @@ class TestAdmissionState:
 
 
 class TestEndorsementVote:
-
     def test_create_endorsement(self, operator_a):
         vote = create_endorsement(operator_a, "node-1")
         assert vote.applicant_node_id == "node-1"
@@ -105,10 +102,10 @@ class TestEndorsementVote:
 
 
 class TestNodeAdmissionManager:
-
     def test_apply(self, applicant):
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         rec = mgr.apply("node-1", canonical_hash(applicant.vk))
         assert rec.state == AdmissionState.APPLYING
         assert rec.required_endorsements == 2
@@ -116,6 +113,7 @@ class TestNodeAdmissionManager:
     def test_endorse_below_threshold(self, applicant, operator_a):
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("node-1", canonical_hash(applicant.vk))
 
         vote = create_endorsement(operator_a, "node-1")
@@ -126,6 +124,7 @@ class TestNodeAdmissionManager:
     def test_endorse_reaches_threshold(self, applicant, operator_a, operator_b):
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("node-1", canonical_hash(applicant.vk))
 
         mgr.endorse("node-1", create_endorsement(operator_a, "node-1"))
@@ -135,6 +134,7 @@ class TestNodeAdmissionManager:
     def test_full_lifecycle(self, applicant, operator_a, operator_b):
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("node-lc", canonical_hash(applicant.vk))
         mgr.endorse("node-lc", create_endorsement(operator_a, "node-lc"))
         mgr.endorse("node-lc", create_endorsement(operator_b, "node-lc"))
@@ -154,10 +154,10 @@ class TestNodeAdmissionManager:
 
 
 class TestEndorsementThreshold:
-
     def test_2_of_3(self, applicant, operator_a, operator_b):
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("t23", canonical_hash(applicant.vk))
         mgr.endorse("t23", create_endorsement(operator_a, "t23"))
         rec = mgr.endorse("t23", create_endorsement(operator_b, "t23"))
@@ -166,6 +166,7 @@ class TestEndorsementThreshold:
     def test_3_of_5(self, applicant, operator_a, operator_b, operator_c):
         mgr = NodeAdmissionManager(m=3, n=5)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("t35", canonical_hash(applicant.vk))
         mgr.endorse("t35", create_endorsement(operator_a, "t35"))
         mgr.endorse("t35", create_endorsement(operator_b, "t35"))
@@ -175,6 +176,7 @@ class TestEndorsementThreshold:
     def test_insufficient_endorsements(self, applicant, operator_a):
         mgr = NodeAdmissionManager(m=3, n=5)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("insuf", canonical_hash(applicant.vk))
         rec = mgr.endorse("insuf", create_endorsement(operator_a, "insuf"))
         assert rec.state == AdmissionState.APPLYING  # 1/3, not enough
@@ -182,6 +184,7 @@ class TestEndorsementThreshold:
     def test_duplicate_endorser_rejected(self, applicant, operator_a):
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("dup", canonical_hash(applicant.vk))
         mgr.endorse("dup", create_endorsement(operator_a, "dup"))
 
@@ -195,11 +198,11 @@ class TestEndorsementThreshold:
 
 
 class TestAdmissionStateTransitions:
-
     def test_applying_to_admitted_rejected(self, applicant):
         """Cannot skip endorsement step."""
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("skip", canonical_hash(applicant.vk))
         with pytest.raises(InvalidAdmissionTransition):
             mgr.admit("skip")
@@ -207,6 +210,7 @@ class TestAdmissionStateTransitions:
     def test_applying_to_active_rejected(self, applicant):
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("skip2", canonical_hash(applicant.vk))
         with pytest.raises(InvalidAdmissionTransition):
             mgr.activate("skip2")
@@ -214,6 +218,7 @@ class TestAdmissionStateTransitions:
     def test_evicted_cannot_reactivate(self, applicant, operator_a, operator_b):
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("evict", canonical_hash(applicant.vk))
         mgr.endorse("evict", create_endorsement(operator_a, "evict"))
         mgr.endorse("evict", create_endorsement(operator_b, "evict"))
@@ -227,6 +232,7 @@ class TestAdmissionStateTransitions:
     def test_duplicate_application_rejected(self, applicant):
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("dup-app", canonical_hash(applicant.vk))
         with pytest.raises(ValueError, match="already has active"):
             mgr.apply("dup-app", canonical_hash(applicant.vk))
@@ -238,11 +244,11 @@ class TestAdmissionStateTransitions:
 
 
 class TestAdmissionWithNetwork:
-
     def test_register_with_admission_gate(self, applicant, operator_a, operator_b):
         """register_node requires ADMITTED status when admission_manager is set."""
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("gated", canonical_hash(applicant.vk))
         mgr.endorse("gated", create_endorsement(operator_a, "gated"))
         mgr.endorse("gated", create_endorsement(operator_b, "gated"))
@@ -256,6 +262,7 @@ class TestAdmissionWithNetwork:
         """register_node rejects unadmitted nodes when gate is active."""
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("ungated", canonical_hash(applicant.vk))
 
         network = CommitmentNetwork()
@@ -282,10 +289,10 @@ class TestAdmissionWithNetwork:
 
 
 class TestSuspensionAndEviction:
-
     def test_suspend_active_node(self, applicant, operator_a, operator_b):
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("susp", canonical_hash(applicant.vk))
         mgr.endorse("susp", create_endorsement(operator_a, "susp"))
         mgr.endorse("susp", create_endorsement(operator_b, "susp"))
@@ -299,6 +306,7 @@ class TestSuspensionAndEviction:
     def test_reactivate_suspended_node(self, applicant, operator_a, operator_b):
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("react", canonical_hash(applicant.vk))
         mgr.endorse("react", create_endorsement(operator_a, "react"))
         mgr.endorse("react", create_endorsement(operator_b, "react"))
@@ -312,6 +320,7 @@ class TestSuspensionAndEviction:
     def test_evict_active_node(self, applicant, operator_a, operator_b):
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("ev", canonical_hash(applicant.vk))
         mgr.endorse("ev", create_endorsement(operator_a, "ev"))
         mgr.endorse("ev", create_endorsement(operator_b, "ev"))
@@ -325,6 +334,7 @@ class TestSuspensionAndEviction:
     def test_evict_suspended_node(self, applicant, operator_a, operator_b):
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("evs", canonical_hash(applicant.vk))
         mgr.endorse("evs", create_endorsement(operator_a, "evs"))
         mgr.endorse("evs", create_endorsement(operator_b, "evs"))
@@ -348,6 +358,7 @@ class TestAuditFixes:
         """endorse() with endorser_vk verifies signature."""
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("sigcheck", canonical_hash(applicant.vk))
 
         vote = create_endorsement(operator_a, "sigcheck")
@@ -359,6 +370,7 @@ class TestAuditFixes:
         """endorse() with wrong endorser_vk rejects the vote."""
         mgr = NodeAdmissionManager(m=2, n=3)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("badsig", canonical_hash(applicant.vk))
 
         vote = create_endorsement(operator_a, "badsig")
@@ -370,6 +382,7 @@ class TestAuditFixes:
         """Snapshot copies don't share endorsement list with internal state."""
         mgr = NodeAdmissionManager(m=3, n=5)
         from src.ltp.primitives import canonical_hash
+
         mgr.apply("iso", canonical_hash(applicant.vk))
 
         snap1 = mgr.get("iso")

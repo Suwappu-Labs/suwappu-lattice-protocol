@@ -4,18 +4,18 @@ from __future__ import annotations
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_record(tier_str: str = "mldsa", state_str: str = "active"):
     from src.ltp.execution.writer import (
+        ApprovalPath,
+        IdentityTier,
         WriterIdentity,
         WriterRecord,
         WriterState,
-        ApprovalPath,
-        IdentityTier,
     )
 
     tier = IdentityTier(tier_str)
@@ -36,11 +36,11 @@ def _make_record(tier_str: str = "mldsa", state_str: str = "active"):
 def _make_record_fp(tier_str: str = "mldsa", fingerprint: bytes = b"\xaa" * 32):
     """Make a record with a custom fingerprint."""
     from src.ltp.execution.writer import (
+        ApprovalPath,
+        IdentityTier,
         WriterIdentity,
         WriterRecord,
         WriterState,
-        ApprovalPath,
-        IdentityTier,
     )
 
     tier = IdentityTier(tier_str)
@@ -62,32 +62,39 @@ def _make_record_fp(tier_str: str = "mldsa", fingerprint: bytes = b"\xaa" * 32):
 # TestOperationType
 # ---------------------------------------------------------------------------
 
+
 class TestOperationType:
     def test_five_operations_exist(self):
         from src.ltp.execution.types import OperationType
+
         values = {op.value for op in OperationType}
         assert values == {"transfer", "deploy", "call", "state_modify", "state_read"}
 
     def test_transfer(self):
         from src.ltp.execution.types import OperationType
+
         assert OperationType.TRANSFER.value == "transfer"
 
     def test_deploy(self):
         from src.ltp.execution.types import OperationType
+
         assert OperationType.DEPLOY.value == "deploy"
 
     def test_call(self):
         from src.ltp.execution.types import OperationType
+
         assert OperationType.CALL.value == "call"
 
     def test_state_read(self):
         from src.ltp.execution.types import OperationType
+
         assert OperationType.STATE_READ.value == "state_read"
 
 
 # ---------------------------------------------------------------------------
 # TestVMWriterPolicyDefaults
 # ---------------------------------------------------------------------------
+
 
 class TestVMWriterPolicyDefaults:
     def test_all_tiers_allowed_by_default(self):
@@ -136,11 +143,13 @@ class TestVMWriterPolicyDefaults:
 
     def test_allowlist_none_by_default(self):
         from src.ltp.execution.writer_policy import VMWriterPolicy
+
         policy = VMWriterPolicy(vm_tag=3)
         assert policy.allowlist is None
 
     def test_denylist_empty_by_default(self):
         from src.ltp.execution.writer_policy import VMWriterPolicy
+
         policy = VMWriterPolicy(vm_tag=3)
         assert policy.denylist == set()
 
@@ -149,13 +158,16 @@ class TestVMWriterPolicyDefaults:
 # TestPolicyEvaluation
 # ---------------------------------------------------------------------------
 
+
 class TestPolicyEvaluation:
     def _engine(self):
         from src.ltp.execution.writer_policy import PolicyEngine
+
         return PolicyEngine()
 
     def _policy(self, **kwargs):
         from src.ltp.execution.writer_policy import VMWriterPolicy
+
         return VMWriterPolicy(vm_tag=0x10, **kwargs)
 
     def test_mldsa_deploy_allowed(self):
@@ -250,8 +262,8 @@ class TestPolicyEvaluation:
         policy = VMWriterPolicy(
             vm_tag=1,
             fee_multiplier={
-                IdentityTier.MLDSA:     2.5,
-                IdentityTier.BLS:       1.0,
+                IdentityTier.MLDSA: 2.5,
+                IdentityTier.BLS: 1.0,
                 IdentityTier.COMPOSITE: 1.0,
             },
         )
@@ -279,9 +291,7 @@ class TestPolicyEvaluation:
 
         policy = VMWriterPolicy(vm_tag=1, max_writers=5)
         record = _make_record("mldsa")
-        result = self._engine().evaluate(
-            record, OperationType.TRANSFER, policy, writer_count=5
-        )
+        result = self._engine().evaluate(record, OperationType.TRANSFER, policy, writer_count=5)
         assert result.allowed is False
         assert "cap" in result.reason
 
@@ -293,15 +303,13 @@ class TestPolicyEvaluation:
         policy = VMWriterPolicy(
             vm_tag=1,
             min_stake={
-                IdentityTier.MLDSA:     100,
-                IdentityTier.BLS:       0,
+                IdentityTier.MLDSA: 100,
+                IdentityTier.BLS: 0,
                 IdentityTier.COMPOSITE: 0,
             },
         )
         record = _make_record("mldsa")
-        result = self._engine().evaluate(
-            record, OperationType.TRANSFER, policy, stake=50
-        )
+        result = self._engine().evaluate(record, OperationType.TRANSFER, policy, stake=50)
         assert result.allowed is False
         assert "stake" in result.reason
 
@@ -310,9 +318,11 @@ class TestPolicyEvaluation:
 # TestProbationOverride
 # ---------------------------------------------------------------------------
 
+
 class TestProbationOverride:
     def _engine(self):
         from src.ltp.execution.writer_policy import PolicyEngine
+
         return PolicyEngine()
 
     def test_probation_blocks_deploy(self):
@@ -336,8 +346,8 @@ class TestProbationOverride:
         policy = VMWriterPolicy(
             vm_tag=1,
             fee_multiplier={
-                IdentityTier.MLDSA:     1.0,
-                IdentityTier.BLS:       1.0,
+                IdentityTier.MLDSA: 1.0,
+                IdentityTier.BLS: 1.0,
                 IdentityTier.COMPOSITE: 1.0,
             },
         )
@@ -355,9 +365,7 @@ class TestProbationOverride:
         record = _make_record("bls", state_str="probation")
         policy = VMWriterPolicy(vm_tag=1)
         # 500 transactions should still be under the halved BLS limit (500)
-        result_ok = self._engine().evaluate(
-            record, OperationType.TRANSFER, policy, tx_count=499
-        )
+        result_ok = self._engine().evaluate(record, OperationType.TRANSFER, policy, tx_count=499)
         assert result_ok.allowed is True
 
         # Exactly at the halved limit (500) should be rejected

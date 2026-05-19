@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import json
-import urllib.request
 import urllib.error
+import urllib.request
 
 import pytest
 
-from ltp.node.anchor_status import AnchorStatus, AnchorStatusTracker
 from ltp.node.anchor_rest import AnchorStatusServer
-
+from ltp.node.anchor_status import AnchorStatus, AnchorStatusTracker
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _get(server: AnchorStatusServer, path: str) -> tuple[int, dict]:
     """Issue a GET request and return (status_code, json_body)."""
@@ -74,6 +74,7 @@ class _MockVerifier:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def tracker() -> AnchorStatusTracker:
     """Tracker pre-populated with entities in various statuses."""
@@ -111,6 +112,7 @@ def server(tracker: AnchorStatusTracker):
 # Status endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestStatusEndpoint:
     def test_status_found(self, server, tracker):
         code, body = _get(server, "/anchor/status/ent-submitted")
@@ -143,6 +145,7 @@ class TestStatusEndpoint:
 # ---------------------------------------------------------------------------
 # Stats endpoint
 # ---------------------------------------------------------------------------
+
 
 class TestStatsEndpoint:
     def test_stats_counts(self, server):
@@ -186,6 +189,7 @@ class TestStatsEndpoint:
 # ---------------------------------------------------------------------------
 # By-status endpoint
 # ---------------------------------------------------------------------------
+
 
 class TestByStatusEndpoint:
     def test_by_status_submitted(self, server):
@@ -251,6 +255,7 @@ class TestByStatusEndpoint:
 # Health endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestHealthEndpoint:
     def test_health_ok(self, server):
         code, body = _get(server, "/anchor/health")
@@ -290,6 +295,7 @@ class TestHealthEndpoint:
 # ---------------------------------------------------------------------------
 # Server lifecycle
 # ---------------------------------------------------------------------------
+
 
 class TestServerLifecycle:
     def test_start_stop(self, tracker):

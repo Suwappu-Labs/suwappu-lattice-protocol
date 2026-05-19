@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from src.ltp.zk.ec_backend import bls12_381_available
 from src.ltp.execution.committee.dkg.types import DKGPhase, DKGResult
+from src.ltp.zk.ec_backend import bls12_381_available
 
 
 class TestDKGResultSecretShare:
-
     def test_default_secret_share_is_none(self):
         r = DKGResult(
             vm_tag=0x01,
@@ -50,18 +49,16 @@ class TestDKGResultSecretShare:
             r.my_secret_share = 99
 
 
-pytestmark_g2 = pytest.mark.skipif(
-    not bls12_381_available(), reason="py_ecc not installed"
-)
+pytestmark_g2 = pytest.mark.skipif(not bls12_381_available(), reason="py_ecc not installed")
 
 
 @pytestmark_g2
 class TestThresholdSigningKeyType:
-
     def test_frozen(self):
         from src.ltp.execution.committee.dkg.threshold_signing import (
             ThresholdSigningKey,
         )
+
         key = ThresholdSigningKey(
             participant_fp=b"\x01" * 32,
             participant_index=1,
@@ -78,6 +75,7 @@ class TestThresholdSigningKeyType:
         from src.ltp.execution.committee.dkg.threshold_signing import (
             ThresholdSigningKey,
         )
+
         key = ThresholdSigningKey(
             participant_fp=b"\x01" * 32,
             participant_index=3,
@@ -98,11 +96,11 @@ class TestThresholdSigningKeyType:
 
 @pytestmark_g2
 class TestPartialSignatureType:
-
     def test_frozen(self):
         from src.ltp.execution.committee.dkg.threshold_signing import (
             PartialSignature,
         )
+
         sig = PartialSignature(
             signer_fp=b"\x01" * 32,
             signer_index=1,
@@ -116,6 +114,7 @@ class TestPartialSignatureType:
         from src.ltp.execution.committee.dkg.threshold_signing import (
             PartialSignature,
         )
+
         sig = PartialSignature(
             signer_fp=b"\x02" * 32,
             signer_index=2,
@@ -134,19 +133,24 @@ class TestPartialSignatureType:
 
 
 def _run_dkg_and_get_keys(
-    n: int = 3, threshold: int = 2,
+    n: int = 3,
+    threshold: int = 2,
 ) -> tuple:
     """Run a DKG ceremony and return (group_pk, list[ThresholdSigningKey])."""
     from src.ltp.execution.committee.dkg.session import DKGSession
-    from src.ltp.execution.committee.dkg.types import DKGSessionConfig
     from src.ltp.execution.committee.dkg.threshold_signing import (
         ThresholdSigningKey,
     )
+    from src.ltp.execution.committee.dkg.types import DKGSessionConfig
 
     participants = [bytes([i]) * 32 for i in range(1, n + 1)]
     cfg = DKGSessionConfig(
-        vm_tag=0x01, epoch=1, threshold=threshold,
-        participants=participants, timeout_rounds=20, start_round=0,
+        vm_tag=0x01,
+        epoch=1,
+        threshold=threshold,
+        participants=participants,
+        timeout_rounds=20,
+        start_round=0,
     )
     sessions = [DKGSession(cfg, fp, idx + 1) for idx, fp in enumerate(participants)]
 
@@ -187,19 +191,22 @@ def _run_dkg_and_get_keys(
 
 @pytestmark_g2
 class TestPartialSign:
-
     def test_produces_96_byte_signature(self):
         from src.ltp.execution.committee.dkg.threshold_signing import (
-            partial_sign, DOMAIN_ATTESTATION,
+            DOMAIN_ATTESTATION,
+            partial_sign,
         )
+
         _, keys = _run_dkg_and_get_keys()
         sig = partial_sign(keys[0], b"hello", DOMAIN_ATTESTATION)
         assert len(sig.signature) == 96
 
     def test_deterministic(self):
         from src.ltp.execution.committee.dkg.threshold_signing import (
-            partial_sign, DOMAIN_ATTESTATION,
+            DOMAIN_ATTESTATION,
+            partial_sign,
         )
+
         _, keys = _run_dkg_and_get_keys()
         sig1 = partial_sign(keys[0], b"hello", DOMAIN_ATTESTATION)
         sig2 = partial_sign(keys[0], b"hello", DOMAIN_ATTESTATION)
@@ -207,8 +214,10 @@ class TestPartialSign:
 
     def test_different_message_different_sig(self):
         from src.ltp.execution.committee.dkg.threshold_signing import (
-            partial_sign, DOMAIN_ATTESTATION,
+            DOMAIN_ATTESTATION,
+            partial_sign,
         )
+
         _, keys = _run_dkg_and_get_keys()
         sig1 = partial_sign(keys[0], b"hello", DOMAIN_ATTESTATION)
         sig2 = partial_sign(keys[0], b"world", DOMAIN_ATTESTATION)
@@ -216,8 +225,11 @@ class TestPartialSign:
 
     def test_different_domain_different_sig(self):
         from src.ltp.execution.committee.dkg.threshold_signing import (
-            partial_sign, DOMAIN_ATTESTATION, DOMAIN_STATE_ROOT,
+            DOMAIN_ATTESTATION,
+            DOMAIN_STATE_ROOT,
+            partial_sign,
         )
+
         _, keys = _run_dkg_and_get_keys()
         sig1 = partial_sign(keys[0], b"hello", DOMAIN_ATTESTATION)
         sig2 = partial_sign(keys[0], b"hello", DOMAIN_STATE_ROOT)
@@ -225,8 +237,10 @@ class TestPartialSign:
 
     def test_signer_metadata(self):
         from src.ltp.execution.committee.dkg.threshold_signing import (
-            partial_sign, DOMAIN_ATTESTATION,
+            DOMAIN_ATTESTATION,
+            partial_sign,
         )
+
         _, keys = _run_dkg_and_get_keys()
         sig = partial_sign(keys[0], b"hello", DOMAIN_ATTESTATION)
         assert sig.signer_fp == keys[0].participant_fp
@@ -236,12 +250,14 @@ class TestPartialSign:
 
 @pytestmark_g2
 class TestCombineAndVerify:
-
     def test_combine_with_threshold_partials(self):
         from src.ltp.execution.committee.dkg.threshold_signing import (
-            partial_sign, combine_partial_signatures, threshold_verify,
             DOMAIN_ATTESTATION,
+            combine_partial_signatures,
+            partial_sign,
+            threshold_verify,
         )
+
         group_pk, keys = _run_dkg_and_get_keys(n=3, threshold=2)
         msg = b"test attestation"
         partials = [partial_sign(k, msg, DOMAIN_ATTESTATION) for k in keys[:2]]
@@ -251,9 +267,12 @@ class TestCombineAndVerify:
 
     def test_combine_with_all_partials(self):
         from src.ltp.execution.committee.dkg.threshold_signing import (
-            partial_sign, combine_partial_signatures, threshold_verify,
             DOMAIN_ATTESTATION,
+            combine_partial_signatures,
+            partial_sign,
+            threshold_verify,
         )
+
         group_pk, keys = _run_dkg_and_get_keys(n=3, threshold=2)
         msg = b"test attestation"
         partials = [partial_sign(k, msg, DOMAIN_ATTESTATION) for k in keys]
@@ -262,8 +281,11 @@ class TestCombineAndVerify:
 
     def test_insufficient_partials_raises(self):
         from src.ltp.execution.committee.dkg.threshold_signing import (
-            partial_sign, combine_partial_signatures, DOMAIN_ATTESTATION,
+            DOMAIN_ATTESTATION,
+            combine_partial_signatures,
+            partial_sign,
         )
+
         _, keys = _run_dkg_and_get_keys(n=3, threshold=2)
         partials = [partial_sign(keys[0], b"msg", DOMAIN_ATTESTATION)]
         with pytest.raises(ValueError, match="Need at least 2"):
@@ -271,9 +293,12 @@ class TestCombineAndVerify:
 
     def test_rejects_tampered_message(self):
         from src.ltp.execution.committee.dkg.threshold_signing import (
-            partial_sign, combine_partial_signatures, threshold_verify,
             DOMAIN_ATTESTATION,
+            combine_partial_signatures,
+            partial_sign,
+            threshold_verify,
         )
+
         group_pk, keys = _run_dkg_and_get_keys(n=3, threshold=2)
         partials = [partial_sign(k, b"real msg", DOMAIN_ATTESTATION) for k in keys[:2]]
         combined = combine_partial_signatures(partials, threshold=2)
@@ -281,9 +306,13 @@ class TestCombineAndVerify:
 
     def test_rejects_wrong_domain(self):
         from src.ltp.execution.committee.dkg.threshold_signing import (
-            partial_sign, combine_partial_signatures, threshold_verify,
-            DOMAIN_ATTESTATION, DOMAIN_STATE_ROOT,
+            DOMAIN_ATTESTATION,
+            DOMAIN_STATE_ROOT,
+            combine_partial_signatures,
+            partial_sign,
+            threshold_verify,
         )
+
         group_pk, keys = _run_dkg_and_get_keys(n=3, threshold=2)
         partials = [partial_sign(k, b"msg", DOMAIN_ATTESTATION) for k in keys[:2]]
         combined = combine_partial_signatures(partials, threshold=2)
@@ -292,16 +321,23 @@ class TestCombineAndVerify:
     def test_different_subsets_produce_same_signature(self):
         """Key property: any t-subset gives the same combined sig."""
         from src.ltp.execution.committee.dkg.threshold_signing import (
-            partial_sign, combine_partial_signatures, DOMAIN_ATTESTATION,
+            DOMAIN_ATTESTATION,
+            combine_partial_signatures,
+            partial_sign,
         )
+
         _, keys = _run_dkg_and_get_keys(n=4, threshold=2)
         msg = b"deterministic"
         # Subset {0, 1}
-        p_01 = [partial_sign(keys[0], msg, DOMAIN_ATTESTATION),
-                partial_sign(keys[1], msg, DOMAIN_ATTESTATION)]
+        p_01 = [
+            partial_sign(keys[0], msg, DOMAIN_ATTESTATION),
+            partial_sign(keys[1], msg, DOMAIN_ATTESTATION),
+        ]
         sig_01 = combine_partial_signatures(p_01, threshold=2)
         # Subset {2, 3}
-        p_23 = [partial_sign(keys[2], msg, DOMAIN_ATTESTATION),
-                partial_sign(keys[3], msg, DOMAIN_ATTESTATION)]
+        p_23 = [
+            partial_sign(keys[2], msg, DOMAIN_ATTESTATION),
+            partial_sign(keys[3], msg, DOMAIN_ATTESTATION),
+        ]
         sig_23 = combine_partial_signatures(p_23, threshold=2)
         assert sig_01 == sig_23

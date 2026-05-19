@@ -6,9 +6,7 @@ import pytest
 
 from src.ltp.zk.ec_backend import bls12_381_available
 
-pytestmark = pytest.mark.skipif(
-    not bls12_381_available(), reason="py_ecc not installed"
-)
+pytestmark = pytest.mark.skipif(not bls12_381_available(), reason="py_ecc not installed")
 
 from src.ltp.zk.ec_backend import (  # noqa: E402
     g1_compress,
@@ -24,7 +22,6 @@ from src.ltp.zk.ec_backend import (  # noqa: E402
 
 
 class TestG2Generator:
-
     def test_returns_non_identity(self):
         g2 = g2_generator()
         assert g2 is not None
@@ -37,7 +34,6 @@ class TestG2Generator:
 
 
 class TestG2ScalarMul:
-
     def test_mul_by_one_returns_generator(self):
         g2 = g2_generator()
         result = g2_scalar_mul(g2, 1)
@@ -56,7 +52,6 @@ class TestG2ScalarMul:
 
 
 class TestG2Add:
-
     def test_commutative(self):
         g2 = g2_generator()
         p2 = g2_scalar_mul(g2, 2)
@@ -78,7 +73,6 @@ class TestG2Add:
 
 
 class TestG2Compress:
-
     def test_produces_96_bytes(self):
         g2 = g2_generator()
         compressed = g2_compress(g2)
@@ -95,7 +89,6 @@ class TestG2Compress:
 
 
 class TestG1Compress:
-
     def test_produces_48_bytes(self):
         g1 = g1_generator()
         compressed = g1_compress(g1)

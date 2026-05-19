@@ -36,10 +36,10 @@ from src.ltp.node.peer_manager import PeerManager
 from src.ltp.node.transfer_bundle import TransferBundle
 from src.ltp.primitives import canonical_hash
 
-
 # ===================================================================
 # Helpers
 # ===================================================================
+
 
 def _make_3_node_network(alice, bob, eve_kp):
     """Create 3 gRPC servers and a CommitmentNetwork with 1 local + 2 remote nodes.
@@ -58,16 +58,17 @@ def _make_3_node_network(alice, bob, eve_kp):
 
     servicers = [
         NodeServicer(
-            node_id=n.node_id, region=n.region,
-            keypair=kp, peer_manager=pm,
+            node_id=n.node_id,
+            region=n.region,
+            keypair=kp,
+            peer_manager=pm,
             shard_count_fn=lambda n=n: n.shard_count,
         )
         for n, kp, pm in zip(nodes, keypairs, peer_managers)
     ]
 
     servers = [
-        NodeServer(n, port=0, host="127.0.0.1", node_servicer=s)
-        for n, s in zip(nodes, servicers)
+        NodeServer(n, port=0, host="127.0.0.1", node_servicer=s) for n, s in zip(nodes, servicers)
     ]
     for s in servers:
         s.start()
@@ -81,6 +82,7 @@ def _make_3_node_network(alice, bob, eve_kp):
     network.add_existing_node(remote_c)
 
     from src.ltp.keypair import KeyRegistry
+
     registry = KeyRegistry()
     protocol = LTPProtocol(network, key_registry=registry)
 
@@ -90,6 +92,7 @@ def _make_3_node_network(alice, bob, eve_kp):
 # ===================================================================
 # TestTransferBundle
 # ===================================================================
+
 
 class TestTransferBundle:
     """Test TransferBundle serialization."""
@@ -146,6 +149,7 @@ class TestTransferBundle:
     def test_bundle_missing_record_fields(self):
         """JSON with missing required fields → ValueError."""
         import json
+
         # Valid header with empty sealed_key, but incomplete JSON
         rec_json = json.dumps({"entity_id": "test"}).encode()
         data = b"ETPB" + struct.pack(">I", 1) + struct.pack(">I", 0) + rec_json
@@ -162,6 +166,7 @@ class TestTransferBundle:
 # ===================================================================
 # TestSafeNetwork
 # ===================================================================
+
 
 class TestSafeNetwork:
     """Test thread-safe CommitmentNetwork wrapper."""
@@ -251,6 +256,7 @@ class TestSafeNetwork:
 # TestNetworkBridge
 # ===================================================================
 
+
 class TestNetworkBridge:
     """Test PeerManager ↔ CommitmentNetwork bridge."""
 
@@ -266,7 +272,10 @@ class TestNetworkBridge:
 
             pm = PeerManager()
             pm.mark_connected(
-                "remote-1", alice.vk, f"127.0.0.1:{server.port}", "EU-West",
+                "remote-1",
+                alice.vk,
+                f"127.0.0.1:{server.port}",
+                "EU-West",
             )
 
             bridge = NetworkBridge(network, pm)
@@ -350,6 +359,7 @@ class TestNetworkBridge:
 # TestPlacementDeterminism
 # ===================================================================
 
+
 class TestPlacementDeterminism:
     """Test that placement is deterministic regardless of add order."""
 
@@ -371,10 +381,7 @@ class TestPlacementDeterminism:
                 net.add_node(nid, region)
 
             entity_id = "test-entity-" + "a" * 50
-            result = [
-                [n.node_id for n in net._placement(entity_id, i)]
-                for i in range(8)
-            ]
+            result = [[n.node_id for n in net._placement(entity_id, i)] for i in range(8)]
             placements.append(result)
 
         # All three orders should produce the same placement
@@ -385,6 +392,7 @@ class TestPlacementDeterminism:
 # ===================================================================
 # TestThreeNodeRoundTrip (EXIT CRITERION 1)
 # ===================================================================
+
 
 class TestThreeNodeRoundTrip:
     """Full commit → distribute → materialize across 3 gRPC-connected nodes."""
@@ -438,7 +446,9 @@ class TestThreeNodeRoundTrip:
 
             # At least 2 nodes should have shards
             nodes_with_shards = sum(1 for c in shard_counts.values() if c > 0)
-            assert nodes_with_shards >= 2, f"Shards only on {nodes_with_shards} node(s): {shard_counts}"
+            assert nodes_with_shards >= 2, (
+                f"Shards only on {nodes_with_shards} node(s): {shard_counts}"
+            )
         finally:
             for r in remotes:
                 r.close()
@@ -525,6 +535,7 @@ class TestThreeNodeRoundTrip:
             # Simulate node-b receiving the bundle:
             # Build a separate protocol that does NOT have the record in its log
             from src.ltp.keypair import KeyRegistry
+
             receiver_network = CommitmentNetwork()
             # Add nodes pointing to the same servers (shared storage)
             receiver_network.add_existing_node(
@@ -540,7 +551,9 @@ class TestThreeNodeRoundTrip:
 
             # Materialize using the bundle's record (log is empty on receiver side)
             result = receiver_protocol.materialize(
-                bundle.sealed_key, bob, record=bundle.record,
+                bundle.sealed_key,
+                bob,
+                record=bundle.record,
             )
             assert result is not None
             assert result == content
@@ -554,6 +567,7 @@ class TestThreeNodeRoundTrip:
 # ===================================================================
 # TestPDPAuditOverGRPC (EXIT CRITERION 2)
 # ===================================================================
+
 
 class TestPDPAuditOverGRPC:
     """PDP challenges passing across gRPC-connected nodes."""
@@ -641,6 +655,7 @@ class TestPDPAuditOverGRPC:
 # TestAuditScheduler
 # ===================================================================
 
+
 class TestAuditScheduler:
     """Test AuditScheduler lifecycle."""
 
@@ -668,14 +683,15 @@ class TestAuditScheduler:
 # TestTransferServiceGRPC
 # ===================================================================
 
+
 class TestTransferServiceGRPC:
     """Test TransferService gRPC RPCs."""
 
     def test_commit_via_grpc(self, alice):
         """CommitEntity RPC returns entity_id + transfer_bundle."""
-        from src.ltp.network.transfer_servicer import TransferServicer
         from src.ltp.network import transfer_service_pb2 as ts_pb2
         from src.ltp.network import transfer_service_pb2_grpc as ts_pb2_grpc
+        from src.ltp.network.transfer_servicer import TransferServicer
 
         node = CommitmentNode("ts-node", "US-East")
         network = CommitmentNetwork()
@@ -714,9 +730,9 @@ class TestTransferServiceGRPC:
 
     def test_materialize_via_grpc(self, alice):
         """MaterializeEntity RPC with bundle returns content."""
-        from src.ltp.network.transfer_servicer import TransferServicer
         from src.ltp.network import transfer_service_pb2 as ts_pb2
         from src.ltp.network import transfer_service_pb2_grpc as ts_pb2_grpc
+        from src.ltp.network.transfer_servicer import TransferServicer
 
         node = CommitmentNode("ts-node", "US-East")
         network = CommitmentNetwork()
@@ -754,10 +770,10 @@ class TestTransferServiceGRPC:
 
     def test_cross_node_transfer(self, alice, bob, eve):
         """Commit on Node A, materialize on Node B via gRPC."""
-        from src.ltp.network.transfer_servicer import TransferServicer
+        from src.ltp.keypair import KeyRegistry
         from src.ltp.network import transfer_service_pb2 as ts_pb2
         from src.ltp.network import transfer_service_pb2_grpc as ts_pb2_grpc
-        from src.ltp.keypair import KeyRegistry
+        from src.ltp.network.transfer_servicer import TransferServicer
 
         # Set up 3 nodes with shared storage via gRPC
         nodes = [
@@ -824,6 +840,7 @@ class TestTransferServiceGRPC:
 # Gap 1: Persistent shard storage wiring
 # ===================================================================
 
+
 class TestShardStoreFactory:
     """Tests that ETPNode creates the correct shard store from config."""
 
@@ -887,6 +904,7 @@ class TestShardStoreFactory:
 # Gap 2: Persistent CommitmentLog backend
 # ===================================================================
 
+
 class TestCommitmentLogStore:
     """Tests for CommitmentLogStore and CommitmentLog persistence."""
 
@@ -920,8 +938,8 @@ class TestCommitmentLogStore:
 
     def test_commitment_log_with_persistent_store(self, alice):
         """Full round-trip: append records, recreate log from store, verify."""
-        from src.ltp.storage import CommitmentLogStore
         from src.ltp.commitment import CommitmentLog, CommitmentRecord
+        from src.ltp.storage import CommitmentLogStore
 
         store = CommitmentLogStore(db_path=":memory:")
 
@@ -1044,6 +1062,7 @@ class TestCommitmentLogStore:
 # Gap 3: Config schema
 # ===================================================================
 
+
 class TestConfigSchema:
     """Tests for expanded NodeConfig fields."""
 
@@ -1092,6 +1111,7 @@ strike_threshold = 5
 # ===================================================================
 # Gap 4: Auto-eviction on strike threshold
 # ===================================================================
+
 
 class TestAutoEviction:
     """Tests for auto-eviction triggered by audit failures."""
@@ -1167,7 +1187,10 @@ class TestAutoEviction:
         bad.strikes = 2
 
         scheduler = AuditScheduler(
-            net, "local", interval_seconds=999.0, strike_threshold=3,
+            net,
+            "local",
+            interval_seconds=999.0,
+            strike_threshold=3,
         )
 
         # Store a shard on local that bad should also have (but doesn't)
@@ -1222,6 +1245,7 @@ class TestAutoEviction:
         class _DummyProxy:
             def items(self):
                 return []
+
             def __len__(self):
                 return 0
 
@@ -1243,12 +1267,14 @@ class TestAutoEviction:
 # Audit fix verification tests
 # ===================================================================
 
+
 class TestAuditFixes:
     """Tests verifying fixes for audit findings."""
 
     def test_transfer_bundle_rejects_oversized_sealed_key(self):
         """C3: sealed_key > 64KB is rejected."""
         import struct
+
         data = (
             b"ETPB"
             + struct.pack(">I", 1)
@@ -1261,11 +1287,17 @@ class TestAuditFixes:
     def test_transfer_bundle_rejects_nan_timestamp(self, alice):
         """M7: NaN timestamp is rejected."""
         import math
+
         rec = CommitmentRecord(
-            entity_id="test", sender_id="s", shard_map_root="r",
-            content_hash="c", encoding_params={"n": 4, "k": 2},
-            shape="text/plain", shape_hash="h",
-            timestamp=float("nan"), signature=b"\x00" * 10,
+            entity_id="test",
+            sender_id="s",
+            shard_map_root="r",
+            content_hash="c",
+            encoding_params={"n": 4, "k": 2},
+            shape="text/plain",
+            shape_hash="h",
+            timestamp=float("nan"),
+            signature=b"\x00" * 10,
             sender_vk=alice.vk,
         )
         bundle = TransferBundle(sealed_key=b"key", record=rec)
@@ -1276,10 +1308,15 @@ class TestAuditFixes:
     def test_transfer_bundle_rejects_inf_timestamp(self, alice):
         """M7: Inf timestamp is rejected."""
         rec = CommitmentRecord(
-            entity_id="test", sender_id="s", shard_map_root="r",
-            content_hash="c", encoding_params={"n": 4, "k": 2},
-            shape="text/plain", shape_hash="h",
-            timestamp=float("inf"), signature=b"\x00" * 10,
+            entity_id="test",
+            sender_id="s",
+            shard_map_root="r",
+            content_hash="c",
+            encoding_params={"n": 4, "k": 2},
+            shape="text/plain",
+            shape_hash="h",
+            timestamp=float("inf"),
+            signature=b"\x00" * 10,
             sender_vk=alice.vk,
         )
         bundle = TransferBundle(sealed_key=b"key", record=rec)
@@ -1291,31 +1328,31 @@ class TestAuditFixes:
         """H3: sender_vk is a required field in deserialization."""
         import json
         import struct
+
         # Build a bundle with valid JSON but missing sender_vk
         rec_dict = {
-            "entity_id": "eid", "sender_id": "sid",
-            "shard_map_root": "smr", "content_hash": "ch",
-            "encoding_params": {}, "shape": "s", "shape_hash": "sh",
+            "entity_id": "eid",
+            "sender_id": "sid",
+            "shard_map_root": "smr",
+            "content_hash": "ch",
+            "encoding_params": {},
+            "shape": "s",
+            "shape_hash": "sh",
             "timestamp": struct.pack(">d", 1000.0).hex(),
             "signature": "aa",
         }
         rec_json = json.dumps(rec_dict).encode()
         sealed = b"key"
-        data = (
-            b"ETPB"
-            + struct.pack(">I", 1)
-            + struct.pack(">I", len(sealed))
-            + sealed
-            + rec_json
-        )
+        data = b"ETPB" + struct.pack(">I", 1) + struct.pack(">I", len(sealed)) + sealed + rec_json
         with pytest.raises(ValueError, match="missing record fields.*sender_vk"):
             TransferBundle.from_bytes(data)
 
     def test_persistence_divergence_prevented(self, alice):
         """C2: If store.append_record fails, in-memory state is untouched."""
         from unittest.mock import MagicMock
-        from src.ltp.storage import CommitmentLogStore
+
         from src.ltp.commitment import CommitmentLog, CommitmentRecord
+        from src.ltp.storage import CommitmentLogStore
 
         store = CommitmentLogStore(db_path=":memory:")
         log = CommitmentLog(store=store)
@@ -1327,10 +1364,13 @@ class TestAuditFixes:
         rec = CommitmentRecord(
             entity_id="fail-entity",
             sender_id=alice.label,
-            shard_map_root="abc", content_hash="def",
+            shard_map_root="abc",
+            content_hash="def",
             encoding_params={"n": 4, "k": 2},
-            shape="text/plain", shape_hash="ghi",
-            timestamp=1000.0, signature=b"",
+            shape="text/plain",
+            shape_hash="ghi",
+            timestamp=1000.0,
+            signature=b"",
             sender_vk=alice.vk,
         )
         rec.sign(alice.sk)

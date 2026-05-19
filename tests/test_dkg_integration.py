@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from src.ltp.zk.ec_backend import bls12_381_available
-from src.ltp.execution.committee.policy import CommitteePolicy, EpochStrategy
 from src.ltp.execution.committee.manager import CommitteeManager
+from src.ltp.execution.committee.policy import CommitteePolicy, EpochStrategy
 from src.ltp.execution.writer import IdentityTier, WriterIdentity
 from src.ltp.execution.writer_recovery import EmergencyState
 from src.ltp.execution.writer_registry import WriterRegistry
+from src.ltp.zk.ec_backend import bls12_381_available
 
 ADMIN_FP = b"\xff" * 32
 
@@ -17,14 +17,15 @@ ADMIN_FP = b"\xff" * 32
 def _enroll_active(reg, fp_byte, tier=IdentityTier.BLS):
     fp = bytes([fp_byte]) * 32
     bls_pk = bytes([fp_byte]) * 48 if tier in (IdentityTier.BLS, IdentityTier.COMPOSITE) else None
-    mldsa_vk = bytes([fp_byte]) * 32 if tier in (IdentityTier.MLDSA, IdentityTier.COMPOSITE) else None
+    mldsa_vk = (
+        bytes([fp_byte]) * 32 if tier in (IdentityTier.MLDSA, IdentityTier.COMPOSITE) else None
+    )
     identity = WriterIdentity(tier=tier, fingerprint=fp, mldsa_vk=mldsa_vk, bls_pk=bls_pk)
     reg.enroll(identity, timestamp=1000 + fp_byte)
     reg.approve(fp, admin_fp=ADMIN_FP, timestamp=2000 + fp_byte)
 
 
 class TestPolicyDKGFields:
-
     def test_default_dkg_disabled(self):
         p = CommitteePolicy(vm_tag=0x01)
         assert p.dkg_threshold == 0
@@ -37,7 +38,6 @@ class TestPolicyDKGFields:
 
 
 class TestManagerDKGDisabled:
-
     def test_tick_without_dkg(self):
         """When dkg_threshold=0, tick behaves exactly as C3a."""
         reg = WriterRegistry()
@@ -52,7 +52,6 @@ class TestManagerDKGDisabled:
 
 
 class TestManagerDKGRegistry:
-
     def test_dkg_registry_exposed(self):
         """Manager exposes DKG registry for querying."""
         reg = WriterRegistry()
@@ -66,14 +65,15 @@ class TestManagerDKGRegistry:
 
 @pytest.mark.skipif(not bls12_381_available(), reason="py_ecc not installed")
 class TestManagerDKGCeremony:
-
     def test_dkg_runs_on_epoch_advance(self):
         """When dkg_threshold > 0, epoch advance triggers DKG."""
         reg = WriterRegistry()
         for i in range(1, 4):
             _enroll_active(reg, i)
         policy = CommitteePolicy(
-            vm_tag=0x01, epoch_length=10, dkg_threshold=2,
+            vm_tag=0x01,
+            epoch_length=10,
+            dkg_threshold=2,
         )
         mgr = CommitteeManager(0x01, policy, reg, EmergencyState())
         mgr.tick(10, 1000)
@@ -89,7 +89,9 @@ class TestManagerDKGCeremony:
         for i in range(1, 4):
             _enroll_active(reg, i)
         policy = CommitteePolicy(
-            vm_tag=0x01, epoch_length=10, dkg_threshold=2,
+            vm_tag=0x01,
+            epoch_length=10,
+            dkg_threshold=2,
         )
         mgr = CommitteeManager(0x01, policy, reg, EmergencyState())
         mgr.tick(10, 1000)

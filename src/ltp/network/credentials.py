@@ -10,7 +10,7 @@ When TLS is not enabled, returns None — callers fall back to insecure ports.
 from __future__ import annotations
 
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import grpc
 
@@ -60,7 +60,8 @@ def load_server_credentials(
 
     logger.info(
         "Server TLS credentials loaded (cert=%s, mTLS=%s)",
-        tls_config.cert_path, require_client,
+        tls_config.cert_path,
+        require_client,
     )
     return credentials
 

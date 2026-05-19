@@ -10,7 +10,10 @@ Reference: WireGuard formal state machine, FoundationDB strict serializability.
 import pytest
 
 from src.ltp import (
-    KeyPair, Entity, CommitmentNetwork, LTPProtocol,
+    CommitmentNetwork,
+    Entity,
+    KeyPair,
+    LTPProtocol,
     reset_poc_state,
 )
 

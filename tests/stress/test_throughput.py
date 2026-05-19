@@ -1,6 +1,7 @@
 """Throughput benchmark: success criteria is 100 events/minute sustained."""
 
 import pytest
+
 from src.ltp.keypair import KeyPair
 
 
@@ -23,8 +24,7 @@ class TestThroughput:
         assert result.total_rejected == 0
         assert result.total_anchor_failures == 0
         assert result.events_per_minute >= 100, (
-            f"Throughput {result.events_per_minute:.0f} events/min "
-            f"below 100 events/min target"
+            f"Throughput {result.events_per_minute:.0f} events/min below 100 events/min target"
         )
 
     def test_1000_events_sustained(self, bench_kp):

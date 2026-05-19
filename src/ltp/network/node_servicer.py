@@ -15,8 +15,8 @@ from . import node_service_pb2_grpc as ns_pb2_grpc
 
 if TYPE_CHECKING:
     from ..keypair import KeyPair
-    from ..node.peer_manager import PeerManager
     from ..node.handshake import HandshakePayload
+    from ..node.peer_manager import PeerManager
 
 logger = logging.getLogger(__name__)
 
@@ -58,19 +58,20 @@ class NodeServicer(ns_pb2_grpc.NodeServiceServicer):
     def Handshake(self, request, context):
         """Handle incoming handshake: verify, register peer, respond."""
         from ..node.handshake import (
+            PROTOCOL_VERSION,
             HandshakePayload,
             create_handshake_envelope,
             deserialize_envelope,
             serialize_envelope,
             verify_handshake_envelope,
-            PROTOCOL_VERSION,
         )
 
         # Validate protocol version before doing any crypto work
         if request.protocol_version != PROTOCOL_VERSION:
             logger.warning(
                 "Handshake rejected: protocol version %d (expected %d)",
-                request.protocol_version, PROTOCOL_VERSION,
+                request.protocol_version,
+                PROTOCOL_VERSION,
             )
             return ns_pb2.HandshakeResponse(
                 accepted=False,
@@ -107,14 +108,18 @@ class NodeServicer(ns_pb2_grpc.NodeServiceServicer):
         )
         logger.info(
             "Handshake accepted: %s (%s) at %s",
-            payload.node_id, payload.region, payload.listen_address,
+            payload.node_id,
+            payload.region,
+            payload.listen_address,
         )
 
         # Notify bridge of new peer
         if self._on_peer_connected:
             try:
                 self._on_peer_connected(
-                    payload.node_id, payload.region, payload.listen_address,
+                    payload.node_id,
+                    payload.region,
+                    payload.listen_address,
                 )
             except Exception as e:
                 logger.warning("on_peer_connected callback failed: %s", e)
@@ -177,7 +182,9 @@ class NodeServicer(ns_pb2_grpc.NodeServiceServicer):
             )
 
         discovered = self._gossip.handle_peer_exchange(
-            msg, request.sender_vk, request.signature,
+            msg,
+            request.sender_vk,
+            request.signature,
         )
 
         # Build reciprocal response

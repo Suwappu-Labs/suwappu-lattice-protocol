@@ -1,6 +1,7 @@
 """Tests for BridgeEvent — normalized external chain event."""
 
 import time
+
 import pytest
 
 

@@ -4,24 +4,24 @@ Tests for AnchorClient resilience features: CircuitBreaker and TokenBucketRateLi
 These are standalone unit tests — they don't require web3 or a running chain.
 """
 
-import time
 import threading
+import time
 
 import pytest
 
 from src.ltp.anchor.client import (
+    _DEFAULT_BURST,
+    _DEFAULT_COOLDOWN_SECONDS,
+    _DEFAULT_FAILURE_THRESHOLD,
+    _DEFAULT_MAX_TPS,
     CircuitBreaker,
     TokenBucketRateLimiter,
-    _DEFAULT_FAILURE_THRESHOLD,
-    _DEFAULT_COOLDOWN_SECONDS,
-    _DEFAULT_MAX_TPS,
-    _DEFAULT_BURST,
 )
-
 
 # ---------------------------------------------------------------------------
 # CircuitBreaker
 # ---------------------------------------------------------------------------
+
 
 class TestCircuitBreaker:
     def test_starts_closed(self):
@@ -97,6 +97,7 @@ class TestCircuitBreaker:
 # ---------------------------------------------------------------------------
 # TokenBucketRateLimiter
 # ---------------------------------------------------------------------------
+
 
 class TestTokenBucketRateLimiter:
     def test_burst_tokens_available_immediately(self):

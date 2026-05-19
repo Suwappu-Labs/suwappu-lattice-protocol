@@ -4,20 +4,17 @@ from __future__ import annotations
 
 import pytest
 
-from src.ltp.zk.ec_backend import bls12_381_available
 from src.ltp.execution.committee.dkg.types import (
     DKGPhase,
     DKGSessionConfig,
     DKGState,
 )
+from src.ltp.zk.ec_backend import bls12_381_available
 
-pytestmark = pytest.mark.skipif(
-    not bls12_381_available(), reason="py_ecc not installed"
-)
+pytestmark = pytest.mark.skipif(not bls12_381_available(), reason="py_ecc not installed")
 
 from src.ltp.execution.committee.dkg.session import DKGSession  # noqa: E402
 from src.ltp.execution.committee.dkg.vss import PedersenVSS  # noqa: E402
-
 
 FP_1 = b"\x01" * 32
 FP_2 = b"\x02" * 32
@@ -37,7 +34,6 @@ def _make_config(threshold: int = 2, start_round: int = 0) -> DKGSessionConfig:
 
 
 class TestDKGSessionInit:
-
     def test_initial_state_is_idle(self):
         cfg = _make_config()
         s = DKGSession(cfg, FP_1, 1)
@@ -45,7 +41,6 @@ class TestDKGSessionInit:
 
 
 class TestDKGSessionBegin:
-
     def test_transitions_to_committing(self):
         s = DKGSession(_make_config(), FP_1, 1)
         commitment, shares = s.begin()
@@ -65,7 +60,6 @@ class TestDKGSessionBegin:
 
 
 class TestDKGSessionCommitmentPhase:
-
     def test_receive_and_end_commitment(self):
         cfg = _make_config()
         s1 = DKGSession(cfg, FP_1, 1)
@@ -78,7 +72,6 @@ class TestDKGSessionCommitmentPhase:
 
 
 class TestDKGSessionSharingPhase:
-
     def test_receive_shares_and_verify(self):
         cfg = _make_config()
         s1 = DKGSession(cfg, FP_1, 1)
@@ -101,7 +94,6 @@ class TestDKGSessionSharingPhase:
 
 
 class TestDKGSessionFinalize:
-
     def test_happy_path_finalize(self):
         """3 participants, threshold=2, no complaints -> COMPLETED."""
         cfg = _make_config()
@@ -148,7 +140,6 @@ class TestDKGSessionFinalize:
 
 
 class TestDKGSessionAbort:
-
     def test_abort_from_any_state(self):
         s = DKGSession(_make_config(), FP_1, 1)
         s.abort("test reason")
@@ -162,7 +153,6 @@ class TestDKGSessionAbort:
 
 
 class TestDKGSessionTimeout:
-
     def test_timeout_triggers_failure(self):
         cfg = _make_config(start_round=100)
         s = DKGSession(cfg, FP_1, 1)

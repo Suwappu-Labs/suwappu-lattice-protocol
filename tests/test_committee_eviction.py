@@ -5,18 +5,18 @@ from __future__ import annotations
 import pytest
 
 from src.ltp.execution.committee.eviction import EvictionHandler
-from src.ltp.execution.committee.standby import StandbySelector
-from src.ltp.execution.committee.types import (
-    CommitteeMember,
-    CommitteeRole,
-    CommitteeRoster,
-    CommitteeEvent,
-    EvictionReason,
-)
 from src.ltp.execution.committee.policy import (
     CommitteePolicy,
     EvictionMode,
     FloorMode,
+)
+from src.ltp.execution.committee.standby import StandbySelector
+from src.ltp.execution.committee.types import (
+    CommitteeEvent,
+    CommitteeMember,
+    CommitteeRole,
+    CommitteeRoster,
+    EvictionReason,
 )
 from src.ltp.execution.writer import IdentityTier, WriterState
 
@@ -33,10 +33,12 @@ def _member(fp_byte: int, role: CommitteeRole = CommitteeRole.ACTIVE) -> Committ
 
 def _roster_with(active_bytes: list[int], standby_bytes: list[int]) -> CommitteeRoster:
     return CommitteeRoster(
-        vm_tag=0x01, epoch=1,
+        vm_tag=0x01,
+        epoch=1,
         active_members=[_member(b, CommitteeRole.ACTIVE) for b in active_bytes],
         standby_members=[_member(b, CommitteeRole.STANDBY) for b in standby_bytes],
-        formed_at=1000, formation_round=100,
+        formed_at=1000,
+        formation_round=100,
     )
 
 

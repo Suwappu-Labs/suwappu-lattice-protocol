@@ -100,9 +100,7 @@ def build_state_anchor_keccak256(
     """
     payload = attestation.payload
     if payload.target_chain >= (1 << 32):
-        raise CorridorAnchorError(
-            f"target_chain {payload.target_chain} exceeds u32"
-        )
+        raise CorridorAnchorError(f"target_chain {payload.target_chain} exceeds u32")
     chain_id = payload.target_chain
     mac = compute_mac_keccak256(
         chain_id=chain_id,

@@ -38,6 +38,7 @@ class NodeClient:
 
         if tls_config is not None and getattr(tls_config, "enabled", False):
             from .credentials import load_channel_credentials
+
             credentials = load_channel_credentials(tls_config)
             if credentials is not None:
                 self._channel = grpc.secure_channel(address, credentials)
@@ -110,21 +111,15 @@ class NodeClient:
             "reputation_score": resp.reputation_score,
         }
 
-    def fetch_shards_batch(
-        self, requests: list[tuple[str, int]]
-    ) -> list[Optional[bytes]]:
+    def fetch_shards_batch(self, requests: list[tuple[str, int]]) -> list[Optional[bytes]]:
         """Fetch multiple shards in one RPC call."""
         batch_req = pb2.FetchShardsBatchRequest(
             requests=[
-                pb2.FetchShardRequest(entity_id=eid, shard_index=idx)
-                for eid, idx in requests
+                pb2.FetchShardRequest(entity_id=eid, shard_index=idx) for eid, idx in requests
             ]
         )
         resp = self._stub.FetchShardsBatch(batch_req, timeout=self._timeout)
-        return [
-            r.encrypted_data if r.found else None
-            for r in resp.responses
-        ]
+        return [r.encrypted_data if r.found else None for r in resp.responses]
 
     def close(self) -> None:
         """Close the gRPC channel."""

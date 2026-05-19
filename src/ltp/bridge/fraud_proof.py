@@ -23,8 +23,8 @@ from ..domain import DOMAIN_FRAUD_PROOF, domain_hash_bytes
 from ..primitives import MLDSA, canonical_hash_bytes
 
 if TYPE_CHECKING:
-    from ..merkle_log.sth import SignedTreeHead
     from ..merkle_log.portable_proof import PortableMerkleProof
+    from ..merkle_log.sth import SignedTreeHead
 
 __all__ = [
     "FraudProofType",
@@ -36,6 +36,7 @@ __all__ = [
 
 class FraudProofType(Enum):
     """Discriminator for on-chain fraud proof type mapping."""
+
     INVALID_SIGNATURE = "invalid_signature"
     INCONSISTENT_STH = "inconsistent_sth"
     INVALID_MERKLE_PROOF = "invalid_merkle_proof"
@@ -50,10 +51,10 @@ class InvalidSignatureFraudProof:
     FAILS ML-DSA verification (i.e., the fraud is real).
     """
 
-    anchor_digest: bytes       # 32B — the disputed anchor
-    claimed_signer_vk: bytes   # ML-DSA-65 VK
-    signed_data: bytes         # The data that was supposedly signed
-    signature: bytes           # The invalid signature
+    anchor_digest: bytes  # 32B — the disputed anchor
+    claimed_signer_vk: bytes  # ML-DSA-65 VK
+    signed_data: bytes  # The data that was supposedly signed
+    signature: bytes  # The invalid signature
     proof_type: FraudProofType = FraudProofType.INVALID_SIGNATURE
 
     def to_bytes(self) -> bytes:
@@ -81,9 +82,7 @@ class InvalidSignatureFraudProof:
         A valid fraud proof means the signature does NOT verify —
         the operator published an invalid signature.
         """
-        sig_valid = MLDSA.verify(
-            self.claimed_signer_vk, self.signed_data, self.signature
-        )
+        sig_valid = MLDSA.verify(self.claimed_signer_vk, self.signed_data, self.signature)
         # Fraud is valid when the signature is INVALID
         return not sig_valid
 
@@ -137,12 +136,8 @@ class InconsistentSTHFraudProof:
 
         # Both signatures must be valid (otherwise it's a forgery, not a fork)
         vk = self.sth_a.operator_vk
-        sig_a_valid = MLDSA.verify(
-            vk, self.sth_a.signable_payload(), self.sth_a.signature
-        )
-        sig_b_valid = MLDSA.verify(
-            vk, self.sth_b.signable_payload(), self.sth_b.signature
-        )
+        sig_a_valid = MLDSA.verify(vk, self.sth_a.signable_payload(), self.sth_a.signature)
+        sig_b_valid = MLDSA.verify(vk, self.sth_b.signable_payload(), self.sth_b.signature)
         return sig_a_valid and sig_b_valid
 
 
@@ -154,9 +149,9 @@ class InvalidMerkleProofFraudProof:
     that is inconsistent with the claimed root hash.
     """
 
-    anchor_digest: bytes           # 32B — the disputed anchor
-    claimed_root: bytes            # 32B — root hash the operator published
-    proof: "PortableMerkleProof"   # The proof that fails verification
+    anchor_digest: bytes  # 32B — the disputed anchor
+    claimed_root: bytes  # 32B — root hash the operator published
+    proof: "PortableMerkleProof"  # The proof that fails verification
     proof_type: FraudProofType = FraudProofType.INVALID_MERKLE_PROOF
 
     def to_bytes(self) -> bytes:

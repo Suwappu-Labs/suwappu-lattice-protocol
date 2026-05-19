@@ -4,59 +4,56 @@
 # source: shard_service.proto
 # Protobuf Python Version: 6.31.1
 """Generated protocol buffer code."""
+
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pool as _descriptor_pool
 from google.protobuf import runtime_version as _runtime_version
 from google.protobuf import symbol_database as _symbol_database
 from google.protobuf.internal import builder as _builder
+
 _runtime_version.ValidateProtobufRuntimeVersion(
-    _runtime_version.Domain.PUBLIC,
-    6,
-    31,
-    1,
-    '',
-    'shard_service.proto'
+    _runtime_version.Domain.PUBLIC, 6, 31, 1, "", "shard_service.proto"
 )
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
 
 
-
-
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13shard_service.proto\x12\tltp.shard\"S\n\x11StoreShardRequest\x12\x11\n\tentity_id\x18\x01 \x01(\t\x12\x13\n\x0bshard_index\x18\x02 \x01(\x05\x12\x16\n\x0e\x65ncrypted_data\x18\x03 \x01(\x0c\"4\n\x12StoreShardResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\r\n\x05\x65rror\x18\x02 \x01(\t\";\n\x11\x46\x65tchShardRequest\x12\x11\n\tentity_id\x18\x01 \x01(\t\x12\x13\n\x0bshard_index\x18\x02 \x01(\x05\";\n\x12\x46\x65tchShardResponse\x12\r\n\x05\x66ound\x18\x01 \x01(\x08\x12\x16\n\x0e\x65ncrypted_data\x18\x02 \x01(\x0c\"N\n\x15\x41uditChallengeRequest\x12\x11\n\tentity_id\x18\x01 \x01(\t\x12\x13\n\x0bshard_index\x18\x02 \x01(\x05\x12\r\n\x05nonce\x18\x03 \x01(\x0c\";\n\x16\x41uditChallengeResponse\x12\r\n\x05\x66ound\x18\x01 \x01(\x08\x12\x12\n\nproof_hash\x18\x02 \x01(\t\"<\n\x12RemoveShardRequest\x12\x11\n\tentity_id\x18\x01 \x01(\t\x12\x13\n\x0bshard_index\x18\x02 \x01(\x05\"&\n\x13RemoveShardResponse\x12\x0f\n\x07removed\x18\x01 \x01(\x08\"\x11\n\x0fNodeInfoRequest\"s\n\x10NodeInfoResponse\x12\x0f\n\x07node_id\x18\x01 \x01(\t\x12\x0e\n\x06region\x18\x02 \x01(\t\x12\x13\n\x0bshard_count\x18\x03 \x01(\x03\x12\x0f\n\x07\x65victed\x18\x04 \x01(\x08\x12\x18\n\x10reputation_score\x18\x05 \x01(\x01\"I\n\x17\x46\x65tchShardsBatchRequest\x12.\n\x08requests\x18\x01 \x03(\x0b\x32\x1c.ltp.shard.FetchShardRequest\"L\n\x18\x46\x65tchShardsBatchResponse\x12\x30\n\tresponses\x18\x01 \x03(\x0b\x32\x1d.ltp.shard.FetchShardResponse\"G\n\x19StoreShardsStreamResponse\x12\x14\n\x0cstored_count\x18\x01 \x01(\x05\x12\x14\n\x0c\x66\x61iled_count\x18\x02 \x01(\x05\x32\xc9\x04\n\x0cShardService\x12I\n\nStoreShard\x12\x1c.ltp.shard.StoreShardRequest\x1a\x1d.ltp.shard.StoreShardResponse\x12I\n\nFetchShard\x12\x1c.ltp.shard.FetchShardRequest\x1a\x1d.ltp.shard.FetchShardResponse\x12U\n\x0e\x41uditChallenge\x12 .ltp.shard.AuditChallengeRequest\x1a!.ltp.shard.AuditChallengeResponse\x12L\n\x0bRemoveShard\x12\x1d.ltp.shard.RemoveShardRequest\x1a\x1e.ltp.shard.RemoveShardResponse\x12\x46\n\x0bGetNodeInfo\x12\x1a.ltp.shard.NodeInfoRequest\x1a\x1b.ltp.shard.NodeInfoResponse\x12Y\n\x11StoreShardsStream\x12\x1c.ltp.shard.StoreShardRequest\x1a$.ltp.shard.StoreShardsStreamResponse(\x01\x12[\n\x10\x46\x65tchShardsBatch\x12\".ltp.shard.FetchShardsBatchRequest\x1a#.ltp.shard.FetchShardsBatchResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
+    b'\n\x13shard_service.proto\x12\tltp.shard"S\n\x11StoreShardRequest\x12\x11\n\tentity_id\x18\x01 \x01(\t\x12\x13\n\x0bshard_index\x18\x02 \x01(\x05\x12\x16\n\x0e\x65ncrypted_data\x18\x03 \x01(\x0c"4\n\x12StoreShardResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\r\n\x05\x65rror\x18\x02 \x01(\t";\n\x11\x46\x65tchShardRequest\x12\x11\n\tentity_id\x18\x01 \x01(\t\x12\x13\n\x0bshard_index\x18\x02 \x01(\x05";\n\x12\x46\x65tchShardResponse\x12\r\n\x05\x66ound\x18\x01 \x01(\x08\x12\x16\n\x0e\x65ncrypted_data\x18\x02 \x01(\x0c"N\n\x15\x41uditChallengeRequest\x12\x11\n\tentity_id\x18\x01 \x01(\t\x12\x13\n\x0bshard_index\x18\x02 \x01(\x05\x12\r\n\x05nonce\x18\x03 \x01(\x0c";\n\x16\x41uditChallengeResponse\x12\r\n\x05\x66ound\x18\x01 \x01(\x08\x12\x12\n\nproof_hash\x18\x02 \x01(\t"<\n\x12RemoveShardRequest\x12\x11\n\tentity_id\x18\x01 \x01(\t\x12\x13\n\x0bshard_index\x18\x02 \x01(\x05"&\n\x13RemoveShardResponse\x12\x0f\n\x07removed\x18\x01 \x01(\x08"\x11\n\x0fNodeInfoRequest"s\n\x10NodeInfoResponse\x12\x0f\n\x07node_id\x18\x01 \x01(\t\x12\x0e\n\x06region\x18\x02 \x01(\t\x12\x13\n\x0bshard_count\x18\x03 \x01(\x03\x12\x0f\n\x07\x65victed\x18\x04 \x01(\x08\x12\x18\n\x10reputation_score\x18\x05 \x01(\x01"I\n\x17\x46\x65tchShardsBatchRequest\x12.\n\x08requests\x18\x01 \x03(\x0b\x32\x1c.ltp.shard.FetchShardRequest"L\n\x18\x46\x65tchShardsBatchResponse\x12\x30\n\tresponses\x18\x01 \x03(\x0b\x32\x1d.ltp.shard.FetchShardResponse"G\n\x19StoreShardsStreamResponse\x12\x14\n\x0cstored_count\x18\x01 \x01(\x05\x12\x14\n\x0c\x66\x61iled_count\x18\x02 \x01(\x05\x32\xc9\x04\n\x0cShardService\x12I\n\nStoreShard\x12\x1c.ltp.shard.StoreShardRequest\x1a\x1d.ltp.shard.StoreShardResponse\x12I\n\nFetchShard\x12\x1c.ltp.shard.FetchShardRequest\x1a\x1d.ltp.shard.FetchShardResponse\x12U\n\x0e\x41uditChallenge\x12 .ltp.shard.AuditChallengeRequest\x1a!.ltp.shard.AuditChallengeResponse\x12L\n\x0bRemoveShard\x12\x1d.ltp.shard.RemoveShardRequest\x1a\x1e.ltp.shard.RemoveShardResponse\x12\x46\n\x0bGetNodeInfo\x12\x1a.ltp.shard.NodeInfoRequest\x1a\x1b.ltp.shard.NodeInfoResponse\x12Y\n\x11StoreShardsStream\x12\x1c.ltp.shard.StoreShardRequest\x1a$.ltp.shard.StoreShardsStreamResponse(\x01\x12[\n\x10\x46\x65tchShardsBatch\x12".ltp.shard.FetchShardsBatchRequest\x1a#.ltp.shard.FetchShardsBatchResponseb\x06proto3'
+)
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
-_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'shard_service_pb2', _globals)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, "shard_service_pb2", _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-  DESCRIPTOR._loaded_options = None
-  _globals['_STORESHARDREQUEST']._serialized_start=34
-  _globals['_STORESHARDREQUEST']._serialized_end=117
-  _globals['_STORESHARDRESPONSE']._serialized_start=119
-  _globals['_STORESHARDRESPONSE']._serialized_end=171
-  _globals['_FETCHSHARDREQUEST']._serialized_start=173
-  _globals['_FETCHSHARDREQUEST']._serialized_end=232
-  _globals['_FETCHSHARDRESPONSE']._serialized_start=234
-  _globals['_FETCHSHARDRESPONSE']._serialized_end=293
-  _globals['_AUDITCHALLENGEREQUEST']._serialized_start=295
-  _globals['_AUDITCHALLENGEREQUEST']._serialized_end=373
-  _globals['_AUDITCHALLENGERESPONSE']._serialized_start=375
-  _globals['_AUDITCHALLENGERESPONSE']._serialized_end=434
-  _globals['_REMOVESHARDREQUEST']._serialized_start=436
-  _globals['_REMOVESHARDREQUEST']._serialized_end=496
-  _globals['_REMOVESHARDRESPONSE']._serialized_start=498
-  _globals['_REMOVESHARDRESPONSE']._serialized_end=536
-  _globals['_NODEINFOREQUEST']._serialized_start=538
-  _globals['_NODEINFOREQUEST']._serialized_end=555
-  _globals['_NODEINFORESPONSE']._serialized_start=557
-  _globals['_NODEINFORESPONSE']._serialized_end=672
-  _globals['_FETCHSHARDSBATCHREQUEST']._serialized_start=674
-  _globals['_FETCHSHARDSBATCHREQUEST']._serialized_end=747
-  _globals['_FETCHSHARDSBATCHRESPONSE']._serialized_start=749
-  _globals['_FETCHSHARDSBATCHRESPONSE']._serialized_end=825
-  _globals['_STORESHARDSSTREAMRESPONSE']._serialized_start=827
-  _globals['_STORESHARDSSTREAMRESPONSE']._serialized_end=898
-  _globals['_SHARDSERVICE']._serialized_start=901
-  _globals['_SHARDSERVICE']._serialized_end=1486
+    DESCRIPTOR._loaded_options = None
+    _globals["_STORESHARDREQUEST"]._serialized_start = 34
+    _globals["_STORESHARDREQUEST"]._serialized_end = 117
+    _globals["_STORESHARDRESPONSE"]._serialized_start = 119
+    _globals["_STORESHARDRESPONSE"]._serialized_end = 171
+    _globals["_FETCHSHARDREQUEST"]._serialized_start = 173
+    _globals["_FETCHSHARDREQUEST"]._serialized_end = 232
+    _globals["_FETCHSHARDRESPONSE"]._serialized_start = 234
+    _globals["_FETCHSHARDRESPONSE"]._serialized_end = 293
+    _globals["_AUDITCHALLENGEREQUEST"]._serialized_start = 295
+    _globals["_AUDITCHALLENGEREQUEST"]._serialized_end = 373
+    _globals["_AUDITCHALLENGERESPONSE"]._serialized_start = 375
+    _globals["_AUDITCHALLENGERESPONSE"]._serialized_end = 434
+    _globals["_REMOVESHARDREQUEST"]._serialized_start = 436
+    _globals["_REMOVESHARDREQUEST"]._serialized_end = 496
+    _globals["_REMOVESHARDRESPONSE"]._serialized_start = 498
+    _globals["_REMOVESHARDRESPONSE"]._serialized_end = 536
+    _globals["_NODEINFOREQUEST"]._serialized_start = 538
+    _globals["_NODEINFOREQUEST"]._serialized_end = 555
+    _globals["_NODEINFORESPONSE"]._serialized_start = 557
+    _globals["_NODEINFORESPONSE"]._serialized_end = 672
+    _globals["_FETCHSHARDSBATCHREQUEST"]._serialized_start = 674
+    _globals["_FETCHSHARDSBATCHREQUEST"]._serialized_end = 747
+    _globals["_FETCHSHARDSBATCHRESPONSE"]._serialized_start = 749
+    _globals["_FETCHSHARDSBATCHRESPONSE"]._serialized_end = 825
+    _globals["_STORESHARDSSTREAMRESPONSE"]._serialized_start = 827
+    _globals["_STORESHARDSSTREAMRESPONSE"]._serialized_end = 898
+    _globals["_SHARDSERVICE"]._serialized_start = 901
+    _globals["_SHARDSERVICE"]._serialized_end = 1486
 # @@protoc_insertion_point(module_scope)

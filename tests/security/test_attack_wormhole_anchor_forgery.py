@@ -40,10 +40,7 @@ from src.ltp.execution.committee.dkg.threshold_signing import (
 )
 from src.ltp.zk.ec_backend import bls12_381_available
 
-
-pytestmark = pytest.mark.skipif(
-    not bls12_381_available(), reason="py_ecc / blst not installed"
-)
+pytestmark = pytest.mark.skipif(not bls12_381_available(), reason="py_ecc / blst not installed")
 
 
 def _legit_attestation(signing_keys, threshold: int, msg: bytes):
@@ -104,18 +101,21 @@ def test_corridor_attestation_wire_roundtrip_preserves_signature(dkg_4_of_3):
     sig = _legit_attestation(signing_keys, threshold=3, msg=digest)
 
     payload = AttestationPayload(
-        source_chain=1, target_chain=2, source_height=100,
-        state_root=digest, timestamp_round=50,
+        source_chain=1,
+        target_chain=2,
+        source_height=100,
+        state_root=digest,
+        timestamp_round=50,
     )
     attestation = CorridorAttestation(
-        payload=payload, aggregate_signature=sig, signers=frozenset({0, 1, 2}),
+        payload=payload,
+        aggregate_signature=sig,
+        signers=frozenset({0, 1, 2}),
     )
     wire = corridor_attestation_to_dict(attestation)
     decoded = corridor_attestation_from_dict(wire)
     assert decoded.aggregate_signature == attestation.aggregate_signature
-    assert threshold_verify(
-        group_pk, digest, decoded.aggregate_signature, DOMAIN_ATTESTATION
-    )
+    assert threshold_verify(group_pk, digest, decoded.aggregate_signature, DOMAIN_ATTESTATION)
 
 
 def test_corridor_attestation_with_tampered_signature_fails_verification(dkg_4_of_3):
@@ -128,14 +128,17 @@ def test_corridor_attestation_with_tampered_signature_fails_verification(dkg_4_o
     sig = _legit_attestation(signing_keys, threshold=3, msg=digest)
 
     payload = AttestationPayload(
-        source_chain=1, target_chain=2, source_height=100,
-        state_root=digest, timestamp_round=50,
+        source_chain=1,
+        target_chain=2,
+        source_height=100,
+        state_root=digest,
+        timestamp_round=50,
     )
     tampered = bytes([sig[0] ^ 0x01]) + sig[1:]
     attestation = CorridorAttestation(
-        payload=payload, aggregate_signature=tampered, signers=frozenset({0, 1, 2}),
+        payload=payload,
+        aggregate_signature=tampered,
+        signers=frozenset({0, 1, 2}),
     )
     decoded = corridor_attestation_from_dict(corridor_attestation_to_dict(attestation))
-    assert not threshold_verify(
-        group_pk, digest, decoded.aggregate_signature, DOMAIN_ATTESTATION
-    )
+    assert not threshold_verify(group_pk, digest, decoded.aggregate_signature, DOMAIN_ATTESTATION)

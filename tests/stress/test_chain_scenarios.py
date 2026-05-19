@@ -1,7 +1,9 @@
 """Stress scenarios 2, 7, 8: Chain conditions."""
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from tests.stress.conftest import make_raw_log
 
 

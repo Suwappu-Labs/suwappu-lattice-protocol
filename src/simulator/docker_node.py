@@ -29,6 +29,7 @@ from typing import Optional
 _docker_available = False
 try:
     import docker
+
     _docker_available = True
 except ImportError:
     docker = None
@@ -122,6 +123,7 @@ class DockerNode:
     """
     Represents a Docker container running an LTP shard storage node.
     """
+
     node_id: str
     region: str
     container_id: str = ""
@@ -142,6 +144,7 @@ class DockerNode:
         """Check if the container node is healthy."""
         try:
             import urllib.request
+
             url = f"{self.base_url}/health"
             req = urllib.request.Request(url, method="GET")
             with urllib.request.urlopen(req, timeout=5) as resp:
@@ -153,11 +156,14 @@ class DockerNode:
         """Store a shard on the Docker node via HTTP."""
         try:
             import urllib.request
-            payload = json.dumps({
-                "entity_id": entity_id,
-                "shard_index": shard_index,
-                "data": data.hex(),
-            }).encode()
+
+            payload = json.dumps(
+                {
+                    "entity_id": entity_id,
+                    "shard_index": shard_index,
+                    "data": data.hex(),
+                }
+            ).encode()
             req = urllib.request.Request(
                 f"{self.base_url}/shard",
                 data=payload,
@@ -174,6 +180,7 @@ class DockerNode:
         """Fetch a shard from the Docker node via HTTP."""
         try:
             import urllib.request
+
             url = f"{self.base_url}/shard/{entity_id}/{shard_index}"
             req = urllib.request.Request(url, method="GET")
             with urllib.request.urlopen(req, timeout=10) as resp:
@@ -186,11 +193,14 @@ class DockerNode:
         """Send an audit challenge to the Docker node."""
         try:
             import urllib.request
-            payload = json.dumps({
-                "entity_id": entity_id,
-                "shard_index": shard_index,
-                "nonce": nonce.hex(),
-            }).encode()
+
+            payload = json.dumps(
+                {
+                    "entity_id": entity_id,
+                    "shard_index": shard_index,
+                    "nonce": nonce.hex(),
+                }
+            ).encode()
             req = urllib.request.Request(
                 f"{self.base_url}/audit",
                 data=payload,
@@ -215,14 +225,12 @@ class DockerNodeManager:
 
     def __init__(self, network_prefix: str = "ltp-sim") -> None:
         if not _docker_available:
-            raise ImportError(
-                "Docker SDK not installed. Install with: pip install docker"
-            )
+            raise ImportError("Docker SDK not installed. Install with: pip install docker")
         self._client = docker.from_env()
         self._network_prefix = network_prefix
         self._nodes: dict[str, DockerNode] = {}
         self._containers: dict[str, object] = {}  # container_id → Container
-        self._networks: dict[str, object] = {}     # region → Network
+        self._networks: dict[str, object] = {}  # region → Network
         self._next_port = CONTAINER_PORT
 
     def _get_or_create_network(self, region: str) -> object:
@@ -323,9 +331,7 @@ class DockerNodeManager:
         self._networks.clear()
         self._nodes.clear()
 
-    def apply_network_delay(
-        self, node_id: str, delay_ms: int, jitter_ms: int = 0
-    ) -> bool:
+    def apply_network_delay(self, node_id: str, delay_ms: int, jitter_ms: int = 0) -> bool:
         """
         Apply network delay to a container using tc/netem.
 

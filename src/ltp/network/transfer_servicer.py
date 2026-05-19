@@ -35,17 +35,23 @@ class TransferServicer(ts_pb2_grpc.TransferServiceServicer):
         from ..node.transfer_bundle import TransferBundle
 
         try:
-            entity = Entity(content=request.content, shape=request.shape or "application/octet-stream")
+            entity = Entity(
+                content=request.content, shape=request.shape or "application/octet-stream"
+            )
             n = request.n if request.n > 0 else None
             k = request.k if request.k > 0 else None
 
             entity_id, record, cek = self._protocol.commit(
-                entity, self._keypair, n=n, k=k,
+                entity,
+                self._keypair,
+                n=n,
+                k=k,
             )
 
             # Seal to receiver if specified, else to self
             if request.receiver_ek:
                 from ..primitives import MLKEM
+
                 if len(request.receiver_ek) != MLKEM.EK_SIZE:
                     return ts_pb2.CommitResponse(
                         success=False,
@@ -55,14 +61,20 @@ class TransferServicer(ts_pb2_grpc.TransferServiceServicer):
                         ),
                     )
                 receiver_kp = KeyPair(
-                    ek=request.receiver_ek, dk=b"", vk=b"", sk=b"",
+                    ek=request.receiver_ek,
+                    dk=b"",
+                    vk=b"",
+                    sk=b"",
                     label="receiver",
                 )
             else:
                 receiver_kp = self._keypair
 
             sealed_key = self._protocol.lattice(
-                entity_id, record, cek, receiver_kp,
+                entity_id,
+                record,
+                cek,
+                receiver_kp,
             )
 
             bundle = TransferBundle(sealed_key=sealed_key, record=record)

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.ltp.execution.committee.dkg.types import DKGPhase, DKGResult
 from src.ltp.execution.committee.dkg.registry import DKGKeyRegistry
+from src.ltp.execution.committee.dkg.types import DKGPhase, DKGResult
 
 
 def _make_result(vm_tag: int = 0x01, epoch: int = 1) -> DKGResult:
@@ -21,7 +21,6 @@ def _make_result(vm_tag: int = 0x01, epoch: int = 1) -> DKGResult:
 
 
 class TestDKGKeyRegistryStore:
-
     def test_store_and_get(self):
         reg = DKGKeyRegistry(0x01)
         result = _make_result(epoch=1)
@@ -46,7 +45,6 @@ class TestDKGKeyRegistryStore:
 
 
 class TestDKGKeyRegistryCurrent:
-
     def test_current_empty(self):
         reg = DKGKeyRegistry(0x01)
         assert reg.current() is None
@@ -61,7 +59,6 @@ class TestDKGKeyRegistryCurrent:
 
 
 class TestDKGKeyRegistryConvenience:
-
     def test_group_pk(self):
         reg = DKGKeyRegistry(0x01)
         reg.store(_make_result(epoch=1))

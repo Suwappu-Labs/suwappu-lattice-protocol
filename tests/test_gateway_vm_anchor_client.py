@@ -1,8 +1,9 @@
 """Tests for DevnetAnchorClient — gateway-specific AnchorClient extension."""
 
-import pytest
 from unittest.mock import MagicMock, patch
-from src.ltp.keypair import KeyPair
+
+import pytest
+
 from src.ltp.gateway_vm.anchor_client import (
     CircuitBreaker,
     CircuitOpenError,
@@ -10,6 +11,7 @@ from src.ltp.gateway_vm.anchor_client import (
     RateLimitedError,
     TokenBucketRateLimiter,
 )
+from src.ltp.keypair import KeyPair
 
 
 @pytest.fixture(scope="module")

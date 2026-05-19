@@ -12,10 +12,9 @@ Usage:
 from __future__ import annotations
 
 from .base import BackendConfig, CommitmentBackend
-from .local import LocalBackend
 from .base_l1 import BaseL1Backend
 from .ethereum import EthereumBackend
-
+from .local import LocalBackend
 
 _REGISTRY: dict[str, type[CommitmentBackend]] = {
     "local": LocalBackend,
@@ -38,7 +37,6 @@ def create_backend(config: BackendConfig) -> CommitmentBackend:
     cls = _REGISTRY.get(config.backend_type)
     if cls is None:
         raise ValueError(
-            f"Unknown backend type '{config.backend_type}'. "
-            f"Available: {sorted(_REGISTRY.keys())}"
+            f"Unknown backend type '{config.backend_type}'. Available: {sorted(_REGISTRY.keys())}"
         )
     return cls(config)

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from src.ltp.zk.ec_backend import bls12_381_available
-from src.ltp.execution.committee.policy import CommitteePolicy
 from src.ltp.execution.committee.manager import CommitteeManager
+from src.ltp.execution.committee.policy import CommitteePolicy
 from src.ltp.execution.writer import IdentityTier, WriterIdentity
 from src.ltp.execution.writer_recovery import EmergencyState
 from src.ltp.execution.writer_registry import WriterRegistry
+from src.ltp.zk.ec_backend import bls12_381_available
 
 ADMIN_FP = b"\xff" * 32
 
@@ -17,14 +17,15 @@ ADMIN_FP = b"\xff" * 32
 def _enroll_active(reg, fp_byte, tier=IdentityTier.BLS):
     fp = bytes([fp_byte]) * 32
     bls_pk = bytes([fp_byte]) * 48 if tier in (IdentityTier.BLS, IdentityTier.COMPOSITE) else None
-    mldsa_vk = bytes([fp_byte]) * 32 if tier in (IdentityTier.MLDSA, IdentityTier.COMPOSITE) else None
+    mldsa_vk = (
+        bytes([fp_byte]) * 32 if tier in (IdentityTier.MLDSA, IdentityTier.COMPOSITE) else None
+    )
     identity = WriterIdentity(tier=tier, fingerprint=fp, mldsa_vk=mldsa_vk, bls_pk=bls_pk)
     reg.enroll(identity, timestamp=1000 + fp_byte)
     reg.approve(fp, admin_fp=ADMIN_FP, timestamp=2000 + fp_byte)
 
 
 class TestManagerSigningDisabled:
-
     def test_sign_returns_none_when_dkg_disabled(self):
         reg = WriterRegistry()
         for i in range(1, 4):
@@ -38,16 +39,19 @@ class TestManagerSigningDisabled:
 
 @pytest.mark.skipif(not bls12_381_available(), reason="py_ecc not installed")
 class TestManagerSigningEnabled:
-
     def test_sign_produces_valid_signature(self):
         from src.ltp.execution.committee.dkg.threshold_signing import (
-            threshold_verify, DOMAIN_ATTESTATION,
+            DOMAIN_ATTESTATION,
+            threshold_verify,
         )
+
         reg = WriterRegistry()
         for i in range(1, 4):
             _enroll_active(reg, i)
         policy = CommitteePolicy(
-            vm_tag=0x01, epoch_length=10, dkg_threshold=2,
+            vm_tag=0x01,
+            epoch_length=10,
+            dkg_threshold=2,
         )
         mgr = CommitteeManager(0x01, policy, reg, EmergencyState())
         mgr.tick(10, 1000)
@@ -65,11 +69,14 @@ class TestManagerSigningEnabled:
         from src.ltp.execution.committee.dkg.threshold_signing import (
             DOMAIN_ATTESTATION,
         )
+
         reg = WriterRegistry()
         for i in range(1, 4):
             _enroll_active(reg, i)
         policy = CommitteePolicy(
-            vm_tag=0x01, epoch_length=10, dkg_threshold=2,
+            vm_tag=0x01,
+            epoch_length=10,
+            dkg_threshold=2,
         )
         mgr = CommitteeManager(0x01, policy, reg, EmergencyState())
         mgr.tick(10, 1000)
@@ -82,11 +89,14 @@ class TestManagerSigningEnabled:
         from src.ltp.execution.committee.dkg.threshold_signing import (
             DOMAIN_ATTESTATION,
         )
+
         reg = WriterRegistry()
         for i in range(1, 4):
             _enroll_active(reg, i)
         policy = CommitteePolicy(
-            vm_tag=0x01, epoch_length=10, dkg_threshold=2,
+            vm_tag=0x01,
+            epoch_length=10,
+            dkg_threshold=2,
         )
         mgr = CommitteeManager(0x01, policy, reg, EmergencyState())
         mgr.tick(10, 1000)
@@ -96,13 +106,17 @@ class TestManagerSigningEnabled:
 
     def test_multiple_epochs_sign_verify(self):
         from src.ltp.execution.committee.dkg.threshold_signing import (
-            threshold_verify, DOMAIN_ATTESTATION,
+            DOMAIN_ATTESTATION,
+            threshold_verify,
         )
+
         reg = WriterRegistry()
         for i in range(1, 4):
             _enroll_active(reg, i)
         policy = CommitteePolicy(
-            vm_tag=0x01, epoch_length=10, dkg_threshold=2,
+            vm_tag=0x01,
+            epoch_length=10,
+            dkg_threshold=2,
         )
         mgr = CommitteeManager(0x01, policy, reg, EmergencyState())
         mgr.tick(10, 1000)
@@ -121,11 +135,14 @@ class TestManagerSigningEnabled:
         from src.ltp.execution.committee.dkg.threshold_signing import (
             DOMAIN_ATTESTATION,
         )
+
         reg = WriterRegistry()
         for i in range(1, 4):
             _enroll_active(reg, i)
         policy = CommitteePolicy(
-            vm_tag=0x01, epoch_length=10, dkg_threshold=2,
+            vm_tag=0x01,
+            epoch_length=10,
+            dkg_threshold=2,
         )
         mgr = CommitteeManager(0x01, policy, reg, EmergencyState())
         mgr.tick(10, 1000)

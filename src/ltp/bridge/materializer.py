@@ -60,9 +60,7 @@ class L2Materializer:
         """Update the materializer's view of L1 finality."""
         self._current_l1_block = height
 
-    def materialize(
-        self, packet: RelayPacket
-    ) -> Optional[BridgeMessage]:
+    def materialize(self, packet: RelayPacket) -> Optional[BridgeMessage]:
         """
         Verify and reconstruct a bridge message from a RelayPacket.
 
@@ -80,7 +78,8 @@ class L2Materializer:
         if packet.dest_chain != self.chain_id:
             logger.warning(
                 "[L2Materializer] dest_chain mismatch: packet=%s, this=%s",
-                packet.dest_chain, self.chain_id,
+                packet.dest_chain,
+                self.chain_id,
             )
             return None
 
@@ -89,7 +88,8 @@ class L2Materializer:
         if packet_key in self._seen_packets:
             logger.warning(
                 "[L2Materializer] Replay detected: entity=%s..., nonce=%d",
-                packet.entity_id[:16], packet.nonce,
+                packet.entity_id[:16],
+                packet.nonce,
             )
             return None
 
@@ -97,8 +97,7 @@ class L2Materializer:
         if hasattr(packet, "relay_envelope") and packet.relay_envelope is not None:
             if not packet.relay_envelope.verify():
                 logger.warning(
-                    "[L2Materializer] Relay envelope signature verification FAILED "
-                    "(entity=%s...)",
+                    "[L2Materializer] Relay envelope signature verification FAILED (entity=%s...)",
                     packet.entity_id[:16],
                 )
                 return None
@@ -113,8 +112,10 @@ class L2Materializer:
             logger.warning(
                 "[L2Materializer] Insufficient finality: %d confirmations "
                 "(need %d), source_block=%d, current_l1=%d",
-                confirmations, self.required_confirmations,
-                packet.source_block, self._current_l1_block,
+                confirmations,
+                self.required_confirmations,
+                packet.source_block,
+                self._current_l1_block,
             )
             return None
 
@@ -122,6 +123,7 @@ class L2Materializer:
         # Use a dedicated per-materializer sequence counter (not the message nonce)
         # to decouple L2 replay protection from L1 message ordering.
         import time
+
         self._sequence_counter += 1
         ok, reason = self.sequence_tracker.validate_and_advance(
             signer_vk=self.verifier_keypair.vk,
@@ -132,20 +134,23 @@ class L2Materializer:
         if not ok:
             logger.warning(
                 "[L2Materializer] Sequence validation failed: %s (seq=%d, entity=%s...)",
-                reason, self._sequence_counter, packet.entity_id[:16],
+                reason,
+                self._sequence_counter,
+                packet.entity_id[:16],
             )
             return None
 
         logger.info(
             "[L2Materializer] Processing packet: %s→%s, nonce=%d, block=%d, seq=%d",
-            packet.source_chain, packet.dest_chain,
-            packet.nonce, packet.source_block, self._sequence_counter,
+            packet.source_chain,
+            packet.dest_chain,
+            packet.nonce,
+            packet.source_block,
+            self._sequence_counter,
         )
 
         # Step 5: MATERIALIZE phase — unseal, verify, reconstruct
-        content = self.protocol.materialize(
-            packet.sealed_key, self.verifier_keypair
-        )
+        content = self.protocol.materialize(packet.sealed_key, self.verifier_keypair)
         if content is None:
             logger.warning("[L2Materializer] Materialization FAILED")
             return None
@@ -154,30 +159,31 @@ class L2Materializer:
         try:
             message = BridgeMessage.from_bytes(content)
         except (ValueError, KeyError) as e:
-            logger.warning(
-                "[L2Materializer] Failed to deserialize bridge message: %s", e
-            )
+            logger.warning("[L2Materializer] Failed to deserialize bridge message: %s", e)
             return None
 
         # Cross-check relay metadata against inner message
         if message.source_chain != packet.source_chain:
             logger.warning(
                 "[L2Materializer] source_chain mismatch: inner=%s, packet=%s",
-                message.source_chain, packet.source_chain,
+                message.source_chain,
+                packet.source_chain,
             )
             return None
 
         if message.dest_chain != packet.dest_chain:
             logger.warning(
                 "[L2Materializer] dest_chain mismatch: inner=%s, packet=%s",
-                message.dest_chain, packet.dest_chain,
+                message.dest_chain,
+                packet.dest_chain,
             )
             return None
 
         if message.nonce != packet.nonce:
             logger.warning(
                 "[L2Materializer] nonce mismatch: inner=%d, packet=%d",
-                message.nonce, packet.nonce,
+                message.nonce,
+                packet.nonce,
             )
             return None
 
@@ -186,7 +192,9 @@ class L2Materializer:
 
         logger.info(
             "[L2Materializer] Bridge message verified: %s, %s→%s, nonce=%d",
-            message.msg_type, message.source_chain, message.dest_chain,
+            message.msg_type,
+            message.source_chain,
+            message.dest_chain,
             message.nonce,
         )
 

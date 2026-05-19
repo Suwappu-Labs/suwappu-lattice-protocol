@@ -9,19 +9,19 @@ import sys
 
 import pytest
 
+from ltp.dual_lane.hashing import _blake3_available
+from ltp.erasure import ErasureCoder, _zfec_available
 from ltp.primitives import (
-    assert_real_crypto,
     _pqcrypto_kem_available,
     _pqcrypto_sign_available,
     _pynacl_available,
+    assert_real_crypto,
 )
-from ltp.erasure import ErasureCoder, _zfec_available
-from ltp.dual_lane.hashing import _blake3_available
-
 
 # ---------------------------------------------------------------------------
 # assert_real_crypto() direct tests
 # ---------------------------------------------------------------------------
+
 
 class TestAssertRealCrypto:
     """Test the assert_real_crypto() function."""
@@ -37,6 +37,7 @@ class TestAssertRealCrypto:
 
     def test_raises_when_backends_missing(self, monkeypatch):
         import ltp.primitives as mod
+
         monkeypatch.setattr(mod, "_pqcrypto_kem_available", False)
         monkeypatch.setattr(mod, "_pqcrypto_sign_available", False)
         monkeypatch.setattr(mod, "_pynacl_available", False)
@@ -45,6 +46,7 @@ class TestAssertRealCrypto:
 
     def test_error_lists_all_missing(self, monkeypatch):
         import ltp.primitives as mod
+
         monkeypatch.setattr(mod, "_pqcrypto_kem_available", False)
         monkeypatch.setattr(mod, "_pqcrypto_sign_available", False)
         monkeypatch.setattr(mod, "_pynacl_available", False)
@@ -57,6 +59,7 @@ class TestAssertRealCrypto:
 
     def test_error_only_lists_actually_missing(self, monkeypatch):
         import ltp.primitives as mod
+
         # Pretend only pynacl is missing
         monkeypatch.setattr(mod, "_pqcrypto_kem_available", True)
         monkeypatch.setattr(mod, "_pqcrypto_sign_available", True)
@@ -73,6 +76,7 @@ class TestAssertRealCrypto:
 # ETP_REQUIRE_REAL_CRYPTO env var enforcement (subprocess)
 # ---------------------------------------------------------------------------
 
+
 class TestEnvVarEnforcement:
     """Test that ETP_REQUIRE_REAL_CRYPTO=1 triggers assertions at import time."""
 
@@ -80,9 +84,13 @@ class TestEnvVarEnforcement:
         """Run a subprocess with the env var set; verify it either passes or
         raises RuntimeError (depending on whether backends are installed)."""
         result = subprocess.run(
-            [sys.executable, "-c",
-             "from ltp.primitives import assert_real_crypto; assert_real_crypto(); print('OK')"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-c",
+                "from ltp.primitives import assert_real_crypto; assert_real_crypto(); print('OK')",
+            ],
+            capture_output=True,
+            text=True,
             env={**os.environ, "ETP_REQUIRE_REAL_CRYPTO": "1"},
         )
         if _pqcrypto_kem_available and _pqcrypto_sign_available and _pynacl_available:
@@ -96,7 +104,8 @@ class TestEnvVarEnforcement:
         """Without the env var, import should succeed even without backends."""
         result = subprocess.run(
             [sys.executable, "-c", "import ltp; print('OK')"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
             env={k: v for k, v in os.environ.items() if k != "ETP_REQUIRE_REAL_CRYPTO"},
         )
         assert result.returncode == 0
@@ -106,6 +115,7 @@ class TestEnvVarEnforcement:
 # ---------------------------------------------------------------------------
 # zfec erasure coding dispatch
 # ---------------------------------------------------------------------------
+
 
 class TestZfecDispatch:
     """Test that zfec backend produces correct results."""
@@ -177,6 +187,7 @@ class TestZfecDispatch:
 # BLAKE3 production assertion
 # ---------------------------------------------------------------------------
 
+
 class TestBlake3Assertion:
     """Test BLAKE3 production mode enforcement."""
 
@@ -205,7 +216,8 @@ class TestBlake3Assertion:
         )
         result = subprocess.run(
             [sys.executable, "-c", code],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
             env={**os.environ, "ETP_REQUIRE_REAL_CRYPTO": "1"},
         )
         assert result.returncode != 0
@@ -215,10 +227,14 @@ class TestBlake3Assertion:
     def test_blake3_no_error_when_available(self):
         """With blake3 installed, production mode should not raise."""
         result = subprocess.run(
-            [sys.executable, "-c",
-             "from ltp.dual_lane.hashing import _blake3_available; "
-             "assert _blake3_available; print('OK')"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-c",
+                "from ltp.dual_lane.hashing import _blake3_available; "
+                "assert _blake3_available; print('OK')",
+            ],
+            capture_output=True,
+            text=True,
             env={**os.environ, "ETP_REQUIRE_REAL_CRYPTO": "1"},
         )
         assert result.returncode == 0
@@ -229,13 +245,16 @@ class TestBlake3Assertion:
 # Export test
 # ---------------------------------------------------------------------------
 
+
 class TestExports:
     """Verify assert_real_crypto is properly exported."""
 
     def test_importable_from_ltp(self):
         from ltp import assert_real_crypto as fn
+
         assert callable(fn)
 
     def test_in_primitives_all(self):
         from ltp.primitives import __all__
+
         assert "assert_real_crypto" in __all__

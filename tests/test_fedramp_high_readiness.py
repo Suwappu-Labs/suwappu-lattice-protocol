@@ -15,7 +15,6 @@ from src.ltp.compliance import (
     HSMConfig,
 )
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 

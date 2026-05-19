@@ -7,7 +7,7 @@ property checking, and event logging.
 
 import pytest
 
-from src.simulator.dst import DSTRunner, DSTResult, FaultType
+from src.simulator.dst import DSTResult, DSTRunner, FaultType
 
 
 class TestDSTBasic:
@@ -35,7 +35,9 @@ class TestDSTBasic:
         r2 = DSTRunner(seed=2, fault_rate=0.1).run(steps=200)
 
         # With fault injection, fault counts will almost certainly differ
-        assert r1.faults_injected != r2.faults_injected or r1.events_processed != r2.events_processed
+        assert (
+            r1.faults_injected != r2.faults_injected or r1.events_processed != r2.events_processed
+        )
 
 
 class TestDSTFaultInjection:

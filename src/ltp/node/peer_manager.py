@@ -18,6 +18,7 @@ __all__ = ["PeerState", "PeerInfo", "PeerManager"]
 
 class PeerState(Enum):
     """Lifecycle states for a peer connection."""
+
     DISCOVERED = "discovered"
     CONNECTING = "connecting"
     CONNECTED = "connected"
@@ -28,10 +29,11 @@ class PeerState(Enum):
 @dataclass
 class PeerInfo:
     """Tracked information about a peer node."""
+
     node_id: str
-    address: str                 # "host:port"
+    address: str  # "host:port"
     region: str = ""
-    public_key: bytes = b""     # ML-DSA-65 vk (1952B)
+    public_key: bytes = b""  # ML-DSA-65 vk (1952B)
     state: PeerState = PeerState.DISCOVERED
     last_seen: float = 0.0
     handshake_failures: int = 0
@@ -99,10 +101,7 @@ class PeerManager:
     def get_connected_peers(self) -> list[PeerInfo]:
         """Return all peers in CONNECTED state."""
         with self._lock:
-            return [
-                p for p in self._peers_by_id.values()
-                if p.state == PeerState.CONNECTED
-            ]
+            return [p for p in self._peers_by_id.values() if p.state == PeerState.CONNECTED]
 
     def get_peer_by_address(self, address: str) -> PeerInfo | None:
         """Look up a peer by its network address."""
@@ -126,7 +125,8 @@ class PeerManager:
         threshold = time.time() - timeout_seconds
         with self._lock:
             return [
-                p for p in self._peers_by_id.values()
+                p
+                for p in self._peers_by_id.values()
                 if p.state == PeerState.CONNECTED and p.last_seen > 0 and p.last_seen < threshold
             ]
 
@@ -134,7 +134,4 @@ class PeerManager:
     def connected_count(self) -> int:
         """Number of currently connected peers."""
         with self._lock:
-            return sum(
-                1 for p in self._peers_by_id.values()
-                if p.state == PeerState.CONNECTED
-            )
+            return sum(1 for p in self._peers_by_id.values() if p.state == PeerState.CONNECTED)

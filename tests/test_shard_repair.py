@@ -19,7 +19,6 @@ from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol
 from src.ltp.entity import Entity
 from src.ltp.node.audit_scheduler import AuditScheduler
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -61,7 +60,7 @@ def _commit_entity(
 def _find_node_with_shards(network: CommitmentNetwork, entity_id: str):
     """Find a non-local node that holds shards for the given entity."""
     for node in network.nodes:
-        for (eid, _sidx) in network._node_shard_index.get(node.node_id, set()):
+        for eid, _sidx in network._node_shard_index.get(node.node_id, set()):
             if eid == entity_id:
                 return node
     return None
@@ -69,10 +68,7 @@ def _find_node_with_shards(network: CommitmentNetwork, entity_id: str):
 
 def _kill_node_shards(node, entity_id: str) -> int:
     """Delete all shards for entity_id from a node. Returns count deleted."""
-    keys_to_delete = [
-        (eid, sidx) for eid, sidx in list(node.shards.keys())
-        if eid == entity_id
-    ]
+    keys_to_delete = [(eid, sidx) for eid, sidx in list(node.shards.keys()) if eid == entity_id]
     for key in keys_to_delete:
         del node.shards[key]
     return len(keys_to_delete)
@@ -126,7 +122,9 @@ class TestFullShardRepairPipeline:
 
         # 3. Run audit pipeline — 3 ticks should trigger auto-eviction
         scheduler = AuditScheduler(
-            network, local_node_id="external-auditor", strike_threshold=3,
+            network,
+            local_node_id="external-auditor",
+            strike_threshold=3,
         )
 
         eviction_found = None
@@ -185,7 +183,9 @@ class TestAuditStrikeAccumulation:
         _kill_all_shards(target)
 
         scheduler = AuditScheduler(
-            network, local_node_id="auditor", strike_threshold=3,
+            network,
+            local_node_id="auditor",
+            strike_threshold=3,
         )
 
         # After epoch 1: strike = 1
@@ -217,7 +217,7 @@ class TestAuditStrikeDecayOnRecovery:
 
         # Snapshot shards so we can restore them
         shard_backup = {}
-        for (eid, sidx) in list(network._node_shard_index.get(target.node_id, set())):
+        for eid, sidx in list(network._node_shard_index.get(target.node_id, set())):
             data = target.fetch_shard(eid, sidx)
             if data is not None:
                 shard_backup[(eid, sidx)] = data
@@ -226,7 +226,9 @@ class TestAuditStrikeDecayOnRecovery:
         _kill_all_shards(target)
 
         scheduler = AuditScheduler(
-            network, local_node_id="auditor", strike_threshold=3,
+            network,
+            local_node_id="auditor",
+            strike_threshold=3,
         )
 
         # Epoch 1: fail → strike=1
@@ -266,7 +268,9 @@ class TestMultiNodeFailure:
             _kill_all_shards(node)
 
         scheduler = AuditScheduler(
-            network, local_node_id="auditor", strike_threshold=3,
+            network,
+            local_node_id="auditor",
+            strike_threshold=3,
         )
         for epoch in range(1, 4):
             scheduler.tick(epoch)
@@ -310,7 +314,9 @@ class TestAvailabilityUnderRegionFailure:
                 _kill_all_shards(node)
 
         scheduler = AuditScheduler(
-            network, local_node_id="auditor", strike_threshold=3,
+            network,
+            local_node_id="auditor",
+            strike_threshold=3,
         )
         for epoch in range(1, 4):
             scheduler.tick(epoch)
@@ -329,7 +335,10 @@ class TestEvictionRepairsCiphertextOnly:
 
         content_original = b"Ciphertext-only repair validation payload " * 6
         entity_id, sealed_key = _commit_entity(
-            protocol, sender, receiver, content=content_original,
+            protocol,
+            sender,
+            receiver,
+            content=content_original,
         )
 
         # Find and evict a node
@@ -341,7 +350,7 @@ class TestEvictionRepairsCiphertextOnly:
         for node in network.nodes:
             if node.evicted:
                 continue
-            for (eid, sidx) in network._node_shard_index.get(node.node_id, set()):
+            for eid, sidx in network._node_shard_index.get(node.node_id, set()):
                 if eid == entity_id:
                     shard_data = node.fetch_shard(eid, sidx)
                     if shard_data is not None:
@@ -401,7 +410,9 @@ class TestEvictedNodeSkippedInAudit:
         network.evict_node(target)
 
         scheduler = AuditScheduler(
-            network, local_node_id="auditor", strike_threshold=3,
+            network,
+            local_node_id="auditor",
+            strike_threshold=3,
         )
         results = scheduler.tick(1)
 

@@ -2,21 +2,23 @@
 
 import pytest
 
-from src.ltp.execution.state_attestor import StateAttestor, AttestationResult
 from src.ltp.execution.execution_config import ExecutionConfig
-from src.ltp.execution.types import BatchResult, TxResult
+from src.ltp.execution.state_attestor import AttestationResult, StateAttestor
 from src.ltp.execution.state_root import MultiVMStateRoot
+from src.ltp.execution.types import BatchResult, TxResult
 
 
 @pytest.fixture(scope="module")
 def operator_kp():
     from src.ltp import KeyPair
+
     return KeyPair.generate("test-attestor")
 
 
 @pytest.fixture(scope="module")
 def attestation_engine(operator_kp):
     from src.ltp.execution.attestation import AttestationEngine
+
     return AttestationEngine(operator_keypair=operator_kp, chain_id=103115120)
 
 
@@ -34,7 +36,6 @@ def _result_no_state_root(round_num: int = 0) -> BatchResult:
 
 
 class TestStateAttestorMLDSA:
-
     def test_mldsa_only_mode(self, attestation_engine):
         attestor = StateAttestor(
             attestation_engine=attestation_engine,
@@ -84,7 +85,6 @@ class TestStateAttestorMLDSA:
 
 
 class TestStateAttestorNoEngine:
-
     def test_no_engine_no_manager_returns_none_mode(self):
         attestor = StateAttestor(
             attestation_engine=None,
@@ -108,16 +108,19 @@ class TestStateAttestorNoEngine:
 
 
 class TestStateAttestorDualMode:
-
     def test_dual_mode_with_bls_keys(self, attestation_engine):
         from src.ltp.execution.committee.dkg.session import DKGSession
-        from src.ltp.execution.committee.dkg.types import DKGSessionConfig
         from src.ltp.execution.committee.dkg.threshold_signing import DOMAIN_STATE_ROOT
+        from src.ltp.execution.committee.dkg.types import DKGSessionConfig
 
         participants = [f"v-{i}".encode() for i in range(4)]
         cfg = DKGSessionConfig(
-            vm_tag=1, epoch=1, threshold=3,
-            participants=participants, timeout_rounds=10, start_round=0,
+            vm_tag=1,
+            epoch=1,
+            threshold=3,
+            participants=participants,
+            timeout_rounds=10,
+            start_round=0,
         )
         sessions = [DKGSession(cfg, fp, idx + 1) for idx, fp in enumerate(participants)]
 
@@ -150,15 +153,20 @@ class TestStateAttestorDualMode:
         class FakeCM:
             def __init__(self):
                 self._epoch = 1
+
             @property
             def epoch(self):
                 return self._epoch
+
             def has_dkg_result(self, epoch):
                 return epoch == 1
+
             def sign_as_committee(self, message, domain):
                 from src.ltp.execution.committee.dkg.threshold_signing import (
-                    partial_sign, combine_partial_signatures,
+                    combine_partial_signatures,
+                    partial_sign,
                 )
+
                 partials = [partial_sign(k, message, domain) for k in signing_keys[:3]]
                 return combine_partial_signatures(partials, 3)
 

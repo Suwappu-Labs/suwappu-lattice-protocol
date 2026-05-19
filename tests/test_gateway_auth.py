@@ -10,13 +10,13 @@ import time
 import pytest
 
 from src.ltp.domain import DOMAIN_JWT_TOKEN, domain_sign, signer_fingerprint
-from src.ltp.gateway.auth import JWTClaims, create_jwt, verify_jwt, _b64url_encode, _b64url_decode
+from src.ltp.gateway.auth import JWTClaims, _b64url_decode, _b64url_encode, create_jwt, verify_jwt
 from src.ltp.keypair import KeyPair
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def alice():
@@ -40,7 +40,6 @@ def alice_vks(alice):
 
 
 class TestCreateJWT:
-
     def test_returns_three_part_token(self, alice):
         token = create_jwt(alice, "alice-node")
         parts = token.split(".")
@@ -77,7 +76,6 @@ class TestCreateJWT:
 
 
 class TestVerifyJWT:
-
     def test_valid_token_verifies(self, alice, alice_vks):
         token = create_jwt(alice, "alice-node")
         claims = verify_jwt(token, known_vks=alice_vks)
@@ -153,14 +151,15 @@ class TestVerifyJWT:
 
 
 class TestDomainSeparation:
-
     def test_jwt_token_domain_tag_unique(self):
         from src.ltp.domain import _ALL_TAGS
+
         assert "DOMAIN_JWT_TOKEN" in _ALL_TAGS
         assert _ALL_TAGS["DOMAIN_JWT_TOKEN"] == b"GSX-LTP:jwt-token:v1\x00"
 
     def test_peer_gossip_domain_tag_unique(self):
         from src.ltp.domain import _ALL_TAGS
+
         assert "DOMAIN_PEER_GOSSIP" in _ALL_TAGS
         assert _ALL_TAGS["DOMAIN_PEER_GOSSIP"] == b"GSX-LTP:peer-gossip:v1\x00"
 
@@ -171,7 +170,6 @@ class TestDomainSeparation:
 
 
 class TestBase64Helpers:
-
     def test_roundtrip(self):
         data = b"hello world"
         encoded = _b64url_encode(data)

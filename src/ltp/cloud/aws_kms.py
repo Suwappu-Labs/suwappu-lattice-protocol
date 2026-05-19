@@ -55,9 +55,7 @@ class AWSKMSBackend(KMSBackend):
         try:
             import boto3
         except ImportError:
-            raise ImportError(
-                "boto3 is required for AWS KMS backend: pip install boto3"
-            )
+            raise ImportError("boto3 is required for AWS KMS backend: pip install boto3")
 
         self._key_arn = key_arn
         self._region = region
@@ -131,7 +129,9 @@ class AWSKMSBackend(KMSBackend):
             if entry is None:
                 raise KeyError(f"Key {key_id!r} not found")
             if entry["algorithm"] != "ML-DSA-65":
-                raise ValueError(f"Key {key_id!r} is not a signing key (algorithm={entry['algorithm']})")
+                raise ValueError(
+                    f"Key {key_id!r} is not a signing key (algorithm={entry['algorithm']})"
+                )
             encrypted_private = entry["encrypted_private"]
 
         # Decrypt outside lock to avoid holding lock during KMS call

@@ -17,8 +17,8 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 
-from .encoding import CanonicalEncoder
 from .domain import DOMAIN_COMMIT_RECORD
+from .encoding import CanonicalEncoder
 from .primitives import canonical_hash
 
 __all__ = ["EvidenceBundle"]

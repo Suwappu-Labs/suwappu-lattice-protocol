@@ -42,22 +42,23 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional
 
+from ..primitives import canonical_hash
 from .base import (
     BackendCapabilities,
     BackendConfig,
     CommitmentBackend,
     FinalityModel,
 )
-from ..primitives import canonical_hash
-
 
 # ---------------------------------------------------------------------------
 # Simulated Ethereum types
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class EthBlock:
     """Simulated Ethereum block."""
+
     number: int
     timestamp: float
     parent_hash: str
@@ -69,10 +70,11 @@ class EthBlock:
 @dataclass
 class EthTransaction:
     """Simulated Ethereum transaction receipt."""
+
     tx_hash: str
     block_number: int
     gas_used: int
-    status: int             # 1 = success, 0 = revert
+    status: int  # 1 = success, 0 = revert
     logs: list[dict] = field(default_factory=list)
 
 
@@ -90,6 +92,7 @@ class MerklePatriciaProof:
       - proof_nodes: list of trie node hashes
       - state_root: the block's state root
     """
+
     storage_key: str
     storage_value: str
     proof_nodes: list[str]
@@ -146,6 +149,7 @@ NODE_REGISTRY_ABI = {
 # Ethereum Backend
 # ---------------------------------------------------------------------------
 
+
 class EthereumBackend(CommitmentBackend):
     """
     Ethereum L1/L2 commitment backend using smart contracts.
@@ -178,7 +182,7 @@ class EthereumBackend(CommitmentBackend):
     # Confirmation thresholds for finality modes
     FINALITY_BLOCKS = {
         "latest": 0,
-        "safe": 64,       # ~12.8 min on L1
+        "safe": 64,  # ~12.8 min on L1
         "finalized": 96,  # ~19.2 min on L1 (2 epochs)
     }
 
@@ -194,6 +198,7 @@ class EthereumBackend(CommitmentBackend):
         self._anchor_client = None
         if self._real_mode:
             from ..anchor.client import AnchorClient
+
             self._anchor_client = AnchorClient(
                 rpc_url=config.rpc_url,
                 contract_address=config.contract_address,
@@ -201,9 +206,11 @@ class EthereumBackend(CommitmentBackend):
                 chain_id=config.chain_id or 1,
             )
             import logging
+
             logging.getLogger(__name__).info(
                 "EthereumBackend: REAL mode — chain=%d, contract=%s",
-                config.chain_id or 1, config.contract_address,
+                config.chain_id or 1,
+                config.contract_address,
             )
 
         # Chain state (simulation mode)
@@ -276,12 +283,15 @@ class EthereumBackend(CommitmentBackend):
         """Simulate Ethereum block production."""
         parent = self._blocks[-1]
 
-        state_data = json.dumps({
-            "commitments": len(self._commitments),
-            "nodes": len(self._node_registry),
-            "staked": self._total_staked,
-            "parent": parent.state_root,
-        }, sort_keys=True).encode()
+        state_data = json.dumps(
+            {
+                "commitments": len(self._commitments),
+                "nodes": len(self._node_registry),
+                "staked": self._total_staked,
+                "parent": parent.state_root,
+            },
+            sort_keys=True,
+        ).encode()
 
         block = EthBlock(
             number=parent.number + 1,
@@ -296,8 +306,9 @@ class EthereumBackend(CommitmentBackend):
     def _submit_tx(self, tx_type: str, data: dict, gas: int) -> EthTransaction:
         """Simulate submitting a transaction to the Ethereum network."""
         self._nonce += 1
-        tx_data = json.dumps({"type": tx_type, "nonce": self._nonce, **data},
-                             sort_keys=True).encode()
+        tx_data = json.dumps(
+            {"type": tx_type, "nonce": self._nonce, **data}, sort_keys=True
+        ).encode()
         tx_hash = canonical_hash(tx_data)
 
         block = self._produce_block([{"tx_hash": tx_hash, **data}])
@@ -324,9 +335,9 @@ class EthereumBackend(CommitmentBackend):
         block = self._blocks[min(block_num, len(self._blocks) - 1)]
 
         storage_key = canonical_hash(f"slot:commitment:{entity_id}".encode())
-        storage_value = canonical_hash(json.dumps(
-            self._commitments.get(entity_id, {}), sort_keys=True
-        ).encode())
+        storage_value = canonical_hash(
+            json.dumps(self._commitments.get(entity_id, {}), sort_keys=True).encode()
+        )
 
         # Simulate MPT proof nodes (typically 6-8 nodes for 20-byte keys)
         proof_nodes = []
@@ -355,9 +366,11 @@ class EthereumBackend(CommitmentBackend):
     ) -> str:
         # Real mode: route through AnchorClient
         if self._real_mode and self._anchor_client is not None:
-            from web3 import Web3
-            from ..anchor.submission import AnchorSubmission
             import time as _time
+
+            from web3 import Web3
+
+            from ..anchor.submission import AnchorSubmission
 
             record_hash = canonical_hash(record_bytes)
             entity_id_hash = Web3.keccak(entity_id.encode())
@@ -430,9 +443,9 @@ class EthereumBackend(CommitmentBackend):
 
         if isinstance(proof, dict) and "mpt_proof" in proof:
             mp = proof["mpt_proof"]
-            expected_value = canonical_hash(json.dumps(
-                self._commitments[entity_id], sort_keys=True
-            ).encode())
+            expected_value = canonical_hash(
+                json.dumps(self._commitments[entity_id], sort_keys=True).encode()
+            )
             return mp.get("storage_value") == expected_value
 
         return entity_id in self._commitments
@@ -450,6 +463,7 @@ class EthereumBackend(CommitmentBackend):
         """
         if self._real_mode and self._anchor_client is not None:
             from web3 import Web3
+
             w3 = self._anchor_client._w3
             # Let RPC errors propagate — callers must handle failures explicitly.
             finalized_block = w3.eth.get_block("finalized")
@@ -462,9 +476,7 @@ class EthereumBackend(CommitmentBackend):
 
         commit_block = self._commitment_block_map[entity_id]
         current_block = self._blocks[-1].number
-        required_confirmations = self.FINALITY_BLOCKS.get(
-            self._finality_mode, 64
-        )
+        required_confirmations = self.FINALITY_BLOCKS.get(self._finality_mode, 64)
 
         # In simulation, we relax the requirement to just check inclusion
         # since we don't actually produce 64+ blocks
@@ -473,9 +485,7 @@ class EthereumBackend(CommitmentBackend):
                 self._confirmations, required_confirmations
             )
 
-        return (current_block - commit_block) >= min(
-            self._confirmations, required_confirmations
-        )
+        return (current_block - commit_block) >= min(self._confirmations, required_confirmations)
 
     def get_inclusion_proof(self, entity_id: str) -> Optional[dict]:
         """Generate an MPT inclusion proof for a commitment."""
@@ -495,9 +505,7 @@ class EthereumBackend(CommitmentBackend):
 
     # --- Node registry ---
 
-    def register_node(
-        self, node_id: str, region: str, stake_wei: int = 0
-    ) -> bool:
+    def register_node(self, node_id: str, region: str, stake_wei: int = 0) -> bool:
         min_stake = self.config.min_stake_wei
         if stake_wei < min_stake:
             return False
@@ -580,14 +588,16 @@ class EthereumBackend(CommitmentBackend):
         if not hasattr(self, "_pending_slashes"):
             self._pending_slashes: list[dict] = []
 
-        self._pending_slashes.append({
-            "node_id": node_id,
-            "amount": slash_amount,
-            "evidence": evidence.hex(),
-            "created_block": self._blocks[-1].number,
-            "grace_blocks": 168,  # ~7 days at 1 block/epoch
-            "finalized": False,
-        })
+        self._pending_slashes.append(
+            {
+                "node_id": node_id,
+                "amount": slash_amount,
+                "evidence": evidence.hex(),
+                "created_block": self._blocks[-1].number,
+                "grace_blocks": 168,  # ~7 days at 1 block/epoch
+                "finalized": False,
+            }
+        )
 
         self._submit_tx(
             "SlashNode",

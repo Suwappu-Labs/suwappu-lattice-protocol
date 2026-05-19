@@ -1,23 +1,23 @@
 """Threshold Distributed Key Generation and Signing (Specs C3b, C3c)."""
 
+from .registry import DKGKeyRegistry
+from .scalar_poly import ScalarField, ScalarPoly
+from .threshold_signing import (
+    DOMAIN_ATTESTATION,
+    DOMAIN_CROSS_VM,
+    DOMAIN_STATE_ROOT,
+    PartialSignature,
+    ThresholdSigningKey,
+)
+from .transport import DKGTransport, FakeDKGTransport
 from .types import (
-    DKGState,
-    DKGPhase,
     DKGCommitment,
-    DKGShare,
     DKGComplaint,
+    DKGPhase,
     DKGResult,
     DKGSessionConfig,
-)
-from .scalar_poly import ScalarField, ScalarPoly
-from .transport import DKGTransport, FakeDKGTransport
-from .registry import DKGKeyRegistry
-from .threshold_signing import (
-    ThresholdSigningKey,
-    PartialSignature,
-    DOMAIN_ATTESTATION,
-    DOMAIN_STATE_ROOT,
-    DOMAIN_CROSS_VM,
+    DKGShare,
+    DKGState,
 )
 
 __all__ = [

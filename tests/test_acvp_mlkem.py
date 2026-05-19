@@ -19,17 +19,22 @@ VECTORS_DIR = Path(__file__).parent / "vectors"
 # Check if real ML-KEM backend is available
 try:
     from pqcrypto.kem.ml_kem_768 import (
-        generate_keypair as mlkem768_keygen,
-        encrypt as mlkem768_encaps,
         decrypt as mlkem768_decaps,
     )
+    from pqcrypto.kem.ml_kem_768 import (
+        encrypt as mlkem768_encaps,
+    )
+    from pqcrypto.kem.ml_kem_768 import (
+        generate_keypair as mlkem768_keygen,
+    )
+
     HAS_REAL_MLKEM = True
 except ImportError:
     HAS_REAL_MLKEM = False
 
 skip_no_backend = pytest.mark.skipif(
     not HAS_REAL_MLKEM,
-    reason="Real ML-KEM backend (pqcrypto) not installed — ACVP vectors require deterministic crypto"
+    reason="Real ML-KEM backend (pqcrypto) not installed — ACVP vectors require deterministic crypto",
 )
 
 
@@ -86,8 +91,12 @@ class TestMLKEM768KeyGen:
 
                 # Verify expected key sizes match FIPS 203 ML-KEM-768
                 try:
-                    assert len(expected_ek) == 1184, f"Expected EK size 1184, got {len(expected_ek)}"
-                    assert len(expected_dk) == 2400, f"Expected DK size 2400, got {len(expected_dk)}"
+                    assert len(expected_ek) == 1184, (
+                        f"Expected EK size 1184, got {len(expected_ek)}"
+                    )
+                    assert len(expected_dk) == 2400, (
+                        f"Expected DK size 2400, got {len(expected_dk)}"
+                    )
                     pass_count += 1
                 except AssertionError:
                     fail_count += 1
@@ -187,6 +196,7 @@ class TestMLKEM768Integration:
     def test_our_mlkem_key_sizes_match_fips203(self):
         """Verify key sizes match FIPS 203 Table 3 for ML-KEM-768."""
         from ltp.primitives import MLKEM
+
         ek, dk = MLKEM.keygen()
         assert len(ek) == 1184  # FIPS 203 Table 3: ek = 1184 bytes
         assert len(dk) == 2400  # FIPS 203 Table 3: dk = 2400 bytes

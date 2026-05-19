@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
+from src.ltp.bls import BLS
 from src.ltp.zk.ec_backend import (
     g1_compress,
     g1_deserialize,
@@ -18,7 +19,6 @@ from src.ltp.zk.ec_backend import (
     g2_identity,
     g2_scalar_mul,
 )
-from src.ltp.bls import BLS
 
 from .scalar_poly import ScalarField, ScalarPoly
 
@@ -53,10 +53,11 @@ _BLS_DST = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_"
 @dataclass(frozen=True)
 class ThresholdSigningKey:
     """Private material each participant holds after DKG."""
+
     participant_fp: bytes
     participant_index: int
     secret_share: int
-    group_pk: bytes       # 96-byte uncompressed G1 from DKG
+    group_pk: bytes  # 96-byte uncompressed G1 from DKG
     threshold: int
     epoch: int
     vm_tag: int
@@ -65,9 +66,10 @@ class ThresholdSigningKey:
 @dataclass(frozen=True)
 class PartialSignature:
     """A single participant's partial BLS signature."""
+
     signer_fp: bytes
     signer_index: int
-    signature: bytes      # 96-byte compressed G2
+    signature: bytes  # 96-byte compressed G2
     epoch: int
 
 
@@ -110,9 +112,7 @@ def combine_partial_signatures(
     to what a standard BLS.Sign(group_secret, message) would produce.
     """
     if len(partials) < threshold:
-        raise ValueError(
-            f"Need at least {threshold} partials, got {len(partials)}"
-        )
+        raise ValueError(f"Need at least {threshold} partials, got {len(partials)}")
 
     from py_ecc.bls.g2_primitives import signature_to_G2  # type: ignore[import-untyped]
 

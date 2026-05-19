@@ -19,11 +19,16 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
-from .primitives import AEAD, MLKEM, MLDSA, canonical_hash, canonical_hash_bytes
+from .primitives import AEAD, MLDSA, MLKEM, canonical_hash, canonical_hash_bytes
 
 __all__ = [
-    "KeyPair", "KeyState", "KeyRegistry", "KeyRotationManager",
-    "KeyRotationEvent", "InvalidKeyStateTransition", "SealedBox",
+    "KeyPair",
+    "KeyState",
+    "KeyRegistry",
+    "KeyRotationManager",
+    "KeyRotationEvent",
+    "InvalidKeyStateTransition",
+    "SealedBox",
 ]
 
 
@@ -46,29 +51,32 @@ def _implicit_hsm_enabled() -> bool:
 # Key Lifecycle State Machine
 # ---------------------------------------------------------------------------
 
+
 class KeyState(Enum):
     """Formal key lifecycle states per NIST SP 800-57."""
-    PENDING  = "pending"    # Generated, not yet activated by network
-    ACTIVE   = "active"     # Current operational key
-    RETIRING = "retiring"   # Grace period: valid for decaps, not new ops
-    RETIRED  = "retired"    # Private material zeroized, only vk retained
+
+    PENDING = "pending"  # Generated, not yet activated by network
+    ACTIVE = "active"  # Current operational key
+    RETIRING = "retiring"  # Grace period: valid for decaps, not new ops
+    RETIRED = "retired"  # Private material zeroized, only vk retained
 
 
 class InvalidKeyStateTransition(Exception):
     """Raised when an illegal key state transition is attempted."""
+
     def __init__(self, current: KeyState, target: KeyState):
-        super().__init__(
-            f"Invalid key state transition: {current.value} -> {target.value}"
-        )
+        super().__init__(f"Invalid key state transition: {current.value} -> {target.value}")
         self.current = current
         self.target = target
 
 
-_VALID_KEY_TRANSITIONS: frozenset[tuple[KeyState, KeyState]] = frozenset({
-    (KeyState.PENDING, KeyState.ACTIVE),
-    (KeyState.ACTIVE, KeyState.RETIRING),
-    (KeyState.RETIRING, KeyState.RETIRED),
-})
+_VALID_KEY_TRANSITIONS: frozenset[tuple[KeyState, KeyState]] = frozenset(
+    {
+        (KeyState.PENDING, KeyState.ACTIVE),
+        (KeyState.ACTIVE, KeyState.RETIRING),
+        (KeyState.RETIRING, KeyState.RETIRED),
+    }
+)
 
 
 def _validate_key_transition(current: KeyState, target: KeyState) -> None:
@@ -84,6 +92,7 @@ class KeyRotationEvent:
     Signed with the OLD key (proves the rotation was authorized by
     the holder of the previous key).
     """
+
     old_vk_hash: str
     new_vk_hash: str
     old_version: int
@@ -96,6 +105,7 @@ class KeyRotationEvent:
 # ---------------------------------------------------------------------------
 # KeyPair: Post-Quantum Asymmetric Keypair (ML-KEM + ML-DSA)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class KeyPair:
@@ -114,21 +124,22 @@ class KeyPair:
 
     Security level: Determined by active SecurityProfile.
     """
-    ek: bytes          # ML-KEM encapsulation key (1184 bytes, public)
-    dk: bytes          # ML-KEM decapsulation key (2400 bytes, private)
-    vk: bytes          # ML-DSA verification key (1952 bytes, public)
-    sk: bytes          # ML-DSA signing key (4032 bytes, private)
+
+    ek: bytes  # ML-KEM encapsulation key (1184 bytes, public)
+    dk: bytes  # ML-KEM decapsulation key (2400 bytes, private)
+    vk: bytes  # ML-DSA verification key (1952 bytes, public)
+    sk: bytes  # ML-DSA signing key (4032 bytes, private)
     label: str = ""
-    version: int = 1               # Key version (increments on rotation)
-    created_at: float = 0.0        # Unix timestamp of generation
-    expires_at: float = 0.0        # Unix timestamp of expiry (0 = never)
+    version: int = 1  # Key version (increments on rotation)
+    created_at: float = 0.0  # Unix timestamp of generation
+    expires_at: float = 0.0  # Unix timestamp of expiry (0 = never)
     predecessor_vk_hash: str = ""  # H(previous vk) for key chain verification
     state: KeyState = KeyState.ACTIVE  # Lifecycle state (default ACTIVE for backward compat)
-    bls_pk: Optional[bytes] = None   # BLS12-381 public key (48 bytes, optional)
-    bls_sk: Optional[bytes] = None   # BLS12-381 signing key (32 bytes, optional)
+    bls_pk: Optional[bytes] = None  # BLS12-381 public key (48 bytes, optional)
+    bls_sk: Optional[bytes] = None  # BLS12-381 signing key (32 bytes, optional)
 
     @classmethod
-    def generate(cls, label: str = "", hsm=None, with_bls: bool = False) -> 'KeyPair':
+    def generate(cls, label: str = "", hsm=None, with_bls: bool = False) -> "KeyPair":
         """
         Generate a fresh post-quantum keypair (sizes per active SecurityProfile).
 
@@ -157,6 +168,7 @@ class KeyPair:
             # dk/sk never enter the dataclass. Same code path as explicit
             # HSM below; the caller did not need to opt in per call site.
             from .hsm import SoftwareHSM as _ImplicitHSM
+
             hsm = _ImplicitHSM()
 
         if hsm is not None:
@@ -173,7 +185,10 @@ class KeyPair:
             # across rotations.
             _HSM_SENTINEL = b"\xfe" * 32
             kp = cls(
-                ek=ek, dk=_HSM_SENTINEL, vk=vk, sk=_HSM_SENTINEL,
+                ek=ek,
+                dk=_HSM_SENTINEL,
+                vk=vk,
+                sk=_HSM_SENTINEL,
                 label=label,
                 created_at=_time.time(),
             )
@@ -182,6 +197,7 @@ class KeyPair:
             kp._hsm_dsa_key_id = dsa_key_id
             if with_bls:
                 from .bls import BLS as _BLS
+
                 kp.bls_pk, kp.bls_sk = _BLS.keygen()
             return kp
 
@@ -191,9 +207,18 @@ class KeyPair:
         bls_sk = None
         if with_bls:
             from .bls import BLS as _BLS
+
             bls_pk, bls_sk = _BLS.keygen()
-        return cls(ek=ek, dk=dk, vk=vk, sk=sk, label=label,
-                   created_at=_time.time(), bls_pk=bls_pk, bls_sk=bls_sk)
+        return cls(
+            ek=ek,
+            dk=dk,
+            vk=vk,
+            sk=sk,
+            label=label,
+            created_at=_time.time(),
+            bls_pk=bls_pk,
+            bls_sk=bls_sk,
+        )
 
     @classmethod
     def from_persisted(
@@ -218,6 +243,7 @@ class KeyPair:
         """
         if hsm is None and _implicit_hsm_enabled():
             from .hsm import SoftwareHSM as _ImplicitHSM
+
             hsm = _ImplicitHSM()
         if hsm is not None:
             kem_key_id = f"{label}-kem"
@@ -226,7 +252,10 @@ class KeyPair:
             hsm.import_dsa_keypair(dsa_key_id, vk, sk)
             _HSM_SENTINEL = b"\xfe" * 32
             kp = cls(
-                ek=ek, dk=_HSM_SENTINEL, vk=vk, sk=_HSM_SENTINEL,
+                ek=ek,
+                dk=_HSM_SENTINEL,
+                vk=vk,
+                sk=_HSM_SENTINEL,
                 label=label,
                 created_at=_time.time(),
             )
@@ -234,13 +263,12 @@ class KeyPair:
             kp._hsm_kem_key_id = kem_key_id
             kp._hsm_dsa_key_id = dsa_key_id
             return kp
-        return cls(ek=ek, dk=dk, vk=vk, sk=sk, label=label,
-                   created_at=_time.time())
+        return cls(ek=ek, dk=dk, vk=vk, sk=sk, label=label, created_at=_time.time())
 
     @property
     def is_hsm_backed(self) -> bool:
         """True if private keys are held in an HSM (dk/sk are sentinels)."""
-        return hasattr(self, '_hsm') and self._hsm is not None
+        return hasattr(self, "_hsm") and self._hsm is not None
 
     def sign(self, message: bytes) -> bytes:
         """Sign `message` with this keypair's ML-DSA signing key.
@@ -296,6 +324,7 @@ class KeyPair:
                 "generate with KeyPair.generate(label, with_bls=True)"
             )
         from .bls_keys import BLSIdentity, bls_fingerprint
+
         sk_bytes = self.bls_sk
         return BLSIdentity(
             pk=self.bls_pk,
@@ -309,6 +338,7 @@ class KeyPair:
 # ---------------------------------------------------------------------------
 # KeyRegistry: Shared store for sender verification keys
 # ---------------------------------------------------------------------------
+
 
 class KeyRegistry:
     """
@@ -351,6 +381,7 @@ class KeyRegistry:
 #   5. After grace period, old dk/sk zeroized
 # ---------------------------------------------------------------------------
 
+
 class KeyRotationManager:
     """
     Manages key lifecycle: rotation, grace periods, and secure retirement.
@@ -367,13 +398,13 @@ class KeyRotationManager:
     Reference: WireGuard §5 (rekey every 2 min), NIST SP 800-57 (key lifecycle).
     """
 
-    DEFAULT_GRACE_PERIOD = 3600.0    # 1 hour
+    DEFAULT_GRACE_PERIOD = 3600.0  # 1 hour
     DEFAULT_ROTATION_INTERVAL = 90 * 24 * 3600.0  # 90 days
 
     def __init__(self, kms=None, scheduler=None) -> None:
         # label → list of KeyPairs (newest last)
         self._key_chains: dict[str, list[KeyPair]] = {}
-        self._kms = kms          # Optional KMSBackend for cloud key management
+        self._kms = kms  # Optional KMSBackend for cloud key management
         self._scheduler = scheduler  # Optional ScheduledTaskRunner for CronJob triggers
 
     def rotate(
@@ -437,9 +468,9 @@ class KeyRotationManager:
         """
         # Best-effort: overwrite with zeros (Python may not actually clear memory)
         if keypair.dk:
-            keypair.dk = b'\x00' * len(keypair.dk)
+            keypair.dk = b"\x00" * len(keypair.dk)
         if keypair.sk:
-            keypair.sk = b'\x00' * len(keypair.sk)
+            keypair.sk = b"\x00" * len(keypair.sk)
         keypair.expires_at = 1.0  # Mark as expired (epoch + 1s)
         keypair.state = KeyState.RETIRED
 
@@ -479,7 +510,9 @@ class KeyRotationManager:
         self._key_chains[label].append(keypair)
 
     def begin_retirement(
-        self, keypair: KeyPair, grace_period_seconds: float = DEFAULT_GRACE_PERIOD,
+        self,
+        keypair: KeyPair,
+        grace_period_seconds: float = DEFAULT_GRACE_PERIOD,
     ) -> None:
         """Transition ACTIVE -> RETIRING. Sets expires_at for grace period."""
         _validate_key_transition(keypair.state, KeyState.RETIRING)
@@ -562,6 +595,7 @@ class KeyRotationManager:
 # as the AEAD key, then immediately zeroized.
 # ---------------------------------------------------------------------------
 
+
 class SealedBox:
     """
     Post-quantum public-key envelope encryption using ML-KEM-768 + AEAD.
@@ -608,9 +642,9 @@ class SealedBox:
         if len(sealed_data) < min_len:
             raise ValueError(f"Sealed data too short ({len(sealed_data)} < {min_len})")
 
-        kem_ct = sealed_data[:MLKEM.CT_SIZE]
-        nonce = sealed_data[MLKEM.CT_SIZE:MLKEM.CT_SIZE + AEAD.NONCE_SIZE]
-        aead_ct = sealed_data[MLKEM.CT_SIZE + AEAD.NONCE_SIZE:]
+        kem_ct = sealed_data[: MLKEM.CT_SIZE]
+        nonce = sealed_data[MLKEM.CT_SIZE : MLKEM.CT_SIZE + AEAD.NONCE_SIZE]
+        aead_ct = sealed_data[MLKEM.CT_SIZE + AEAD.NONCE_SIZE :]
 
         try:
             # KeyPair.decaps routes through HSM when the recipient kp is

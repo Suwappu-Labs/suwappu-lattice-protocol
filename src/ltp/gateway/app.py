@@ -17,8 +17,8 @@ from typing import Callable, Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from .auth import JWTClaims, verify_jwt
 from .middleware import RateLimiter
-from .auth import verify_jwt, JWTClaims
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GatewayConfig:
     """Configuration for the API gateway."""
+
     host: str = "0.0.0.0"
     port: int = 8080
     log_level: str = "info"
@@ -121,13 +122,13 @@ def create_app(config: Optional[GatewayConfig] = None) -> FastAPI:
         return response
 
     # --- Routers ---
-    from .routers.health import router as health_router
-    from .routers.ct_log import router as ct_log_router
     from .routers.anchor import router as anchor_router
+    from .routers.ct_log import router as ct_log_router
     from .routers.diagnostics import router as diagnostics_router
-    from .routers.transfers import router as transfers_router
     from .routers.federation import router as federation_router
+    from .routers.health import router as health_router
     from .routers.metrics import router as metrics_router
+    from .routers.transfers import router as transfers_router
 
     app.include_router(health_router)
     app.include_router(ct_log_router)
@@ -193,6 +194,7 @@ class GatewayServer:
         # Build known_vks from keypair for self-issued token verification
         if keypair is not None:
             from ..domain import signer_fingerprint
+
             kid = signer_fingerprint(keypair.vk).hex()
             self._app.state.known_vks[kid] = keypair.vk
 

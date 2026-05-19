@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from .types import CommitteeMember, CommitteeRole, CommitteeRoster
+from ..writer import TRANSACTABLE_STATES, IdentityTier, WriterRecord
+from ..writer_registry import WriterRegistry
 from .policy import CommitteePolicy
 from .standby import score_member
-from ..writer import IdentityTier, WriterRecord, TRANSACTABLE_STATES
-from ..writer_registry import WriterRegistry
+from .types import CommitteeMember, CommitteeRole, CommitteeRoster
 
 __all__ = ["CommitteeFormation"]
 
@@ -63,20 +63,26 @@ class CommitteeFormation:
 
         # 6. Cap standby
         if policy.max_standby_size > 0:
-            standby_pool = standby_pool[:policy.max_standby_size]
+            standby_pool = standby_pool[: policy.max_standby_size]
 
         # 7. Set roles
         active_members = [
             CommitteeMember(
-                writer_fp=m.writer_fp, bls_pk=m.bls_pk, tier=m.tier,
-                joined_epoch=m.joined_epoch, role=CommitteeRole.ACTIVE,
+                writer_fp=m.writer_fp,
+                bls_pk=m.bls_pk,
+                tier=m.tier,
+                joined_epoch=m.joined_epoch,
+                role=CommitteeRole.ACTIVE,
             )
             for m in active
         ]
         standby_members = [
             CommitteeMember(
-                writer_fp=m.writer_fp, bls_pk=m.bls_pk, tier=m.tier,
-                joined_epoch=m.joined_epoch, role=CommitteeRole.STANDBY,
+                writer_fp=m.writer_fp,
+                bls_pk=m.bls_pk,
+                tier=m.tier,
+                joined_epoch=m.joined_epoch,
+                role=CommitteeRole.STANDBY,
             )
             for m in standby_pool
         ]

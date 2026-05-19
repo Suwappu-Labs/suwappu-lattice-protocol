@@ -34,6 +34,7 @@ from enum import IntEnum
 
 try:  # pragma: no cover — optional dependency
     import blake3 as _blake3
+
     _blake3_available = True
 except ImportError:
     _blake3 = None
@@ -187,6 +188,4 @@ def _keccak256(data: bytes) -> bytes:
         pass
     # Fallback: SHA3-256 (FIPS 202) is NOT Keccak-256 — these differ in
     # padding. Raise so callers don't get silently-wrong digests.
-    raise RuntimeError(
-        "Keccak-256 backend not available; install `eth-utils` or `pycryptodome`"
-    )
+    raise RuntimeError("Keccak-256 backend not available; install `eth-utils` or `pycryptodome`")

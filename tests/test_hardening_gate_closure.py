@@ -12,11 +12,10 @@ import logging
 
 import pytest
 
+from src.ltp.cloud.backup import ETPBackupStrategy
 from src.ltp.observability.endpoint import ETPObservability
 from src.ltp.observability.tls import ETPSecurityConfig
-from src.ltp.cloud.backup import ETPBackupStrategy
 from src.simulator.ci_harness import DSTCIHarness
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -38,7 +37,6 @@ class _CaptureHandler(logging.Handler):
 
 
 class TestPhase7FullIntegration:
-
     def test_all_phase7_components_in_single_scenario(self):
         """
         1. ETPObservability: metrics + alerts + logging
@@ -93,7 +91,6 @@ class TestPhase7FullIntegration:
 
 
 class TestPhase7GateChecklist:
-
     def test_metrics_endpoint_returns_prometheus(self):
         obs = ETPObservability()
         obs.metrics["rest_5xx"].inc(1)

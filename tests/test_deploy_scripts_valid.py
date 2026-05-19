@@ -10,9 +10,7 @@ import subprocess
 
 import pytest
 
-CONTRACTS_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "contracts"
-)
+CONTRACTS_DIR = os.path.join(os.path.dirname(__file__), "..", "contracts")
 SCRIPT_DIR = os.path.join(CONTRACTS_DIR, "script")
 
 
@@ -22,7 +20,6 @@ SCRIPT_DIR = os.path.join(CONTRACTS_DIR, "script")
 
 
 class TestDeployScriptsExist:
-
     def test_mainnet_bridge_script_exists(self):
         path = os.path.join(SCRIPT_DIR, "DeployMainnetBridge.s.sol")
         assert os.path.exists(path)
@@ -42,7 +39,6 @@ class TestDeployScriptsExist:
 
 
 class TestEnvVarReferences:
-
     def _read_script(self, filename: str) -> str:
         path = os.path.join(SCRIPT_DIR, filename)
         with open(path) as f:
@@ -72,7 +68,6 @@ class TestEnvVarReferences:
 
 
 class TestProductionEnforcement:
-
     def test_mainnet_bridge_enforces_minimum_challenge_period(self):
         content = self._read_script("DeployMainnetBridge.s.sol")
         assert "86400" in content  # >= 1 day minimum

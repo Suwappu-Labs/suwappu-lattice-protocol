@@ -70,6 +70,7 @@ def inject_poa_middleware(client):
     """Inject ExtraDataToPOAMiddleware for PoA chains (GSX Testnet)."""
     try:
         from web3.middleware import ExtraDataToPOAMiddleware
+
         client._w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
         logger.info("PoA middleware injected for %s", client._w3.provider.endpoint_uri)
     except (ImportError, AttributeError) as e:
@@ -94,7 +95,9 @@ def create_protocol(keypair_path: str = "") -> tuple[LTPProtocol, KeyPair, KeyRe
                 sk=bytes.fromhex(kp_data["sk_hex"]),
                 label=kp_data.get("label", "bridge-operator"),
             )
-            logger.info("Loaded keypair from %s (VK hash: %s)", keypair_path, kp_data.get("vk_hash", "?"))
+            logger.info(
+                "Loaded keypair from %s (VK hash: %s)", keypair_path, kp_data.get("vk_hash", "?")
+            )
         else:
             raise FileNotFoundError(f"Keypair file not found: {kp_file}")
     else:

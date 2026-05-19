@@ -15,6 +15,7 @@ from src.ltp.zk.ec_backend import (
 )
 
 from .scalar_poly import ScalarField, ScalarPoly
+from .threshold_signing import ThresholdSigningKey
 from .types import (
     DKGCommitment,
     DKGComplaint,
@@ -24,7 +25,6 @@ from .types import (
     DKGShare,
     DKGState,
 )
-from .threshold_signing import ThresholdSigningKey
 from .vss import PedersenVSS
 
 __all__ = ["DKGSession"]
@@ -62,7 +62,8 @@ class DKGSession:
         self._blinding_poly = ScalarPoly.random(degree)
 
         feldman, pedersen = PedersenVSS.generate_commitments(
-            self._secret_poly, self._blinding_poly,
+            self._secret_poly,
+            self._blinding_poly,
         )
         commitment = DKGCommitment(
             dealer_fp=self.my_fp,
@@ -78,7 +79,9 @@ class DKGSession:
             if fp == self.my_fp:
                 continue
             s, b = PedersenVSS.create_share(
-                self._secret_poly, self._blinding_poly, idx,
+                self._secret_poly,
+                self._blinding_poly,
+                idx,
             )
             shares[fp] = DKGShare(
                 dealer_fp=self.my_fp,
@@ -118,13 +121,15 @@ class DKGSession:
                 commitment.pedersen_commitments,
             )
             if not valid:
-                complaints.append(DKGComplaint(
-                    complainant_fp=self.my_fp,
-                    dealer_fp=dealer_fp,
-                    revealed_share=share.share,
-                    revealed_blinding=share.blinding_share,
-                    round_id=self.config.start_round,
-                ))
+                complaints.append(
+                    DKGComplaint(
+                        complainant_fp=self.my_fp,
+                        dealer_fp=dealer_fp,
+                        revealed_share=share.share,
+                        revealed_blinding=share.blinding_share,
+                        round_id=self.config.start_round,
+                    )
+                )
 
         self._complaints = complaints
         self.state = DKGState.COMPLAINING
@@ -173,7 +178,8 @@ class DKGSession:
         for fp in self._qual:
             if fp == self.my_fp:
                 my_secret_share = ScalarField.add(
-                    my_secret_share, self._secret_poly.evaluate(self.my_index),
+                    my_secret_share,
+                    self._secret_poly.evaluate(self.my_index),
                 )
             else:
                 share = self._shares.get(fp)

@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import time
 import threading
+import time
 from collections import deque
 from typing import Iterator
 
-from .types import Block, Certificate, CommitDecision
-from .protocol import MysticetiProtocol
-from .message_bus import MessageBus
-from .faults import FaultType, FaultConfig, PartitionConfig
 from ..execution.types import OrderedBatch
+from .faults import FaultConfig, FaultType, PartitionConfig
+from .message_bus import MessageBus
+from .protocol import MysticetiProtocol
+from .types import Block, Certificate, CommitDecision
 
 
 def to_ordered_batch(decision: CommitDecision, epoch: int) -> OrderedBatch:
@@ -50,8 +50,7 @@ class LocalMysticetiEngine:
         self._current_round = -1  # next advance_round will go to 0
 
         self._validators = [
-            MysticetiProtocol(i, num_validators, self._f)
-            for i in range(num_validators)
+            MysticetiProtocol(i, num_validators, self._f) for i in range(num_validators)
         ]
         self._bus = MessageBus(num_validators)
         self._mempool: deque[bytes] = deque()
@@ -106,8 +105,11 @@ class LocalMysticetiEngine:
                 # Equivocating: propose two different blocks
                 b1 = self._validators[v_idx].propose(r, payload=(b"equivocate_a",))
                 b2 = Block(
-                    author=v_idx, round=r, payload=(b"equivocate_b",),
-                    parents=b1.parents, timestamp_ms=b1.timestamp_ms,
+                    author=v_idx,
+                    round=r,
+                    payload=(b"equivocate_b",),
+                    parents=b1.parents,
+                    timestamp_ms=b1.timestamp_ms,
                 )
                 blocks.append(b1)
                 blocks.append(b2)

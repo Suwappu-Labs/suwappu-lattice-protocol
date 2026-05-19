@@ -8,6 +8,7 @@ from hypothesis import strategies as st
 class TestMultiVMStateRoot:
     def test_single_vm_root(self):
         from src.ltp.execution.state_root import MultiVMStateRoot
+
         root = MultiVMStateRoot(vm_roots={0x01: b"\xaa" * 32}, batch_round=1)
         result = root.root
         assert isinstance(result, bytes)
@@ -15,6 +16,7 @@ class TestMultiVMStateRoot:
 
     def test_two_vms_same_family(self):
         from src.ltp.execution.state_root import MultiVMStateRoot
+
         root = MultiVMStateRoot(
             vm_roots={0x01: b"\xaa" * 32, 0x02: b"\xbb" * 32},
             batch_round=1,
@@ -23,6 +25,7 @@ class TestMultiVMStateRoot:
 
     def test_two_vms_different_families(self):
         from src.ltp.execution.state_root import MultiVMStateRoot
+
         root = MultiVMStateRoot(
             vm_roots={0x01: b"\xaa" * 32, 0x10: b"\xbb" * 32},
             batch_round=1,
@@ -31,6 +34,7 @@ class TestMultiVMStateRoot:
 
     def test_deterministic(self):
         from src.ltp.execution.state_root import MultiVMStateRoot
+
         roots = {0x01: b"\xaa" * 32, 0x10: b"\xbb" * 32, 0xE0: b"\xcc" * 32}
         r1 = MultiVMStateRoot(vm_roots=roots, batch_round=5)
         r2 = MultiVMStateRoot(vm_roots=roots, batch_round=5)
@@ -38,6 +42,7 @@ class TestMultiVMStateRoot:
 
     def test_different_round_different_root(self):
         from src.ltp.execution.state_root import MultiVMStateRoot
+
         roots = {0x01: b"\xaa" * 32}
         r1 = MultiVMStateRoot(vm_roots=roots, batch_round=1)
         r2 = MultiVMStateRoot(vm_roots=roots, batch_round=2)
@@ -46,6 +51,7 @@ class TestMultiVMStateRoot:
     def test_order_independence(self):
         """Tag insertion order doesn't matter — sorted internally."""
         from src.ltp.execution.state_root import MultiVMStateRoot
+
         r1 = MultiVMStateRoot(
             vm_roots={0x10: b"\xbb" * 32, 0x01: b"\xaa" * 32},
             batch_round=1,
@@ -58,6 +64,7 @@ class TestMultiVMStateRoot:
 
     def test_active_families(self):
         from src.ltp.execution.state_root import MultiVMStateRoot
+
         root = MultiVMStateRoot(
             vm_roots={0x01: b"\xaa" * 32, 0x10: b"\xbb" * 32, 0xE0: b"\xcc" * 32},
             batch_round=1,
@@ -70,6 +77,7 @@ class TestMultiVMStateRoot:
     def test_family_subtree_root(self):
         """Can get the Merkle root for a single family."""
         from src.ltp.execution.state_root import MultiVMStateRoot
+
         root = MultiVMStateRoot(
             vm_roots={0x01: b"\xaa" * 32, 0x02: b"\xbb" * 32, 0x10: b"\xcc" * 32},
             batch_round=1,
@@ -94,6 +102,7 @@ class TestMultiVMStateRootHypothesis:
     @settings(max_examples=50)
     def test_deterministic_property(self, tags, round_num):
         from src.ltp.execution.state_root import MultiVMStateRoot
+
         roots = {tag: bytes([tag]) * 32 for tag in tags}
         r1 = MultiVMStateRoot(vm_roots=roots, batch_round=round_num)
         r2 = MultiVMStateRoot(vm_roots=roots, batch_round=round_num)
@@ -110,6 +119,7 @@ class TestMultiVMStateRootHypothesis:
     @settings(max_examples=50)
     def test_root_is_32_bytes(self, tags):
         from src.ltp.execution.state_root import MultiVMStateRoot
+
         roots = {tag: bytes([tag]) * 32 for tag in tags}
         r = MultiVMStateRoot(vm_roots=roots, batch_round=0)
         assert len(r.root) == 32

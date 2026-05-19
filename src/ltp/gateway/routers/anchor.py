@@ -71,10 +71,12 @@ async def anchor_health(request: Request) -> JSONResponse:
     scheduler = request.app.state.anchor_scheduler
     verifier = request.app.state.anchor_verifier
 
-    return JSONResponse({
-        "scheduler_running": getattr(scheduler, "running", None) if scheduler else None,
-        "verifier_running": getattr(verifier, "running", None) if verifier else None,
-    })
+    return JSONResponse(
+        {
+            "scheduler_running": getattr(scheduler, "running", None) if scheduler else None,
+            "verifier_running": getattr(verifier, "running", None) if verifier else None,
+        }
+    )
 
 
 @router.get("/status/{entity_id}")
@@ -88,5 +90,9 @@ async def anchor_status(request: Request, entity_id: str) -> JSONResponse:
     if entry is None:
         return JSONResponse(error_response(404, f"Entity {entity_id[:32]}... not found"), 404)
 
-    d = entry.to_dict() if hasattr(entry, "to_dict") else {"entity_id": entity_id, "status": str(entry)}
+    d = (
+        entry.to_dict()
+        if hasattr(entry, "to_dict")
+        else {"entity_id": entity_id, "status": str(entry)}
+    )
     return JSONResponse(d)

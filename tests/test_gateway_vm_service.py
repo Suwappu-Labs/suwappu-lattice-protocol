@@ -2,8 +2,10 @@
 
 import json
 import logging
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from src.ltp.keypair import KeyPair
 
 
@@ -29,10 +31,17 @@ def _make_raw_log(tx_hash="0xabc", block_number=100, log_index=0):
     }
 
 
-def _make_service(gateway_kp, *, raw_logs=None, current_block=200,
-                  anchor_fn=None, signer_authorized=True,
-                  challenge_period=None, clock=None,
-                  challenge_mode="optimistic"):
+def _make_service(
+    gateway_kp,
+    *,
+    raw_logs=None,
+    current_block=200,
+    anchor_fn=None,
+    signer_authorized=True,
+    challenge_period=None,
+    clock=None,
+    challenge_mode="optimistic",
+):
     from src.ltp.gateway_vm.config import GatewayVMConfig
     from src.ltp.gateway_vm.service import GatewayVMService
 
@@ -80,8 +89,7 @@ class TestTickProcessesEvent:
     def test_tick_processes_valid_event(self, gateway_kp):
         logs = [_make_raw_log("0xaaa", 100, 0)]
         anchor_fn = MagicMock(return_value="0xtxhash")
-        svc = _make_service(gateway_kp, raw_logs=logs, current_block=200,
-                            anchor_fn=anchor_fn)
+        svc = _make_service(gateway_kp, raw_logs=logs, current_block=200, anchor_fn=anchor_fn)
         result = svc.tick()
         assert result.events_observed == 1
         assert result.events_accepted == 1
@@ -93,8 +101,7 @@ class TestReplayRejection:
     def test_same_event_rejected_on_second_tick(self, gateway_kp):
         logs = [_make_raw_log("0xaaa", 100, 0)]
         anchor_fn = MagicMock(return_value="0xtxhash")
-        svc = _make_service(gateway_kp, raw_logs=logs, current_block=200,
-                            anchor_fn=anchor_fn)
+        svc = _make_service(gateway_kp, raw_logs=logs, current_block=200, anchor_fn=anchor_fn)
         # First tick: processes event
         r1 = svc.tick()
         assert r1.events_accepted == 1
@@ -119,8 +126,7 @@ class TestAnchorFailure:
     def test_anchor_failure_recorded(self, gateway_kp):
         logs = [_make_raw_log("0xaaa", 100, 0)]
         anchor_fn = MagicMock(side_effect=RuntimeError("RPC timeout"))
-        svc = _make_service(gateway_kp, raw_logs=logs, current_block=200,
-                            anchor_fn=anchor_fn)
+        svc = _make_service(gateway_kp, raw_logs=logs, current_block=200, anchor_fn=anchor_fn)
         result = svc.tick()
         assert result.events_observed == 1
         assert result.events_accepted == 0
@@ -138,8 +144,9 @@ class TestRetryQueue:
                 raise RuntimeError("temporary failure")
             return "0xtxhash"
 
-        svc = _make_service(gateway_kp, raw_logs=logs, current_block=200,
-                            anchor_fn=failing_then_succeeding)
+        svc = _make_service(
+            gateway_kp, raw_logs=logs, current_block=200, anchor_fn=failing_then_succeeding
+        )
         # First tick: fails
         r1 = svc.tick()
         assert r1.anchor_failures == 1
@@ -158,8 +165,7 @@ class TestMultipleEvents:
             _make_raw_log("0xccc", 102, 0),
         ]
         anchor_fn = MagicMock(return_value="0xtxhash")
-        svc = _make_service(gateway_kp, raw_logs=logs, current_block=200,
-                            anchor_fn=anchor_fn)
+        svc = _make_service(gateway_kp, raw_logs=logs, current_block=200, anchor_fn=anchor_fn)
         result = svc.tick()
         assert result.events_observed == 3
         assert result.events_accepted == 3
@@ -199,8 +205,7 @@ class TestChallengeIntegration:
     def test_optimistic_mode_opens_challenge_window(self, gateway_kp):
         logs = [_make_raw_log("0xaaa", 100, 0)]
         anchor_fn = MagicMock(return_value="0xtxhash")
-        svc = _make_service(gateway_kp, raw_logs=logs, current_block=200,
-                            anchor_fn=anchor_fn)
+        svc = _make_service(gateway_kp, raw_logs=logs, current_block=200, anchor_fn=anchor_fn)
         result = svc.tick()
         assert result.events_accepted == 1
         # Challenge window should be open for the anchored event
@@ -212,9 +217,14 @@ class TestChallengeIntegration:
         logs = [_make_raw_log("0xaaa", 100, 0)]
         anchor_fn = MagicMock(return_value="0xtxhash")
         t = [1000.0]
-        svc = _make_service(gateway_kp, raw_logs=logs, current_block=200,
-                            anchor_fn=anchor_fn,
-                            challenge_period=60.0, clock=lambda: t[0])
+        svc = _make_service(
+            gateway_kp,
+            raw_logs=logs,
+            current_block=200,
+            anchor_fn=anchor_fn,
+            challenge_period=60.0,
+            clock=lambda: t[0],
+        )
         svc.tick()
         assert svc.challenge_manager.stats()["open"] == 1
         # Advance past challenge period
@@ -249,6 +259,7 @@ class TestChallengeIntegration:
 
 class _CapturingHandler(logging.Handler):
     """Captures formatted log output for assertion."""
+
     def __init__(self):
         super().__init__(level=logging.DEBUG)
         self.outputs: list[str] = []
@@ -261,8 +272,7 @@ class TestStructuredLogging:
     def test_tick_produces_correlation_id(self, gateway_kp):
         logs = [_make_raw_log("0xaaa", 100, 0)]
         anchor_fn = MagicMock(return_value="0xtxhash")
-        svc = _make_service(gateway_kp, raw_logs=logs, current_block=200,
-                            anchor_fn=anchor_fn)
+        svc = _make_service(gateway_kp, raw_logs=logs, current_block=200, anchor_fn=anchor_fn)
 
         handler = _CapturingHandler()
         svc._log.attach_handler(handler)

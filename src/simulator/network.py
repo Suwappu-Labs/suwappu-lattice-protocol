@@ -49,12 +49,13 @@ class NetworkSimulator:
         self.commitment_log = CommitmentLog()
 
         self._nodes: dict[str, SimNode] = {}
-        self._clients: dict[str, 'SimClient'] = {}
+        self._clients: dict[str, "SimClient"] = {}
         self._sender_keypairs: dict[str, KeyPair] = {}
         self._seed = seed
 
         if seed is not None:
             import random
+
             random.seed(seed)
 
     # ------------------------------------------------------------------
@@ -101,7 +102,8 @@ class NetworkSimulator:
     ) -> tuple[Link, Link]:
         """Connect two regions with bidirectional links."""
         return self.topology.connect_regions(
-            region_a, region_b,
+            region_a,
+            region_b,
             latency_ms=latency_ms,
             bandwidth_mbps=bandwidth_mbps,
             jitter_ms=jitter_ms,
@@ -137,7 +139,7 @@ class NetworkSimulator:
         label: str,
         region: str,
         keypair: KeyPair | None = None,
-    ) -> 'SimClient':
+    ) -> "SimClient":
         """
         Create a client (sender/receiver) located in the given region.
 
@@ -159,7 +161,7 @@ class NetworkSimulator:
         self.topology.register_node(client.node_id, region)
         return client
 
-    def get_client(self, label: str) -> Optional['SimClient']:
+    def get_client(self, label: str) -> Optional["SimClient"]:
         return self._clients.get(label)
 
     # ------------------------------------------------------------------
@@ -231,7 +233,7 @@ class NetworkSimulator:
 
     def fetch_shards_for_client(
         self,
-        client: 'SimClient',
+        client: "SimClient",
         entity_id: str,
         n: int,
         k: int,
@@ -260,17 +262,13 @@ class NetworkSimulator:
             candidates = []
             for node in target_nodes:
                 if node.online and node.is_online_at(self.clock.now):
-                    lat = self.topology.latency_between_nodes(
-                        client.node_id, node.node_id
-                    )
+                    lat = self.topology.latency_between_nodes(client.node_id, node.node_id)
                     candidates.append((lat, node))
             # Also check all nodes — shard might have been repaired elsewhere
             for node in self._nodes.values():
                 if node.online and node not in target_nodes:
                     if node.has_shard(entity_id, i):
-                        lat = self.topology.latency_between_nodes(
-                            client.node_id, node.node_id
-                        )
+                        lat = self.topology.latency_between_nodes(client.node_id, node.node_id)
                         candidates.append((lat, node))
 
             candidates.sort(key=lambda x: x[0])
@@ -286,7 +284,8 @@ class NetworkSimulator:
                 if data is not None and not lost:
                     # Compute transfer time including payload
                     full_latency = self.topology.latency_between_nodes(
-                        client.node_id, node.node_id,
+                        client.node_id,
+                        node.node_id,
                         payload_bytes=len(data),
                     )
 
@@ -312,7 +311,7 @@ class NetworkSimulator:
                     )
 
                     fetched[i] = data
-                    if full_latency != float('inf'):
+                    if full_latency != float("inf"):
                         max_fetch_time = max(max_fetch_time, full_latency)
                     fetched_this_shard = True
                     break
@@ -340,7 +339,7 @@ class NetworkSimulator:
                 shard_metrics.append(sm)
 
         # Advance clock by the max fetch latency (parallel fetch)
-        if max_fetch_time > 0 and max_fetch_time != float('inf'):
+        if max_fetch_time > 0 and max_fetch_time != float("inf"):
             self.clock.advance_to(self.clock.now + max_fetch_time)
 
         return fetched, shard_metrics
@@ -412,7 +411,8 @@ class NetworkSimulator:
     ) -> None:
         """Degrade the link between two regions."""
         self.topology.degrade_link(
-            region_a, region_b,
+            region_a,
+            region_b,
             latency_multiplier=latency_multiplier,
             packet_loss=packet_loss,
             bandwidth_mbps=bandwidth_mbps,
@@ -504,7 +504,7 @@ class NetworkSimulator:
         return [n for n in self._nodes.values() if n.online]
 
     @property
-    def clients(self) -> dict[str, 'SimClient']:
+    def clients(self) -> dict[str, "SimClient"]:
         return dict(self._clients)
 
     def node_stats(self) -> list[dict]:

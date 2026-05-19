@@ -11,12 +11,8 @@ from __future__ import annotations
 import pytest
 
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol
-from src.ltp.entity import Entity
 from src.ltp.enforcement import DecentralizationMetrics, GovernanceTransition
-from src.ltp.governance import (
-    TransitionVoteManager,
-    create_transition_vote,
-)
+from src.ltp.entity import Entity
 from src.ltp.federation import (
     CrossNetworkFetcher,
     FederationAgreement,
@@ -28,8 +24,11 @@ from src.ltp.federation import (
     StaticDiscoveryService,
     TrustLevel,
 )
-from src.ltp.primitives import canonical_hash, MLDSA
-
+from src.ltp.governance import (
+    TransitionVoteManager,
+    create_transition_vote,
+)
+from src.ltp.primitives import MLDSA, canonical_hash
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -57,7 +56,6 @@ def op_c() -> KeyPair:
 
 
 class TestPhase6FullIntegration:
-
     def test_all_phase6_components_in_single_scenario(self, op_a, op_b, op_c):
         """
         Step 1: GOVERNANCE — vote for BOOTSTRAP→GROWTH
@@ -81,8 +79,11 @@ class TestPhase6FullIntegration:
 
         gt = GovernanceTransition()
         metrics = DecentralizationMetrics(
-            active_operators=10, hhi=1000.0, gini_coefficient=0.3,
-            governance_participation=0.2, foundation_veto_active=True,
+            active_operators=10,
+            hhi=1000.0,
+            gini_coefficient=0.3,
+            governance_participation=0.2,
+            foundation_veto_active=True,
         )
         result = vote_mgr.execute_if_ready("bootstrap->growth", gt, metrics)
         assert result is True
@@ -103,6 +104,7 @@ class TestPhase6FullIntegration:
         reg_b.set_local_network_id(nir_b.network_id)
         reg_b.register_from_nir(nir_a)
         import struct
+
         sth = {"sequence": 1, "root_hash": "root", "timestamp": 1.0, "record_count": 5}
         payload = struct.pack(">Qd", 1, 1.0) + b"root"
         sth["signable_payload"] = payload
@@ -134,7 +136,10 @@ class TestPhase6FullIntegration:
         rate_limiter = FederationRateLimiter(max_requests_per_window=10, window_seconds=60.0)
 
         fetcher = CrossNetworkFetcher(
-            reg_b, transport, nir_b, {nir_a.network_id: full},
+            reg_b,
+            transport,
+            nir_b,
+            {nir_a.network_id: full},
             rate_limiter=rate_limiter,
         )
 
@@ -158,7 +163,6 @@ class TestPhase6FullIntegration:
 
 
 class TestPhase6GateChecklist:
-
     def test_governance_transition_voted(self, op_a, op_b, op_c):
         """Operators can vote to trigger phase transition."""
         mgr = TransitionVoteManager(required_ratio=2 / 3)
@@ -196,7 +200,6 @@ class TestPhase6GateChecklist:
 
 
 class TestBackwardCompat:
-
     def test_existing_federation_registry_works(self):
         """FederationRegistry without new features still works."""
         reg = FederationRegistry()
@@ -209,8 +212,11 @@ class TestBackwardCompat:
         """GovernanceTransition without voting still works."""
         gt = GovernanceTransition()
         metrics = DecentralizationMetrics(
-            active_operators=10, hhi=1000.0, gini_coefficient=0.3,
-            governance_participation=0.2, foundation_veto_active=True,
+            active_operators=10,
+            hhi=1000.0,
+            gini_coefficient=0.3,
+            governance_participation=0.2,
+            foundation_veto_active=True,
         )
         can, _ = gt.can_transition("bootstrap", "growth", metrics)
         assert can is True

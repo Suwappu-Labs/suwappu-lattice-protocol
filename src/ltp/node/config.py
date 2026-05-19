@@ -24,21 +24,21 @@ class NodeConfig:
     listen_port: int = 50051
     rest_port: int = 8080
     seed_peers: list[str] = field(default_factory=list)
-    keypair_path: str = ""           # empty = generate ephemeral
+    keypair_path: str = ""  # empty = generate ephemeral
     storage_backend: str = "memory"  # "memory" | "sqlite" | "filesystem"
     storage_path: str = ""
     max_workers: int = 10
     require_real_crypto: bool = True
     log_level: str = "INFO"
     audit_interval_seconds: float = 60.0
-    strike_threshold: int = 3          # audit failures before auto-eviction
+    strike_threshold: int = 3  # audit failures before auto-eviction
 
     # Anchor configuration — opt-in chain anchoring
     anchor_enabled: bool = False
     anchor_rpc_url: str = ""
     anchor_registry_address: str = ""
     anchor_operator_key: str = ""
-    anchor_chain_id: int = 103115120          # GSX Testnet default
+    anchor_chain_id: int = 103115120  # GSX Testnet default
     anchor_batch_size: int = 50
     anchor_interval_seconds: float = 15.0
     anchor_max_wait_seconds: float = 60.0
@@ -72,10 +72,10 @@ class NodeConfig:
     governance_chain_id: int = 0
 
     # KMS — cloud key management
-    kms_backend: str = "memory"     # "memory" | "aws"
-    kms_region: str = ""            # AWS region (e.g., "us-east-1")
-    kms_key_arn: str = ""           # KMS master key ARN for envelope encryption
-    kms_endpoint: str = ""          # Custom endpoint (localstack/moto testing)
+    kms_backend: str = "memory"  # "memory" | "aws"
+    kms_region: str = ""  # AWS region (e.g., "us-east-1")
+    kms_key_arn: str = ""  # KMS master key ARN for envelope encryption
+    kms_endpoint: str = ""  # Custom endpoint (localstack/moto testing)
 
     # Observability
     observability_enabled: bool = True  # Lightweight — default on
@@ -131,16 +131,18 @@ class NodeConfig:
             return [ChainConfig.from_dict(c) for c in self.anchor_chains]
 
         if self.anchor_rpc_url:
-            return [ChainConfig(
-                chain_id=self.anchor_chain_id,
-                label="default",
-                rpc_url=self.anchor_rpc_url,
-                registry_address=self.anchor_registry_address,
-                operator_key=self.anchor_operator_key,
-                confirmation_depth=self.anchor_confirmation_depth,
-                finality_depth=self.anchor_finality_depth,
-                max_rpc_retries=self.anchor_max_rpc_retries,
-            )]
+            return [
+                ChainConfig(
+                    chain_id=self.anchor_chain_id,
+                    label="default",
+                    rpc_url=self.anchor_rpc_url,
+                    registry_address=self.anchor_registry_address,
+                    operator_key=self.anchor_operator_key,
+                    confirmation_depth=self.anchor_confirmation_depth,
+                    finality_depth=self.anchor_finality_depth,
+                    max_rpc_retries=self.anchor_max_rpc_retries,
+                )
+            ]
 
         return []
 
@@ -153,9 +155,7 @@ class NodeConfig:
             try:
                 import tomli as tomllib  # type: ignore[no-redef]
             except ImportError:
-                raise ImportError(
-                    "tomli is required for Python < 3.11: pip install tomli"
-                )
+                raise ImportError("tomli is required for Python < 3.11: pip install tomli")
 
         with open(path, "rb") as f:
             data = tomllib.load(f)
@@ -211,16 +211,14 @@ class NodeConfig:
         chains_json = os.environ.get("ETP_ANCHOR_CHAINS_JSON", "")
         if chains_json:
             import json
+
             try:
                 parsed = json.loads(chains_json)
             except json.JSONDecodeError as e:
-                raise ValueError(
-                    f"ETP_ANCHOR_CHAINS_JSON is not valid JSON: {e}"
-                ) from e
+                raise ValueError(f"ETP_ANCHOR_CHAINS_JSON is not valid JSON: {e}") from e
             if not isinstance(parsed, list):
                 raise ValueError(
-                    "ETP_ANCHOR_CHAINS_JSON must be a JSON array, "
-                    f"got {type(parsed).__name__}"
+                    f"ETP_ANCHOR_CHAINS_JSON must be a JSON array, got {type(parsed).__name__}"
                 )
             kwargs["anchor_chains"] = parsed
 
@@ -263,7 +261,9 @@ class NodeConfig:
         _env_float(kwargs, "bridge_operator_interval_seconds", "ETP_BRIDGE_OPERATOR_INTERVAL")
         _env_str(kwargs, "bridge_operator_direction", "ETP_BRIDGE_OPERATOR_DIRECTION")
         _env_int(kwargs, "bridge_operator_max_retries", "ETP_BRIDGE_OPERATOR_MAX_RETRIES")
-        _env_float(kwargs, "bridge_operator_challenge_period", "ETP_BRIDGE_OPERATOR_CHALLENGE_PERIOD")
+        _env_float(
+            kwargs, "bridge_operator_challenge_period", "ETP_BRIDGE_OPERATOR_CHALLENGE_PERIOD"
+        )
         _env_str(kwargs, "bridge_operator_zk_mode", "ETP_BRIDGE_OPERATOR_ZK_MODE")
 
         return cls(**kwargs)
@@ -315,7 +315,9 @@ class NodeConfig:
         _env_bool_override(config, "gossip_enabled", "ETP_GOSSIP_ENABLED")
         _env_float_override(config, "gossip_interval_seconds", "ETP_GOSSIP_INTERVAL")
         _env_int_override(config, "gossip_max_peers", "ETP_GOSSIP_MAX_PEERS")
-        _env_float_override(config, "gossip_liveness_timeout_seconds", "ETP_GOSSIP_LIVENESS_TIMEOUT")
+        _env_float_override(
+            config, "gossip_liveness_timeout_seconds", "ETP_GOSSIP_LIVENESS_TIMEOUT"
+        )
 
         # TLS overrides
         # Governance overrides
@@ -340,10 +342,14 @@ class NodeConfig:
 
         # Bridge operator overrides
         _env_bool_override(config, "bridge_operator_enabled", "ETP_BRIDGE_OPERATOR_ENABLED")
-        _env_float_override(config, "bridge_operator_interval_seconds", "ETP_BRIDGE_OPERATOR_INTERVAL")
+        _env_float_override(
+            config, "bridge_operator_interval_seconds", "ETP_BRIDGE_OPERATOR_INTERVAL"
+        )
         _env_str_override(config, "bridge_operator_direction", "ETP_BRIDGE_OPERATOR_DIRECTION")
         _env_int_override(config, "bridge_operator_max_retries", "ETP_BRIDGE_OPERATOR_MAX_RETRIES")
-        _env_float_override(config, "bridge_operator_challenge_period", "ETP_BRIDGE_OPERATOR_CHALLENGE_PERIOD")
+        _env_float_override(
+            config, "bridge_operator_challenge_period", "ETP_BRIDGE_OPERATOR_CHALLENGE_PERIOD"
+        )
         _env_str_override(config, "bridge_operator_zk_mode", "ETP_BRIDGE_OPERATOR_ZK_MODE")
 
         peers_str = os.environ.get("ETP_SEED_PEERS")
@@ -354,16 +360,14 @@ class NodeConfig:
         chains_json = os.environ.get("ETP_ANCHOR_CHAINS_JSON")
         if chains_json is not None:
             import json
+
             try:
                 parsed = json.loads(chains_json)
             except json.JSONDecodeError as e:
-                raise ValueError(
-                    f"ETP_ANCHOR_CHAINS_JSON is not valid JSON: {e}"
-                ) from e
+                raise ValueError(f"ETP_ANCHOR_CHAINS_JSON is not valid JSON: {e}") from e
             if not isinstance(parsed, list):
                 raise ValueError(
-                    "ETP_ANCHOR_CHAINS_JSON must be a JSON array, "
-                    f"got {type(parsed).__name__}"
+                    f"ETP_ANCHOR_CHAINS_JSON must be a JSON array, got {type(parsed).__name__}"
                 )
             config.anchor_chains = parsed
 
@@ -411,12 +415,16 @@ class NodeConfig:
             anchor_batch_size=anchor.get("batch_size", cls.anchor_batch_size),
             anchor_interval_seconds=anchor.get("interval", cls.anchor_interval_seconds),
             anchor_max_wait_seconds=anchor.get("max_wait", cls.anchor_max_wait_seconds),
-            anchor_confirmation_depth=anchor.get("confirmation_depth", cls.anchor_confirmation_depth),
+            anchor_confirmation_depth=anchor.get(
+                "confirmation_depth", cls.anchor_confirmation_depth
+            ),
             anchor_finality_depth=anchor.get("finality_depth", cls.anchor_finality_depth),
             anchor_max_rpc_retries=anchor.get("max_rpc_retries", cls.anchor_max_rpc_retries),
             anchor_rest_port=anchor.get("rest_port", cls.anchor_rest_port),
             diagnostics_port=server.get("diagnostics_port", cls.diagnostics_port),
-            diagnostics_public_mode=server.get("diagnostics_public_mode", cls.diagnostics_public_mode),
+            diagnostics_public_mode=server.get(
+                "diagnostics_public_mode", cls.diagnostics_public_mode
+            ),
             # Multi-chain: [[anchor.chains]] in TOML
             anchor_chains=anchor.get("chains", []),
             # Gateway
@@ -424,14 +432,20 @@ class NodeConfig:
             gateway_port=gateway.get("port", cls.gateway_port),
             gateway_jwt_enabled=gateway.get("jwt_enabled", cls.gateway_jwt_enabled),
             gateway_jwt_ttl_seconds=gateway.get("jwt_ttl_seconds", cls.gateway_jwt_ttl_seconds),
-            gateway_rate_limit_per_minute=gateway.get("rate_limit_per_minute", cls.gateway_rate_limit_per_minute),
+            gateway_rate_limit_per_minute=gateway.get(
+                "rate_limit_per_minute", cls.gateway_rate_limit_per_minute
+            ),
             # Gossip
             gossip_enabled=gossip.get("enabled", cls.gossip_enabled),
             gossip_interval_seconds=gossip.get("interval_seconds", cls.gossip_interval_seconds),
             gossip_max_peers=gossip.get("max_peers", cls.gossip_max_peers),
-            gossip_liveness_timeout_seconds=gossip.get("liveness_timeout_seconds", cls.gossip_liveness_timeout_seconds),
+            gossip_liveness_timeout_seconds=gossip.get(
+                "liveness_timeout_seconds", cls.gossip_liveness_timeout_seconds
+            ),
             # TLS
-            governance_contract_address=governance_cfg.get("contract_address", cls.governance_contract_address),
+            governance_contract_address=governance_cfg.get(
+                "contract_address", cls.governance_contract_address
+            ),
             governance_chain_rpc=governance_cfg.get("chain_rpc", cls.governance_chain_rpc),
             governance_chain_id=governance_cfg.get("chain_id", cls.governance_chain_id),
             kms_backend=kms.get("backend", cls.kms_backend),
@@ -446,10 +460,16 @@ class NodeConfig:
             tls_require_client_cert=tls.get("require_client_cert", cls.tls_require_client_cert),
             # Bridge operator
             bridge_operator_enabled=bridge_op.get("enabled", cls.bridge_operator_enabled),
-            bridge_operator_interval_seconds=bridge_op.get("interval", cls.bridge_operator_interval_seconds),
+            bridge_operator_interval_seconds=bridge_op.get(
+                "interval", cls.bridge_operator_interval_seconds
+            ),
             bridge_operator_direction=bridge_op.get("direction", cls.bridge_operator_direction),
-            bridge_operator_max_retries=bridge_op.get("max_retries", cls.bridge_operator_max_retries),
-            bridge_operator_challenge_period=bridge_op.get("challenge_period", cls.bridge_operator_challenge_period),
+            bridge_operator_max_retries=bridge_op.get(
+                "max_retries", cls.bridge_operator_max_retries
+            ),
+            bridge_operator_challenge_period=bridge_op.get(
+                "challenge_period", cls.bridge_operator_challenge_period
+            ),
             bridge_operator_zk_mode=bridge_op.get("zk_mode", cls.bridge_operator_zk_mode),
         )
 
@@ -457,6 +477,7 @@ class NodeConfig:
 # ---------------------------------------------------------------------------
 # Env-var helpers
 # ---------------------------------------------------------------------------
+
 
 def _env_str(d: dict, key: str, env: str) -> None:
     val = os.environ.get(env)

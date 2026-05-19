@@ -17,6 +17,12 @@ import json
 from dataclasses import dataclass, field
 from typing import Optional
 
+from .economics import (
+    EconomicsEngine,
+    NodeEconomics,
+    PendingSlash,
+    SlashingTier,
+)
 from .enforcement import (
     AuditFailureCondition,
     BatchSlashEntry,
@@ -37,12 +43,6 @@ from .enforcement import (
     VDFConfig,
     VDFVerifier,
 )
-from .economics import (
-    EconomicsEngine,
-    NodeEconomics,
-    PendingSlash,
-    SlashingTier,
-)
 
 __all__ = [
     "EnforcementPipelineConfig",
@@ -53,6 +53,7 @@ __all__ = [
 @dataclass
 class EnforcementPipelineConfig:
     """Configuration for the enforcement pipeline."""
+
     storage_proof_strategy: StorageProofStrategy = StorageProofStrategy.PDP
     vdf_enabled: bool = False
     vdf_config: VDFConfig = field(default_factory=VDFConfig)
@@ -88,8 +89,8 @@ class EnforcementPipeline:
         self.vdf_verifier: Optional[VDFVerifier] = None
 
         # Optional cloud infrastructure
-        self._message_queue = message_queue    # Optional MessageQueue
-        self._orchestrator = orchestrator      # Optional WorkflowOrchestrator
+        self._message_queue = message_queue  # Optional MessageQueue
+        self._orchestrator = orchestrator  # Optional WorkflowOrchestrator
 
         if self.config.vdf_enabled:
             self.vdf_verifier = VDFVerifier(self.config.vdf_config)
@@ -105,18 +106,10 @@ class EnforcementPipeline:
 
     def _register_default_conditions(self) -> None:
         """Register the four built-in slashing conditions."""
-        self.condition_registry.register(
-            AuditFailureCondition(stake_allocation_bps=5000)
-        )
-        self.condition_registry.register(
-            ProofFailureCondition(stake_allocation_bps=3000)
-        )
-        self.condition_registry.register(
-            DataWithholdingCondition(stake_allocation_bps=1500)
-        )
-        self.condition_registry.register(
-            LatencyDegradationCondition(stake_allocation_bps=500)
-        )
+        self.condition_registry.register(AuditFailureCondition(stake_allocation_bps=5000))
+        self.condition_registry.register(ProofFailureCondition(stake_allocation_bps=3000))
+        self.condition_registry.register(DataWithholdingCondition(stake_allocation_bps=1500))
+        self.condition_registry.register(LatencyDegradationCondition(stake_allocation_bps=500))
 
     # ------------------------------------------------------------------
     # Audit result handling
@@ -143,13 +136,15 @@ class EnforcementPipeline:
             return None
 
         # Build evidence from audit result
-        evidence = json.dumps({
-            "node_id": node.node_id,
-            "consecutive_failures": audit_result.get("strikes", node.offense_count + 1),
-            "challenged": audit_result.get("challenged", 0),
-            "failed": audit_result.get("failed", 0),
-            "missing": audit_result.get("missing", 0),
-        }).encode()
+        evidence = json.dumps(
+            {
+                "node_id": node.node_id,
+                "consecutive_failures": audit_result.get("strikes", node.offense_count + 1),
+                "challenged": audit_result.get("challenged", 0),
+                "failed": audit_result.get("failed", 0),
+                "missing": audit_result.get("missing", 0),
+            }
+        ).encode()
 
         return self._evaluate_and_queue(
             condition_id="audit_failure",
@@ -177,13 +172,13 @@ class EnforcementPipeline:
             node.clean_epochs_since_offense += 1
             return None
 
-        evidence = json.dumps({
-            "node_id": node.node_id,
-            "proof_failures": pdp_result.get("failed", 0),
-            "total_challenges": (
-                pdp_result.get("passed", 0) + pdp_result.get("failed", 0)
-            ),
-        }).encode()
+        evidence = json.dumps(
+            {
+                "node_id": node.node_id,
+                "proof_failures": pdp_result.get("failed", 0),
+                "total_challenges": (pdp_result.get("passed", 0) + pdp_result.get("failed", 0)),
+            }
+        ).encode()
 
         return self._evaluate_and_queue(
             condition_id="proof_failure",
@@ -226,13 +221,16 @@ class EnforcementPipeline:
 
         # Queue violation — route through MessageQueue if available
         if self._message_queue is not None:
-            self._message_queue.enqueue(str(epoch), {
-                "node_id": node.node_id,
-                "condition_id": condition_id,
-                "evidence_hash": result.evidence_hash,
-                "slash_amount": slash_amount,
-                "severity": result.severity,
-            })
+            self._message_queue.enqueue(
+                str(epoch),
+                {
+                    "node_id": node.node_id,
+                    "condition_id": condition_id,
+                    "evidence_hash": result.evidence_hash,
+                    "slash_amount": slash_amount,
+                    "severity": result.severity,
+                },
+            )
         else:
             self.batch_accumulator.add(
                 epoch=epoch,
@@ -246,11 +244,12 @@ class EnforcementPipeline:
 
         # Runtime invariant check
         if self.config.enable_runtime_invariants:
-            assert EnforcementInvariants.check_safety_s1(result, True), \
+            assert EnforcementInvariants.check_safety_s1(result, True), (
                 "INV-S1 violated: node slashed without violated=True"
-            assert EnforcementInvariants.check_safety_s4(
-                node.total_slashed, node.stake
-            ), "INV-S4 violated: total_slashed > stake"
+            )
+            assert EnforcementInvariants.check_safety_s4(node.total_slashed, node.stake), (
+                "INV-S4 violated: total_slashed > stake"
+            )
 
         return result
 
@@ -281,9 +280,7 @@ class EnforcementPipeline:
         # Drain violations — from MessageQueue if available, else batch_accumulator
         if self._message_queue is not None:
             raw_messages = self._message_queue.dequeue(str(epoch))
-            batch_entries = [
-                BatchSlashEntry(**msg["payload"]) for msg in raw_messages
-            ]
+            batch_entries = [BatchSlashEntry(**msg["payload"]) for msg in raw_messages]
         else:
             batch_entries = self.batch_accumulator.finalize_epoch(epoch)
 
@@ -329,9 +326,7 @@ class EnforcementPipeline:
         # 4. Resolve expired disputes
         disputes_resolved = 0
         if self.config.enable_disputes:
-            disputes_resolved = self._resolve_expired_disputes(
-                epoch, node_map, engine
-            )
+            disputes_resolved = self._resolve_expired_disputes(epoch, node_map, engine)
 
         # 5. Cleanup expired commit-reveal entries
         self.commit_reveal.cleanup_expired(epoch)
@@ -359,9 +354,7 @@ class EnforcementPipeline:
         for dispute in list(self.dispute_registry.pending_disputes):
             if not dispute.can_resolve(epoch):
                 continue
-            resolution = self.dispute_registry.resolve(
-                dispute.dispute_id, epoch
-            )
+            resolution = self.dispute_registry.resolve(dispute.dispute_id, epoch)
             if resolution == DisputeResolution.UPHELD:
                 target = node_map.get(dispute.target)
                 if target:
@@ -462,9 +455,7 @@ class EnforcementPipeline:
         current_epoch: int,
     ) -> bool:
         """Cast a stake-weighted vote on a dispute."""
-        return self.dispute_registry.cast_vote(
-            dispute_id, voter_stake, vote_for, current_epoch
-        )
+        return self.dispute_registry.cast_vote(dispute_id, voter_stake, vote_for, current_epoch)
 
     # ------------------------------------------------------------------
     # Observability

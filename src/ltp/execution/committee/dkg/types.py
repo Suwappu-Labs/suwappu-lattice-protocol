@@ -17,18 +17,18 @@ __all__ = [
 
 
 class DKGState(str, Enum):
-    IDLE        = "idle"
-    COMMITTING  = "committing"
-    SHARING     = "sharing"
-    VERIFYING   = "verifying"
+    IDLE = "idle"
+    COMMITTING = "committing"
+    SHARING = "sharing"
+    VERIFYING = "verifying"
     COMPLAINING = "complaining"
-    FINALIZING  = "finalizing"
-    COMPLETED   = "completed"
-    FAILED      = "failed"
+    FINALIZING = "finalizing"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 class DKGPhase(str, Enum):
-    EAGER  = "eager"
+    EAGER = "eager"
     INLINE = "inline"
 
 

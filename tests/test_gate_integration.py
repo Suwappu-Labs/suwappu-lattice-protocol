@@ -15,10 +15,13 @@ from __future__ import annotations
 import pytest
 
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol
+from src.ltp.cloud.queue import InMemoryQueue
+from src.ltp.economics import WEI_PER_LTP, EconomicsConfig, EconomicsEngine, NodeEconomics
+from src.ltp.enforcement_pipeline import EnforcementPipeline
 from src.ltp.entity import Entity
 from src.ltp.keypair import (
-    KeyState,
     KeyRotationManager,
+    KeyState,
 )
 from src.ltp.node.admission import (
     AdmissionState,
@@ -27,11 +30,7 @@ from src.ltp.node.admission import (
 )
 from src.ltp.node.audit_scheduler import AuditScheduler
 from src.ltp.node.auditor_rotation import AuditorRotation
-from src.ltp.enforcement_pipeline import EnforcementPipeline
-from src.ltp.economics import EconomicsConfig, EconomicsEngine, NodeEconomics, WEI_PER_LTP
-from src.ltp.cloud.queue import InMemoryQueue
 from src.ltp.primitives import canonical_hash
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -67,7 +66,11 @@ class TestPhase5FullIntegration:
     """Single scenario exercising all 4 gate requirements."""
 
     def test_all_four_gates_in_single_scenario(
-        self, operator_kp, endorser_a, endorser_b, receiver_kp,
+        self,
+        operator_kp,
+        endorser_a,
+        endorser_b,
+        receiver_kp,
     ):
         """
         Step 1: KEY ROTATION — generate PENDING key, activate
@@ -110,7 +113,9 @@ class TestPhase5FullIntegration:
 
         # Register the admitted node with admission gate
         admitted_node = network.register_node(
-            "gate-node", "US-East", stake=1500.0,
+            "gate-node",
+            "US-East",
+            stake=1500.0,
             admission_manager=admission,
         )
         assert admitted_node.node_id == "gate-node"
@@ -140,7 +145,8 @@ class TestPhase5FullIntegration:
             rotation = AuditorRotation(all_node_ids, seed=b"gate-test")
 
             scheduler = AuditScheduler(
-                network, local_node_id="base-0",
+                network,
+                local_node_id="base-0",
                 strike_threshold=3,
                 auditor_rotation=rotation,
             )
@@ -148,7 +154,8 @@ class TestPhase5FullIntegration:
             # 3 audit epochs — but only the assigned auditor checks gate-node
             # Use a simple loop without rotation to ensure gate-node gets audited
             simple_scheduler = AuditScheduler(
-                network, local_node_id="external-auditor",
+                network,
+                local_node_id="external-auditor",
                 strike_threshold=3,
             )
             for epoch in range(1, 4):
@@ -298,10 +305,17 @@ class TestGate4_EnforcementSlash:
         node = NodeEconomics(node_id="g4-node", stake=initial, shards_stored=10, audit_score=100)
 
         audit = {
-            "node_id": "g4-node", "result": "FAIL", "challenged": 10,
-            "passed": 4, "failed": 6, "missing": 3, "strikes": 4,
-            "burst_size": 2, "avg_response_us": 500.0,
-            "suspicious_latency": 0, "corrupt_shards": [],
+            "node_id": "g4-node",
+            "result": "FAIL",
+            "challenged": 10,
+            "passed": 4,
+            "failed": 6,
+            "missing": 3,
+            "strikes": 4,
+            "burst_size": 2,
+            "avg_response_us": 500.0,
+            "suspicious_latency": 0,
+            "corrupt_shards": [],
         }
         pipeline.handle_audit_result(audit, node, engine, epoch=50)
         pipeline.finalize_epoch(50, [node], engine)

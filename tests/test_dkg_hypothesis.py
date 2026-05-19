@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import pytest
-from hypothesis import given, assume, settings
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
+from src.ltp.execution.committee.dkg.registry import DKGKeyRegistry
 from src.ltp.execution.committee.dkg.scalar_poly import ScalarField, ScalarPoly
 from src.ltp.execution.committee.dkg.types import DKGPhase, DKGResult
-from src.ltp.execution.committee.dkg.registry import DKGKeyRegistry
-
 
 R = ScalarField.R
 
@@ -18,7 +17,6 @@ poly_degrees = st.integers(min_value=0, max_value=5)
 
 
 class TestScalarFieldProperties:
-
     @given(a=small_scalars, b=small_scalars)
     def test_add_commutative(self, a, b):
         assert ScalarField.add(a, b) == ScalarField.add(b, a)
@@ -44,7 +42,6 @@ class TestScalarFieldProperties:
 
 
 class TestScalarPolyProperties:
-
     @given(degree=poly_degrees)
     def test_random_poly_has_correct_length(self, degree):
         p = ScalarPoly.random(degree)
@@ -57,7 +54,6 @@ class TestScalarPolyProperties:
 
 
 class TestLagrangeReconstruction:
-
     @given(
         secret=st.integers(min_value=1, max_value=1000),
         n=st.integers(min_value=2, max_value=6),
@@ -77,31 +73,43 @@ class TestLagrangeReconstruction:
         for i in subset:
             li = ScalarPoly.lagrange_coefficient(i, subset)
             reconstructed = ScalarField.add(
-                reconstructed, ScalarField.mul(shares[i], li),
+                reconstructed,
+                ScalarField.mul(shares[i], li),
             )
         assert reconstructed == secret
 
 
 class TestDKGKeyRegistryProperties:
-
     @given(n=st.integers(min_value=1, max_value=20))
     def test_epoch_count_matches_stores(self, n):
         reg = DKGKeyRegistry(0x01)
         for epoch in range(1, n + 1):
-            reg.store(DKGResult(
-                vm_tag=0x01, epoch=epoch, group_pk=bytes([epoch % 256]) * 48,
-                participant_vks={}, threshold=1,
-                qual_set=frozenset(), phase=DKGPhase.EAGER,
-            ))
+            reg.store(
+                DKGResult(
+                    vm_tag=0x01,
+                    epoch=epoch,
+                    group_pk=bytes([epoch % 256]) * 48,
+                    participant_vks={},
+                    threshold=1,
+                    qual_set=frozenset(),
+                    phase=DKGPhase.EAGER,
+                )
+            )
         assert reg.epoch_count() == n
 
     @given(n=st.integers(min_value=1, max_value=20))
     def test_current_is_always_max_epoch(self, n):
         reg = DKGKeyRegistry(0x01)
         for epoch in range(1, n + 1):
-            reg.store(DKGResult(
-                vm_tag=0x01, epoch=epoch, group_pk=bytes([epoch % 256]) * 48,
-                participant_vks={}, threshold=1,
-                qual_set=frozenset(), phase=DKGPhase.EAGER,
-            ))
+            reg.store(
+                DKGResult(
+                    vm_tag=0x01,
+                    epoch=epoch,
+                    group_pk=bytes([epoch % 256]) * 48,
+                    participant_vks={},
+                    threshold=1,
+                    qual_set=frozenset(),
+                    phase=DKGPhase.EAGER,
+                )
+            )
         assert reg.current().epoch == n

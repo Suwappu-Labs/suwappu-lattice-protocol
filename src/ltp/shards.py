@@ -102,9 +102,9 @@ class ShardEncryptor:
                 f"CEK must be exactly 32 bytes, got "
                 f"{len(cek) if isinstance(cek, bytes) else type(cek).__name__}"
             )
-        if cek == b'\x00' * 32:
+        if cek == b"\x00" * 32:
             raise ValueError("CEK is all-zero — degenerate key rejected")
-        if cek == b'\xff' * 32:
+        if cek == b"\xff" * 32:
             raise ValueError("CEK is all-one — degenerate key rejected")
 
     @classmethod
@@ -130,10 +130,10 @@ class ShardEncryptor:
         Size adapts to active AEAD backend (16B PoC, 24B XChaCha20-Poly1305).
         """
         prk = cls._extract_prk(cek)
-        index_bytes = struct.pack('>I', shard_index)
-        info = entity_id.encode('utf-8') + index_bytes + b'\x01'
+        index_bytes = struct.pack(">I", shard_index)
+        info = entity_id.encode("utf-8") + index_bytes + b"\x01"
         expanded = hmac_stdlib.new(prk, info, hashlib.sha256).digest()
-        return expanded[:AEAD.NONCE_SIZE]
+        return expanded[: AEAD.NONCE_SIZE]
 
     @staticmethod
     def _aad(entity_id: str, shard_index: int) -> bytes:
@@ -143,7 +143,7 @@ class ShardEncryptor:
         providing defense-in-depth: even if the nonce were somehow reused, the AAD
         prevents cross-entity or cross-index shard substitution.
         """
-        return entity_id.encode() + struct.pack('>I', shard_index)
+        return entity_id.encode() + struct.pack(">I", shard_index)
 
     @classmethod
     def encrypt_shard(

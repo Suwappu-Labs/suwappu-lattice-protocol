@@ -21,7 +21,10 @@ class ScheduledTaskRunner(ABC):
 
     @abstractmethod
     def schedule(
-        self, task_id: str, callback: Callable[[], None], interval_seconds: float,
+        self,
+        task_id: str,
+        callback: Callable[[], None],
+        interval_seconds: float,
     ) -> None:
         """Schedule a recurring task."""
         ...
@@ -58,7 +61,10 @@ class InMemoryScheduler(ScheduledTaskRunner):
         self._execution_log: list[dict] = []
 
     def schedule(
-        self, task_id: str, callback: Callable[[], None], interval_seconds: float,
+        self,
+        task_id: str,
+        callback: Callable[[], None],
+        interval_seconds: float,
     ) -> None:
         if task_id in self._tasks:
             raise ValueError(f"Task {task_id!r} already scheduled")
@@ -111,11 +117,13 @@ class InMemoryScheduler(ScheduledTaskRunner):
                 task["executions"] += 1
                 task["next_at"] = current_time + task["interval"]
                 fired.append(task_id)
-                self._execution_log.append({
-                    "task_id": task_id,
-                    "trigger": "tick",
-                    "time": current_time,
-                })
+                self._execution_log.append(
+                    {
+                        "task_id": task_id,
+                        "trigger": "tick",
+                        "time": current_time,
+                    }
+                )
         return fired
 
     @property

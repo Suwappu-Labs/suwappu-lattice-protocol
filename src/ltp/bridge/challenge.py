@@ -37,26 +37,28 @@ DEFAULT_CHALLENGE_PERIOD = 7 * 24 * 3600  # 604800
 
 class ChallengeStatus(Enum):
     """Lifecycle states for an optimistic bridge challenge window."""
-    OPEN = "open"               # Window active, no challenge filed
-    CHALLENGED = "challenged"   # Fraud proof submitted, pending resolution
-    RESOLVED = "resolved"       # Adjudicated: valid fraud confirmed
-    FINALIZED = "finalized"     # Window expired with no valid challenge
-    EXPIRED = "expired"         # Challenge submitted but never resolved
+
+    OPEN = "open"  # Window active, no challenge filed
+    CHALLENGED = "challenged"  # Fraud proof submitted, pending resolution
+    RESOLVED = "resolved"  # Adjudicated: valid fraud confirmed
+    FINALIZED = "finalized"  # Window expired with no valid challenge
+    EXPIRED = "expired"  # Challenge submitted but never resolved
 
 
 @dataclass
 class ChallengeRecord:
     """Mutable record tracking a single entity's challenge lifecycle."""
+
     entity_id: str
-    anchor_digest: bytes          # 32B digest for contract queries
+    anchor_digest: bytes  # 32B digest for contract queries
     status: ChallengeStatus
     opened_at: float
-    challenge_deadline: float     # opened_at + challenge_period
+    challenge_deadline: float  # opened_at + challenge_period
     challenger_id: str = ""
     fraud_proof_hash: bytes = b""
     fraud_proof_type: str = ""
     resolved_at: float = 0.0
-    resolution: str = ""          # "valid_fraud" or "invalid_challenge"
+    resolution: str = ""  # "valid_fraud" or "invalid_challenge"
 
 
 class ChallengeManager:
@@ -72,14 +74,16 @@ class ChallengeManager:
             time.time. Inject a mock for deterministic testing.
     """
 
-    _VALID_TRANSITIONS: frozenset[tuple[ChallengeStatus, ChallengeStatus]] = frozenset({
-        (ChallengeStatus.OPEN, ChallengeStatus.CHALLENGED),
-        (ChallengeStatus.OPEN, ChallengeStatus.FINALIZED),
-        (ChallengeStatus.CHALLENGED, ChallengeStatus.RESOLVED),
-        (ChallengeStatus.CHALLENGED, ChallengeStatus.EXPIRED),
-        # ZK proof can finalize a challenged window
-        (ChallengeStatus.CHALLENGED, ChallengeStatus.FINALIZED),
-    })
+    _VALID_TRANSITIONS: frozenset[tuple[ChallengeStatus, ChallengeStatus]] = frozenset(
+        {
+            (ChallengeStatus.OPEN, ChallengeStatus.CHALLENGED),
+            (ChallengeStatus.OPEN, ChallengeStatus.FINALIZED),
+            (ChallengeStatus.CHALLENGED, ChallengeStatus.RESOLVED),
+            (ChallengeStatus.CHALLENGED, ChallengeStatus.EXPIRED),
+            # ZK proof can finalize a challenged window
+            (ChallengeStatus.CHALLENGED, ChallengeStatus.FINALIZED),
+        }
+    )
 
     def __init__(
         self,
@@ -108,26 +112,20 @@ class ChallengeManager:
     # Public API
     # ------------------------------------------------------------------
 
-    def open_challenge_window(
-        self, entity_id: str, anchor_digest: bytes
-    ) -> ChallengeRecord:
+    def open_challenge_window(self, entity_id: str, anchor_digest: bytes) -> ChallengeRecord:
         """Open a new challenge window for an anchored entity.
 
         Raises ValueError if a window is already open for this entity
         or if anchor_digest is not exactly 32 bytes.
         """
         if len(anchor_digest) != 32:
-            raise ValueError(
-                f"anchor_digest must be 32 bytes, got {len(anchor_digest)}"
-            )
+            raise ValueError(f"anchor_digest must be 32 bytes, got {len(anchor_digest)}")
         now = self._clock()
         with self._lock:
             if entity_id in self._records:
                 existing = self._records[entity_id]
                 if existing.status in (ChallengeStatus.OPEN, ChallengeStatus.CHALLENGED):
-                    raise ValueError(
-                        f"Challenge window already active for {entity_id!r}"
-                    )
+                    raise ValueError(f"Challenge window already active for {entity_id!r}")
             rec = ChallengeRecord(
                 entity_id=entity_id,
                 anchor_digest=anchor_digest,
@@ -138,7 +136,8 @@ class ChallengeManager:
             self._records[entity_id] = rec
             logger.info(
                 "Challenge window opened: entity=%s, deadline=%.0f",
-                entity_id[:16], rec.challenge_deadline,
+                entity_id[:16],
+                rec.challenge_deadline,
             )
             return ChallengeRecord(**rec.__dict__)
 
@@ -160,9 +159,7 @@ class ChallengeManager:
                 raise KeyError(f"No challenge record for entity {entity_id!r}")
 
             if now > rec.challenge_deadline:
-                raise ValueError(
-                    f"Challenge window expired for {entity_id!r}"
-                )
+                raise ValueError(f"Challenge window expired for {entity_id!r}")
 
             if not fraud_proof.verify():
                 raise ValueError("Fraud proof verification failed")
@@ -173,13 +170,13 @@ class ChallengeManager:
             rec.fraud_proof_type = fraud_proof.proof_type.value
             logger.warning(
                 "Challenge submitted: entity=%s, type=%s, challenger=%s",
-                entity_id[:16], rec.fraud_proof_type, challenger_id,
+                entity_id[:16],
+                rec.fraud_proof_type,
+                challenger_id,
             )
             return ChallengeRecord(**rec.__dict__)
 
-    def resolve_challenge(
-        self, entity_id: str, resolution: str
-    ) -> ChallengeRecord:
+    def resolve_challenge(self, entity_id: str, resolution: str) -> ChallengeRecord:
         """Resolve a challenged entity.
 
         Args:
@@ -197,13 +194,12 @@ class ChallengeManager:
             rec.resolution = resolution
             logger.info(
                 "Challenge resolved: entity=%s, resolution=%s",
-                entity_id[:16], resolution,
+                entity_id[:16],
+                resolution,
             )
             return ChallengeRecord(**rec.__dict__)
 
-    def resolve_with_proof(
-        self, entity_id: str, proof
-    ) -> ChallengeRecord:
+    def resolve_with_proof(self, entity_id: str, proof) -> ChallengeRecord:
         """Resolve a challenge window using a ZK proof.
 
         Verifies the proof and transitions directly to FINALIZED,
@@ -222,15 +218,14 @@ class ChallengeManager:
             if rec is None:
                 raise KeyError(f"No challenge record for entity {entity_id!r}")
             if rec.status not in (ChallengeStatus.OPEN, ChallengeStatus.CHALLENGED):
-                raise ValueError(
-                    f"Cannot resolve with proof from status {rec.status.value}"
-                )
+                raise ValueError(f"Cannot resolve with proof from status {rec.status.value}")
             rec.status = ChallengeStatus.FINALIZED
             rec.resolved_at = now
             rec.resolution = "zk_proof"
             logger.info(
                 "Challenge resolved via ZK proof: entity=%s, proof_id=%s",
-                entity_id[:16], proof.proof_id[:16],
+                entity_id[:16],
+                proof.proof_id[:16],
             )
             return ChallengeRecord(**rec.__dict__)
 
@@ -277,9 +272,7 @@ class ChallengeManager:
         """Return snapshot copies of all records matching status."""
         with self._lock:
             return [
-                ChallengeRecord(**r.__dict__)
-                for r in self._records.values()
-                if r.status is status
+                ChallengeRecord(**r.__dict__) for r in self._records.values() if r.status is status
             ]
 
     def stats(self) -> dict[str, int]:

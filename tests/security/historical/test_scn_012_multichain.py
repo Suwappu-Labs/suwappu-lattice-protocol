@@ -45,6 +45,7 @@ Defenses pinned:
     C5  Partials from the same participant cannot be double-
         counted: combining (p1, p1) does not satisfy threshold 2.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -65,7 +66,6 @@ from ltp.execution.committee.dkg.threshold_signing import (
     threshold_verify,
 )
 
-
 # ---------------------------------------------------------------------------
 # Test fixtures: in-memory t-of-n key generation (no DKG needed for these
 # tests — we use a trusted dealer to produce a valid shamir share set).
@@ -77,25 +77,27 @@ def _trusted_dealer_keygen(threshold: int, n: int, epoch: int = 1):
     BLS12-381 scalar field. Used only for unit testing; production
     uses the DKG protocol."""
     pytest.importorskip("py_ecc")
-    from py_ecc.bls.constants import POW_2_381  # type: ignore[attr-defined]
-    from py_ecc.optimized_bls12_381 import (  # type: ignore[import-untyped]
-        G1, curve_order, multiply,
-    )
-    from py_ecc.bls.g2_primitives import G1_to_pubkey  # type: ignore[import-untyped]
     import secrets
+
+    from py_ecc.bls.constants import POW_2_381  # type: ignore[attr-defined]
+    from py_ecc.bls.g2_primitives import G1_to_pubkey  # type: ignore[import-untyped]
+    from py_ecc.optimized_bls12_381 import (  # type: ignore[import-untyped]
+        G1,
+        curve_order,
+        multiply,
+    )
 
     # Random group secret.
     group_sk = secrets.randbelow(curve_order - 1) + 1
     group_pk_point = multiply(G1, group_sk)
     # Uncompressed G1 form: 96 bytes (x || y in Fp).
     from py_ecc.optimized_bls12_381 import normalize
+
     x, y = normalize(group_pk_point)
     group_pk = int(x).to_bytes(48, "big") + int(y).to_bytes(48, "big")
 
     # Sample t-1 random coefficients for f(x) = group_sk + a1*x + ... + a_{t-1}*x^{t-1}
-    coeffs = [group_sk] + [
-        secrets.randbelow(curve_order - 1) + 1 for _ in range(threshold - 1)
-    ]
+    coeffs = [group_sk] + [secrets.randbelow(curve_order - 1) + 1 for _ in range(threshold - 1)]
 
     def _eval_poly(x: int) -> int:
         acc = 0
@@ -106,15 +108,17 @@ def _trusted_dealer_keygen(threshold: int, n: int, epoch: int = 1):
     keys = []
     for i in range(1, n + 1):
         share = _eval_poly(i)
-        keys.append(ThresholdSigningKey(
-            participant_fp=bytes([i]) * 32,
-            participant_index=i,
-            secret_share=share,
-            group_pk=group_pk,
-            threshold=threshold,
-            epoch=epoch,
-            vm_tag=0,
-        ))
+        keys.append(
+            ThresholdSigningKey(
+                participant_fp=bytes([i]) * 32,
+                participant_index=i,
+                secret_share=share,
+                group_pk=group_pk,
+                threshold=threshold,
+                epoch=epoch,
+                vm_tag=0,
+            )
+        )
     return group_pk, keys
 
 

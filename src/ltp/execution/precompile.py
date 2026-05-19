@@ -8,7 +8,6 @@ from .model import VM_TAG_PRECOMPILE
 from .registry import VMRegistry
 from .types import StateQuery
 
-
 BASE_GAS = 700
 PER_BYTE_GAS = 3
 
@@ -16,6 +15,7 @@ PER_BYTE_GAS = 3
 @dataclass(frozen=True)
 class PrecompileResult:
     """Result of a precompile call."""
+
     success: bool
     data: bytes = b""
     error: str = ""

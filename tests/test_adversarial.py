@@ -9,21 +9,35 @@ negative: forgery, tampering, replay, drift, or malformed data must fail.
 import math
 import struct
 import time
+
 import pytest
 
-from src.ltp import KeyPair, CommitmentRecord, CommitmentNetwork, LTPProtocol, Entity, reset_poc_state
-from src.ltp.encoding import CanonicalEncoder
-from src.ltp.domain import (
-    DOMAIN_COMMIT_RECORD, DOMAIN_STH_SIGN, DOMAIN_APPROVAL_RECEIPT,
-    DOMAIN_SIGNED_ENVELOPE, DOMAIN_SIGNER_POLICY, DOMAIN_ANCHOR_DIGEST,
-    domain_sign, domain_verify, signer_fingerprint,
+from src.ltp import (
+    CommitmentNetwork,
+    CommitmentRecord,
+    Entity,
+    KeyPair,
+    LTPProtocol,
+    reset_poc_state,
 )
+from src.ltp.domain import (
+    DOMAIN_ANCHOR_DIGEST,
+    DOMAIN_APPROVAL_RECEIPT,
+    DOMAIN_COMMIT_RECORD,
+    DOMAIN_SIGNED_ENVELOPE,
+    DOMAIN_SIGNER_POLICY,
+    DOMAIN_STH_SIGN,
+    domain_sign,
+    domain_verify,
+    signer_fingerprint,
+)
+from src.ltp.encoding import CanonicalEncoder
 from src.ltp.envelope import SignedEnvelope
 from src.ltp.receipt import ApprovalReceipt, ReceiptType
 from src.ltp.sequencing import SequenceTracker
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────
+
 
 @pytest.fixture(autouse=True)
 def fresh_state():
@@ -64,9 +78,13 @@ def committed(alice):
 def valid_receipt(alice, committed):
     eid, record, sth, net = committed
     return ApprovalReceipt.for_commit(
-        entity_id=eid, record=record, sth=sth,
-        signer_kp=alice, signer_role="operator",
-        sequence=0, target_chain_id="base-testnet",
+        entity_id=eid,
+        record=record,
+        sth=sth,
+        signer_kp=alice,
+        signer_role="operator",
+        sequence=0,
+        target_chain_id="base-testnet",
     )
 
 
@@ -74,28 +92,31 @@ def valid_receipt(alice, committed):
 def valid_envelope(alice):
     return SignedEnvelope.create(
         domain=DOMAIN_COMMIT_RECORD,
-        signer_vk=alice.vk, signer_sk=alice.sk,
-        signer_id="alice", payload_type="test",
+        signer_vk=alice.vk,
+        signer_sk=alice.sk,
+        signer_id="alice",
+        payload_type="test",
         payload=b"authentic-payload",
     )
 
 
 # ── Canonical Encoder adversarial ─────────────────────────────────────────
 
+
 class TestEncoderAdversarial:
     """Encoding edge cases and rejection of invalid inputs."""
 
     def test_nan_rejected(self):
         with pytest.raises(ValueError, match="NaN"):
-            CanonicalEncoder(b"t\x00").float64(float('nan'))
+            CanonicalEncoder(b"t\x00").float64(float("nan"))
 
     def test_positive_inf_rejected(self):
         with pytest.raises(ValueError, match="Inf"):
-            CanonicalEncoder(b"t\x00").float64(float('inf'))
+            CanonicalEncoder(b"t\x00").float64(float("inf"))
 
     def test_negative_inf_rejected(self):
         with pytest.raises(ValueError, match="Inf"):
-            CanonicalEncoder(b"t\x00").float64(float('-inf'))
+            CanonicalEncoder(b"t\x00").float64(float("-inf"))
 
     def test_uint8_negative_rejected(self):
         with pytest.raises(ValueError):
@@ -137,7 +158,7 @@ class TestEncoderAdversarial:
 
     def test_optional_present_vs_absent_differ(self):
         present = CanonicalEncoder(b"t\x00").optional_bytes(b"x").finalize()
-        absent  = CanonicalEncoder(b"t\x00").optional_bytes(None).finalize()
+        absent = CanonicalEncoder(b"t\x00").optional_bytes(None).finalize()
         assert present != absent
 
     def test_length_prefix_prevents_boundary_confusion(self):
@@ -154,6 +175,7 @@ class TestEncoderAdversarial:
 
 
 # ── Domain Separation adversarial ─────────────────────────────────────────
+
 
 class TestDomainAdversarial:
     """Cross-domain signature replay and isolation attacks."""
@@ -176,8 +198,12 @@ class TestDomainAdversarial:
     def test_all_domain_pairs_isolated(self, alice):
         """Every domain produces a distinct signature context."""
         domains = [
-            DOMAIN_COMMIT_RECORD, DOMAIN_STH_SIGN, DOMAIN_APPROVAL_RECEIPT,
-            DOMAIN_SIGNED_ENVELOPE, DOMAIN_SIGNER_POLICY, DOMAIN_ANCHOR_DIGEST,
+            DOMAIN_COMMIT_RECORD,
+            DOMAIN_STH_SIGN,
+            DOMAIN_APPROVAL_RECEIPT,
+            DOMAIN_SIGNED_ENVELOPE,
+            DOMAIN_SIGNER_POLICY,
+            DOMAIN_ANCHOR_DIGEST,
         ]
         data = b"test-payload"
         sigs = {d: domain_sign(d, alice.sk, data) for d in domains}
@@ -215,6 +241,7 @@ class TestDomainAdversarial:
 
 # ── Envelope adversarial ──────────────────────────────────────────────────
 
+
 class TestEnvelopeAdversarial:
     """Bit-flip and field-substitution attacks on SignedEnvelope."""
 
@@ -228,8 +255,10 @@ class TestEnvelopeAdversarial:
     def test_flipped_signature_byte_fails(self, alice):
         env = SignedEnvelope.create(
             domain=DOMAIN_COMMIT_RECORD,
-            signer_vk=alice.vk, signer_sk=alice.sk,
-            signer_id="alice", payload_type="test",
+            signer_vk=alice.vk,
+            signer_sk=alice.sk,
+            signer_id="alice",
+            payload_type="test",
             payload=b"payload",
         )
         flipped = bytearray(env.signature)
@@ -266,8 +295,10 @@ class TestEnvelopeAdversarial:
         """kid does not match vk → verify must fail."""
         env = SignedEnvelope.create(
             domain=DOMAIN_COMMIT_RECORD,
-            signer_vk=alice.vk, signer_sk=alice.sk,
-            signer_id="alice", payload_type="test",
+            signer_vk=alice.vk,
+            signer_sk=alice.sk,
+            signer_id="alice",
+            payload_type="test",
             payload=b"payload",
         )
         env.signer_kid = signer_fingerprint(bob.vk)  # Wrong kid
@@ -278,8 +309,10 @@ class TestEnvelopeAdversarial:
         payload = b"test-payload-12"
         env = SignedEnvelope.create(
             domain=DOMAIN_COMMIT_RECORD,
-            signer_vk=alice.vk, signer_sk=alice.sk,
-            signer_id="alice", payload_type="test",
+            signer_vk=alice.vk,
+            signer_sk=alice.sk,
+            signer_id="alice",
+            payload_type="test",
             payload=payload,
         )
         for i in range(len(payload)):
@@ -292,20 +325,26 @@ class TestEnvelopeAdversarial:
     def test_max_drift_boundary(self, alice):
         """Exactly at boundary: just inside and just outside max_drift."""
         exact_drift = 60.0
-        ts_inside  = time.time() - (exact_drift - 1)
+        ts_inside = time.time() - (exact_drift - 1)
         ts_outside = time.time() - (exact_drift + 1)
 
         env_inside = SignedEnvelope.create_at(
             domain=DOMAIN_COMMIT_RECORD,
-            signer_vk=alice.vk, signer_sk=alice.sk,
-            signer_id="alice", payload_type="test",
-            payload=b"p", timestamp=ts_inside,
+            signer_vk=alice.vk,
+            signer_sk=alice.sk,
+            signer_id="alice",
+            payload_type="test",
+            payload=b"p",
+            timestamp=ts_inside,
         )
         env_outside = SignedEnvelope.create_at(
             domain=DOMAIN_COMMIT_RECORD,
-            signer_vk=alice.vk, signer_sk=alice.sk,
-            signer_id="alice", payload_type="test",
-            payload=b"p", timestamp=ts_outside,
+            signer_vk=alice.vk,
+            signer_sk=alice.sk,
+            signer_id="alice",
+            payload_type="test",
+            payload=b"p",
+            timestamp=ts_outside,
         )
         assert env_inside.verify(max_drift=exact_drift)
         assert not env_outside.verify(max_drift=exact_drift)
@@ -316,6 +355,7 @@ class TestEnvelopeAdversarial:
 
 
 # ── Receipt adversarial ───────────────────────────────────────────────────
+
 
 class TestReceiptAdversarial:
     """Field substitution and signature attacks on ApprovalReceipt."""
@@ -375,33 +415,50 @@ class TestReceiptAdversarial:
         """Any field change must change the anchor_digest."""
         eid, record, sth, net = committed
         r1 = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=0,
+            target_chain_id="base-testnet",
         )
         r2 = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=1, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=1,
+            target_chain_id="base-testnet",
         )
         assert r1.anchor_digest() != r2.anchor_digest()
 
     def test_receipt_id_changes_on_different_inputs(self, alice, committed):
         eid, record, sth, net = committed
         r1 = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=0,
+            target_chain_id="base-testnet",
         )
         r2 = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="auditor",  # Different role
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="auditor",  # Different role
+            sequence=0,
+            target_chain_id="base-testnet",
         )
         assert r1.receipt_id != r2.receipt_id
 
 
 # ── Sequence tracker adversarial ──────────────────────────────────────────
+
 
 class TestSequencerAdversarial:
     """Edge cases and attack scenarios for SequenceTracker."""
@@ -447,10 +504,12 @@ class TestSequencerAdversarial:
         tracker = SequenceTracker("base-testnet")
         future = time.time() + 3600
         # seq 5 comes first → seq 3 is a replay
-        results = tracker.validate_batch([
-            (alice.vk, 5, "base-testnet", future),
-            (alice.vk, 3, "base-testnet", future),
-        ])
+        results = tracker.validate_batch(
+            [
+                (alice.vk, 5, "base-testnet", future),
+                (alice.vk, 3, "base-testnet", future),
+            ]
+        )
         assert results[0][0] is True
         assert results[1][0] is False
 

@@ -2,17 +2,26 @@
 
 import pytest
 
+from src.ltp import KeyPair, reset_poc_state
 from src.ltp.domain import (
-    DOMAIN_ENTITY_ID, DOMAIN_COMMIT_SIGN, DOMAIN_COMMIT_RECORD,
-    DOMAIN_STH_SIGN, DOMAIN_SHARD_NONCE, DOMAIN_APPROVAL_RECEIPT,
-    DOMAIN_ANCHOR_DIGEST, DOMAIN_SIGNED_ENVELOPE, DOMAIN_SIGNER_POLICY,
-    DOMAIN_LATTICE_KEY, DOMAIN_BRIDGE_MSG,
     _ALL_TAGS,
-    domain_hash, domain_hash_bytes,
-    domain_sign, domain_verify,
+    DOMAIN_ANCHOR_DIGEST,
+    DOMAIN_APPROVAL_RECEIPT,
+    DOMAIN_BRIDGE_MSG,
+    DOMAIN_COMMIT_RECORD,
+    DOMAIN_COMMIT_SIGN,
+    DOMAIN_ENTITY_ID,
+    DOMAIN_LATTICE_KEY,
+    DOMAIN_SHARD_NONCE,
+    DOMAIN_SIGNED_ENVELOPE,
+    DOMAIN_SIGNER_POLICY,
+    DOMAIN_STH_SIGN,
+    domain_hash,
+    domain_hash_bytes,
+    domain_sign,
+    domain_verify,
     signer_fingerprint,
 )
-from src.ltp import KeyPair, reset_poc_state
 
 
 @pytest.fixture(autouse=True)
@@ -35,7 +44,7 @@ class TestTagRegistry:
 
     def test_all_tags_have_null_terminator(self):
         for name, tag in _ALL_TAGS.items():
-            assert tag.endswith(b'\x00'), f"{name} missing null terminator"
+            assert tag.endswith(b"\x00"), f"{name} missing null terminator"
 
     def test_new_tags_follow_gsx_format(self):
         new_tags = {k: v for k, v in _ALL_TAGS.items() if k.startswith("DOMAIN_")}
@@ -73,8 +82,9 @@ class TestDomainHash:
 
     def test_domain_hash_deterministic(self):
         for _ in range(5):
-            assert domain_hash_bytes(DOMAIN_ENTITY_ID, b"x") == \
-                   domain_hash_bytes(DOMAIN_ENTITY_ID, b"x")
+            assert domain_hash_bytes(DOMAIN_ENTITY_ID, b"x") == domain_hash_bytes(
+                DOMAIN_ENTITY_ID, b"x"
+            )
 
     def test_different_data_different_hash(self):
         h1 = domain_hash_bytes(DOMAIN_ENTITY_ID, b"data1")
@@ -118,10 +128,12 @@ class TestGatewayVMDomainTags:
 
     def test_gateway_attest_domain_tag_exists(self):
         from src.ltp.domain import DOMAIN_GATEWAY_ATTEST
+
         assert DOMAIN_GATEWAY_ATTEST == b"GSX-LTP:gateway-attest:v1\x00"
 
     def test_external_event_domain_tag_exists(self):
         from src.ltp.domain import DOMAIN_EXTERNAL_EVENT
+
         assert DOMAIN_EXTERNAL_EVENT == b"GSX-LTP:external-event:v1\x00"
 
 
@@ -150,6 +162,7 @@ class TestSignerFingerprint:
     def test_fingerprint_uses_sha3_not_sha256(self):
         """Verify fingerprint uses canonical_hash_bytes (SHA3-256)."""
         from src.ltp.primitives import canonical_hash_bytes
+
         kp = KeyPair.generate("test")
         expected = canonical_hash_bytes(kp.vk)
         assert signer_fingerprint(kp.vk) == expected

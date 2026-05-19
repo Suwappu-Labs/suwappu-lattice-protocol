@@ -7,21 +7,31 @@ the existing LTP COMMIT → LATTICE → MATERIALIZE data path.
 """
 
 import time
+
 import pytest
 
 from src.ltp import (
-    KeyPair, Entity, CommitmentNetwork, LTPProtocol,
-    ApprovalReceipt, SignedEnvelope, SequenceTracker, reset_poc_state,
+    ApprovalReceipt,
+    CommitmentNetwork,
+    Entity,
+    KeyPair,
+    LTPProtocol,
+    SequenceTracker,
+    SignedEnvelope,
+    reset_poc_state,
 )
-from src.ltp.receipt import ReceiptType
+from src.ltp.anchor import AnchorSubmission, EntityState, validate_transition
 from src.ltp.domain import DOMAIN_COMMIT_RECORD
-from src.ltp.governance import SignerEntry, ApprovalRule, SignerPolicy
 from src.ltp.evidence import EvidenceBundle
-from src.ltp.anchor import EntityState, AnchorSubmission, validate_transition
+from src.ltp.governance import ApprovalRule, SignerEntry, SignerPolicy
 from src.ltp.merkle_log.portable_proof import TreeType
+from src.ltp.receipt import ReceiptType
 from src.ltp.verify import (
-    verify_envelope, verify_receipt, verify_merkle_proof, verify_sth,
     verify_commitment_chain,
+    verify_envelope,
+    verify_merkle_proof,
+    verify_receipt,
+    verify_sth,
 )
 
 
@@ -52,6 +62,7 @@ def bob():
 
 # ── Core pipeline: trust layer does not break data path ──────────────────
 
+
 class TestTrustLayerDoesNotBreakDataPath:
     """Verify COMMIT → LATTICE → MATERIALIZE still works with trust layer active."""
 
@@ -64,9 +75,13 @@ class TestTrustLayerDoesNotBreakDataPath:
         # Generate trust artifacts (should not affect internal state)
         sth = network_with_nodes.log.latest_sth
         receipt = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=0,
+            target_chain_id="base-testnet",
         )
         envelope = record.to_envelope(alice.vk, alice.sk, "alice")
 
@@ -91,12 +106,19 @@ class TestTrustLayerDoesNotBreakDataPath:
             sth = network_with_nodes.log.latest_sth
 
             receipt = ApprovalReceipt.for_commit(
-                entity_id=eid, record=record, sth=sth,
-                signer_kp=alice, signer_role="operator",
-                sequence=i, target_chain_id="base-testnet",
+                entity_id=eid,
+                record=record,
+                sth=sth,
+                signer_kp=alice,
+                signer_role="operator",
+                sequence=i,
+                target_chain_id="base-testnet",
             )
             ok, _ = tracker.validate_and_advance(
-                alice.vk, i, "base-testnet", future,
+                alice.vk,
+                i,
+                "base-testnet",
+                future,
             )
             assert ok
             assert receipt.verify(alice.vk)
@@ -107,6 +129,7 @@ class TestTrustLayerDoesNotBreakDataPath:
 
 
 # ── Full commit-to-anchor pipeline ────────────────────────────────────────
+
 
 class TestCommitToAnchorPipeline:
     """Full pipeline: commit → receipt → envelope → anchor submission."""
@@ -121,9 +144,13 @@ class TestCommitToAnchorPipeline:
 
         # Step 2: Receipt
         receipt = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=0,
+            target_chain_id="base-testnet",
         )
         assert receipt.verify(alice.vk)
         assert len(receipt.anchor_digest()) == 32
@@ -144,6 +171,7 @@ class TestCommitToAnchorPipeline:
 
         # Step 6: Anchor submission
         from src.ltp.primitives import canonical_hash_bytes
+
         sub = AnchorSubmission.from_receipt(
             receipt=receipt,
             policy_hash_bytes=canonical_hash_bytes(b"default-policy"),
@@ -161,9 +189,13 @@ class TestCommitToAnchorPipeline:
         sth = network_with_nodes.log.latest_sth
 
         commit_receipt = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=0,
+            target_chain_id="base-testnet",
         )
 
         sealed = proto.lattice(eid, record, cek, alice)
@@ -171,9 +203,13 @@ class TestCommitToAnchorPipeline:
         assert recovered == entity.content
 
         mat_receipt = ApprovalReceipt.for_materialize(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=1, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=1,
+            target_chain_id="base-testnet",
         )
 
         assert commit_receipt.verify(alice.vk)
@@ -183,6 +219,7 @@ class TestCommitToAnchorPipeline:
 
 
 # ── Verification SDK integration ─────────────────────────────────────────
+
 
 class TestVerificationSDKIntegration:
     """Pure verification functions against real protocol outputs."""
@@ -194,9 +231,13 @@ class TestVerificationSDKIntegration:
         sth = network_with_nodes.log.latest_sth
 
         receipt = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=0,
+            target_chain_id="base-testnet",
         )
         envelope = record.to_envelope(alice.vk, alice.sk, "alice")
         proof = network_with_nodes.log.get_portable_proof(eid)
@@ -224,9 +265,13 @@ class TestVerificationSDKIntegration:
         eid, record, cek = proto.commit(entity, alice)
         sth = network_with_nodes.log.latest_sth
         receipt = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=0,
+            target_chain_id="base-testnet",
         )
 
         result = verify_receipt(receipt)
@@ -263,6 +308,7 @@ class TestVerificationSDKIntegration:
 
 # ── Governance + Policy integration ───────────────────────────────────────
 
+
 class TestGovernancePolicyIntegration:
     """Policy-gated receipt verification."""
 
@@ -277,8 +323,11 @@ class TestGovernancePolicyIntegration:
             policy_version=1,
             signers=[
                 SignerEntry(
-                    signer_id="alice", vk=alice.vk,
-                    roles={"operator"}, valid_from=0, valid_until=10000,
+                    signer_id="alice",
+                    vk=alice.vk,
+                    roles={"operator"},
+                    valid_from=0,
+                    valid_until=10000,
                 ),
             ],
             approval_rules=[
@@ -292,9 +341,13 @@ class TestGovernancePolicyIntegration:
         policy.sign_policy(alice.sk)
 
         receipt = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=0,
+            target_chain_id="base-testnet",
         )
 
         # Alice's receipt should pass policy check
@@ -313,13 +366,17 @@ class TestGovernancePolicyIntegration:
             policy_version=1,
             signers=[
                 SignerEntry(
-                    signer_id="alice", vk=alice.vk,
-                    roles={"operator"}, valid_from=0, valid_until=10000,
+                    signer_id="alice",
+                    vk=alice.vk,
+                    roles={"operator"},
+                    valid_from=0,
+                    valid_until=10000,
                 ),
             ],
             approval_rules=[
                 ApprovalRule(
-                    action_type="COMMIT", required_roles={"operator"},
+                    action_type="COMMIT",
+                    required_roles={"operator"},
                 ),
             ],
         )
@@ -327,9 +384,13 @@ class TestGovernancePolicyIntegration:
 
         # Bob signs the receipt
         receipt = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=bob, signer_role="operator",
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=bob,
+            signer_role="operator",
+            sequence=0,
+            target_chain_id="base-testnet",
         )
 
         result = verify_receipt(receipt, policy=policy)
@@ -338,6 +399,7 @@ class TestGovernancePolicyIntegration:
 
 
 # ── Evidence Bundle integration ───────────────────────────────────────────
+
 
 class TestEvidenceBundleIntegration:
     """Evidence bundle aggregates all artifacts for a complete audit trail."""
@@ -349,9 +411,13 @@ class TestEvidenceBundleIntegration:
         sth = network_with_nodes.log.latest_sth
 
         receipt = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=0,
+            target_chain_id="base-testnet",
         )
         proof = network_with_nodes.log.get_portable_proof(eid)
 

@@ -32,10 +32,10 @@ pytestmark = pytest.mark.skipif(
 from src.ltp.cloud.aws_kms import AWSKMSBackend
 from src.ltp.primitives import MLDSA
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def kms_key_arn():
@@ -65,7 +65,6 @@ def aws_kms(kms_key_arn):
 
 
 class TestCreateKey:
-
     @mock_aws
     def test_create_key_returns_public_bytes(self):
         client = boto3.client("kms", region_name="us-east-1")
@@ -112,7 +111,6 @@ class TestCreateKey:
 
 
 class TestGetPublicKey:
-
     @mock_aws
     def test_get_public_key(self):
         client = boto3.client("kms", region_name="us-east-1")
@@ -139,7 +137,6 @@ class TestGetPublicKey:
 
 
 class TestSign:
-
     @mock_aws
     def test_sign_produces_valid_signature(self):
         client = boto3.client("kms", region_name="us-east-1")
@@ -181,7 +178,6 @@ class TestSign:
 
 
 class TestDestroy:
-
     @mock_aws
     def test_destroy_existing_returns_true(self):
         client = boto3.client("kms", region_name="us-east-1")
@@ -217,7 +213,6 @@ class TestDestroy:
 
 
 class TestRotate:
-
     @mock_aws
     def test_rotate_returns_version_id(self):
         client = boto3.client("kms", region_name="us-east-1")
@@ -256,7 +251,6 @@ class TestRotate:
 
 
 class TestListAndMetadata:
-
     @mock_aws
     def test_list_keys(self):
         client = boto3.client("kms", region_name="us-east-1")
@@ -300,7 +294,6 @@ class TestListAndMetadata:
 
 
 class TestThreadSafety:
-
     @mock_aws
     def test_concurrent_creates(self):
         client = boto3.client("kms", region_name="us-east-1")
@@ -331,7 +324,6 @@ class TestThreadSafety:
 
 
 class TestKeyRotationIntegration:
-
     @mock_aws
     def test_complete_retirement_calls_destroy(self):
         from src.ltp.keypair import KeyPair, KeyRotationManager, KeyState

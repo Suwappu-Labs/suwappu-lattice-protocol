@@ -3,26 +3,26 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Iterator, TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterator
 
-from .events import ConsensusEvent, ConsensusEventType
-from .validator_set import ValidatorSet
-from .bls_certificates import BLSCertificateManager, SignedCertificate, DOMAIN_CONSENSUS_ACK
 from .backend import LocalConsensusBackend
+from .bls_certificates import DOMAIN_CONSENSUS_ACK, BLSCertificateManager, SignedCertificate
 from .committee_sync import CommitteeSync
-from .types import CommitDecision
 from .engine import to_ordered_batch
+from .events import ConsensusEvent, ConsensusEventType
 from .faults import FaultConfig, FaultType
+from .types import CommitDecision
+from .validator_set import ValidatorSet
 
 if TYPE_CHECKING:
-    from ..execution.committee.manager import CommitteeManager
     from ..execution.committee.dkg.threshold_signing import ThresholdSigningKey
+    from ..execution.committee.manager import CommitteeManager
 
-from ..execution.types import OrderedBatch
 from ..execution.committee.dkg.threshold_signing import (
     DOMAIN_ATTESTATION,
     combine_partial_signatures,
 )
+from ..execution.types import OrderedBatch
 
 __all__ = ["MysticetiAdapter"]
 
@@ -61,7 +61,8 @@ class MysticetiAdapter:
         n = self._validator_set.size
 
         self._backend = LocalConsensusBackend(
-            n, round_timeout_ms=self._round_timeout_ms,
+            n,
+            round_timeout_ms=self._round_timeout_ms,
         )
 
         epoch = self._committee_manager.epoch
@@ -212,14 +213,14 @@ class MysticetiAdapter:
         # Aggregate into signed certificate (if enough partials)
         if len(partials) >= vs.quorum_threshold:
             agg_sig = self._bls_manager.aggregate_ack_signatures(
-                partials, cert.digest, vs,
+                partials,
+                cert.digest,
+                vs,
             )
             SignedCertificate(
                 certificate=cert,
                 aggregated_signature=agg_sig,
-                signer_keys=frozenset(
-                    vs.bls_pk_for(i) for i in cert.signers if i < vs.size
-                ),
+                signer_keys=frozenset(vs.bls_pk_for(i) for i in cert.signers if i < vs.size),
             )
 
         # Attest the batch

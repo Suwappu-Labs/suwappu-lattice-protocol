@@ -36,6 +36,7 @@ __all__ = [
 # Default-factory helpers (module-level so dataclass field() can reference them)
 # ---------------------------------------------------------------------------
 
+
 def _default_allowed_tiers() -> set[IdentityTier]:
     return {IdentityTier.MLDSA, IdentityTier.BLS, IdentityTier.COMPOSITE}
 
@@ -44,8 +45,8 @@ def _default_tier_operations() -> dict[IdentityTier, set[OperationType]]:
     all_ops: set[OperationType] = set(OperationType)
     bls_ops: set[OperationType] = {OperationType.TRANSFER, OperationType.STATE_READ}
     return {
-        IdentityTier.MLDSA:     set(all_ops),
-        IdentityTier.BLS:       set(bls_ops),
+        IdentityTier.MLDSA: set(all_ops),
+        IdentityTier.BLS: set(bls_ops),
         IdentityTier.COMPOSITE: set(all_ops),
     }
 
@@ -53,24 +54,24 @@ def _default_tier_operations() -> dict[IdentityTier, set[OperationType]]:
 def _default_max_txs_per_epoch() -> dict[IdentityTier, int]:
     # 0 = unlimited
     return {
-        IdentityTier.MLDSA:     0,
-        IdentityTier.BLS:       1000,
+        IdentityTier.MLDSA: 0,
+        IdentityTier.BLS: 1000,
         IdentityTier.COMPOSITE: 0,
     }
 
 
 def _default_min_stake() -> dict[IdentityTier, int]:
     return {
-        IdentityTier.MLDSA:     0,
-        IdentityTier.BLS:       0,
+        IdentityTier.MLDSA: 0,
+        IdentityTier.BLS: 0,
         IdentityTier.COMPOSITE: 0,
     }
 
 
 def _default_fee_multiplier() -> dict[IdentityTier, float]:
     return {
-        IdentityTier.MLDSA:     1.0,
-        IdentityTier.BLS:       1.0,
+        IdentityTier.MLDSA: 1.0,
+        IdentityTier.BLS: 1.0,
         IdentityTier.COMPOSITE: 1.0,
     }
 
@@ -78,6 +79,7 @@ def _default_fee_multiplier() -> dict[IdentityTier, float]:
 # ---------------------------------------------------------------------------
 # VMWriterPolicy
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class VMWriterPolicy:
@@ -98,25 +100,17 @@ class VMWriterPolicy:
 
     vm_tag: int
 
-    allowed_tiers: set[IdentityTier] = field(
-        default_factory=_default_allowed_tiers
-    )
+    allowed_tiers: set[IdentityTier] = field(default_factory=_default_allowed_tiers)
     tier_operations: dict[IdentityTier, set[OperationType]] = field(
         default_factory=_default_tier_operations
     )
-    max_txs_per_epoch: dict[IdentityTier, int] = field(
-        default_factory=_default_max_txs_per_epoch
-    )
-    min_stake: dict[IdentityTier, int] = field(
-        default_factory=_default_min_stake
-    )
+    max_txs_per_epoch: dict[IdentityTier, int] = field(default_factory=_default_max_txs_per_epoch)
+    min_stake: dict[IdentityTier, int] = field(default_factory=_default_min_stake)
     max_writers: int = 0  # 0 = unlimited
 
-    fee_multiplier: dict[IdentityTier, float] = field(
-        default_factory=_default_fee_multiplier
-    )
+    fee_multiplier: dict[IdentityTier, float] = field(default_factory=_default_fee_multiplier)
 
-    allowlist: Optional[set[bytes]] = None   # None = open (no allowlist)
+    allowlist: Optional[set[bytes]] = None  # None = open (no allowlist)
     denylist: set[bytes] = field(default_factory=set)
 
     default_access_epochs: int = 0  # 0 = perpetual
@@ -126,9 +120,11 @@ class VMWriterPolicy:
 # PolicyResult
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class PolicyResult:
     """Outcome of a single policy evaluation."""
+
     allowed: bool
     reason: Optional[str] = None
     fee_multiplier: float = 1.0
@@ -147,6 +143,7 @@ class PolicyResult:
 # ---------------------------------------------------------------------------
 # PolicyEngine
 # ---------------------------------------------------------------------------
+
 
 class PolicyEngine:
     """Stateless evaluator for VMWriterPolicy.
@@ -214,9 +211,7 @@ class PolicyEngine:
         # 4. Probation: blocked operations
         # ------------------------------------------------------------------
         if is_probation and operation.value in mods.blocked_operations:
-            return PolicyResult.deny(
-                f"operation {operation.value} blocked during probation"
-            )
+            return PolicyResult.deny(f"operation {operation.value} blocked during probation")
 
         # ------------------------------------------------------------------
         # 5. Tier-operation permission

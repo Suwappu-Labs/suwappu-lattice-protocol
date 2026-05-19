@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import logging
 
-from fastapi import APIRouter, Query, Request, Body
+from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import JSONResponse
 
-from ..serializers import sth_to_dict, record_to_dict, proof_to_dict, error_response
+from ..serializers import error_response, proof_to_dict, record_to_dict, sth_to_dict
 
 logger = logging.getLogger(__name__)
 
@@ -97,11 +97,13 @@ async def get_sth_consistency(
     merkle_log = log._merkle_log
     proof_hashes = merkle_log._tree.consistency_proof(first)
 
-    return JSONResponse({
-        "first": first,
-        "second": second,
-        "consistency": [h.hex() if isinstance(h, bytes) else str(h) for h in proof_hashes],
-    })
+    return JSONResponse(
+        {
+            "first": first,
+            "second": second,
+            "consistency": [h.hex() if isinstance(h, bytes) else str(h) for h in proof_hashes],
+        }
+    )
 
 
 @router.get("/get-entry-and-proof")
@@ -122,10 +124,12 @@ async def get_entry_and_proof(
         return JSONResponse(error_response(404, f"Entity {entity_id[:32]}... not found"), 404)
 
     proof = log.get_inclusion_proof(entity_id)
-    return JSONResponse({
-        "entry": record_to_dict(record),
-        "proof": proof_to_dict(proof) if proof else None,
-    })
+    return JSONResponse(
+        {
+            "entry": record_to_dict(record),
+            "proof": proof_to_dict(proof) if proof else None,
+        }
+    )
 
 
 @router.post("/add-entry")
@@ -143,9 +147,11 @@ async def add_entry(request: Request) -> JSONResponse:
     except json.JSONDecodeError:
         return JSONResponse(error_response(400, "Invalid JSON"), 400)
 
-    return JSONResponse({
-        "status": "received",
-        "tree_size": log.length,
-        "note": "Direct entry addition requires a valid CommitmentRecord. "
-                "Use LTPProtocol.commit() for standard entry creation.",
-    })
+    return JSONResponse(
+        {
+            "status": "received",
+            "tree_size": log.length,
+            "note": "Direct entry addition requires a valid CommitmentRecord. "
+            "Use LTPProtocol.commit() for standard entry creation.",
+        }
+    )

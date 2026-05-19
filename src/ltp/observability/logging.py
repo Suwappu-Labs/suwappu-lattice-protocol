@@ -65,9 +65,8 @@ class JSONFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         entry = {
-            "timestamp": time.strftime(
-                "%Y-%m-%dT%H:%M:%S", time.gmtime(record.created)
-            ) + f".{int(record.msecs):03d}Z",
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(record.created))
+            + f".{int(record.msecs):03d}Z",
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -149,7 +148,13 @@ class StructuredLogger:
         """Emit a structured log record."""
         merged = {**self._default_fields, **extra}
         record = self._logger.makeRecord(
-            self._logger.name, level, "(structured)", 0, msg, (), None,
+            self._logger.name,
+            level,
+            "(structured)",
+            0,
+            msg,
+            (),
+            None,
         )
         record._extra_fields = merged
         self._logger.handle(record)

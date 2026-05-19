@@ -53,9 +53,7 @@ class RocksDBShardStore(ShardStore):
         try:
             import lsm
         except ImportError:
-            raise ImportError(
-                "lsm-db is required for RocksDB storage: pip install lsm-db"
-            )
+            raise ImportError("lsm-db is required for RocksDB storage: pip install lsm-db")
 
         self._path = path
         self._db = lsm.LSM(path)

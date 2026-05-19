@@ -30,7 +30,6 @@ os.environ.setdefault("LTP_KEYPAIR_IMPLICIT_HSM", "0")
 
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol, reset_poc_state
 
-
 # ---------------------------------------------------------------------------
 # LTP-A-032 Phase 4c — module-scoped opt-out from implicit-HSM
 # ---------------------------------------------------------------------------
@@ -48,42 +47,44 @@ from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol, reset_poc_state
 # `_legacy_plaintext_keypair` fixture or monkeypatch the env var.
 #
 # Shrink this list as Phase 4e migrates each module.
-LEGACY_PLAINTEXT_TEST_MODULES = frozenset({
-    # Phase 4e will migrate these one at a time onto KeyPair.sign/decaps.
-    "test_acvp_mldsa",
-    "test_acvp_mlkem",
-    "test_anchor_scheduler",
-    "test_anchor_verifier",
-    "test_backend_boundaries",
-    "test_bls_attestation",
-    "test_bls_e2e",
-    "test_bls_keys",
-    "test_commitment",
-    "test_compliance",
-    "test_cross_network_e2e",
-    "test_cross_network_fetcher",
-    "test_domain_separation",
-    "test_encoding",
-    "test_federation",
-    "test_federation_agreement",
-    "test_federation_gate_closure",
-    "test_federation_rate_limiter",
-    "test_gossip_core",
-    "test_gossip_grpc",
-    "test_gossip_integration",
-    "test_key_lifecycle",
-    "test_key_rotation",
-    "test_merkle_log",
-    "test_optimistic_bridge",
-    "test_primitives",
-    "test_production_gate",
-    "test_security_audit",
-    "test_shard_distribution",
-    "test_stark_bridge",
-    "test_timing_analysis",
-    "test_zk_bridge",
-    "test_zk_e2e",
-})
+LEGACY_PLAINTEXT_TEST_MODULES = frozenset(
+    {
+        # Phase 4e will migrate these one at a time onto KeyPair.sign/decaps.
+        "test_acvp_mldsa",
+        "test_acvp_mlkem",
+        "test_anchor_scheduler",
+        "test_anchor_verifier",
+        "test_backend_boundaries",
+        "test_bls_attestation",
+        "test_bls_e2e",
+        "test_bls_keys",
+        "test_commitment",
+        "test_compliance",
+        "test_cross_network_e2e",
+        "test_cross_network_fetcher",
+        "test_domain_separation",
+        "test_encoding",
+        "test_federation",
+        "test_federation_agreement",
+        "test_federation_gate_closure",
+        "test_federation_rate_limiter",
+        "test_gossip_core",
+        "test_gossip_grpc",
+        "test_gossip_integration",
+        "test_key_lifecycle",
+        "test_key_rotation",
+        "test_merkle_log",
+        "test_optimistic_bridge",
+        "test_primitives",
+        "test_production_gate",
+        "test_security_audit",
+        "test_shard_distribution",
+        "test_stark_bridge",
+        "test_timing_analysis",
+        "test_zk_bridge",
+        "test_zk_e2e",
+    }
+)
 
 
 @pytest.fixture
@@ -109,6 +110,7 @@ def pytest_collection_modifyitems(config, items):
 # Keypairs (session scope — generation is expensive)
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="session")
 def alice() -> KeyPair:
     """Alice — the sender keypair."""
@@ -130,6 +132,7 @@ def eve() -> KeyPair:
 # ---------------------------------------------------------------------------
 # Network and protocol (function scope — fresh per test)
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def fresh_poc_state() -> None:

@@ -11,13 +11,13 @@ from __future__ import annotations
 
 from typing import Optional
 
+from ..primitives import canonical_hash
 from .base import (
     BackendCapabilities,
     BackendConfig,
     CommitmentBackend,
     FinalityModel,
 )
-from ..primitives import canonical_hash
 
 
 class LocalBackend(CommitmentBackend):

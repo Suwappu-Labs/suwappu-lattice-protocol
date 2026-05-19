@@ -25,7 +25,7 @@ from .entity import Entity
 from .erasure import ErasureCoder
 from .keypair import KeyPair, KeyRegistry
 from .lattice import LatticeKey
-from .primitives import canonical_hash, AEAD, MLKEM, MLDSA
+from .primitives import AEAD, MLDSA, MLKEM, canonical_hash
 from .shards import ShardEncryptor
 
 logger = logging.getLogger(__name__)
@@ -37,20 +37,23 @@ __all__ = ["LTPProtocol", "TransferState", "TransferSession", "ProtocolConfig"]
 # Protocol State Machine (ref: WireGuard §5, FoundationDB strict serializability)
 # ---------------------------------------------------------------------------
 
+
 class TransferState(Enum):
     """Transfer lifecycle states. See whitepaper §2.3.3."""
+
     IDLE = "idle"
-    COMMITTED = "committed"          # Phase 1 complete
-    SEALED = "sealed"                # Phase 2 complete (lattice key sealed)
+    COMMITTED = "committed"  # Phase 1 complete
+    SEALED = "sealed"  # Phase 2 complete (lattice key sealed)
     MATERIALIZING = "materializing"  # Phase 3 in progress
-    MATERIALIZED = "materialized"    # Phase 3 complete — transfer done
-    FAILED = "failed"                # Unrecoverable error
-    TIMED_OUT = "timed_out"          # Timeout exceeded
+    MATERIALIZED = "materialized"  # Phase 3 complete — transfer done
+    FAILED = "failed"  # Unrecoverable error
+    TIMED_OUT = "timed_out"  # Timeout exceeded
 
 
 @dataclass
 class ProtocolConfig:
     """Protocol timing constraints. See whitepaper §2.3.3."""
+
     commit_timeout_seconds: float = 30.0
     lattice_timeout_seconds: float = 10.0
     materialize_timeout_seconds: float = 60.0
@@ -65,6 +68,7 @@ class TransferSession:
     the commit/lattice/materialize methods work without sessions for
     backward compatibility.
     """
+
     entity_id: str = ""
     state: TransferState = field(default=TransferState.IDLE)
     started_at: float = 0.0
@@ -183,7 +187,8 @@ class LTPProtocol:
         overhead = len(encrypted_shards[0]) - len(plaintext_shards[0])
         logger.info(
             "[COMMIT] Shards encrypted (AEAD): %s bytes each (+%dB auth tag)",
-            f"{len(encrypted_shards[0]):,}", overhead,
+            f"{len(encrypted_shards[0]):,}",
+            overhead,
         )
 
         shard_map_root = self.network.distribute_encrypted_shards(entity_id, encrypted_shards)
@@ -264,12 +269,16 @@ class LTPProtocol:
         logger.info("[LATTICE]   REMOVED: shard_ids, encoding_params, sender_id")
         logger.info("[LATTICE] Sealed via ML-KEM-768: %s bytes", f"{len(sealed):,}")
         logger.info("[LATTICE]   kem_ciphertext: %d bytes (fresh encapsulation)", MLKEM.CT_SIZE)
-        logger.info("[LATTICE]   nonce: %d bytes | aead_tag: %d bytes", AEAD.NONCE_SIZE, AEAD._tag_size())
+        logger.info(
+            "[LATTICE]   nonce: %d bytes | aead_tag: %d bytes", AEAD.NONCE_SIZE, AEAD._tag_size()
+        )
         logger.info("[LATTICE]   Forward secrecy: shared_secret zeroized after AEAD encrypt")
         if entity_size > 0:
             logger.info(
                 "[LATTICE] Entity: %sB → Key: %sB (%.1fx ratio)",
-                f"{entity_size:,}", f"{len(sealed):,}", entity_size / len(sealed),
+                f"{entity_size:,}",
+                f"{len(sealed):,}",
+                entity_size / len(sealed),
             )
 
         return sealed
@@ -367,19 +376,24 @@ class LTPProtocol:
                     key.cek, key.entity_id, enc_shard, i
                 )
             except ValueError as e:
-                logger.warning("[MATERIALIZE] Shard %d: AEAD authentication FAILED — %s (skipping)", i, e)
+                logger.warning(
+                    "[MATERIALIZE] Shard %d: AEAD authentication FAILED — %s (skipping)", i, e
+                )
 
         tampered_count = len(encrypted_shards) - len(plaintext_shards)
         if len(plaintext_shards) < k:
             logger.warning(
                 "[MATERIALIZE] Only %d/%d shards decrypted (%d rejected by AEAD)",
-                len(plaintext_shards), k, tampered_count,
+                len(plaintext_shards),
+                k,
+                tampered_count,
             )
             return None
         logger.info("[MATERIALIZE] %d shards decrypted with CEK", len(plaintext_shards))
         if tampered_count > 0:
             logger.warning(
-                "[MATERIALIZE]   %d shard(s) REJECTED by AEAD tag verification", tampered_count,
+                "[MATERIALIZE]   %d shard(s) REJECTED by AEAD tag verification",
+                tampered_count,
             )
         else:
             logger.info("[MATERIALIZE]   AEAD tags verified — no shard tampering detected")
@@ -391,10 +405,7 @@ class LTPProtocol:
         # Step 9: Verify full EntityID (end-to-end content integrity, whitepaper §2.3.1)
         # Defends against commitment record substitution attacks.
         expected_entity_id = canonical_hash(
-            entity_content
-            + record.shape.encode()
-            + struct.pack('>d', record.timestamp)
-            + sender_vk
+            entity_content + record.shape.encode() + struct.pack(">d", record.timestamp) + sender_vk
         )
         if expected_entity_id != key.entity_id:
             logger.warning("[MATERIALIZE] EntityID MISMATCH — reconstructed content differs!")

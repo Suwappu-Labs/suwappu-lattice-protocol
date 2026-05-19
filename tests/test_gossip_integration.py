@@ -20,14 +20,12 @@ from src.ltp.node.gossip import (
 )
 from src.ltp.node.peer_manager import PeerManager, PeerState
 
-
 # ---------------------------------------------------------------------------
 # Multi-node discovery
 # ---------------------------------------------------------------------------
 
 
 class TestMultiNodeDiscovery:
-
     def test_two_nodes_discover_each_other(self):
         """Alice and Bob each know one peer; gossip exchange reveals the other."""
         alice_kp = KeyPair.generate("alice")
@@ -45,16 +43,20 @@ class TestMultiNodeDiscovery:
 
         # Bob builds exchange message
         bob_gossip = GossipProtocol(
-            peer_manager=bob_pm, keypair=bob_kp,
-            node_id="bob", region="EU",
+            peer_manager=bob_pm,
+            keypair=bob_kp,
+            node_id="bob",
+            region="EU",
         )
         msg = bob_gossip.build_exchange_message(exclude_node_id="alice")
         sig = msg.sign(bob_kp.sk)
 
         # Alice receives it
         alice_gossip = GossipProtocol(
-            peer_manager=alice_pm, keypair=alice_kp,
-            node_id="alice", region="US",
+            peer_manager=alice_pm,
+            keypair=alice_kp,
+            node_id="alice",
+            region="US",
         )
         discovered = alice_gossip.handle_peer_exchange(msg, bob_kp.vk, sig)
         assert discovered == 1
@@ -97,7 +99,6 @@ class TestMultiNodeDiscovery:
 
 
 class TestSeedPeerCompatibility:
-
     def test_seed_peers_still_work(self):
         """Static seed peers function alongside gossip."""
         pm = PeerManager()
@@ -136,7 +137,6 @@ class TestSeedPeerCompatibility:
 
 
 class TestLivenessIntegration:
-
     def test_liveness_marks_stale_peer_disconnected(self):
         kp_a = KeyPair.generate("a")
         kp_b = KeyPair.generate("b")
@@ -147,7 +147,9 @@ class TestLivenessIntegration:
         with pm._lock:
             pm._peers_by_id["b"].last_seen = time.time() - 200
 
-        gossip = GossipProtocol(pm, kp_a, "a", "US", config=GossipConfig(liveness_timeout_seconds=90.0))
+        gossip = GossipProtocol(
+            pm, kp_a, "a", "US", config=GossipConfig(liveness_timeout_seconds=90.0)
+        )
         result = gossip.tick()
         assert result.peers_timed_out == 1
         assert pm.get_peer_by_id("b").state == PeerState.DISCONNECTED
@@ -161,7 +163,9 @@ class TestLivenessIntegration:
         # Update last_seen recently
         pm.update_last_seen("b")
 
-        gossip = GossipProtocol(pm, kp_a, "a", "US", config=GossipConfig(liveness_timeout_seconds=90.0))
+        gossip = GossipProtocol(
+            pm, kp_a, "a", "US", config=GossipConfig(liveness_timeout_seconds=90.0)
+        )
         result = gossip.tick()
         assert result.peers_timed_out == 0
 
@@ -172,7 +176,6 @@ class TestLivenessIntegration:
 
 
 class TestGossipConfig:
-
     def test_config_from_env(self):
         env = {
             "ETP_GOSSIP_ENABLED": "true",

@@ -18,19 +18,19 @@ __all__ = ["MerkleTree"]
 
 from ..primitives import canonical_hash_bytes
 
-
 # ---------------------------------------------------------------------------
 # Domain-separated hash primitives (RFC 6962 §2.1)
 # ---------------------------------------------------------------------------
 
+
 def _leaf_hash(data: bytes) -> bytes:
     """Hash a leaf: H(0x00 || data). The 0x00 prefix prevents leaf/node confusion."""
-    return canonical_hash_bytes(b'\x00' + data)
+    return canonical_hash_bytes(b"\x00" + data)
 
 
 def _internal_hash(left: bytes, right: bytes) -> bytes:
     """Hash two children: H(0x01 || left || right)."""
-    return canonical_hash_bytes(b'\x01' + left + right)
+    return canonical_hash_bytes(b"\x01" + left + right)
 
 
 def _largest_pow2_below(n: int) -> int:
@@ -44,6 +44,7 @@ def _largest_pow2_below(n: int) -> int:
 # ---------------------------------------------------------------------------
 # Recursive tree operations
 # ---------------------------------------------------------------------------
+
 
 def _compute_root(leaves: list[bytes]) -> bytes:
     """Recursively compute the Merkle root from a list of pre-hashed leaf nodes."""
@@ -119,6 +120,7 @@ def _verify_inclusion(
 # MerkleTree class
 # ---------------------------------------------------------------------------
 
+
 class MerkleTree:
     """
     Append-only binary Merkle tree.
@@ -169,13 +171,15 @@ class MerkleTree:
         Cache is invalidated if leaf count changes or leaf content is modified.
         """
         if not self._leaves:
-            return canonical_hash_bytes(b'')
+            return canonical_hash_bytes(b"")
 
         # Fast path: if leaf count hasn't changed, check content via checksum.
         # The checksum is O(n) but still cheaper than recomputing the full tree.
-        if (self._cached_root is not None
-                and len(self._leaves) == self._cache_leaf_count
-                and self._leaf_checksum() == self._cache_leaf_checksum):
+        if (
+            self._cached_root is not None
+            and len(self._leaves) == self._cache_leaf_count
+            and self._leaf_checksum() == self._cache_leaf_checksum
+        ):
             return self._cached_root
 
         self._cached_root = _compute_root(self._leaves)
@@ -230,9 +234,7 @@ class MerkleTree:
             ValueError: if old_size is out of range.
         """
         if old_size < 1 or old_size > self.size:
-            raise ValueError(
-                f"old_size {old_size} out of range (1..{self.size})"
-            )
+            raise ValueError(f"old_size {old_size} out of range (1..{self.size})")
         if old_size == self.size:
             return []
         return _subproof(old_size, self._leaves, True)
@@ -241,6 +243,7 @@ class MerkleTree:
 # ---------------------------------------------------------------------------
 # Consistency proof helpers (RFC 6962 §2.1.2)
 # ---------------------------------------------------------------------------
+
 
 def _subproof(m: int, leaves: list[bytes], start: bool) -> list[bytes]:
     """

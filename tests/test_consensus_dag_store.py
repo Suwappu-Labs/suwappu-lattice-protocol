@@ -1,10 +1,15 @@
 """Tests for DAGStore (Spec D1a §2)."""
 
-from ltp.consensus.types import Block, Certificate
 from ltp.consensus.dag_store import DAGStore
+from ltp.consensus.types import Block, Certificate
 
 
-def _block(author: int, round: int, payload: tuple[bytes, ...] = (), parents: frozenset[bytes] = frozenset()) -> Block:
+def _block(
+    author: int,
+    round: int,
+    payload: tuple[bytes, ...] = (),
+    parents: frozenset[bytes] = frozenset(),
+) -> Block:
     return Block(author=author, round=round, payload=payload, parents=parents, timestamp_ms=1000)
 
 

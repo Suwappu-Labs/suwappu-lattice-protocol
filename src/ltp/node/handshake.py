@@ -17,8 +17,8 @@ import struct
 import time
 from dataclasses import dataclass
 
-from ..encoding import CanonicalEncoder
 from ..domain import DOMAIN_NODE_HANDSHAKE
+from ..encoding import CanonicalEncoder
 from ..envelope import SignedEnvelope
 from ..keypair import KeyPair
 
@@ -129,6 +129,7 @@ def verify_handshake_envelope(
 # Wire-format serialization for gRPC transport
 # ---------------------------------------------------------------------------
 
+
 def serialize_envelope(env: SignedEnvelope) -> bytes:
     """Serialize a SignedEnvelope to deterministic wire format for gRPC."""
     parts: list[bytes] = []
@@ -193,7 +194,7 @@ def deserialize_envelope(data: bytes) -> SignedEnvelope:
 
     # signer_kid (32B)
     _check_bounds(data, offset, 32, "signer_kid")
-    signer_kid = data[offset:offset + 32]
+    signer_kid = data[offset : offset + 32]
     offset += 32
 
     # timestamp
@@ -207,7 +208,7 @@ def deserialize_envelope(data: bytes) -> SignedEnvelope:
 
     # payload_hash (32B)
     _check_bounds(data, offset, 32, "payload_hash")
-    payload_hash = data[offset:offset + 32]
+    payload_hash = data[offset : offset + 32]
     offset += 32
 
     # payload
@@ -234,6 +235,7 @@ def deserialize_envelope(data: bytes) -> SignedEnvelope:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _check_bounds(data: bytes, offset: int, needed: int, field: str) -> None:
     """Raise ValueError if data is too short for the next read."""
     if offset + needed > len(data):
@@ -244,14 +246,16 @@ def _check_bounds(data: bytes, offset: int, needed: int, field: str) -> None:
 
 
 def _read_lp_bytes(
-    data: bytes, offset: int, field: str = "field",
+    data: bytes,
+    offset: int,
+    field: str = "field",
 ) -> tuple[bytes, int]:
     """Read a length-prefixed bytes field with bounds checking."""
     _check_bounds(data, offset, 4, f"{field} length prefix")
     length = struct.unpack_from(">I", data, offset)[0]
     offset += 4
     _check_bounds(data, offset, length, f"{field} data ({length}B)")
-    value = data[offset:offset + length]
+    value = data[offset : offset + length]
     offset += length
     return value, offset
 

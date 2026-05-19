@@ -1,8 +1,10 @@
 """Tests for WriterGate — layered universal + per-VM enforcement (Spec C2 §9)."""
+
 from __future__ import annotations
 
 import pytest
 
+from src.ltp.execution.types import OperationType
 from src.ltp.execution.writer import (
     ApprovalPath,
     IdentityTier,
@@ -16,8 +18,6 @@ from src.ltp.execution.writer_gate import WriterGate
 from src.ltp.execution.writer_policy import VMWriterPolicy
 from src.ltp.execution.writer_recovery import EmergencyState
 from src.ltp.execution.writer_registry import WriterRegistry
-from src.ltp.execution.types import OperationType
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -75,6 +75,7 @@ def _make_tx(fp: bytes, vm_tag: int = 0x01, payload: bytes = b"data") -> bytes:
 # ---------------------------------------------------------------------------
 # TestPreDispatch
 # ---------------------------------------------------------------------------
+
 
 class TestPreDispatch:
     def test_active_writer_allowed(self):
@@ -150,6 +151,7 @@ class TestPreDispatch:
 # TestVMAuthorize
 # ---------------------------------------------------------------------------
 
+
 class TestVMAuthorize:
     def test_declarative_policy_allows_transfer(self):
         gate, reg, _, _ = _make_gate()
@@ -216,6 +218,7 @@ class TestVMAuthorize:
 # TestRouterIntegration
 # ---------------------------------------------------------------------------
 
+
 class FakeEVM:
     vm_tag = 0x01
     vm_name = "fake-evm"
@@ -223,6 +226,7 @@ class FakeEVM:
 
     def execute(self, tx_bytes):
         from src.ltp.execution.types import TxResult
+
         return TxResult.accepted(gas_used=21000)
 
     def state_root(self):
@@ -233,12 +237,14 @@ class FakeEVM:
 
     def query_state(self, query):
         from src.ltp.execution.types import StateResult
+
         return StateResult.not_found()
 
 
 def _make_router(gate=None):
     from src.ltp.execution.registry import VMRegistry
     from src.ltp.execution.router import TransactionRouter
+
     reg = VMRegistry()
     reg.register(FakeEVM())
     return TransactionRouter(reg, writer_gate=gate)
@@ -246,6 +252,7 @@ def _make_router(gate=None):
 
 def _make_ordered_batch(txs: list[bytes], round_num: int = 1):
     from src.ltp.execution.types import OrderedBatch
+
     return OrderedBatch(
         round=round_num,
         epoch=0,
@@ -298,6 +305,7 @@ class TestRouterIntegration:
 # TestDispatchOverrideInGate
 # ---------------------------------------------------------------------------
 
+
 class TestDispatchOverrideInGate:
     """Dispatch overrides in pre_dispatch: force-allow / force-block."""
 
@@ -308,8 +316,9 @@ class TestDispatchOverrideInGate:
         # Freeze the VM
         emergency.freeze_vm(vm_tag=0x01, actor_fp=ADMIN_FP, reason="incident", timestamp=1)
         # Set force-allow override for this writer
-        emergency.set_dispatch_override(fp, allow=True, actor_fp=ADMIN_FP,
-                                         reason="VIP", timestamp=2)
+        emergency.set_dispatch_override(
+            fp, allow=True, actor_fp=ADMIN_FP, reason="VIP", timestamp=2
+        )
         tx = _make_tx(fp, vm_tag=0x01)
         decision = gate.pre_dispatch(tx)
         # Override is checked BEFORE VM freeze, so it should allow
@@ -319,8 +328,9 @@ class TestDispatchOverrideInGate:
         gate, reg, emergency, _ = _make_gate()
         fp = b"\xaa" * 32
         _enroll_active(reg, fp=fp)
-        emergency.set_dispatch_override(fp, allow=False, actor_fp=ADMIN_FP,
-                                         reason="quarantine", timestamp=1)
+        emergency.set_dispatch_override(
+            fp, allow=False, actor_fp=ADMIN_FP, reason="quarantine", timestamp=1
+        )
         tx = _make_tx(fp, vm_tag=0x01)
         decision = gate.pre_dispatch(tx)
         assert decision.allowed is False
@@ -341,8 +351,9 @@ class TestDispatchOverrideInGate:
         gate, reg, emergency, _ = _make_gate()
         fp = b"\xaa" * 32
         _enroll_active(reg, fp=fp)
-        emergency.set_dispatch_override(fp, allow=False, actor_fp=ADMIN_FP,
-                                         reason="quarantine", timestamp=1)
+        emergency.set_dispatch_override(
+            fp, allow=False, actor_fp=ADMIN_FP, reason="quarantine", timestamp=1
+        )
         emergency.clear_dispatch_override(fp, ADMIN_FP, timestamp=2)
         tx = _make_tx(fp, vm_tag=0x01)
         decision = gate.pre_dispatch(tx)
@@ -353,6 +364,7 @@ class TestDispatchOverrideInGate:
 # ---------------------------------------------------------------------------
 # TestPolicyRollbackInGate
 # ---------------------------------------------------------------------------
+
 
 class TestPolicyRollbackInGate:
     """WriterGate.rollback_policy restores a previous policy snapshot."""
@@ -374,6 +386,7 @@ class TestPolicyRollbackInGate:
 
     def test_set_policy_snapshots_automatically(self):
         from src.ltp.execution.writer_recovery import PolicySnapshotStore
+
         store = PolicySnapshotStore()
         reg = WriterRegistry()
         gate = WriterGate(registry=reg, snapshot_store=store)

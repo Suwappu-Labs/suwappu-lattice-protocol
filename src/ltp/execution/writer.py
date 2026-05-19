@@ -25,8 +25,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
-from ..primitives import canonical_hash_bytes
 from ..bls_keys import BLSIdentity, bls_fingerprint, composite_fingerprint
+from ..primitives import canonical_hash_bytes
 
 __all__ = [
     "IdentityTier",
@@ -45,20 +45,23 @@ __all__ = [
 # Identity Tier
 # ---------------------------------------------------------------------------
 
+
 class IdentityTier(str, Enum):
     """Cryptographic identity tier for a writer.
 
     Determines which verification key(s) are active and how the writer
     fingerprint is computed.
     """
-    MLDSA     = "mldsa"      # ML-DSA-65 only (post-quantum standalone)
-    BLS       = "bls"        # BLS12-381 only (aggregation-optimised)
+
+    MLDSA = "mldsa"  # ML-DSA-65 only (post-quantum standalone)
+    BLS = "bls"  # BLS12-381 only (aggregation-optimised)
     COMPOSITE = "composite"  # ML-DSA + BLS (dual-key, highest assurance)
 
 
 # ---------------------------------------------------------------------------
 # Writer Lifecycle State Machine
 # ---------------------------------------------------------------------------
+
 
 class WriterState(str, Enum):
     """Writer account lifecycle states.
@@ -70,38 +73,43 @@ class WriterState(str, Enum):
     EXPIRED    — time-limited credential lapsed, renewal possible
     REVOKED    — permanently terminated (terminal state)
     """
-    PENDING   = "pending"
+
+    PENDING = "pending"
     PROBATION = "probation"
-    ACTIVE    = "active"
+    ACTIVE = "active"
     SUSPENDED = "suspended"
-    EXPIRED   = "expired"
-    REVOKED   = "revoked"
+    EXPIRED = "expired"
+    REVOKED = "revoked"
 
 
-TRANSACTABLE_STATES: frozenset[WriterState] = frozenset({
-    WriterState.ACTIVE,
-    WriterState.PROBATION,
-})
+TRANSACTABLE_STATES: frozenset[WriterState] = frozenset(
+    {
+        WriterState.ACTIVE,
+        WriterState.PROBATION,
+    }
+)
 
-VALID_WRITER_TRANSITIONS: frozenset[tuple[WriterState, WriterState]] = frozenset({
-    # Enrollment path
-    (WriterState.PENDING,   WriterState.PROBATION),
-    (WriterState.PENDING,   WriterState.ACTIVE),
-    (WriterState.PENDING,   WriterState.REVOKED),
-    # Probation path
-    (WriterState.PROBATION, WriterState.ACTIVE),
-    (WriterState.PROBATION, WriterState.SUSPENDED),
-    (WriterState.PROBATION, WriterState.REVOKED),
-    # Active path
-    (WriterState.ACTIVE,    WriterState.SUSPENDED),
-    (WriterState.ACTIVE,    WriterState.EXPIRED),
-    (WriterState.ACTIVE,    WriterState.REVOKED),
-    # Recovery paths
-    (WriterState.SUSPENDED, WriterState.ACTIVE),
-    (WriterState.SUSPENDED, WriterState.REVOKED),
-    (WriterState.EXPIRED,   WriterState.ACTIVE),
-    (WriterState.EXPIRED,   WriterState.REVOKED),
-})
+VALID_WRITER_TRANSITIONS: frozenset[tuple[WriterState, WriterState]] = frozenset(
+    {
+        # Enrollment path
+        (WriterState.PENDING, WriterState.PROBATION),
+        (WriterState.PENDING, WriterState.ACTIVE),
+        (WriterState.PENDING, WriterState.REVOKED),
+        # Probation path
+        (WriterState.PROBATION, WriterState.ACTIVE),
+        (WriterState.PROBATION, WriterState.SUSPENDED),
+        (WriterState.PROBATION, WriterState.REVOKED),
+        # Active path
+        (WriterState.ACTIVE, WriterState.SUSPENDED),
+        (WriterState.ACTIVE, WriterState.EXPIRED),
+        (WriterState.ACTIVE, WriterState.REVOKED),
+        # Recovery paths
+        (WriterState.SUSPENDED, WriterState.ACTIVE),
+        (WriterState.SUSPENDED, WriterState.REVOKED),
+        (WriterState.EXPIRED, WriterState.ACTIVE),
+        (WriterState.EXPIRED, WriterState.REVOKED),
+    }
+)
 
 
 def validate_writer_transition(
@@ -127,23 +135,26 @@ def validate_writer_transition(
 # Transition Audit Entry
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class TransitionEntry:
     """Immutable record of a single writer state transition.
 
     Stored in WriterRecord.transition_log for a complete audit trail.
     """
-    timestamp:    int            # Timestamp in milliseconds
-    from_state:   WriterState    # State before the transition
-    to_state:     WriterState    # State after the transition
-    actor_fp:     bytes          # 32-byte fingerprint of the authorising actor
-    reason:       str            # Human-readable reason
-    is_emergency: bool = False   # True when bypass rules were in effect
+
+    timestamp: int  # Timestamp in milliseconds
+    from_state: WriterState  # State before the transition
+    to_state: WriterState  # State after the transition
+    actor_fp: bytes  # 32-byte fingerprint of the authorising actor
+    reason: str  # Human-readable reason
+    is_emergency: bool = False  # True when bypass rules were in effect
 
 
 # ---------------------------------------------------------------------------
 # Writer Identity
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class WriterIdentity:
@@ -151,10 +162,11 @@ class WriterIdentity:
 
     Binds one or two public keys to a canonical fingerprint and a tier.
     """
-    tier:        IdentityTier
-    fingerprint: bytes           # 32-byte canonical identity hash
-    mldsa_vk:    Optional[bytes] = None  # ML-DSA verification key (if tier != BLS)
-    bls_pk:      Optional[bytes] = None  # BLS12-381 public key (if tier != MLDSA)
+
+    tier: IdentityTier
+    fingerprint: bytes  # 32-byte canonical identity hash
+    mldsa_vk: Optional[bytes] = None  # ML-DSA verification key (if tier != BLS)
+    bls_pk: Optional[bytes] = None  # BLS12-381 public key (if tier != MLDSA)
 
     # ------------------------------------------------------------------
     # Factory class methods
@@ -210,6 +222,7 @@ class WriterIdentity:
 # Approval Path
 # ---------------------------------------------------------------------------
 
+
 class ApprovalPath(str, Enum):
     """How a writer was approved (affects policy and audit).
 
@@ -217,14 +230,16 @@ class ApprovalPath(str, Enum):
     SPONSOR — vouched for by an existing ACTIVE writer
     SELF    — self-service / open enrollment (policy-gated)
     """
-    ADMIN   = "admin"
+
+    ADMIN = "admin"
     SPONSOR = "sponsor"
-    SELF    = "self"
+    SELF = "self"
 
 
 # ---------------------------------------------------------------------------
 # Writer Record
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class WriterRecord:
@@ -232,25 +247,26 @@ class WriterRecord:
 
     Owned by the WriterRegistry; mutated only through validated transitions.
     """
-    identity:           WriterIdentity
-    state:              WriterState
-    approval_path:      ApprovalPath
-    enrolled_at:        int                     # Timestamp in milliseconds
+
+    identity: WriterIdentity
+    state: WriterState
+    approval_path: ApprovalPath
+    enrolled_at: int  # Timestamp in milliseconds
 
     # Optional fields set on approval / progression
-    approved_at:        Optional[int]           = None
-    approved_by:        Optional[bytes]         = None  # 32-byte actor fingerprint
-    sponsors:           list[bytes]             = field(default_factory=list)
+    approved_at: Optional[int] = None
+    approved_by: Optional[bytes] = None  # 32-byte actor fingerprint
+    sponsors: list[bytes] = field(default_factory=list)
 
     # Time-bounded fields
-    probation_until:    Optional[int]           = None  # Unix epoch (int seconds)
-    expires_at:         Optional[int]           = None  # Unix epoch (int seconds)
+    probation_until: Optional[int] = None  # Unix epoch (int seconds)
+    expires_at: Optional[int] = None  # Unix epoch (int seconds)
 
     # Suspension / revocation metadata
-    suspension_reason:  Optional[str]           = None
+    suspension_reason: Optional[str] = None
 
     # Immutable audit trail
-    transition_log:     list[TransitionEntry]   = field(default_factory=list)
+    transition_log: list[TransitionEntry] = field(default_factory=list)
 
     # ------------------------------------------------------------------
     # Properties

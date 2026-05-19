@@ -137,13 +137,13 @@ class LiveBridge:
         self._zk_prover = zk_prover
 
         # Bridge components
-        self._l1_anchor = L1Anchor(
-            protocol, operator_keypair, chain_id=source_chain
-        )
+        self._l1_anchor = L1Anchor(protocol, operator_keypair, chain_id=source_chain)
         self._relayer = Relayer(protocol)
         self._materializer = L2Materializer(
-            protocol, l2_verifier_keypair,
-            chain_id=dest_chain, required_confirmations=1,
+            protocol,
+            l2_verifier_keypair,
+            chain_id=dest_chain,
+            required_confirmations=1,
         )
 
         # Independent per-chain sequence counters — seeded from on-chain state
@@ -220,7 +220,9 @@ class LiveBridge:
         # --- Phase 1: COMMIT ---
         logger.info(
             "[LiveBridge] Phase 1/5: COMMIT %s %s->%s nonce=%d",
-            message.msg_type, message.source_chain, message.dest_chain,
+            message.msg_type,
+            message.source_chain,
+            message.dest_chain,
             message.nonce,
         )
         commitment, cek = self._l1_anchor.commit_message(message)
@@ -228,7 +230,8 @@ class LiveBridge:
         # --- Phase 2: ON-CHAIN ANCHOR (L1) ---
         logger.info(
             "[LiveBridge] Phase 2/5: ANCHOR on L1 (chain_id=%d), entity_id=%s...",
-            self._l1_chain_id, commitment.entity_id[:16],
+            self._l1_chain_id,
+            commitment.entity_id[:16],
         )
 
         # Get merkle root from the protocol's log
@@ -262,7 +265,8 @@ class LiveBridge:
         l1_tx_hash = self._l1_client.anchor(submission)
         logger.info(
             "[LiveBridge] Anchored on L1: tx=%s, digest=%s",
-            l1_tx_hash[:16], anchor_digest.hex()[:16],
+            l1_tx_hash[:16],
+            anchor_digest.hex()[:16],
         )
 
         # --- Phase 3: RELAY ---
@@ -313,13 +317,12 @@ class LiveBridge:
             try:
                 l2_tx = self._l2_client.anchor(l2_submission)
                 is_anchored_l2 = self._l2_client.is_anchored(anchor_digest)
-                entity_state_l2 = int(
-                    self._l2_client.entity_state(l2_submission.entity_id_hash)
-                )
+                entity_state_l2 = int(self._l2_client.entity_state(l2_submission.entity_id_hash))
                 l2_block = self._l2_client.get_block_number()
                 logger.info(
                     "[LiveBridge] L2 re-anchor OK: tx=%s, block=%d",
-                    l2_tx[:16], l2_block,
+                    l2_tx[:16],
+                    l2_block,
                 )
             except Exception:
                 logger.warning("[LiveBridge] L2 re-anchor failed (non-fatal)")
@@ -333,7 +336,8 @@ class LiveBridge:
         if self._challenge_manager is not None:
             try:
                 crec = self._challenge_manager.open_challenge_window(
-                    commitment.entity_id, anchor_digest,
+                    commitment.entity_id,
+                    anchor_digest,
                 )
                 challenge_status = crec.status.value
                 challenge_deadline = crec.challenge_deadline
@@ -355,7 +359,8 @@ class LiveBridge:
                     if self._challenge_manager is not None:
                         try:
                             self._challenge_manager.resolve_with_proof(
-                                commitment.entity_id, zk_proof,
+                                commitment.entity_id,
+                                zk_proof,
                             )
                             challenge_status = "finalized"
                             challenge_deadline = None
@@ -377,7 +382,10 @@ class LiveBridge:
 
         logger.info(
             "[LiveBridge] COMPLETE: anchored_l1=%s, state=%s, msg=%s, cross_chain=%s",
-            is_anchored_l1, entity_state_l1.name, result.msg_type, self._cross_chain,
+            is_anchored_l1,
+            entity_state_l1.name,
+            result.msg_type,
+            self._cross_chain,
         )
 
         return LiveBridgeResult(

@@ -96,6 +96,7 @@ def test_pqcrypto_uses_pqclean_clean_variant():
     not an optimized AVX2/AArch64 path. KyberSlash's worst-case impact
     was concentrated in the optimized variants."""
     from pqcrypto._kem import ml_kem_768 as _kem
+
     # The CFFI lib exposes the PQClean symbol prefix in its API; the
     # _CLEAN_ infix marks the reference implementation.
     symbols = [s for s in dir(_kem.lib) if "MLKEM768" in s]

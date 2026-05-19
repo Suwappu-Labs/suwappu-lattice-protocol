@@ -5,32 +5,31 @@ Security audit: adversarial tests for all security-relevant components.
 from __future__ import annotations
 
 import json
-import time
 import os
 import tempfile
+import time
 
 import pytest
 from fastapi.testclient import TestClient
 
 from src.ltp.domain import signer_fingerprint
 from src.ltp.gateway.app import GatewayConfig, create_app
-from src.ltp.gateway.auth import create_jwt, verify_jwt, _b64url_encode, _b64url_decode
+from src.ltp.gateway.auth import _b64url_decode, _b64url_encode, create_jwt, verify_jwt
 from src.ltp.keypair import KeyPair
-from src.ltp.network.credentials import load_server_credentials, load_channel_credentials
+from src.ltp.network.credentials import load_channel_credentials, load_server_credentials
 from src.ltp.network.interceptors import NetworkPolicyInterceptor
-from src.ltp.network.resilience import PeerCircuitBreaker, ExponentialBackoff
+from src.ltp.network.resilience import ExponentialBackoff, PeerCircuitBreaker
 from src.ltp.node.config import NodeConfig
 from src.ltp.node.gossip import GossipConfig, GossipProtocol, PeerAnnouncement, PeerExchangeMessage
 from src.ltp.node.peer_manager import PeerManager
-from src.ltp.observability.tls import TLSConfig, NetworkPolicy, NetworkPolicyRegistry
-
+from src.ltp.observability.tls import NetworkPolicy, NetworkPolicyRegistry, TLSConfig
 
 # ---------------------------------------------------------------------------
 # JWT Security
 # ---------------------------------------------------------------------------
 
-class TestJWTSecurity:
 
+class TestJWTSecurity:
     def test_expired_token_rejected_strict(self):
         kp = KeyPair.generate("jwt-test")
         token = create_jwt(kp, "node-1", ttl_seconds=-10)
@@ -61,8 +60,8 @@ class TestJWTSecurity:
 # Gateway Security
 # ---------------------------------------------------------------------------
 
-class TestGatewaySecurity:
 
+class TestGatewaySecurity:
     def test_500_never_leaks_exceptions(self):
         app = create_app(GatewayConfig(jwt_enabled=False))
         app.state.health_fn = lambda: {"status": "ok"}
@@ -75,7 +74,9 @@ class TestGatewaySecurity:
         assert "exception" not in json.dumps(body).lower()
 
     def test_rate_limit_returns_429(self):
-        app = create_app(GatewayConfig(jwt_enabled=False, rate_limit_enabled=True, rate_limit_per_minute=2))
+        app = create_app(
+            GatewayConfig(jwt_enabled=False, rate_limit_enabled=True, rate_limit_per_minute=2)
+        )
         app.state.health_fn = lambda: {"status": "ok"}
         client = TestClient(app)
         statuses = [client.get("/health").status_code for _ in range(5)]
@@ -86,8 +87,8 @@ class TestGatewaySecurity:
 # Gossip Security
 # ---------------------------------------------------------------------------
 
-class TestGossipSecurity:
 
+class TestGossipSecurity:
     def test_oversized_message_capped(self):
         kp_a = KeyPair.generate("a")
         kp_b = KeyPair.generate("b")
@@ -105,7 +106,9 @@ class TestGossipSecurity:
         kp_c = KeyPair.generate("c")
         pm = PeerManager()
         gossip = GossipProtocol(pm, kp_a, "a", "US")
-        msg = PeerExchangeMessage("b", time.time(), [PeerAnnouncement("new", "1.2.3.4:5", "X", "dd" * 32)])
+        msg = PeerExchangeMessage(
+            "b", time.time(), [PeerAnnouncement("new", "1.2.3.4:5", "X", "dd" * 32)]
+        )
         sig = msg.sign(kp_b.sk)
         assert gossip.handle_peer_exchange(msg, kp_c.vk, sig) == 0  # Wrong VK
 
@@ -113,13 +116,19 @@ class TestGossipSecurity:
         kp_a = KeyPair.generate("a")
         kp_b = KeyPair.generate("b")
         pm = PeerManager()
-        gossip = GossipProtocol(pm, kp_a, "a", "US", config=GossipConfig(rate_limit_per_peer_per_minute=2))
+        gossip = GossipProtocol(
+            pm, kp_a, "a", "US", config=GossipConfig(rate_limit_per_peer_per_minute=2)
+        )
         for i in range(5):
-            msg = PeerExchangeMessage("b", time.time(), [PeerAnnouncement(f"n-{i}", f"10.{i}.1.1:5", "X", "aa" * 32)])
+            msg = PeerExchangeMessage(
+                "b", time.time(), [PeerAnnouncement(f"n-{i}", f"10.{i}.1.1:5", "X", "aa" * 32)]
+            )
             sig = msg.sign(kp_b.sk)
             gossip.handle_peer_exchange(msg, kp_b.vk, sig)
         # Final one should be rate limited
-        msg = PeerExchangeMessage("b", time.time(), [PeerAnnouncement("final", "10.9.9.9:5", "X", "bb" * 32)])
+        msg = PeerExchangeMessage(
+            "b", time.time(), [PeerAnnouncement("final", "10.9.9.9:5", "X", "bb" * 32)]
+        )
         sig = msg.sign(kp_b.sk)
         assert gossip.handle_peer_exchange(msg, kp_b.vk, sig) == 0
 
@@ -128,12 +137,13 @@ class TestGossipSecurity:
 # Federation Security
 # ---------------------------------------------------------------------------
 
-class TestFederationSecurity:
 
+class TestFederationSecurity:
     def test_missing_auth_returns_403(self):
         app = create_app(GatewayConfig(jwt_enabled=False))
         app.state.health_fn = lambda: {"ok": True}
         from src.ltp.commitment import CommitmentLog, CommitmentNetwork
+
         app.state.commitment_network = CommitmentNetwork()
         app.state.commitment_log = CommitmentLog()
         client = TestClient(app)
@@ -145,8 +155,8 @@ class TestFederationSecurity:
 # Circuit Breaker Security
 # ---------------------------------------------------------------------------
 
-class TestCircuitBreakerSecurity:
 
+class TestCircuitBreakerSecurity:
     def test_tripped_breaker_blocks_requests(self):
         cb = PeerCircuitBreaker(peer_id="peer-1", failure_threshold=3, cooldown_seconds=60)
         for _ in range(3):
@@ -170,8 +180,8 @@ class TestCircuitBreakerSecurity:
 # Network Policy Security
 # ---------------------------------------------------------------------------
 
-class TestNetworkPolicySecurity:
 
+class TestNetworkPolicySecurity:
     def test_unauthorized_caller_blocked(self):
         registry = NetworkPolicyRegistry()
         registry.register_policy(NetworkPolicy("svc", allowed_callers=["trusted"]))
@@ -181,6 +191,7 @@ class TestNetworkPolicySecurity:
             invocation_metadata = [("x-caller-id", "attacker")]
 
         called = [False]
+
         def cont(d):
             called[0] = True
             return "ok"
@@ -193,17 +204,18 @@ class TestNetworkPolicySecurity:
 # Bridge Operator Security
 # ---------------------------------------------------------------------------
 
-class TestBridgeOperatorSecurity:
 
+class TestBridgeOperatorSecurity:
     def test_idempotency(self):
         from unittest.mock import MagicMock
-        from src.ltp.bridge.operator import BridgeOperatorService
+
         from src.ltp.bridge.live import LiveBridgeResult
         from src.ltp.bridge.message import BridgeMessage
+        from src.ltp.bridge.operator import BridgeOperatorService
         from src.ltp.commitment import CommitmentNetwork
+        from src.ltp.entity import Entity
         from src.ltp.keypair import KeyRegistry
         from src.ltp.protocol import LTPProtocol
-        from src.ltp.entity import Entity
 
         kp = KeyPair.generate("op")
         kr = KeyRegistry()
@@ -216,9 +228,15 @@ class TestBridgeOperatorSecurity:
         mock_bridge = MagicMock()
         mock_bridge.transfer.return_value = LiveBridgeResult(
             message=BridgeMessage("x", "a", "b", "s", "r", {}, 1),
-            entity_id="e", l1_anchor_tx_hash="0x1", is_anchored_on_l1=True,
-            l1_entity_state=2, source_chain="a", dest_chain="b",
-            l1_block_height=1, l1_chain_id=1, sequence=1,
+            entity_id="e",
+            l1_anchor_tx_hash="0x1",
+            is_anchored_on_l1=True,
+            l1_entity_state=2,
+            source_chain="a",
+            dest_chain="b",
+            l1_block_height=1,
+            l1_chain_id=1,
+            sequence=1,
         )
 
         op = BridgeOperatorService(network=cn, live_bridge=mock_bridge, operator_keypair=kp)
@@ -235,8 +253,8 @@ class TestBridgeOperatorSecurity:
 # Config Security
 # ---------------------------------------------------------------------------
 
-class TestConfigSecurity:
 
+class TestConfigSecurity:
     def test_operator_key_redacted(self):
         config = NodeConfig(anchor_operator_key="0xSECRET_KEY_12345")
         r = repr(config)
@@ -248,10 +266,11 @@ class TestConfigSecurity:
 # mTLS Credential Security
 # ---------------------------------------------------------------------------
 
-class TestmTLSSecurity:
 
+class TestmTLSSecurity:
     def test_valid_pem_loads(self):
         from tests.test_grpc_tls import _generate_self_signed_cert
+
         with tempfile.TemporaryDirectory() as d:
             cert, key = _generate_self_signed_cert(d, "test")
             config = TLSConfig(enabled=True, cert_path=cert, key_path=key)
@@ -268,8 +287,8 @@ class TestmTLSSecurity:
 # Backoff Security (predictability)
 # ---------------------------------------------------------------------------
 
-class TestBackoffSecurity:
 
+class TestBackoffSecurity:
     def test_exponential_growth(self):
         eb = ExponentialBackoff(base_delay=1.0, max_delay=60.0, jitter=0.0)
         assert eb.delay_for(0) == 1.0

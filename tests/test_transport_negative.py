@@ -11,22 +11,23 @@ from __future__ import annotations
 
 import os
 import time
-import pytest
 from unittest.mock import MagicMock
 
-from src.ltp.commitment import CommitmentNode
-from src.ltp.network.server import NodeServer
-from src.ltp.network.client import NodeClient
-from src.ltp.keypair import KeyPair
-from src.ltp.gateway.app import GatewayConfig, create_app
-from src.ltp.gateway.auth import create_jwt
-from src.ltp.domain import signer_fingerprint
+import pytest
 from fastapi.testclient import TestClient
 
+from src.ltp.commitment import CommitmentNode
+from src.ltp.domain import signer_fingerprint
+from src.ltp.gateway.app import GatewayConfig, create_app
+from src.ltp.gateway.auth import create_jwt
+from src.ltp.keypair import KeyPair
+from src.ltp.network.client import NodeClient
+from src.ltp.network.server import NodeServer
 
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_auth_app(rate_limit_per_minute: int = 5):
     """Return a JWT-enabled, rate-limited FastAPI app wired with a fresh keypair."""
@@ -45,6 +46,7 @@ def _make_auth_app(rate_limit_per_minute: int = 5):
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def server_and_client():
@@ -100,7 +102,6 @@ def valid_token(keypair):
 
 
 class TestGrpcNegativePaths:
-
     def test_fetch_shard_empty_entity_id_returns_none(self, server_and_client):
         """Fetching a shard with an empty entity_id should return None.
 
@@ -220,7 +221,6 @@ class TestGrpcNegativePaths:
 
 
 class TestGatewayNegativePaths:
-
     # -----------------------------------------------------------------------
     # Routing / basic HTTP errors
     # -----------------------------------------------------------------------
@@ -285,9 +285,7 @@ class TestGatewayNegativePaths:
         )
         assert resp.status_code == 401
 
-    def test_access_protected_endpoint_without_authorization_header_returns_401(
-        self, auth_client
-    ):
+    def test_access_protected_endpoint_without_authorization_header_returns_401(self, auth_client):
         """A request to a protected endpoint with no Authorization header must
         return 401.
 
@@ -334,9 +332,9 @@ class TestGatewayNegativePaths:
         is exhausted the middleware must return 429 without crashing.
         """
         config = GatewayConfig(
-            jwt_enabled=False,       # disable JWT so rate-limit is the only gate
+            jwt_enabled=False,  # disable JWT so rate-limit is the only gate
             rate_limit_enabled=True,
-            rate_limit_per_minute=3, # very low limit to force 429 quickly
+            rate_limit_per_minute=3,  # very low limit to force 429 quickly
         )
         app = create_app(config)
         app.state.health_fn = lambda: {"status": "ok"}

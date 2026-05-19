@@ -17,7 +17,7 @@ import pytest
 def hkdf_extract(salt: bytes, ikm: bytes) -> bytes:
     """HKDF-Extract per RFC 5869 §2.2: PRK = HMAC-Hash(salt, IKM)."""
     if not salt:
-        salt = b'\x00' * 32  # HashLen zeros for SHA-256
+        salt = b"\x00" * 32  # HashLen zeros for SHA-256
     return hmac.new(salt, ikm, hashlib.sha256).digest()
 
 
@@ -45,15 +45,12 @@ class TestRFC5869Vectors:
 
         prk = hkdf_extract(salt, ikm)
         assert prk == bytes.fromhex(
-            "077709362c2e32df0ddc3f0dc47bba63"
-            "90b6c73bb50f9c3122ec844ad7c2b3e5"
+            "077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5"
         ), f"PRK mismatch: {prk.hex()}"
 
         okm = hkdf_expand(prk, info, L)
         assert okm == bytes.fromhex(
-            "3cb25f25faacd57a90434f64d0362f2a"
-            "2d2d0a90cf1a5a4c5db02d56ecc4c5bf"
-            "34007208d5b887185865"
+            "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
         ), f"OKM mismatch: {okm.hex()}"
 
     def test_a2_longer_inputs(self):
@@ -83,8 +80,7 @@ class TestRFC5869Vectors:
 
         prk = hkdf_extract(salt, ikm)
         assert prk == bytes.fromhex(
-            "06a6b88c5853361a06104c9ceb35b45c"
-            "ef760014904671014a193f40c15fc244"
+            "06a6b88c5853361a06104c9ceb35b45cef760014904671014a193f40c15fc244"
         ), f"PRK mismatch: {prk.hex()}"
 
         okm = hkdf_expand(prk, info, L)
@@ -106,15 +102,12 @@ class TestRFC5869Vectors:
 
         prk = hkdf_extract(salt, ikm)
         assert prk == bytes.fromhex(
-            "19ef24a32c717b167f33a91d6f648bdf"
-            "96596776afdb6377ac434c1c293ccb04"
+            "19ef24a32c717b167f33a91d6f648bdf96596776afdb6377ac434c1c293ccb04"
         ), f"PRK mismatch: {prk.hex()}"
 
         okm = hkdf_expand(prk, info, L)
         assert okm == bytes.fromhex(
-            "8da4e775a563c18f715f802a063c5a31"
-            "b8a11f5c5ee1879ec3454e5f3c738d2d"
-            "9d201395faa4b61a96c8"
+            "8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8"
         ), f"OKM mismatch: {okm.hex()}"
 
 
@@ -134,8 +127,9 @@ class TestETPHKDFCompliance:
 
     def test_etp_nonce_uses_expand_pattern(self):
         """ETP's _nonce uses HMAC(PRK, info || 0x01) — single-round Expand."""
-        from src.ltp.shards import ShardEncryptor
         import struct
+
+        from src.ltp.shards import ShardEncryptor
 
         cek = bytes(range(32))
         entity_id = "sha3-256:test"
@@ -145,8 +139,9 @@ class TestETPHKDFCompliance:
 
         # Manually compute expected nonce
         prk = hmac.new(b"ETP-SHARD-NONCE-v1", cek, hashlib.sha256).digest()
-        info = entity_id.encode('utf-8') + struct.pack('>I', shard_index) + b'\x01'
+        info = entity_id.encode("utf-8") + struct.pack(">I", shard_index) + b"\x01"
         expected = hmac.new(prk, info, hashlib.sha256).digest()
 
         from src.ltp.primitives import AEAD
-        assert etp_nonce == expected[:AEAD.NONCE_SIZE]
+
+        assert etp_nonce == expected[: AEAD.NONCE_SIZE]

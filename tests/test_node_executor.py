@@ -2,14 +2,14 @@
 
 import pytest
 
-from src.ltp.execution.node_executor import NodeExecutor, RoundResult
+from src.ltp.consensus.events import ConsensusEventType
+from src.ltp.execution.consensus import FakeConsensusAdapter
 from src.ltp.execution.execution_config import ExecutionConfig
 from src.ltp.execution.execution_events import ExecutionEventType
-from src.ltp.execution.consensus import FakeConsensusAdapter
-from src.ltp.execution.types import OrderedBatch, TxResult, BatchResult, StateResult
+from src.ltp.execution.node_executor import NodeExecutor, RoundResult
 from src.ltp.execution.registry import VMRegistry
 from src.ltp.execution.router import TransactionRouter
-from src.ltp.consensus.events import ConsensusEventType
+from src.ltp.execution.types import BatchResult, OrderedBatch, StateResult, TxResult
 
 
 class FakeExecutor:
@@ -39,8 +39,12 @@ class FakeExecutor:
 
 def _make_batch(txs: list[bytes], round_num: int = 0, epoch: int = 1) -> OrderedBatch:
     return OrderedBatch(
-        round=round_num, epoch=epoch, transactions=txs,
-        leader_authority=0, timestamp_ms=round_num * 1000, consensus_type="dag",
+        round=round_num,
+        epoch=epoch,
+        transactions=txs,
+        leader_authority=0,
+        timestamp_ms=round_num * 1000,
+        consensus_type="dag",
     )
 
 
@@ -56,7 +60,6 @@ def _make_adapter(batches: list[OrderedBatch]) -> FakeConsensusAdapter:
 
 
 class TestNodeExecutorPipeline:
-
     def test_execute_round_returns_round_result(self):
         evm = FakeExecutor(0x01)
         router = _build_router(evm)
@@ -77,8 +80,7 @@ class TestNodeExecutorPipeline:
         executor = NodeExecutor(consensus=adapter, router=router)
         result = executor.execute_round(_make_batch([b"\x01tx"]))
         batch_events = [
-            e for e in result.consensus_events
-            if e.event_type == ConsensusEventType.BATCH_EXECUTED
+            e for e in result.consensus_events if e.event_type == ConsensusEventType.BATCH_EXECUTED
         ]
         assert len(batch_events) == 1
         assert batch_events[0].payload["tx_count"] == 1
@@ -87,6 +89,7 @@ class TestNodeExecutorPipeline:
     def test_attestation_when_engine_present(self):
         from src.ltp import KeyPair
         from src.ltp.execution.attestation import AttestationEngine
+
         kp = KeyPair.generate("test-ne")
         engine = AttestationEngine(operator_keypair=kp, chain_id=103115120)
 
@@ -94,7 +97,9 @@ class TestNodeExecutorPipeline:
         router = _build_router(evm)
         adapter = _make_adapter([])
         executor = NodeExecutor(
-            consensus=adapter, router=router, attestation_engine=engine,
+            consensus=adapter,
+            router=router,
+            attestation_engine=engine,
         )
         result = executor.execute_round(_make_batch([b"\x01tx"]))
         assert result.attestation is not None
@@ -103,6 +108,7 @@ class TestNodeExecutorPipeline:
     def test_state_root_attested_event_emitted(self):
         from src.ltp import KeyPair
         from src.ltp.execution.attestation import AttestationEngine
+
         kp = KeyPair.generate("test-ne2")
         engine = AttestationEngine(operator_keypair=kp, chain_id=103115120)
 
@@ -110,11 +116,14 @@ class TestNodeExecutorPipeline:
         router = _build_router(evm)
         adapter = _make_adapter([])
         executor = NodeExecutor(
-            consensus=adapter, router=router, attestation_engine=engine,
+            consensus=adapter,
+            router=router,
+            attestation_engine=engine,
         )
         result = executor.execute_round(_make_batch([b"\x01tx"]))
         attested = [
-            e for e in result.consensus_events
+            e
+            for e in result.consensus_events
             if e.event_type == ConsensusEventType.STATE_ROOT_ATTESTED
         ]
         assert len(attested) == 1
@@ -130,7 +139,6 @@ class TestNodeExecutorPipeline:
 
 
 class TestNodeExecutorRunRounds:
-
     def test_run_rounds_produces_results(self):
         evm = FakeExecutor(0x01)
         router = _build_router(evm)
@@ -162,7 +170,6 @@ class TestNodeExecutorRunRounds:
 
 
 class TestNodeExecutorLifecycle:
-
     def test_is_running_lifecycle(self):
         evm = FakeExecutor(0x01)
         router = _build_router(evm)
@@ -213,8 +220,10 @@ class TestNodeExecutorLifecycle:
         router = _build_router(evm)
         adapter = _make_adapter([])
         executor = NodeExecutor(
-            consensus=adapter, router=router,
-            attestation_engine=None, committee_manager=None,
+            consensus=adapter,
+            router=router,
+            attestation_engine=None,
+            committee_manager=None,
         )
         result = executor.execute_round(_make_batch([b"\x01tx"]))
         assert result.batch_result.tx_results[0].success is True

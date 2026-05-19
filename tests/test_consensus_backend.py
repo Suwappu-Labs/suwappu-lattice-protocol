@@ -1,11 +1,12 @@
 """Tests for ConsensusBackend ABC and LocalConsensusBackend (Spec D1b §4)."""
 
-import pytest
 from abc import ABC
 
+import pytest
+
 from src.ltp.consensus.backend import ConsensusBackend, LocalConsensusBackend
-from src.ltp.consensus.types import CommitDecision
 from src.ltp.consensus.faults import FaultConfig, FaultType
+from src.ltp.consensus.types import CommitDecision
 
 
 class TestConsensusBackendABC:

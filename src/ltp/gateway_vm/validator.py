@@ -70,10 +70,7 @@ class EventValidator:
                     f"reorg detected: event block {event.block_number} "
                     f"is {abs(depth)} blocks ahead of chain head"
                 )
-            return False, (
-                f"insufficient finality: depth {depth}, "
-                f"required {required}"
-            )
+            return False, (f"insufficient finality: depth {depth}, required {required}")
 
         # 7. Replay status — event not already processed
         if self._replay_db.is_processed(event.event_id):

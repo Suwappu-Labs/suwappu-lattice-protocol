@@ -21,7 +21,7 @@ from src.ltp.entity import Entity
 from src.ltp.erasure import ErasureCoder
 from src.ltp.keypair import KeyPair
 from src.ltp.lattice import LatticeKey
-from src.ltp.primitives import canonical_hash, MLDSA
+from src.ltp.primitives import MLDSA, canonical_hash
 from src.ltp.shards import ShardEncryptor
 
 if TYPE_CHECKING:
@@ -47,7 +47,7 @@ class SimClient:
         label: str,
         region: str,
         keypair: KeyPair,
-        simulator: 'NetworkSimulator',
+        simulator: "NetworkSimulator",
     ) -> None:
         self.label = label
         self.region = region
@@ -139,7 +139,7 @@ class SimClient:
         max_delivery_time = 0.0
 
         for i, enc_shard in enumerate(encrypted_shards):
-            shard_hash = canonical_hash(enc_shard + entity_id.encode() + struct.pack('>I', i))
+            shard_hash = canonical_hash(enc_shard + entity_id.encode() + struct.pack(">I", i))
             shard_hashes.append(shard_hash)
 
             target_nodes = sim.placement(entity_id, i, replicas)
@@ -168,16 +168,16 @@ class SimClient:
 
                 if not lost:
                     success = node.store_shard(entity_id, i, enc_shard)
-                    if latency != float('inf'):
+                    if latency != float("inf"):
                         max_delivery_time = max(max_delivery_time, latency)
 
         # Advance clock by the longest shard delivery (parallel distribution)
-        if max_delivery_time > 0 and max_delivery_time != float('inf'):
+        if max_delivery_time > 0 and max_delivery_time != float("inf"):
             sim.clock.advance_to(sim.clock.now + max_delivery_time)
         metrics.shard_distribution_ms = sim.clock.now - dist_start
 
         # 5. Build and sign commitment record
-        shard_map_root = canonical_hash(''.join(shard_hashes).encode())
+        shard_map_root = canonical_hash("".join(shard_hashes).encode())
         content_hash = canonical_hash(content)
         shape_hash = canonical_hash(shape.encode())
 
@@ -187,7 +187,8 @@ class SimClient:
             shard_map_root=shard_map_root,
             content_hash=content_hash,
             encoding_params={
-                "n": n, "k": k,
+                "n": n,
+                "k": k,
                 "algorithm": "reed-solomon-gf256",
                 "gf_poly": "0x11d",
                 "eval": "vandermonde-powers-of-0x02",
@@ -220,7 +221,7 @@ class SimClient:
     def send_lattice_key(
         self,
         entity_id: str,
-        receiver: 'SimClient',
+        receiver: "SimClient",
         access_policy: dict | None = None,
     ) -> bytes:
         """
@@ -279,7 +280,7 @@ class SimClient:
             payload={"entity_id": entity_id},
         )
 
-        if latency != float('inf'):
+        if latency != float("inf"):
             sim.clock.advance_to(sim.clock.now + latency)
         metrics.lattice_transfer_ms = latency
         metrics.lattice_end_ms = sim.clock.now
@@ -367,9 +368,7 @@ class SimClient:
 
         fetch_start = sim.clock.now
         try:
-            encrypted_shards, shard_metrics = sim.fetch_shards_for_client(
-                self, key.entity_id, n, k
-            )
+            encrypted_shards, shard_metrics = sim.fetch_shards_for_client(self, key.entity_id, n, k)
         except ValueError:
             metrics.success = False
             metrics.failure_reason = "no_online_nodes"
@@ -423,7 +422,7 @@ class SimClient:
         expected_entity_id = canonical_hash(
             entity_content
             + record.shape.encode()
-            + struct.pack('>d', record.timestamp)
+            + struct.pack(">d", record.timestamp)
             + sender_kp.vk
         )
         if expected_entity_id != key.entity_id:

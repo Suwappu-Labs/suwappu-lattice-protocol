@@ -10,6 +10,7 @@ class TestBLSKeyPairStandalone:
 
     def test_generate_returns_bls_keypair(self):
         from src.ltp.bls_keys import BLSKeyPair
+
         kp = BLSKeyPair.generate("test-standalone")
         assert kp.label == "test-standalone"
         assert len(kp.pk) == BLS.PK_SIZE
@@ -17,6 +18,7 @@ class TestBLSKeyPairStandalone:
 
     def test_sign_verify_roundtrip(self):
         from src.ltp.bls_keys import BLSKeyPair
+
         kp = BLSKeyPair.generate("test-sign")
         msg = b"standalone sign test"
         sig = BLS.sign(kp.sk, msg)
@@ -24,6 +26,7 @@ class TestBLSKeyPairStandalone:
 
     def test_bls_fingerprint_is_32_bytes(self):
         from src.ltp.bls_keys import BLSKeyPair, bls_fingerprint
+
         kp = BLSKeyPair.generate("test-fp")
         fp = bls_fingerprint(kp.pk)
         assert isinstance(fp, bytes)
@@ -31,6 +34,7 @@ class TestBLSKeyPairStandalone:
 
     def test_bls_fingerprint_deterministic(self):
         from src.ltp.bls_keys import BLSKeyPair, bls_fingerprint
+
         kp = BLSKeyPair.generate("test-fp-det")
         fp1 = bls_fingerprint(kp.pk)
         fp2 = bls_fingerprint(kp.pk)
@@ -38,6 +42,7 @@ class TestBLSKeyPairStandalone:
 
     def test_different_keys_different_fingerprints(self):
         from src.ltp.bls_keys import BLSKeyPair, bls_fingerprint
+
         kp1 = BLSKeyPair.generate("kp1")
         kp2 = BLSKeyPair.generate("kp2")
         assert bls_fingerprint(kp1.pk) != bls_fingerprint(kp2.pk)
@@ -45,6 +50,7 @@ class TestBLSKeyPairStandalone:
     def test_own_key_state_lifecycle(self):
         from src.ltp.bls_keys import BLSKeyPair
         from src.ltp.keypair import KeyState
+
         kp = BLSKeyPair.generate("lifecycle-test")
         assert kp.state == KeyState.ACTIVE
 
@@ -55,6 +61,7 @@ class TestBLSKeyPairDerived:
     def test_derive_from_mldsa_sk(self):
         from src.ltp.bls_keys import BLSKeyPair
         from src.ltp.keypair import KeyPair
+
         mldsa_kp = KeyPair.generate("derive-test")
         bls_kp = BLSKeyPair.derive_from(mldsa_kp.sk)
         assert len(bls_kp.pk) == BLS.PK_SIZE
@@ -63,6 +70,7 @@ class TestBLSKeyPairDerived:
     def test_derive_is_deterministic(self):
         from src.ltp.bls_keys import BLSKeyPair
         from src.ltp.keypair import KeyPair
+
         mldsa_kp = KeyPair.generate("det-test")
         bls1 = BLSKeyPair.derive_from(mldsa_kp.sk)
         bls2 = BLSKeyPair.derive_from(mldsa_kp.sk)
@@ -72,6 +80,7 @@ class TestBLSKeyPairDerived:
     def test_different_context_different_keys(self):
         from src.ltp.bls_keys import BLSKeyPair
         from src.ltp.keypair import KeyPair
+
         mldsa_kp = KeyPair.generate("ctx-test")
         bls_a = BLSKeyPair.derive_from(mldsa_kp.sk, context=b"GSX-BLS-DERIVE:v1:chain-1")
         bls_b = BLSKeyPair.derive_from(mldsa_kp.sk, context=b"GSX-BLS-DERIVE:v1:chain-2")
@@ -81,6 +90,7 @@ class TestBLSKeyPairDerived:
     def test_derived_key_signs_and_verifies(self):
         from src.ltp.bls_keys import BLSKeyPair
         from src.ltp.keypair import KeyPair
+
         mldsa_kp = KeyPair.generate("sign-test")
         bls_kp = BLSKeyPair.derive_from(mldsa_kp.sk)
         msg = b"derived key attestation"
@@ -93,6 +103,7 @@ class TestBLSIdentity:
 
     def test_standalone_to_identity(self):
         from src.ltp.bls_keys import BLSKeyPair
+
         kp = BLSKeyPair.generate("id-standalone")
         identity = kp.to_identity()
         assert identity.pk == kp.pk
@@ -104,6 +115,7 @@ class TestBLSIdentity:
     def test_derived_to_identity(self):
         from src.ltp.bls_keys import BLSKeyPair
         from src.ltp.keypair import KeyPair
+
         mldsa_kp = KeyPair.generate("id-derived")
         bls_kp = BLSKeyPair.derive_from(mldsa_kp.sk, label="id-derived")
         identity = bls_kp.to_identity()
@@ -111,6 +123,7 @@ class TestBLSIdentity:
 
     def test_identity_frozen(self):
         from src.ltp.bls_keys import BLSKeyPair
+
         kp = BLSKeyPair.generate("frozen-test")
         identity = kp.to_identity()
         with pytest.raises(AttributeError):
@@ -123,12 +136,14 @@ class TestKeyPairComposite:
     def test_generate_without_bls(self):
         """Default KeyPair.generate() still works without BLS."""
         from src.ltp.keypair import KeyPair
+
         kp = KeyPair.generate("no-bls")
         assert kp.bls_pk is None
         assert kp.bls_sk is None
 
     def test_generate_with_bls(self):
         from src.ltp.keypair import KeyPair
+
         kp = KeyPair.generate("with-bls", with_bls=True)
         assert kp.bls_pk is not None
         assert len(kp.bls_pk) == 48
@@ -137,6 +152,7 @@ class TestKeyPairComposite:
 
     def test_composite_bls_signs_and_verifies(self):
         from src.ltp.keypair import KeyPair
+
         kp = KeyPair.generate("comp-sign", with_bls=True)
         msg = b"composite BLS test"
         sig = BLS.sign(kp.bls_sk, msg)
@@ -144,9 +160,9 @@ class TestKeyPairComposite:
 
     def test_composite_fingerprint_includes_bls(self):
         """Composite fingerprint = SHA3(mldsa_vk || bls_pk), differs from ML-DSA only."""
-        from src.ltp.keypair import KeyPair
-        from src.ltp.domain import signer_fingerprint
         from src.ltp.bls_keys import composite_fingerprint
+        from src.ltp.domain import signer_fingerprint
+        from src.ltp.keypair import KeyPair
 
         kp_no_bls = KeyPair.generate("fp-no-bls")
         kp_with_bls = KeyPair.generate("fp-with-bls", with_bls=True)
@@ -159,6 +175,7 @@ class TestKeyPairComposite:
 
     def test_to_bls_identity(self):
         from src.ltp.keypair import KeyPair
+
         kp = KeyPair.generate("id-comp", with_bls=True)
         identity = kp.to_bls_identity()
         assert identity.pk == kp.bls_pk
@@ -168,6 +185,7 @@ class TestKeyPairComposite:
 
     def test_to_bls_identity_raises_without_bls(self):
         from src.ltp.keypair import KeyPair
+
         kp = KeyPair.generate("no-bls-id")
         with pytest.raises(ValueError, match="no BLS"):
             kp.to_bls_identity()

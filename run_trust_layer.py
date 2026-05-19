@@ -1,21 +1,26 @@
 """GSX Pre-Blockchain Trust Packaging Layer — Full Demo"""
 
 import time
+
 from src.ltp import *
-from src.ltp.receipt import ApprovalReceipt, ReceiptType
-from src.ltp.sequencing import SequenceTracker
-from src.ltp.envelope import SignedEnvelope
+from src.ltp.anchor import VALID_TRANSITIONS, AnchorSubmission, EntityState, validate_transition
 from src.ltp.domain import (
-    DOMAIN_COMMIT_RECORD, DOMAIN_STH_SIGN, _ALL_TAGS,
-    domain_hash, domain_hash_bytes, signer_fingerprint,
+    _ALL_TAGS,
+    DOMAIN_COMMIT_RECORD,
+    DOMAIN_STH_SIGN,
+    domain_hash,
+    domain_hash_bytes,
+    signer_fingerprint,
 )
 from src.ltp.encoding import CanonicalEncoder
-from src.ltp.governance import SignerEntry, ApprovalRule, SignerPolicy
+from src.ltp.envelope import SignedEnvelope
 from src.ltp.evidence import EvidenceBundle
-from src.ltp.anchor import EntityState, VALID_TRANSITIONS, validate_transition, AnchorSubmission
-from src.ltp.verify import verify_envelope, verify_receipt, verify_merkle_proof, verify_sth
+from src.ltp.governance import ApprovalRule, SignerEntry, SignerPolicy
 from src.ltp.hybrid import AlgorithmId, AlgorithmRegistry, composite_signing_message
 from src.ltp.merkle_log.portable_proof import TreeType
+from src.ltp.receipt import ApprovalReceipt, ReceiptType
+from src.ltp.sequencing import SequenceTracker
+from src.ltp.verify import verify_envelope, verify_merkle_proof, verify_receipt, verify_sth
 
 reset_poc_state()
 
@@ -102,9 +107,12 @@ print(f"  Fingerprint:  {envelope.fingerprint()[:48]}...")
 # create_at for deterministic testing
 env_det = SignedEnvelope.create_at(
     domain=DOMAIN_COMMIT_RECORD,
-    signer_vk=alice.vk, signer_sk=alice.sk,
-    signer_id="alice", payload_type="test",
-    payload=b"deterministic", timestamp=1700000000.0,
+    signer_vk=alice.vk,
+    signer_sk=alice.sk,
+    signer_id="alice",
+    payload_type="test",
+    payload=b"deterministic",
+    timestamp=1700000000.0,
 )
 print(f"  create_at(ts=1700000000.0): ts={env_det.timestamp}")
 
@@ -119,9 +127,12 @@ print(f"  extract_signer_kid: {kid.hex()[:32]}...")
 # max_drift
 stale_env = SignedEnvelope.create_at(
     domain=DOMAIN_COMMIT_RECORD,
-    signer_vk=alice.vk, signer_sk=alice.sk,
-    signer_id="alice", payload_type="test",
-    payload=b"old", timestamp=time.time() - 120,
+    signer_vk=alice.vk,
+    signer_sk=alice.sk,
+    signer_id="alice",
+    payload_type="test",
+    payload=b"old",
+    timestamp=time.time() - 120,
 )
 print(f"  Stale envelope (120s old):")
 print(f"    verify():              {stale_env.verify()}")
@@ -129,18 +140,24 @@ print(f"    verify(max_drift=60):  {stale_env.verify(max_drift=60)}")
 
 # STH envelope
 sth_env = SignedTreeHead.sign_envelope(
-    sequence=sth.sequence, tree_size=sth.tree_size,
+    sequence=sth.sequence,
+    tree_size=sth.tree_size,
     root_hash=sth.root_hash,
-    operator_vk=alice.vk, operator_sk=alice.sk,
+    operator_vk=alice.vk,
+    operator_sk=alice.sk,
 )
 print(f"  STH envelope verify: {sth_env.verify()}")
 
 # ── Approval Receipts ────────────────────────────────────────────────────
 print("\n▸ Approval Receipts")
 receipt = ApprovalReceipt.for_commit(
-    entity_id=eid, record=record, sth=sth,
-    signer_kp=alice, signer_role="operator",
-    sequence=0, target_chain_id="base-testnet",
+    entity_id=eid,
+    record=record,
+    sth=sth,
+    signer_kp=alice,
+    signer_role="operator",
+    sequence=0,
+    target_chain_id="base-testnet",
 )
 print(f"  Receipt type:    {receipt.receipt_type.value}")
 print(f"  Receipt ID:      {receipt.receipt_id[:48]}...")
@@ -158,11 +175,17 @@ print(f"  Digest length:   {len(receipt.anchor_digest())} bytes")
 
 # Materialize receipt
 mat_receipt = ApprovalReceipt.for_materialize(
-    entity_id=eid, record=record, sth=sth,
-    signer_kp=alice, signer_role="operator",
-    sequence=1, target_chain_id="base-testnet",
+    entity_id=eid,
+    record=record,
+    sth=sth,
+    signer_kp=alice,
+    signer_role="operator",
+    sequence=1,
+    target_chain_id="base-testnet",
 )
-print(f"  Materialize receipt: type={mat_receipt.receipt_type.value}, verify={mat_receipt.verify(alice.vk)}")
+print(
+    f"  Materialize receipt: type={mat_receipt.receipt_type.value}, verify={mat_receipt.verify(alice.vk)}"
+)
 
 # ── Sequence Tracker ─────────────────────────────────────────────────────
 print("\n▸ Sequence Tracker")
@@ -190,11 +213,13 @@ print(f"  Alice next:    {tracker.next_sequence(alice.vk)}")
 print(f"  Bob next:      {tracker.next_sequence(bob.vk)}")
 
 # Batch
-results = tracker.validate_batch([
-    (bob.vk, 0, "base-testnet", time.time() + 3600),
-    (bob.vk, 1, "base-testnet", time.time() + 3600),
-    (bob.vk, 1, "base-testnet", time.time() + 3600),  # replay
-])
+results = tracker.validate_batch(
+    [
+        (bob.vk, 0, "base-testnet", time.time() + 3600),
+        (bob.vk, 1, "base-testnet", time.time() + 3600),
+        (bob.vk, 1, "base-testnet", time.time() + 3600),  # replay
+    ]
+)
 print(f"  Batch [bob seq 0,1,1]: {[(ok, r[:20] if r else '') for ok, r in results]}")
 
 # ── Portable Merkle Proofs ───────────────────────────────────────────────
@@ -218,10 +243,14 @@ policy = SignerPolicy(
     policy_id="",
     policy_version=1,
     signers=[
-        SignerEntry(signer_id="alice", vk=alice.vk, roles={"operator", "admin"},
-                    valid_from=0, valid_until=1000),
-        SignerEntry(signer_id="bob", vk=bob.vk, roles={"auditor"},
-                    valid_from=0, valid_until=1000),
+        SignerEntry(
+            signer_id="alice",
+            vk=alice.vk,
+            roles={"operator", "admin"},
+            valid_from=0,
+            valid_until=1000,
+        ),
+        SignerEntry(signer_id="bob", vk=bob.vk, roles={"auditor"}, valid_from=0, valid_until=1000),
     ],
     approval_rules=[
         ApprovalRule(action_type="COMMIT", required_roles={"operator"}, min_signers=1),
@@ -238,13 +267,19 @@ print(f"  Policy hash:    {policy.policy_hash()[:48]}...")
 print(f"  Verify(alice):  {policy.verify_policy(alice.vk)}")
 print(f"  Alice authorized COMMIT@epoch=0:   {policy.is_signer_authorized(alice.vk, 'COMMIT', 0)}")
 print(f"  Bob authorized COMMIT@epoch=0:     {policy.is_signer_authorized(bob.vk, 'COMMIT', 0)}")
-print(f"  Bob authorized SHARD_AUDIT@epoch=0:{policy.is_signer_authorized(bob.vk, 'SHARD_AUDIT_PASS', 0)}")
-print(f"  Alice authorized COMMIT@epoch=2000:{policy.is_signer_authorized(alice.vk, 'COMMIT', 2000)}")
+print(
+    f"  Bob authorized SHARD_AUDIT@epoch=0:{policy.is_signer_authorized(bob.vk, 'SHARD_AUDIT_PASS', 0)}"
+)
+print(
+    f"  Alice authorized COMMIT@epoch=2000:{policy.is_signer_authorized(alice.vk, 'COMMIT', 2000)}"
+)
 
 # ── Verification SDK ─────────────────────────────────────────────────────
 print("\n▸ Verification SDK (Pure Functions)")
 env_result = verify_envelope(envelope)
-print(f"  verify_envelope:     valid={env_result.valid} reason='{env_result.reason}' artifact='{env_result.artifact}'")
+print(
+    f"  verify_envelope:     valid={env_result.valid} reason='{env_result.reason}' artifact='{env_result.artifact}'"
+)
 
 receipt_result = verify_receipt(receipt)
 print(f"  verify_receipt:      valid={receipt_result.valid} reason='{receipt_result.reason}'")
@@ -269,6 +304,7 @@ print(f"  COMMITTED → UNKNOWN: ok={ok} reason='{reason}'")
 
 # AnchorSubmission
 from src.ltp.primitives import canonical_hash_bytes
+
 sub = AnchorSubmission.from_receipt(
     receipt=receipt,
     policy_hash_bytes=canonical_hash_bytes(policy.policy_hash().encode()),
@@ -291,11 +327,15 @@ print(f"  Supported: {[a.value for a in registry.supported_algorithms()]}")
 msg = b"hybrid signing demo"
 sig_pure = registry.sign(AlgorithmId.MLDSA65, alice.sk, msg, DOMAIN_COMMIT_RECORD)
 print(f"  Pure ML-DSA-65 sig:  {len(sig_pure)} bytes")
-print(f"  Verify pure:         {registry.verify(AlgorithmId.MLDSA65, alice.vk, msg, DOMAIN_COMMIT_RECORD, sig_pure)}")
+print(
+    f"  Verify pure:         {registry.verify(AlgorithmId.MLDSA65, alice.vk, msg, DOMAIN_COMMIT_RECORD, sig_pure)}"
+)
 
 sig_comp = registry.sign(AlgorithmId.MLDSA65_ED25519_SHA512, alice.sk, msg, DOMAIN_COMMIT_RECORD)
 print(f"  Composite xDSA sig:  {len(sig_comp)} bytes (3309 ML-DSA + 64 Ed25519)")
-print(f"  Verify composite:    {registry.verify(AlgorithmId.MLDSA65_ED25519_SHA512, alice.vk, msg, DOMAIN_COMMIT_RECORD, sig_comp)}")
+print(
+    f"  Verify composite:    {registry.verify(AlgorithmId.MLDSA65_ED25519_SHA512, alice.vk, msg, DOMAIN_COMMIT_RECORD, sig_comp)}"
+)
 
 m_prime = composite_signing_message(msg)
 print(f"  Composite M' length: {len(m_prime)} bytes")
@@ -329,10 +369,14 @@ print(f"  Receipt verified:          {receipt.verify(alice.vk)}")
 print(f"  Anchor digest (32B):       {receipt.anchor_digest().hex()[:48]}...")
 print(f"  Merkle proof verified:     {proof.verify()}")
 print(f"  Policy signed & verified:  {policy.verify_policy(alice.vk)}")
-print(f"  Hybrid crypto operational: {registry.verify(AlgorithmId.MLDSA65_ED25519_SHA512, alice.vk, msg, DOMAIN_COMMIT_RECORD, sig_comp)}")
+print(
+    f"  Hybrid crypto operational: {registry.verify(AlgorithmId.MLDSA65_ED25519_SHA512, alice.vk, msg, DOMAIN_COMMIT_RECORD, sig_comp)}"
+)
 print(f"  Evidence bundle size:      {len(bundle.canonical_bytes())} bytes")
 print(f"  ABI calldata size:         {len(calldata)} bytes")
-print(f"  Sequence tracker state:    alice@seq={tracker.current_sequence(alice.vk)}, bob@seq={tracker.current_sequence(bob.vk)}")
+print(
+    f"  Sequence tracker state:    alice@seq={tracker.current_sequence(alice.vk)}, bob@seq={tracker.current_sequence(bob.vk)}"
+)
 print("=" * 74)
 print("  GSX Pre-Blockchain Trust Packaging Layer operational.")
 print("  All trust artifacts ready for on-chain anchoring.")

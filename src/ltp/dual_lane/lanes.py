@@ -15,16 +15,19 @@ from .hashing import HashFunction
 
 class CryptoLane(Enum):
     """Classification of which trust boundary a hash operation serves."""
+
     CANONICAL = "canonical"  # Settlement-valid, regulator-facing
-    INTERNAL = "internal"    # Performance-optimized, not compliance-facing
+    INTERNAL = "internal"  # Performance-optimized, not compliance-facing
 
 
 # Algorithms approved for the canonical lane under strict compliance.
-COMPLIANCE_APPROVED = frozenset({
-    HashFunction.SHA3_256,
-    HashFunction.SHA_384,
-    HashFunction.SHA_512,
-})
+COMPLIANCE_APPROVED = frozenset(
+    {
+        HashFunction.SHA3_256,
+        HashFunction.SHA_384,
+        HashFunction.SHA_512,
+    }
+)
 
 
 # ---------------------------------------------------------------------------

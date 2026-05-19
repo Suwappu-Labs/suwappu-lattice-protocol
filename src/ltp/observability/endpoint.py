@@ -11,9 +11,9 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from .metrics import MetricsRegistry, create_etp_metrics, Counter, Gauge, Histogram
-from .logging import StructuredLogger
 from .alerts import AlertEvaluator, AlertResult, create_etp_alert_rules
+from .logging import StructuredLogger
+from .metrics import Counter, Gauge, Histogram, MetricsRegistry, create_etp_metrics
 
 __all__ = [
     "MetricsRequestHandler",

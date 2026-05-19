@@ -6,6 +6,7 @@ import pytest
 @pytest.fixture(scope="module")
 def operator_kp():
     from src.ltp import KeyPair
+
     return KeyPair.generate("test-operator")
 
 
@@ -16,16 +17,26 @@ class TestMultiVMAttestation:
 
         root = MultiVMStateRoot(vm_roots={0x01: b"\xaa" * 32}, batch_round=1)
         a1 = MultiVMAttestation(
-            state_root=root, consensus_round=1, epoch=0,
-            active_vm_tags=[0x01], mldsa_signature=None,
-            bls_aggregate=None, operator_vk_hash=b"\x00" * 32,
-            timestamp_ms=1000, chain_id=103115120,
+            state_root=root,
+            consensus_round=1,
+            epoch=0,
+            active_vm_tags=[0x01],
+            mldsa_signature=None,
+            bls_aggregate=None,
+            operator_vk_hash=b"\x00" * 32,
+            timestamp_ms=1000,
+            chain_id=103115120,
         )
         a2 = MultiVMAttestation(
-            state_root=root, consensus_round=1, epoch=0,
-            active_vm_tags=[0x01], mldsa_signature=None,
-            bls_aggregate=None, operator_vk_hash=b"\x00" * 32,
-            timestamp_ms=1000, chain_id=103115120,
+            state_root=root,
+            consensus_round=1,
+            epoch=0,
+            active_vm_tags=[0x01],
+            mldsa_signature=None,
+            bls_aggregate=None,
+            operator_vk_hash=b"\x00" * 32,
+            timestamp_ms=1000,
+            chain_id=103115120,
         )
         assert a1.digest == a2.digest
         assert len(a1.digest) == 32
@@ -36,17 +47,27 @@ class TestMultiVMAttestation:
 
         root = MultiVMStateRoot(vm_roots={0x01: b"\xaa" * 32}, batch_round=1)
         a1 = MultiVMAttestation(
-            state_root=root, consensus_round=1, epoch=0,
-            active_vm_tags=[0x01], mldsa_signature=None,
-            bls_aggregate=None, operator_vk_hash=b"\x00" * 32,
-            timestamp_ms=1000, chain_id=103115120,
+            state_root=root,
+            consensus_round=1,
+            epoch=0,
+            active_vm_tags=[0x01],
+            mldsa_signature=None,
+            bls_aggregate=None,
+            operator_vk_hash=b"\x00" * 32,
+            timestamp_ms=1000,
+            chain_id=103115120,
         )
         root2 = MultiVMStateRoot(vm_roots={0x01: b"\xaa" * 32}, batch_round=2)
         a2 = MultiVMAttestation(
-            state_root=root2, consensus_round=2, epoch=0,
-            active_vm_tags=[0x01], mldsa_signature=None,
-            bls_aggregate=None, operator_vk_hash=b"\x00" * 32,
-            timestamp_ms=1000, chain_id=103115120,
+            state_root=root2,
+            consensus_round=2,
+            epoch=0,
+            active_vm_tags=[0x01],
+            mldsa_signature=None,
+            bls_aggregate=None,
+            operator_vk_hash=b"\x00" * 32,
+            timestamp_ms=1000,
+            chain_id=103115120,
         )
         assert a1.digest != a2.digest
 
@@ -92,5 +113,6 @@ class TestAttestationEngine:
 
     def test_requires_keypair(self):
         from src.ltp.execution.attestation import AttestationEngine
+
         with pytest.raises(TypeError, match="operator_keypair"):
             AttestationEngine(operator_keypair=None, chain_id=1)

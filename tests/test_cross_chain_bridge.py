@@ -10,8 +10,8 @@ All tests skip gracefully when env vars are not set.
 
 from __future__ import annotations
 
-import os
 import hashlib
+import os
 
 import pytest
 
@@ -23,9 +23,7 @@ pytestmark = pytest.mark.skipif(
 
 
 def _have_gsx() -> bool:
-    return bool(
-        os.environ.get("GSX_RPC_URL") and os.environ.get("GSX_OPERATOR_KEY")
-    )
+    return bool(os.environ.get("GSX_RPC_URL") and os.environ.get("GSX_OPERATOR_KEY"))
 
 
 @pytest.fixture(scope="module")
@@ -67,9 +65,12 @@ def protocol():
 
     net = CommitmentNetwork()
     for nid, region in [
-        ("xc-int-1", "US-East"), ("xc-int-2", "US-West"),
-        ("xc-int-3", "EU-West"), ("xc-int-4", "EU-East"),
-        ("xc-int-5", "AP-East"), ("xc-int-6", "AP-South"),
+        ("xc-int-1", "US-East"),
+        ("xc-int-2", "US-West"),
+        ("xc-int-3", "EU-West"),
+        ("xc-int-4", "EU-East"),
+        ("xc-int-5", "AP-East"),
+        ("xc-int-6", "AP-South"),
     ]:
         net.add_node(nid, region)
     return LTPProtocol(net)
@@ -89,9 +90,7 @@ def keypairs():
 class TestCrossChainTransfer:
     """Live cross-chain transfer tests using Base Sepolia as L1."""
 
-    def test_cross_chain_transfer_l1_only(
-        self, protocol, base_client, gsx_client, keypairs
-    ):
+    def test_cross_chain_transfer_l1_only(self, protocol, base_client, gsx_client, keypairs):
         """Base as L1, GSX as L2, dual_write=False. Anchor on Base only."""
         from src.ltp.bridge.live import LiveBridge
         from src.ltp.bridge.message import BridgeMessage
@@ -127,9 +126,7 @@ class TestCrossChainTransfer:
         assert result.l2_anchor_tx_hash is None
         assert result.is_anchored_on_l2 is None
 
-    def test_cross_chain_result_metadata(
-        self, protocol, base_client, gsx_client, keypairs
-    ):
+    def test_cross_chain_result_metadata(self, protocol, base_client, gsx_client, keypairs):
         """Verify cross_chain flag and real block heights."""
         from src.ltp.bridge.live import LiveBridge
         from src.ltp.bridge.message import BridgeMessage
@@ -169,9 +166,7 @@ class TestCrossChainTransfer:
         not _have_gsx(),
         reason="GSX_RPC_URL/GSX_OPERATOR_KEY not set — skipping dual_write test",
     )
-    def test_cross_chain_dual_write(
-        self, protocol, base_client, gsx_client, keypairs
-    ):
+    def test_cross_chain_dual_write(self, protocol, base_client, gsx_client, keypairs):
         """Anchor on Base, re-anchor on GSX (dual_write=True).
 
         Requires signer registered on both chains.

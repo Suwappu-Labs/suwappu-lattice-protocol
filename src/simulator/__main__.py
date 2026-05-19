@@ -81,7 +81,9 @@ def run_demo(sim: NetworkSimulator):
     print(f"  Content: {len(content)} bytes")
     print(f"  Sealed key: {len(sealed)} bytes (O(1) sender bandwidth)")
     print(f"  Result: {'SUCCESS' if result == content else 'FAILED'}")
-    print(f"  Commit: {m.commit_latency_ms:.1f}ms | Lattice: {m.lattice_latency_ms:.1f}ms | Materialize: {m.materialize_latency_ms:.1f}ms")
+    print(
+        f"  Commit: {m.commit_latency_ms:.1f}ms | Lattice: {m.lattice_latency_ms:.1f}ms | Materialize: {m.materialize_latency_ms:.1f}ms"
+    )
     print()
 
     # Transfer 2: Large payload
@@ -94,7 +96,9 @@ def run_demo(sim: NetworkSimulator):
     print(f"  Content: {len(content2):,} bytes")
     print(f"  Sealed key: {len(sealed2)} bytes (SAME O(1) size!)")
     print(f"  Result: {'SUCCESS' if result2 == content2 else 'FAILED'}")
-    print(f"  Commit: {m2.commit_latency_ms:.1f}ms | Lattice: {m2.lattice_latency_ms:.1f}ms | Materialize: {m2.materialize_latency_ms:.1f}ms")
+    print(
+        f"  Commit: {m2.commit_latency_ms:.1f}ms | Lattice: {m2.lattice_latency_ms:.1f}ms | Materialize: {m2.materialize_latency_ms:.1f}ms"
+    )
     print()
 
     # Transfer 3: Under region failure

@@ -22,10 +22,10 @@ from src.ltp.node.gossip import (
 )
 from src.ltp.node.peer_manager import PeerManager, PeerState
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def alice():
@@ -50,8 +50,10 @@ def bob_pm():
 @pytest.fixture
 def alice_gossip(alice_pm, alice):
     return GossipProtocol(
-        peer_manager=alice_pm, keypair=alice,
-        node_id="alice-node", region="US",
+        peer_manager=alice_pm,
+        keypair=alice,
+        node_id="alice-node",
+        region="US",
         config=GossipConfig(enabled=True, max_peers=10),
     )
 
@@ -59,8 +61,10 @@ def alice_gossip(alice_pm, alice):
 @pytest.fixture
 def bob_gossip(bob_pm, bob):
     return GossipProtocol(
-        peer_manager=bob_pm, keypair=bob,
-        node_id="bob-node", region="EU",
+        peer_manager=bob_pm,
+        keypair=bob,
+        node_id="bob-node",
+        region="EU",
         config=GossipConfig(enabled=True, max_peers=10),
     )
 
@@ -71,16 +75,20 @@ def bob_gossip(bob_pm, bob):
 
 
 class TestExchangePeersServicer:
-
     def test_gossip_disabled_rejects(self, alice):
         """Servicer without gossip rejects ExchangePeers."""
         pm = PeerManager()
         servicer = NodeServicer(
-            node_id="alice", region="US", keypair=alice,
-            peer_manager=pm, gossip_protocol=None,
+            node_id="alice",
+            region="US",
+            keypair=alice,
+            peer_manager=pm,
+            gossip_protocol=None,
         )
         request = ns_pb2.PeerExchangeRequest(
-            signed_message=b"", signature=b"", sender_vk=b"",
+            signed_message=b"",
+            signature=b"",
+            sender_vk=b"",
         )
         response = servicer.ExchangePeers(request, None)
         assert response.accepted is False
@@ -90,8 +98,11 @@ class TestExchangePeersServicer:
         """Servicer with gossip accepts valid exchange."""
         alice_pm = PeerManager()
         servicer = NodeServicer(
-            node_id="alice", region="US", keypair=alice,
-            peer_manager=alice_pm, gossip_protocol=bob_gossip,
+            node_id="alice",
+            region="US",
+            keypair=alice,
+            peer_manager=alice_pm,
+            gossip_protocol=bob_gossip,
         )
         # Build a valid message from bob
         msg = PeerExchangeMessage(
@@ -118,8 +129,11 @@ class TestExchangePeersServicer:
         """Servicer rejects malformed message."""
         pm = PeerManager()
         servicer = NodeServicer(
-            node_id="alice", region="US", keypair=alice,
-            peer_manager=pm, gossip_protocol=alice_gossip,
+            node_id="alice",
+            region="US",
+            keypair=alice,
+            peer_manager=pm,
+            gossip_protocol=alice_gossip,
         )
         request = ns_pb2.PeerExchangeRequest(
             signed_message=b"garbage",
@@ -128,7 +142,10 @@ class TestExchangePeersServicer:
         )
         response = servicer.ExchangePeers(request, None)
         assert response.accepted is False
-        assert "deserialization" in response.reject_reason.lower() or "error" in response.reject_reason.lower()
+        assert (
+            "deserialization" in response.reject_reason.lower()
+            or "error" in response.reject_reason.lower()
+        )
 
     def test_reciprocal_response_contains_peers(self, alice, bob, alice_gossip, alice_pm):
         """Servicer's response includes its own known peers."""
@@ -137,8 +154,11 @@ class TestExchangePeersServicer:
         alice_pm.mark_connected("charlie-node", charlie_kp.vk, "10.0.1.3:50051", "AP")
 
         servicer = NodeServicer(
-            node_id="alice", region="US", keypair=alice,
-            peer_manager=alice_pm, gossip_protocol=alice_gossip,
+            node_id="alice",
+            region="US",
+            keypair=alice,
+            peer_manager=alice_pm,
+            gossip_protocol=alice_gossip,
         )
 
         msg = PeerExchangeMessage(sender_id="bob-node", timestamp=time.time(), peers=[])
@@ -162,7 +182,6 @@ class TestExchangePeersServicer:
 
 
 class TestGossipSendCallback:
-
     def test_tick_calls_send_fn(self, alice, alice_pm):
         """tick() invokes send_fn for each connected peer."""
         bob_kp = KeyPair.generate("bob")
@@ -174,8 +193,10 @@ class TestGossipSendCallback:
             send_calls.append(address)
 
         gossip = GossipProtocol(
-            peer_manager=alice_pm, keypair=alice,
-            node_id="alice-node", region="US",
+            peer_manager=alice_pm,
+            keypair=alice,
+            node_id="alice-node",
+            region="US",
             send_fn=mock_send,
         )
         gossip.tick()
@@ -191,8 +212,10 @@ class TestGossipSendCallback:
             send_calls.append(address)
 
         gossip = GossipProtocol(
-            peer_manager=alice_pm, keypair=alice,
-            node_id="alice-node", region="US",
+            peer_manager=alice_pm,
+            keypair=alice,
+            node_id="alice-node",
+            region="US",
             send_fn=mock_send,
         )
         gossip.tick()
@@ -204,8 +227,10 @@ class TestGossipSendCallback:
         alice_pm.mark_connected("bob-node", bob_kp.vk, "10.0.1.2:50051", "EU")
 
         gossip = GossipProtocol(
-            peer_manager=alice_pm, keypair=alice,
-            node_id="alice-node", region="US",
+            peer_manager=alice_pm,
+            keypair=alice,
+            node_id="alice-node",
+            region="US",
             send_fn=None,
         )
         result = gossip.tick()
@@ -220,8 +245,10 @@ class TestGossipSendCallback:
             raise ConnectionError("peer unreachable")
 
         gossip = GossipProtocol(
-            peer_manager=alice_pm, keypair=alice,
-            node_id="alice-node", region="US",
+            peer_manager=alice_pm,
+            keypair=alice,
+            node_id="alice-node",
+            region="US",
             send_fn=failing_send,
         )
         result = gossip.tick()  # Should not raise
@@ -234,7 +261,6 @@ class TestGossipSendCallback:
 
 
 class TestBidirectionalExchange:
-
     def test_two_nodes_exchange_peers(self, alice, bob):
         """Simulate bidirectional gossip: Alice and Bob exchange peer lists."""
         alice_pm = PeerManager()
@@ -252,12 +278,16 @@ class TestBidirectionalExchange:
         bob_pm.mark_connected("alice", alice.vk, "10.0.1.1:50051", "US")
 
         alice_gossip = GossipProtocol(
-            peer_manager=alice_pm, keypair=alice,
-            node_id="alice", region="US",
+            peer_manager=alice_pm,
+            keypair=alice,
+            node_id="alice",
+            region="US",
         )
         bob_gossip = GossipProtocol(
-            peer_manager=bob_pm, keypair=bob,
-            node_id="bob", region="EU",
+            peer_manager=bob_pm,
+            keypair=bob,
+            node_id="bob",
+            region="EU",
         )
 
         # Alice → Bob

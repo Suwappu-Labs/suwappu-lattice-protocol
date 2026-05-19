@@ -8,9 +8,9 @@ Proves the complete federation data plane:
 
 from __future__ import annotations
 
-import pytest
-
 import struct
+
+import pytest
 
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol
 from src.ltp.entity import Entity
@@ -25,7 +25,6 @@ from src.ltp.federation import (
     TrustLevel,
 )
 from src.ltp.primitives import MLDSA
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -52,7 +51,11 @@ def _make_network(prefix: str, n_nodes: int = 6) -> CommitmentNetwork:
 
 def _make_nir(kp, root_byte, name, endpoint):
     return NetworkIdentityRecord.create(
-        kp, bytes([root_byte]) * 32, 0, name, endpoint,
+        kp,
+        bytes([root_byte]) * 32,
+        0,
+        name,
+        endpoint,
     )
 
 
@@ -129,7 +132,10 @@ class TestEndToEndCrossNetwork:
         transport.register_network("https://a.net", net_a)
 
         fetcher = CrossNetworkFetcher(
-            reg_b, transport, nir_b, {nir_a.network_id: agreement},
+            reg_b,
+            transport,
+            nir_b,
+            {nir_a.network_id: agreement},
         )
         shards = fetcher.fetch_entity_shards(entity_id, [0, 1, 2])
 
@@ -163,7 +169,10 @@ class TestEndToEndCrossNetwork:
         transport.register_network("https://a.net", net_a)
 
         fetcher = CrossNetworkFetcher(
-            reg_b, transport, nir_b, {nir_a.network_id: agreement},
+            reg_b,
+            transport,
+            nir_b,
+            {nir_a.network_id: agreement},
         )
         fetched_shards = fetcher.fetch_entity_shards(entity_id, list(direct_shards.keys()))
 
@@ -179,7 +188,6 @@ class TestEndToEndCrossNetwork:
 
 
 class TestCrossNetworkEdgeCases:
-
     def test_fetch_before_federation_rejected(self, kp_a, kp_b):
         """Fetch from a VERIFIED (not FEDERATED) network fails auth."""
         net_a = _make_network("prefed-a")
@@ -224,7 +232,10 @@ class TestCrossNetworkEdgeCases:
 
         # Resolution should skip UNTRUSTED networks (min_trust is VERIFIED)
         fetcher = CrossNetworkFetcher(
-            reg_b, transport, nir_b, {nir_a.network_id: agreement},
+            reg_b,
+            transport,
+            nir_b,
+            {nir_a.network_id: agreement},
         )
         result = fetcher.fetch_entity_shards(entity_id, [0])
         assert result is None
@@ -288,7 +299,10 @@ class TestTwoWayFederation:
         reg_b.federate_with_agreement(agreement)
 
         fetcher_b = CrossNetworkFetcher(
-            reg_b, transport, nir_b, {nir_a.network_id: agreement},
+            reg_b,
+            transport,
+            nir_b,
+            {nir_a.network_id: agreement},
         )
         shards_from_a = fetcher_b.fetch_entity_shards(eid_a, [0, 1, 2])
         assert shards_from_a is not None
@@ -299,7 +313,10 @@ class TestTwoWayFederation:
         reg_a.federate_with_agreement(agreement)
 
         fetcher_a = CrossNetworkFetcher(
-            reg_a, transport, nir_a, {nir_b.network_id: agreement},
+            reg_a,
+            transport,
+            nir_a,
+            {nir_b.network_id: agreement},
         )
         shards_from_b = fetcher_a.fetch_entity_shards(eid_b, [0, 1, 2])
         assert shards_from_b is not None
@@ -312,7 +329,6 @@ class TestTwoWayFederation:
 
 
 class TestAuditFixes:
-
     def test_wrong_agreement_rejected_by_transport(self, kp_a, kp_b):
         """Agreement with network C cannot authenticate to network B."""
         kp_c = KeyPair.generate("e2e-net-c")
@@ -348,6 +364,6 @@ class TestAuditFixes:
         agreement = _make_agreement(kp_a, kp_b, nir_a, nir_b)
         auth = FederationAuth(requester_nir=nir_a, agreement=agreement)
 
-        assert auth.covers_network(nir_a.network_id) is True   # Initiator
-        assert auth.covers_network(nir_b.network_id) is True   # Responder
-        assert auth.covers_network("unrelated-id") is False     # Not a party
+        assert auth.covers_network(nir_a.network_id) is True  # Initiator
+        assert auth.covers_network(nir_b.network_id) is True  # Responder
+        assert auth.covers_network("unrelated-id") is False  # Not a party

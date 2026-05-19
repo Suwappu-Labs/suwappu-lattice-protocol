@@ -1,12 +1,12 @@
 """Tests for commit rule evaluation (Spec D1a §2)."""
 
-from ltp.consensus.types import Block, Certificate, CommitDecision
-from ltp.consensus.dag_store import DAGStore
 from ltp.consensus.commit_rule import (
+    collect_causal_history,
     evaluate_direct_commit,
     evaluate_indirect_commit,
-    collect_causal_history,
 )
+from ltp.consensus.dag_store import DAGStore
+from ltp.consensus.types import Block, Certificate, CommitDecision
 
 
 def _block(author: int, round: int, parents: frozenset[bytes] = frozenset()) -> Block:
@@ -195,7 +195,10 @@ class TestIndirectCommit:
 
         # Leader at round 0 = validator 0. It's in causal history of leader at round 2.
         decision = evaluate_indirect_commit(
-            dag, round=0, leader=0, committed_rounds={2},
+            dag,
+            round=0,
+            leader=0,
+            committed_rounds={2},
         )
         assert decision is not None
         assert decision.round == 0

@@ -36,12 +36,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .base import (
-    BackendCapabilities,
-    BackendConfig,
-    CommitmentBackend,
-    FinalityModel,
-)
 from ..economics import (
     EconomicsConfig,
     EconomicsEngine,
@@ -50,20 +44,27 @@ from ..economics import (
     SlashingTier,
 )
 from ..primitives import canonical_hash, canonical_hash_bytes
-
+from .base import (
+    BackendCapabilities,
+    BackendConfig,
+    CommitmentBackend,
+    FinalityModel,
+)
 
 # ---------------------------------------------------------------------------
 # Base L1 block and state simulation
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BaseL1Block:
     """A simulated Base L1 block."""
+
     number: int
     timestamp: float
     parent_hash: str
     state_root: str
-    commitment_root: str           # Merkle root of all commitments in this block
+    commitment_root: str  # Merkle root of all commitments in this block
     transactions: list[dict] = field(default_factory=list)
     validator: str = ""
     signature: bytes = b""
@@ -85,6 +86,7 @@ class VerkleProof:
       - block_number: the block this proof is anchored to
       - state_root: the state root this proof verifies against
     """
+
     key: str
     value_hash: str
     commitment_indices: list[int]
@@ -97,16 +99,18 @@ class VerkleProof:
 # Node registry entry
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BaseL1NodeEntry:
     """On-chain node registry entry."""
+
     node_id: str
     region: str
     operator_address: str
     stake_wei: int
     registered_block: int
     active: bool = True
-    audit_score: int = 100        # 0-100, decremented on audit failure
+    audit_score: int = 100  # 0-100, decremented on audit failure
     last_audit_block: int = 0
     slashed_total: int = 0
 
@@ -114,6 +118,7 @@ class BaseL1NodeEntry:
 # ---------------------------------------------------------------------------
 # Base L1 Backend
 # ---------------------------------------------------------------------------
+
 
 class BaseL1Backend(CommitmentBackend):
     """
@@ -146,7 +151,7 @@ class BaseL1Backend(CommitmentBackend):
 
         # Basic economics
         self._total_staked: int = 0
-        self._slash_pool: int = 0     # accumulated slash penalties
+        self._slash_pool: int = 0  # accumulated slash penalties
 
         # Full economics engine (opt-in)
         self._economics_engine: EconomicsEngine | None = None
@@ -211,27 +216,27 @@ class BaseL1Backend(CommitmentBackend):
         # Compute new commitment root from all commitments
         all_commitment_hashes = sorted(self._commitments.keys())
         if all_commitment_hashes:
-            commitment_root = canonical_hash(
-                "".join(all_commitment_hashes).encode()
-            )
+            commitment_root = canonical_hash("".join(all_commitment_hashes).encode())
         else:
             commitment_root = "0" * 64
 
         # Compute state root (simulated Verkle trie root)
-        state_data = json.dumps({
-            "commitments": len(self._commitments),
-            "nodes": len(self._node_registry),
-            "total_staked": self._total_staked,
-            "parent": parent.state_root,
-        }, sort_keys=True).encode()
+        state_data = json.dumps(
+            {
+                "commitments": len(self._commitments),
+                "nodes": len(self._node_registry),
+                "total_staked": self._total_staked,
+                "parent": parent.state_root,
+            },
+            sort_keys=True,
+        ).encode()
         state_root = canonical_hash(state_data)
 
         block = BaseL1Block(
             number=parent.number + 1,
             timestamp=time.time(),
             parent_hash=canonical_hash(
-                struct.pack(">Q", parent.number)
-                + parent.state_root.encode()
+                struct.pack(">Q", parent.number) + parent.state_root.encode()
             ),
             state_root=state_root,
             commitment_root=commitment_root,
@@ -258,20 +263,16 @@ class BaseL1Backend(CommitmentBackend):
 
         # Simulate the proof as a compact hash chain
         storage_key = canonical_hash(f"commitment:{entity_id}".encode())
-        value_hash = canonical_hash(json.dumps(
-            self._commitments.get(entity_id, {}), sort_keys=True
-        ).encode())
+        value_hash = canonical_hash(
+            json.dumps(self._commitments.get(entity_id, {}), sort_keys=True).encode()
+        )
 
         # Verkle indices (simulated path through polynomial commitment tree)
         key_bytes = canonical_hash_bytes(entity_id.encode())
         indices = [b % 256 for b in key_bytes[:4]]
 
         # Proof bytes: in production this is an IPA/KZG opening proof
-        proof_data = (
-            storage_key.encode()
-            + value_hash.encode()
-            + block.state_root.encode()
-        )
+        proof_data = storage_key.encode() + value_hash.encode() + block.state_root.encode()
         proof_bytes = canonical_hash_bytes(proof_data)
 
         return VerkleProof(
@@ -312,11 +313,13 @@ class BaseL1Backend(CommitmentBackend):
         self._epoch_commitment_count += 1
 
         # Add to pending transactions
-        self._pending_tx.append({
-            "type": "COMMIT_RECORD",
-            "entity_id": entity_id,
-            "record_hash": record_hash,
-        })
+        self._pending_tx.append(
+            {
+                "type": "COMMIT_RECORD",
+                "entity_id": entity_id,
+                "record_hash": record_hash,
+            }
+        )
 
         # Produce a block (in production, block production is asynchronous)
         block = self._produce_block()
@@ -339,9 +342,9 @@ class BaseL1Backend(CommitmentBackend):
 
         if isinstance(proof, dict) and "verkle_proof" in proof:
             vp = proof["verkle_proof"]
-            expected_value_hash = canonical_hash(json.dumps(
-                self._commitments[entity_id], sort_keys=True
-            ).encode())
+            expected_value_hash = canonical_hash(
+                json.dumps(self._commitments[entity_id], sort_keys=True).encode()
+            )
             return vp.get("value_hash") == expected_value_hash
 
         # Fallback: check that entity exists and proof references correct block
@@ -378,9 +381,7 @@ class BaseL1Backend(CommitmentBackend):
 
     # --- Node registry ---
 
-    def register_node(
-        self, node_id: str, region: str, stake_wei: int = 0
-    ) -> bool:
+    def register_node(self, node_id: str, region: str, stake_wei: int = 0) -> bool:
         # Use economics engine min-stake if enabled
         if self._economics_engine is not None:
             min_stake = self._economics_engine.min_stake_for_epoch(self._current_epoch)
@@ -406,11 +407,13 @@ class BaseL1Backend(CommitmentBackend):
                 stake=stake_wei,
             )
 
-        self._pending_tx.append({
-            "type": "REGISTER_NODE",
-            "node_id": node_id,
-            "stake_wei": stake_wei,
-        })
+        self._pending_tx.append(
+            {
+                "type": "REGISTER_NODE",
+                "node_id": node_id,
+                "stake_wei": stake_wei,
+            }
+        )
         self._produce_block()
         return True
 
@@ -428,12 +431,14 @@ class BaseL1Backend(CommitmentBackend):
         self._total_staked -= slash_amount
         self._slash_pool += slash_amount
 
-        self._pending_tx.append({
-            "type": "EVICT_NODE",
-            "node_id": node_id,
-            "reason": reason,
-            "slash_amount": slash_amount,
-        })
+        self._pending_tx.append(
+            {
+                "type": "EVICT_NODE",
+                "node_id": node_id,
+                "reason": reason,
+                "slash_amount": slash_amount,
+            }
+        )
         self._produce_block()
         return True
 
@@ -497,8 +502,7 @@ class BaseL1Backend(CommitmentBackend):
 
             # Apply cooldown
             node_econ.cooldown_until_epoch = (
-                self._current_epoch
-                + self._economics_engine.config.cooldown_epochs_per_offense
+                self._current_epoch + self._economics_engine.config.cooldown_epochs_per_offense
             )
 
             # Auto-evict on critical tier
@@ -514,20 +518,22 @@ class BaseL1Backend(CommitmentBackend):
         self._total_staked -= slash_amount
         self._slash_pool += slash_amount
 
-        self._pending_tx.append({
-            "type": "SLASH_NODE",
-            "node_id": node_id,
-            "amount": slash_amount,
-        })
+        self._pending_tx.append(
+            {
+                "type": "SLASH_NODE",
+                "node_id": node_id,
+                "amount": slash_amount,
+            }
+        )
         self._produce_block()
         return slash_amount
 
     def get_pricing(self) -> dict:
         pricing = {
-            "cost_per_shard_per_epoch": 100,     # 100 wei per shard per epoch
-            "epoch_seconds": 3600,                # 1 hour epochs
-            "currency": "LTP",                    # native L1 token
-            "gas_per_commit": 21_000,             # native opcode gas cost
+            "cost_per_shard_per_epoch": 100,  # 100 wei per shard per epoch
+            "epoch_seconds": 3600,  # 1 hour epochs
+            "currency": "LTP",  # native L1 token
+            "gas_per_commit": 21_000,  # native opcode gas cost
             "block_time_ms": self._block_time_ms,
         }
         if self._economics_engine is not None:
@@ -535,17 +541,19 @@ class BaseL1Backend(CommitmentBackend):
             dynamic_fee = self._economics_engine.compute_commit_fee(utilization)
             phase = self._economics_engine.network_phase(self._current_epoch)
             min_stake = self._economics_engine.min_stake_for_epoch(self._current_epoch)
-            pricing.update({
-                "dynamic_commit_fee": dynamic_fee,
-                "network_phase": phase.value,
-                "min_stake_required": min_stake,
-                "bootstrap_multiplier": self._economics_engine.bootstrap_multiplier(
-                    self._current_epoch
-                ),
-                "current_epoch": self._current_epoch,
-                "total_endowment": self._economics_engine.total_endowment,
-                "total_burned": self._economics_engine.total_burned,
-            })
+            pricing.update(
+                {
+                    "dynamic_commit_fee": dynamic_fee,
+                    "network_phase": phase.value,
+                    "min_stake_required": min_stake,
+                    "bootstrap_multiplier": self._economics_engine.bootstrap_multiplier(
+                        self._current_epoch
+                    ),
+                    "current_epoch": self._current_epoch,
+                    "total_endowment": self._economics_engine.total_endowment,
+                    "total_burned": self._economics_engine.total_burned,
+                }
+            )
         return pricing
 
     def _compute_slash(self, entry: BaseL1NodeEntry) -> int:
@@ -573,20 +581,17 @@ class BaseL1Backend(CommitmentBackend):
             if reg and reg.active:
                 node_econ.epochs_active += 1
 
-        active_nodes = [
-            n for n in self._node_economics.values() if not n.evicted
-        ]
+        active_nodes = [n for n in self._node_economics.values() if not n.evicted]
         snapshot = self._economics_engine.process_epoch(
             epoch=epoch,
             nodes=active_nodes,
-            total_commitments_this_epoch=(
-                commitments_this_epoch or self._epoch_commitment_count
-            ),
+            total_commitments_this_epoch=(commitments_this_epoch or self._epoch_commitment_count),
             network_capacity=10_000 * max(1, len(active_nodes)),
         )
 
         # Apply rewards to node stakes (with vesting split)
         from ..economics import VestingEntry
+
         for reward in snapshot.rewards:
             node_econ = self._node_economics.get(reward.node_id)
             reg = self._node_registry.get(reward.node_id)
@@ -604,11 +609,13 @@ class BaseL1Backend(CommitmentBackend):
                 # Vested portion added to vesting schedule
                 vested = reward.vested_amount
                 if vested > 0:
-                    node_econ.vesting_entries.append(VestingEntry(
-                        amount=vested,
-                        start_epoch=epoch,
-                        duration_epochs=self._economics_engine.config.vesting_duration_epochs,
-                    ))
+                    node_econ.vesting_entries.append(
+                        VestingEntry(
+                            amount=vested,
+                            start_epoch=epoch,
+                            duration_epochs=self._economics_engine.config.vesting_duration_epochs,
+                        )
+                    )
 
                 # Release any previously vested rewards
                 released = node_econ.claim_vested(epoch)
@@ -673,11 +680,13 @@ class BaseL1Backend(CommitmentBackend):
                 "block_number": len(self._blocks),
             }
             self._commitments[entity_id] = entry
-            self._pending_tx.append({
-                "type": "COMMIT_RECORD",
-                "entity_id": entity_id,
-                "record_hash": record_hash,
-            })
+            self._pending_tx.append(
+                {
+                    "type": "COMMIT_RECORD",
+                    "entity_id": entity_id,
+                    "record_hash": record_hash,
+                }
+            )
             refs.append(record_hash)
 
         # Single block for all commits (parallel execution)

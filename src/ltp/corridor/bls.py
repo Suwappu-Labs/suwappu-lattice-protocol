@@ -21,6 +21,7 @@ from .constants import BLS_CORRIDOR_DST
 
 try:  # pragma: no cover — backend detection
     import blst as _blst
+
     _blst_available = True
 except ImportError:
     _blst = None
@@ -28,6 +29,7 @@ except ImportError:
 
 try:  # pragma: no cover — backend detection
     from py_ecc.bls import G2Basic as _py_ecc_basic
+
     _py_ecc_available = True
 except ImportError:
     _py_ecc_basic = None
@@ -37,7 +39,7 @@ PK_SIZE = 48
 SK_SIZE = 32
 SIG_SIZE = 96
 
-_BLS_CURVE_ORDER = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+_BLS_CURVE_ORDER = 0x73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001
 
 
 class CorridorBlsBackendMissing(RuntimeError):
@@ -134,9 +136,7 @@ def corridor_aggregate_verify(pks: list[bytes], digest: bytes, agg_sig: bytes) -
             for pk in pks[1:]:
                 agg_pk.aggregate(_blst.P1_Affine(pk))
             return (
-                sig_affine.core_verify(
-                    agg_pk.to_affine(), True, digest, BLS_CORRIDOR_DST
-                )
+                sig_affine.core_verify(agg_pk.to_affine(), True, digest, BLS_CORRIDOR_DST)
                 == _blst.BLST_SUCCESS
             )
         except Exception:

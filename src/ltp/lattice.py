@@ -43,6 +43,7 @@ class LatticeKey:
     The entire key is sealed (envelope-encrypted) to the receiver's public key.
     Each seal() generates a fresh ML-KEM encapsulation (forward secrecy).
     """
+
     entity_id: str
     cek: bytes
     commitment_ref: str
@@ -50,12 +51,15 @@ class LatticeKey:
 
     def _plaintext_payload(self) -> bytes:
         """Serialize the key's inner payload (before sealing)."""
-        return json.dumps({
-            "entity_id": self.entity_id,
-            "cek": self.cek.hex(),
-            "commitment_ref": self.commitment_ref,
-            "access_policy": self.access_policy,
-        }, separators=(',', ':')).encode()
+        return json.dumps(
+            {
+                "entity_id": self.entity_id,
+                "cek": self.cek.hex(),
+                "commitment_ref": self.commitment_ref,
+                "access_policy": self.access_policy,
+            },
+            separators=(",", ":"),
+        ).encode()
 
     def seal(self, receiver_ek: bytes) -> bytes:
         """
@@ -67,7 +71,7 @@ class LatticeKey:
         return SealedBox.seal(self._plaintext_payload(), receiver_ek)
 
     @classmethod
-    def unseal(cls, sealed_data: bytes, receiver_keypair: KeyPair) -> 'LatticeKey':
+    def unseal(cls, sealed_data: bytes, receiver_keypair: KeyPair) -> "LatticeKey":
         """Unseal with receiver's private key. Raises ValueError if wrong receiver."""
         plaintext = SealedBox.unseal(sealed_data, receiver_keypair)
         d = json.loads(plaintext)
@@ -85,15 +89,17 @@ class LatticeKey:
         structured binary encoding. The legacy _plaintext_payload() is
         preserved for backward compatibility with existing sealed keys.
         """
-        from .encoding import CanonicalEncoder
-        from .domain import DOMAIN_LATTICE_KEY
         import json as _json
+
+        from .domain import DOMAIN_LATTICE_KEY
+        from .encoding import CanonicalEncoder
+
         return (
             CanonicalEncoder(DOMAIN_LATTICE_KEY)
             .string(self.entity_id)
             .length_prefixed_bytes(self.cek)
             .string(self.commitment_ref)
-            .string(_json.dumps(self.access_policy, sort_keys=True, separators=(',', ':')))
+            .string(_json.dumps(self.access_policy, sort_keys=True, separators=(",", ":")))
             .finalize()
         )
 

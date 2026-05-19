@@ -18,8 +18,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
-from ..encoding import CanonicalEncoder
 from ..domain import DOMAIN_COMMIT_RECORD
+from ..encoding import CanonicalEncoder
 from .tree import _leaf_hash, _verify_inclusion
 
 __all__ = ["TreeType", "PortableMerkleProof"]
@@ -27,6 +27,7 @@ __all__ = ["TreeType", "PortableMerkleProof"]
 
 class TreeType(Enum):
     """Discriminator for the type of Merkle tree this proof belongs to."""
+
     COMMITMENT_LOG = "commitment_log"
     SHARD_TREE = "shard_tree"
 
@@ -105,12 +106,13 @@ class PortableMerkleProof:
                 || path_count(4) || [sibling_hash(32)]... || directions_packed
         """
         import struct
+
         parts = [
-            struct.pack('>Q', self.leaf_index),
-            struct.pack('>Q', self.tree_size),
+            struct.pack(">Q", self.leaf_index),
+            struct.pack(">Q", self.tree_size),
             self.leaf_hash,
             self.root_hash,
-            struct.pack('>I', len(self.path)),
+            struct.pack(">I", len(self.path)),
         ]
         for sibling in self.path:
             parts.append(sibling)
@@ -120,7 +122,7 @@ class PortableMerkleProof:
             byte_val = 0
             for j in range(8):
                 if i + j < len(self.path_directions) and self.path_directions[i + j]:
-                    byte_val |= (1 << (7 - j))
+                    byte_val |= 1 << (7 - j)
             direction_bytes.append(byte_val)
         parts.append(bytes(direction_bytes))
         return b"".join(parts)
@@ -166,6 +168,7 @@ def _compute_directions(index: int, tree_size: int) -> list[bool]:
     n = tree_size
     while n > 1:
         from .tree import _largest_pow2_below
+
         k = _largest_pow2_below(n)
         went_left = i < k
         directions.append(went_left)

@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Callable, Optional
 
 logger = logging.getLogger(__name__)

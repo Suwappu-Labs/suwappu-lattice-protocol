@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from .events import ConsensusEvent, ConsensusEventType
 from .validator_set import ValidatorSet
 
 if TYPE_CHECKING:
-    from ..execution.committee.manager import CommitteeManager
     from ..execution.committee.dkg.threshold_signing import ThresholdSigningKey
+    from ..execution.committee.manager import CommitteeManager
 
 __all__ = ["CommitteeSync"]
 
@@ -125,7 +125,9 @@ class CommitteeSync:
 
         if self._validator_set is not None:
             eviction_events = self.sync_evictions(
-                self._validator_set, round, timestamp_ms,
+                self._validator_set,
+                round,
+                timestamp_ms,
             )
             events.extend(eviction_events)
 

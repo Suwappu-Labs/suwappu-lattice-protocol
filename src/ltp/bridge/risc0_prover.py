@@ -49,9 +49,7 @@ class RiscZeroZKBridgeProver(ZKBridgeProver):
     def prove_sth_signature(self, sth) -> ZKBridgeProof:
         """Generate a ZK proof that the ML-DSA-65 signature on this STH is valid."""
         if not sth.verify():
-            raise ValueError(
-                "Cannot generate RISC Zero proof for invalid STH signature"
-            )
+            raise ValueError("Cannot generate RISC Zero proof for invalid STH signature")
 
         public_inputs = ZKBridgePublicInputs.from_sth(sth)
 
@@ -75,6 +73,7 @@ class RiscZeroZKBridgeProver(ZKBridgeProver):
     def _mock_proof(self, sth, public_inputs: ZKBridgePublicInputs) -> bytes:
         """Real STARK-based fallback proof when RISC Zero toolchain is not available."""
         from ._stark_fallback import stark_fallback_proof_bytes
+
         return stark_fallback_proof_bytes(sth)
 
     def _local_proof(self, stdin_data: bytes) -> bytes:

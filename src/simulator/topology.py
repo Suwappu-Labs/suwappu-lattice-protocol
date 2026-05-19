@@ -29,6 +29,7 @@ class Link:
         packet_loss:   probability of packet loss [0.0, 1.0)
         active:        whether the link is currently usable
     """
+
     source: str
     target: str
     latency_ms: float
@@ -52,7 +53,7 @@ class Link:
         transfer_time = base_latency + jitter + (payload_bits / bandwidth)
         """
         if not self.active:
-            return float('inf')
+            return float("inf")
         jitter = random.uniform(-self.jitter_ms, self.jitter_ms)
         propagation = max(0.0, self.latency_ms + jitter)
         transmission = (payload_bytes * 8) / (self.bandwidth_mbps * 1_000_000) * 1000
@@ -75,6 +76,7 @@ class Region:
         intra_latency_ms: latency between nodes within this region
         active:           whether the region is online
     """
+
     name: str
     intra_latency_ms: float = 1.0
     active: bool = True
@@ -170,14 +172,20 @@ class Topology:
                 raise ValueError(f"Region '{name}' does not exist")
 
         link_ab = Link(
-            source=region_a, target=region_b,
-            latency_ms=latency_ms, bandwidth_mbps=bandwidth_mbps,
-            jitter_ms=jitter_ms, packet_loss=packet_loss,
+            source=region_a,
+            target=region_b,
+            latency_ms=latency_ms,
+            bandwidth_mbps=bandwidth_mbps,
+            jitter_ms=jitter_ms,
+            packet_loss=packet_loss,
         )
         link_ba = Link(
-            source=region_b, target=region_a,
-            latency_ms=latency_ms, bandwidth_mbps=bandwidth_mbps,
-            jitter_ms=jitter_ms, packet_loss=packet_loss,
+            source=region_b,
+            target=region_a,
+            latency_ms=latency_ms,
+            bandwidth_mbps=bandwidth_mbps,
+            jitter_ms=jitter_ms,
+            packet_loss=packet_loss,
         )
         self._links[(region_a, region_b)] = link_ab
         self._links[(region_b, region_a)] = link_ba
@@ -203,12 +211,12 @@ class Topology:
         region_a = self._node_region_map.get(node_a)
         region_b = self._node_region_map.get(node_b)
         if region_a is None or region_b is None:
-            return float('inf')
+            return float("inf")
 
         if region_a == region_b:
             region = self._regions[region_a]
             if not region.active:
-                return float('inf')
+                return float("inf")
             base = region.intra_latency_ms
             if payload_bytes > 0:
                 # Intra-region: assume 10Gbps local fabric
@@ -217,18 +225,16 @@ class Topology:
 
         return self._shortest_path_latency(region_a, region_b, payload_bytes)
 
-    def _shortest_path_latency(
-        self, source: str, target: str, payload_bytes: int
-    ) -> float:
+    def _shortest_path_latency(self, source: str, target: str, payload_bytes: int) -> float:
         """Dijkstra shortest-path by transfer time between regions."""
-        dist: dict[str, float] = {r: float('inf') for r in self._regions}
+        dist: dict[str, float] = {r: float("inf") for r in self._regions}
         dist[source] = 0.0
         visited: set[str] = set()
         # Simple Dijkstra — regions are typically small (< 100)
         while True:
             # Pick unvisited node with smallest distance
             current = None
-            current_dist = float('inf')
+            current_dist = float("inf")
             for r, d in dist.items():
                 if r not in visited and d < current_dist:
                     current = r
@@ -251,7 +257,7 @@ class Topology:
                 cost = current_dist + link.transfer_time_ms(payload_bytes)
                 if cost < dist[neighbor]:
                     dist[neighbor] = cost
-        return dist.get(target, float('inf'))
+        return dist.get(target, float("inf"))
 
     # --- Failure injection ---
 

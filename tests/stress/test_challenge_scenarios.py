@@ -1,7 +1,9 @@
 """Stress scenarios 12, 13: Challenge period and ZK proof fallback."""
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from tests.stress.conftest import make_raw_log
 
 

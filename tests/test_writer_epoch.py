@@ -9,13 +9,12 @@ import pytest
 
 from src.ltp.execution.writer import IdentityTier, WriterIdentity, WriterState
 from src.ltp.execution.writer_config import RegistryConfig
-from src.ltp.execution.writer_registry import WriterRegistry
 from src.ltp.execution.writer_epoch import (
     EpochTracker,
     check_expirations,
     promote_due_probations,
 )
-
+from src.ltp.execution.writer_registry import WriterRegistry
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -85,6 +84,7 @@ def _make_probation_registry(
 # TestEpochTracker
 # ---------------------------------------------------------------------------
 
+
 class TestEpochTracker:
     """EpochTracker — per-(writer, VM) tx counts with epoch rollover."""
 
@@ -131,6 +131,7 @@ class TestEpochTracker:
 # TestExpirationChecker
 # ---------------------------------------------------------------------------
 
+
 class TestExpirationChecker:
     """check_expirations — batch ACTIVE → EXPIRED on epoch threshold."""
 
@@ -156,6 +157,7 @@ class TestExpirationChecker:
 # ---------------------------------------------------------------------------
 # TestProbationPromoter
 # ---------------------------------------------------------------------------
+
 
 class TestProbationPromoter:
     """promote_due_probations — batch PROBATION → ACTIVE on epoch threshold."""

@@ -13,6 +13,7 @@ import time
 import urllib.request
 
 import pytest
+from fastapi.testclient import TestClient
 
 from src.ltp.domain import signer_fingerprint
 from src.ltp.gateway.app import GatewayConfig, create_app
@@ -25,11 +26,8 @@ from src.ltp.node.main import ETPNode
 from src.ltp.node.peer_manager import PeerManager
 from src.ltp.observability.endpoint import ETPObservability
 
-from fastapi.testclient import TestClient
-
 
 class TestPhase8GateClosure:
-
     def test_etpnode_full_startup(self):
         """ETPNode starts with gateway + gossip + observability."""
         config = NodeConfig(
@@ -58,10 +56,15 @@ class TestPhase8GateClosure:
     def test_gateway_serves_health(self):
         """GET /health returns 200 through gateway."""
         config = NodeConfig(
-            node_id="gate-health", region="test",
-            listen_port=0, rest_port=0, diagnostics_port=0,
-            require_real_crypto=False, storage_backend="memory",
-            gateway_enabled=True, gateway_port=0,
+            node_id="gate-health",
+            region="test",
+            listen_port=0,
+            rest_port=0,
+            diagnostics_port=0,
+            require_real_crypto=False,
+            storage_backend="memory",
+            gateway_enabled=True,
+            gateway_port=0,
         )
         node = ETPNode(config)
         node.start()
@@ -76,10 +79,15 @@ class TestPhase8GateClosure:
     def test_gateway_serves_metrics(self):
         """GET /metrics returns Prometheus text with bridge + gossip metrics."""
         config = NodeConfig(
-            node_id="gate-metrics", region="test",
-            listen_port=0, rest_port=0, diagnostics_port=0,
-            require_real_crypto=False, storage_backend="memory",
-            gateway_enabled=True, gateway_port=0,
+            node_id="gate-metrics",
+            region="test",
+            listen_port=0,
+            rest_port=0,
+            diagnostics_port=0,
+            require_real_crypto=False,
+            storage_backend="memory",
+            gateway_enabled=True,
+            gateway_port=0,
             observability_enabled=True,
         )
         node = ETPNode(config)
@@ -138,6 +146,7 @@ class TestPhase8GateClosure:
     def test_federation_endpoint_accessible(self):
         """Federation endpoint responds (403 without auth, 200 with auth)."""
         from src.ltp.commitment import CommitmentLog
+
         app = create_app(GatewayConfig(jwt_enabled=False))
         app.state.health_fn = lambda: {"ok": True}
         app.state.commitment_log = CommitmentLog()
@@ -148,19 +157,27 @@ class TestPhase8GateClosure:
         assert resp.status_code == 403
 
         # With federation auth headers → 404 (not found, but auth passed)
-        resp = client.get("/federation/v1/entity/test", headers={
-            "X-Federation-NIR-Sig": "aa" * 64,
-            "X-Federation-Network-ID": "net-001",
-        })
+        resp = client.get(
+            "/federation/v1/entity/test",
+            headers={
+                "X-Federation-NIR-Sig": "aa" * 64,
+                "X-Federation-Network-ID": "net-001",
+            },
+        )
         assert resp.status_code == 404
 
     def test_clean_shutdown(self):
         """All components stop without error."""
         config = NodeConfig(
-            node_id="gate-shutdown", region="test",
-            listen_port=0, rest_port=0, diagnostics_port=0,
-            require_real_crypto=False, storage_backend="memory",
-            gateway_enabled=True, gateway_port=0,
+            node_id="gate-shutdown",
+            region="test",
+            listen_port=0,
+            rest_port=0,
+            diagnostics_port=0,
+            require_real_crypto=False,
+            storage_backend="memory",
+            gateway_enabled=True,
+            gateway_port=0,
             gossip_enabled=True,
             observability_enabled=True,
         )

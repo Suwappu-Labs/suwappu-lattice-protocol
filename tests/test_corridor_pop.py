@@ -21,17 +21,17 @@ from src.ltp.corridor.constants import (
     LTP_ATTESTATION_QUORUM_SIZE,
 )
 from src.ltp.corridor.wire import (
+    WireFormatError,
     super_node_from_dict,
     super_node_to_dict,
-    WireFormatError,
 )
-
 
 # blst is the only path that produces real BLS keypairs in this repo;
 # py_ecc's BLS works for signing but the wire-level test wants real
 # (pk, sk) pairs. Skip if neither is available.
 try:
     from src.ltp.corridor.bls import _blst_available, _py_ecc_available
+
     _HAS_BLS_BACKEND = _blst_available or _py_ecc_available
 except (ImportError, AttributeError):
     _HAS_BLS_BACKEND = False

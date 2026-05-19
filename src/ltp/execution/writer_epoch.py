@@ -1,6 +1,9 @@
 """Epoch-driven operations — rate limits, expiration, promotion (Spec C2 §9.4)."""
+
 from __future__ import annotations
+
 from collections import defaultdict
+
 from .writer import WriterState
 from .writer_registry import WriterRegistry
 
@@ -35,13 +38,17 @@ def check_expirations(registry: WriterRegistry, current_epoch: int) -> list[byte
     return registry.check_expirations(current_epoch)
 
 
-def promote_due_probations(registry: WriterRegistry, current_epoch: int, timestamp: int) -> list[bytes]:
+def promote_due_probations(
+    registry: WriterRegistry, current_epoch: int, timestamp: int
+) -> list[bytes]:
     """Promote PROBATION writers whose probation_until <= current_epoch."""
     promoted = []
     for record in registry.active_writers():
-        if (record.state == WriterState.PROBATION
-                and record.probation_until is not None
-                and current_epoch >= record.probation_until):
+        if (
+            record.state == WriterState.PROBATION
+            and record.probation_until is not None
+            and current_epoch >= record.probation_until
+        ):
             registry.promote(record.identity.fingerprint, timestamp=timestamp)
             promoted.append(record.identity.fingerprint)
     return promoted

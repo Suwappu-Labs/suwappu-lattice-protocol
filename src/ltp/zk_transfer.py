@@ -43,9 +43,10 @@ __all__ = [
 
 class ZKProofSystem(Enum):
     """Available ZK proof systems."""
-    SIMULATED = "simulated"    # Uses real Pedersen+Sigma (BLS12-381) when py_ecc available
-    GROTH16 = "groth16"        # BLS12-381 Sigma protocol — NOT post-quantum (Shor breaks DLP)
-    STARK = "stark"            # Post-quantum safe (FRI + Goldilocks field, hash-only)
+
+    SIMULATED = "simulated"  # Uses real Pedersen+Sigma (BLS12-381) when py_ecc available
+    GROTH16 = "groth16"  # BLS12-381 Sigma protocol — NOT post-quantum (Shor breaks DLP)
+    STARK = "stark"  # Post-quantum safe (FRI + Goldilocks field, hash-only)
 
 
 @dataclass
@@ -55,9 +56,10 @@ class ZKConfig:
     For post-quantum deployments, use proof_system=STARK.
     GROTH16/SIMULATED use BLS12-381 which is broken by Shor's algorithm.
     """
+
     enabled: bool = False
     proof_system: ZKProofSystem = ZKProofSystem.STARK  # Default to PQ-safe STARK
-    curve: str = "bls12_381"   # Only relevant for Groth16
+    curve: str = "bls12_381"  # Only relevant for Groth16
     hiding_commitment: bool = True  # Use hiding commitment for entity_id
 
 
@@ -72,9 +74,10 @@ class ZKCommitment:
     The commitment hides entity_id from the commitment log while
     allowing ZK proof of knowledge.
     """
-    commitment_value: str       # The commitment C (hex string)
-    blinding_factor: bytes      # Random blinding factor r
-    entity_id: str              # The hidden entity_id (known to creator only)
+
+    commitment_value: str  # The commitment C (hex string)
+    blinding_factor: bytes  # Random blinding factor r
+    entity_id: str  # The hidden entity_id (known to creator only)
 
     @property
     def is_hiding(self) -> bool:
@@ -93,6 +96,7 @@ class ZKProof:
     In simulation: proof = H(entity_id || blinding_factor || "proof")
     In production: Groth16 proof (~192 bytes) or STARK proof (~45 KB)
     """
+
     proof_bytes: bytes
     proof_system: ZKProofSystem
     public_inputs: dict = field(default_factory=dict)
@@ -132,12 +136,15 @@ class ZKTransferMode:
         if self.config.proof_system not in (ZKProofSystem.GROTH16, ZKProofSystem.SIMULATED):
             return False
         from .zk.ec_backend import bls12_381_available
+
         return bls12_381_available()
 
     def _verify_stark_proof(self, commitment: "ZKCommitment", proof: "ZKProof") -> bool:
         """Verify a STARK proof by looking up the cached StarkProof object."""
         import hashlib
+
         from .zk.stark_proof import stark_verify
+
         key = hashlib.sha3_256(proof.proof_bytes).digest()
         stark_obj = ZKTransferMode._stark_proof_cache.get(key)
         if stark_obj is None:
@@ -155,6 +162,7 @@ class ZKTransferMode:
 
         if self._use_real_ec_backend():
             from .zk.pedersen import pedersen_commit
+
             commitment_value = pedersen_commit(entity_id, blinding_factor).hex()
         elif self.config.proof_system == ZKProofSystem.SIMULATED:
             # py_ecc not available — fall back to hash-based commitment
@@ -163,9 +171,7 @@ class ZKTransferMode:
                 "Install with: pip install 'ltp[zk]'",
                 stacklevel=2,
             )
-            commitment_value = canonical_hash(
-                entity_id.encode() + blinding_factor
-            )
+            commitment_value = canonical_hash(entity_id.encode() + blinding_factor)
         elif self.config.proof_system == ZKProofSystem.GROTH16:
             # py_ecc not available — fall back to hash simulation
             warnings.warn(
@@ -178,9 +184,7 @@ class ZKTransferMode:
             )
         elif self.config.proof_system == ZKProofSystem.STARK:
             # STARK: hash-based commitment (PQ-safe, commitment is SHA3-256)
-            commitment_value = canonical_hash(
-                entity_id.encode() + blinding_factor
-            )
+            commitment_value = canonical_hash(entity_id.encode() + blinding_factor)
 
         return ZKCommitment(
             commitment_value=commitment_value,
@@ -204,6 +208,7 @@ class ZKTransferMode:
 
         if self._use_real_ec_backend():
             from .zk.sigma_proof import create_sigma_proof
+
             sigma = create_sigma_proof(
                 entity_id,
                 commitment.blinding_factor,
@@ -213,21 +218,19 @@ class ZKTransferMode:
         elif self.config.proof_system == ZKProofSystem.SIMULATED:
             # py_ecc not available — hash fallback
             proof_bytes = canonical_hash_bytes(
-                entity_id.encode()
-                + commitment.blinding_factor
-                + b"proof"
+                entity_id.encode() + commitment.blinding_factor + b"proof"
             )
         elif self.config.proof_system == ZKProofSystem.GROTH16:
             # py_ecc not available — hash simulation fallback
             proof_bytes = canonical_hash_bytes(
-                entity_id.encode()
-                + commitment.blinding_factor
-                + b"groth16-proof"
+                entity_id.encode() + commitment.blinding_factor + b"groth16-proof"
             )
             proof_bytes = proof_bytes + os.urandom(160)
         elif self.config.proof_system == ZKProofSystem.STARK:
             import hashlib as _hl
+
             from .zk.stark_proof import stark_prove
+
             stark = stark_prove(
                 entity_id,
                 commitment.blinding_factor,
@@ -267,6 +270,7 @@ class ZKTransferMode:
 
         if self._use_real_ec_backend():
             from .zk.sigma_proof import SigmaProof, verify_sigma_proof
+
             try:
                 sigma = SigmaProof.from_bytes(proof.proof_bytes)
                 return verify_sigma_proof(
@@ -278,21 +282,18 @@ class ZKTransferMode:
 
         if self.config.proof_system == ZKProofSystem.SIMULATED:
             expected = canonical_hash_bytes(
-                commitment.entity_id.encode()
-                + commitment.blinding_factor
-                + b"proof"
+                commitment.entity_id.encode() + commitment.blinding_factor + b"proof"
             )
             return hmac.compare_digest(proof.proof_bytes, expected)
         elif self.config.proof_system == ZKProofSystem.GROTH16:
             # py_ecc not available — hash simulation fallback
             expected_prefix = canonical_hash_bytes(
-                commitment.entity_id.encode()
-                + commitment.blinding_factor
-                + b"groth16-proof"
+                commitment.entity_id.encode() + commitment.blinding_factor + b"groth16-proof"
             )
-            return hmac.compare_digest(proof.proof_bytes[:len(expected_prefix)], expected_prefix)
+            return hmac.compare_digest(proof.proof_bytes[: len(expected_prefix)], expected_prefix)
         elif self.config.proof_system == ZKProofSystem.STARK:
-            from .zk.stark_proof import stark_verify, StarkProof
+            from .zk.stark_proof import StarkProof, stark_verify
+
             try:
                 # Deserialize is complex; for now, re-prove and compare binding
                 # Real verification: parse proof bytes and run FRI verify
@@ -318,6 +319,7 @@ class ZKTransferMode:
         """
         if self._use_real_ec_backend():
             from .zk.pedersen import pedersen_open
+
             return pedersen_open(
                 bytes.fromhex(commitment.commitment_value),
                 entity_id,
@@ -341,10 +343,11 @@ class ContentPropertyProof:
 
     Open Question 8(a): What is the appropriate circuit composition model?
     """
-    property_name: str            # Human-readable property
-    property_circuit_id: str      # Circuit identifier
-    proof: ZKProof                # The ZK proof
-    public_inputs: dict           # Public inputs to the circuit
+
+    property_name: str  # Human-readable property
+    property_circuit_id: str  # Circuit identifier
+    proof: ZKProof  # The ZK proof
+    public_inputs: dict  # Public inputs to the circuit
 
     @property
     def is_verifiable(self) -> bool:

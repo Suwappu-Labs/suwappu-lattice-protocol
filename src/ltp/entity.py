@@ -21,9 +21,9 @@ __all__ = ["canonicalize_shape", "Entity"]
 # Accepts IANA media types (text/plain), parameterized types (text/plain; charset=utf-8),
 # and LTP extension types (x-ltp/state-snapshot).
 _SHAPE_PATTERN = _re.compile(
-    r'^[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_.+]*'  # type
-    r'/[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_.+]*'   # /subtype
-    r'(?:\s*;\s*[a-zA-Z0-9\-]+\s*=\s*[^\s;]+)*$'  # optional params
+    r"^[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_.+]*"  # type
+    r"/[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_.+]*"  # /subtype
+    r"(?:\s*;\s*[a-zA-Z0-9\-]+\s*=\s*[^\s;]+)*$"  # optional params
 )
 
 
@@ -48,10 +48,10 @@ def canonicalize_shape(shape: str) -> str:
     if not shape or not isinstance(shape, str):
         raise ValueError(f"Shape must be a non-empty string, got: {shape!r}")
 
-    parts = shape.split(';')
+    parts = shape.split(";")
     media_type = parts[0].strip().lower()
 
-    if '/' not in media_type:
+    if "/" not in media_type:
         raise ValueError(
             f"Invalid shape '{shape}': must be a media type (type/subtype). "
             f"See LTP Whitepaper §1.1.1."
@@ -62,16 +62,16 @@ def canonicalize_shape(shape: str) -> str:
         param = param.strip()
         if not param:
             continue
-        if '=' not in param:
+        if "=" not in param:
             raise ValueError(f"Invalid shape parameter (missing '='): '{param}'")
-        name, value = param.split('=', 1)
+        name, value = param.split("=", 1)
         params.append((name.strip().lower(), value.strip()))
 
     params.sort(key=lambda p: p[0])
 
     canonical = media_type
     if params:
-        canonical += ';' + ';'.join(f"{n}={v}" for n, v in params)
+        canonical += ";" + ";".join(f"{n}={v}" for n, v in params)
 
     if not _SHAPE_PATTERN.match(canonical):
         raise ValueError(
@@ -96,6 +96,7 @@ class Entity:
     whitespace stripped) to ensure interoperability: two implementations
     that use different casing produce identical EntityIDs.
     """
+
     content: bytes
     shape: str
     metadata: dict = field(default_factory=dict)
@@ -112,9 +113,6 @@ class Entity:
         than a mutable label string. Matches whitepaper §1.2 specification.
         """
         identity_input = (
-            self.content
-            + self.shape.encode()
-            + struct.pack('>d', timestamp)
-            + sender_vk
+            self.content + self.shape.encode() + struct.pack(">d", timestamp) + sender_vk
         )
         return canonical_hash(identity_input)

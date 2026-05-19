@@ -10,12 +10,11 @@ from __future__ import annotations
 import pytest
 
 from src.ltp.observability.tls import (
-    TLSConfig,
     InMemoryCertManager,
     NetworkPolicy,
     NetworkPolicyRegistry,
+    TLSConfig,
 )
-
 
 # ---------------------------------------------------------------------------
 # TLSConfig
@@ -23,7 +22,6 @@ from src.ltp.observability.tls import (
 
 
 class TestTLSConfig:
-
     def test_default_disabled(self):
         cfg = TLSConfig()
         assert cfg.enabled is False
@@ -31,8 +29,11 @@ class TestTLSConfig:
 
     def test_mtls_config(self):
         cfg = TLSConfig(
-            enabled=True, cert_path="/cert.pem", key_path="/key.pem",
-            ca_path="/ca.pem", require_client_cert=True,
+            enabled=True,
+            cert_path="/cert.pem",
+            key_path="/key.pem",
+            ca_path="/ca.pem",
+            require_client_cert=True,
         )
         assert cfg.is_mtls is True
         assert cfg.min_version == "TLS1.3"
@@ -54,7 +55,6 @@ class TestTLSConfig:
 
 
 class TestInMemoryCertManager:
-
     def test_provision_cert(self):
         mgr = InMemoryCertManager()
         cfg = mgr.provision("api-gateway")
@@ -102,7 +102,6 @@ class TestInMemoryCertManager:
 
 
 class TestNetworkPolicy:
-
     def test_allow_list(self):
         policy = NetworkPolicy(
             service_id="shard-node",
@@ -140,13 +139,14 @@ class TestNetworkPolicy:
 
 
 class TestNetworkPolicyRegistry:
-
     def test_register_and_check(self):
         reg = NetworkPolicyRegistry()
-        reg.register_policy(NetworkPolicy(
-            service_id="shard-node",
-            allowed_callers=["protocol-service"],
-        ))
+        reg.register_policy(
+            NetworkPolicy(
+                service_id="shard-node",
+                allowed_callers=["protocol-service"],
+            )
+        )
         assert reg.check_access("shard-node", "protocol-service") is True
         assert reg.check_access("shard-node", "random") is False
 

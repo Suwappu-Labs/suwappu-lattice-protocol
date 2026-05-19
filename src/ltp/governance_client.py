@@ -23,16 +23,16 @@ def _keccak256(data: bytes) -> bytes:
     """Compute Keccak-256 hash (Ethereum's hash, NOT FIPS SHA3-256)."""
     try:
         from web3 import Web3
+
         return Web3.keccak(data)
     except ImportError:
         # Fallback: use pysha3 or pycryptodome
         try:
             import sha3
+
             return sha3.keccak_256(data).digest()
         except ImportError:
-            raise ImportError(
-                "web3 or pysha3 required for keccak256: pip install web3"
-            )
+            raise ImportError("web3 or pysha3 required for keccak256: pip install web3")
 
 
 # Minimal ABI for ETPGovernance contract
@@ -179,7 +179,11 @@ class OnChainGovernanceClient:
         if self._account is None:
             raise ValueError("No operator key configured for write operations")
 
-        phase_map = {"bootstrap": PHASE_BOOTSTRAP, "growth": PHASE_GROWTH, "maturity": PHASE_MATURITY}
+        phase_map = {
+            "bootstrap": PHASE_BOOTSTRAP,
+            "growth": PHASE_GROWTH,
+            "maturity": PHASE_MATURITY,
+        }
         from_hash = phase_map.get(from_phase)
         to_hash = phase_map.get(to_phase)
         if from_hash is None or to_hash is None:
@@ -220,12 +224,14 @@ class OnChainGovernanceClient:
                     gas_limit = int(gas_estimate * 1.2)
                 except Exception:
                     gas_limit = 300_000
-                tx = fn.build_transaction({
-                    "from": self._account.address,
-                    "nonce": nonce,
-                    "gas": gas_limit,
-                    "chainId": self._chain_id or self._w3.eth.chain_id,
-                })
+                tx = fn.build_transaction(
+                    {
+                        "from": self._account.address,
+                        "nonce": nonce,
+                        "gas": gas_limit,
+                        "chainId": self._chain_id or self._w3.eth.chain_id,
+                    }
+                )
                 signed = self._account.sign_transaction(tx)
                 tx_hash = self._w3.eth.send_raw_transaction(signed.raw_transaction)
                 receipt = self._w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
@@ -235,6 +241,6 @@ class OnChainGovernanceClient:
             except Exception as e:
                 if "nonce" in str(e).lower() and attempt < max_retries - 1:
                     logger.warning("Nonce conflict (attempt %d), retrying...", attempt + 1)
-                    _time.sleep(0.5 * (2 ** attempt))
+                    _time.sleep(0.5 * (2**attempt))
                     continue
                 raise

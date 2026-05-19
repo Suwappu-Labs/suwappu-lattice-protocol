@@ -2,8 +2,10 @@
 
 import os
 import tempfile
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from tests.stress.conftest import make_raw_log
 
 

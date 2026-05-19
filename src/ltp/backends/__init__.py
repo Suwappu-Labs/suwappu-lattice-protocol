@@ -22,11 +22,11 @@ Usage:
   backend = create_backend(BackendConfig(backend_type="local"))
 """
 
-from .base import CommitmentBackend, BackendConfig, BackendCapabilities
-from .local import LocalBackend
+from .base import BackendCapabilities, BackendConfig, CommitmentBackend
 from .base_l1 import BaseL1Backend
 from .ethereum import EthereumBackend
 from .factory import create_backend
+from .local import LocalBackend
 
 __all__ = [
     "CommitmentBackend",

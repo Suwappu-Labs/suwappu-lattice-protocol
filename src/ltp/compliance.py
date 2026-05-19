@@ -81,11 +81,13 @@ __all__ = [
 # 1. FIPS Crypto Provider
 # ============================================================================
 
+
 class CryptoProviderMode(Enum):
     """Cryptographic provider mode selection."""
-    DEFAULT = "default"        # Both lanes use profile defaults (SHA3 + BLAKE3)
-    FIPS = "fips"              # Both lanes forced to SHA3-256 (strict CeFi)
-    HYBRID = "hybrid"          # Canonical = SHA3-256, internal = BLAKE3 (DeFi with compliance anchor)
+
+    DEFAULT = "default"  # Both lanes use profile defaults (SHA3 + BLAKE3)
+    FIPS = "fips"  # Both lanes forced to SHA3-256 (strict CeFi)
+    HYBRID = "hybrid"  # Canonical = SHA3-256, internal = BLAKE3 (DeFi with compliance anchor)
 
 
 class FIPSCryptoProvider:
@@ -123,6 +125,7 @@ class FIPSCryptoProvider:
         """Check if FIPS-validated OpenSSL is available."""
         try:
             import ssl
+
             # OpenSSL 3.x exposes FIPS mode check
             openssl_version = ssl.OPENSSL_VERSION
             # Check for OpenSSL 3.x which supports FIPS provider
@@ -158,6 +161,7 @@ class FIPSCryptoProvider:
         if self.mode == CryptoProviderMode.FIPS:
             return self._aes_gcm_encrypt(key, plaintext, nonce)
         from .primitives import AEAD
+
         return AEAD.encrypt(key, plaintext, nonce)
 
     def decrypt(self, key: bytes, ciphertext_with_tag: bytes, nonce: bytes) -> bytes:
@@ -169,6 +173,7 @@ class FIPSCryptoProvider:
         if self.mode == CryptoProviderMode.FIPS:
             return self._aes_gcm_decrypt(key, ciphertext_with_tag, nonce)
         from .primitives import AEAD
+
         return AEAD.decrypt(key, ciphertext_with_tag, nonce)
 
     @classmethod
@@ -177,10 +182,11 @@ class FIPSCryptoProvider:
         # Use Python's cryptography library if available, fall back to hashlib
         try:
             from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
             # AES-256 requires 32-byte key
-            aes_key = key[:32] if len(key) >= 32 else key.ljust(32, b'\x00')
+            aes_key = key[:32] if len(key) >= 32 else key.ljust(32, b"\x00")
             # GCM nonce should be 12 bytes (SP 800-38D recommendation)
-            gcm_nonce = nonce[:12] if len(nonce) >= 12 else nonce.ljust(12, b'\x00')
+            gcm_nonce = nonce[:12] if len(nonce) >= 12 else nonce.ljust(12, b"\x00")
             aesgcm = AESGCM(aes_key)
             ct_with_tag = aesgcm.encrypt(gcm_nonce, plaintext, None)
             return ct_with_tag  # ciphertext || 16-byte tag
@@ -188,6 +194,7 @@ class FIPSCryptoProvider:
             # Fallback: use hashlib-based simulation for environments without
             # the cryptography package. NOT FIPS-compliant — for testing only.
             from .primitives import AEAD
+
             return AEAD.encrypt(key, plaintext, nonce)
 
     @classmethod
@@ -195,12 +202,14 @@ class FIPSCryptoProvider:
         """AES-256-GCM decryption with authentication verification."""
         try:
             from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-            aes_key = key[:32] if len(key) >= 32 else key.ljust(32, b'\x00')
-            gcm_nonce = nonce[:12] if len(nonce) >= 12 else nonce.ljust(12, b'\x00')
+
+            aes_key = key[:32] if len(key) >= 32 else key.ljust(32, b"\x00")
+            gcm_nonce = nonce[:12] if len(nonce) >= 12 else nonce.ljust(12, b"\x00")
             aesgcm = AESGCM(aes_key)
             return aesgcm.decrypt(gcm_nonce, ciphertext_with_tag, None)
         except ImportError:
             from .primitives import AEAD
+
             return AEAD.decrypt(key, ciphertext_with_tag, nonce)
 
     def algorithm_info(self) -> dict:
@@ -228,22 +237,25 @@ class FIPSCryptoProvider:
 # 2. Role-Based Access Control (RBAC)
 # ============================================================================
 
+
 class ComplianceRole(Enum):
     """
     Institutional roles for LTP operations.
 
     SOC 2 TSC CC6.1: Logical access security — role-based authorization.
     """
-    OPERATOR = "operator"                # Node operator: store/serve shards
-    AUDITOR = "auditor"                  # Read-only audit access, run audits
-    COMPLIANCE_OFFICER = "compliance"    # Compliance reports, GDPR actions
-    ADMIN = "admin"                      # Full access (bootstrap phase only)
-    SENDER = "sender"                    # Commit entities
-    RECEIVER = "receiver"               # Materialize entities
+
+    OPERATOR = "operator"  # Node operator: store/serve shards
+    AUDITOR = "auditor"  # Read-only audit access, run audits
+    COMPLIANCE_OFFICER = "compliance"  # Compliance reports, GDPR actions
+    ADMIN = "admin"  # Full access (bootstrap phase only)
+    SENDER = "sender"  # Commit entities
+    RECEIVER = "receiver"  # Materialize entities
 
 
 class Permission(Enum):
     """Fine-grained permissions for RBAC enforcement."""
+
     # Node operations
     NODE_REGISTER = "node.register"
     NODE_EVICT = "node.evict"
@@ -316,6 +328,7 @@ class RBACPolicy:
 
     SOC 2 TSC CC6.3: Role-based authorization with least-privilege principle.
     """
+
     identity_id: str
     roles: set[ComplianceRole] = field(default_factory=set)
     additional_permissions: set[Permission] = field(default_factory=set)
@@ -372,14 +385,16 @@ class RBACManager:
         )
         self._policies[identity_id] = policy
         if self._audit_logger:
-            self._audit_logger.log(AuditEvent(
-                event_type=AuditEventType.ACCESS_CONTROL,
-                actor_id="system",
-                target_id=identity_id,
-                action="rbac_policy_created",
-                details={"roles": [r.value for r in roles]},
-                epoch=epoch,
-            ))
+            self._audit_logger.log(
+                AuditEvent(
+                    event_type=AuditEventType.ACCESS_CONTROL,
+                    actor_id="system",
+                    target_id=identity_id,
+                    action="rbac_policy_created",
+                    details={"roles": [r.value for r in roles]},
+                    epoch=epoch,
+                )
+            )
         return policy
 
     def check_permission(
@@ -403,15 +418,15 @@ class RBACManager:
         """Raise PermissionError if identity lacks the required permission."""
         if not self.check_permission(identity_id, permission, current_epoch):
             if self._audit_logger:
-                self._audit_logger.log(AuditEvent(
-                    event_type=AuditEventType.ACCESS_DENIED,
-                    actor_id=identity_id,
-                    action=f"denied:{permission.value}",
-                    epoch=current_epoch,
-                ))
-            raise PermissionError(
-                f"Identity '{identity_id}' lacks permission '{permission.value}'"
-            )
+                self._audit_logger.log(
+                    AuditEvent(
+                        event_type=AuditEventType.ACCESS_DENIED,
+                        actor_id=identity_id,
+                        action=f"denied:{permission.value}",
+                        epoch=current_epoch,
+                    )
+                )
+            raise PermissionError(f"Identity '{identity_id}' lacks permission '{permission.value}'")
 
     def get_policy(self, identity_id: str) -> Optional[RBACPolicy]:
         return self._policies.get(identity_id)
@@ -422,26 +437,26 @@ class RBACManager:
             return False
         del self._policies[identity_id]
         if self._audit_logger:
-            self._audit_logger.log(AuditEvent(
-                event_type=AuditEventType.ACCESS_CONTROL,
-                actor_id="system",
-                target_id=identity_id,
-                action="rbac_policy_revoked",
-                epoch=epoch,
-            ))
+            self._audit_logger.log(
+                AuditEvent(
+                    event_type=AuditEventType.ACCESS_CONTROL,
+                    actor_id="system",
+                    target_id=identity_id,
+                    action="rbac_policy_revoked",
+                    epoch=epoch,
+                )
+            )
         return True
 
     def list_identities_with_role(self, role: ComplianceRole) -> list[str]:
         """List all identities that have a specific role."""
-        return [
-            pid for pid, policy in self._policies.items()
-            if role in policy.roles
-        ]
+        return [pid for pid, policy in self._policies.items() if role in policy.roles]
 
 
 # ============================================================================
 # 3. Geo-Fence Policy (Data Sovereignty)
 # ============================================================================
+
 
 class Jurisdiction(Enum):
     """
@@ -451,16 +466,17 @@ class Jurisdiction(Enum):
     FedRAMP: Data must reside within US boundaries.
     Basel III: Jurisdictional requirements for banking data.
     """
-    US = "us"                    # United States (FedRAMP)
+
+    US = "us"  # United States (FedRAMP)
     US_GOVCLOUD = "us-govcloud"  # US GovCloud (FedRAMP High)
-    EU = "eu"                    # European Union (GDPR)
-    UK = "uk"                    # United Kingdom (UK GDPR)
-    CH = "ch"                    # Switzerland (FADP)
-    JP = "jp"                    # Japan (APPI)
-    SG = "sg"                    # Singapore (PDPA)
-    AU = "au"                    # Australia (Privacy Act)
-    CA = "ca"                    # Canada (PIPEDA)
-    GLOBAL = "global"            # No restriction
+    EU = "eu"  # European Union (GDPR)
+    UK = "uk"  # United Kingdom (UK GDPR)
+    CH = "ch"  # Switzerland (FADP)
+    JP = "jp"  # Japan (APPI)
+    SG = "sg"  # Singapore (PDPA)
+    AU = "au"  # Australia (Privacy Act)
+    CA = "ca"  # Canada (PIPEDA)
+    GLOBAL = "global"  # No restriction
 
 
 @dataclass
@@ -474,9 +490,8 @@ class GeoFencePolicy:
     SOC 2 TSC CC6.6: System boundaries and data residency.
     FedRAMP SC-12(3): Data location requirements.
     """
-    allowed_jurisdictions: set[Jurisdiction] = field(
-        default_factory=lambda: {Jurisdiction.GLOBAL}
-    )
+
+    allowed_jurisdictions: set[Jurisdiction] = field(default_factory=lambda: {Jurisdiction.GLOBAL})
     excluded_jurisdictions: set[Jurisdiction] = field(default_factory=set)
     min_jurisdictions: int = 1  # Minimum distinct jurisdictions for redundancy
     require_cross_jurisdiction: bool = False  # Force shards across jurisdictions
@@ -523,10 +538,7 @@ class GeoFencePolicy:
 
     def filter_nodes(self, nodes: list, region_attr: str = "region") -> list:
         """Filter a list of nodes to only those in allowed jurisdictions."""
-        return [
-            node for node in nodes
-            if self.is_region_allowed(getattr(node, region_attr, ""))
-        ]
+        return [node for node in nodes if self.is_region_allowed(getattr(node, region_attr, ""))]
 
     def validate_placement(
         self, placed_nodes: list, region_attr: str = "region"
@@ -563,6 +575,7 @@ class GeoFencePolicy:
 # 4. Compliance Audit Logger
 # ============================================================================
 
+
 class AuditEventType(Enum):
     """
     Categorized audit event types for SOC 2 / FedRAMP compliance.
@@ -570,6 +583,7 @@ class AuditEventType(Enum):
     SOC 2 TSC CC7.1–CC7.4: System monitoring and incident detection.
     FedRAMP AU-2, AU-3, AU-6: Audit events, content, and review.
     """
+
     # Data lifecycle
     ENTITY_COMMITTED = "entity.committed"
     ENTITY_MATERIALIZED = "entity.materialized"
@@ -638,6 +652,7 @@ class AuditEvent:
     SOC 2 TSC CC7.2: Monitoring activities — each event captures who, what,
     when, and the outcome.
     """
+
     event_type: AuditEventType
     actor_id: str
     action: str
@@ -803,16 +818,13 @@ class ComplianceAuditLogger:
 
     def export_json(self, since_epoch: int = 0) -> list[dict]:
         """Export audit events as JSON-serializable dicts."""
-        return [
-            event.to_dict()
-            for event in self._events
-            if event.epoch >= since_epoch
-        ]
+        return [event.to_dict() for event in self._events if event.epoch >= since_epoch]
 
 
 # ============================================================================
 # 5. Key Rotation Policy
 # ============================================================================
+
 
 @dataclass
 class KeyVersion:
@@ -822,6 +834,7 @@ class KeyVersion:
     FedRAMP SC-12: Cryptographic key management.
     NIST SP 800-57: Key management lifecycle.
     """
+
     version: int
     key_fingerprint: str  # H(public_key)
     created_epoch: int
@@ -843,6 +856,7 @@ class KeyRotationPolicy:
     NIST SP 800-57 Part 1: Maximum crypto-period for key types.
     SOC 2 TSC CC6.7: Key management controls.
     """
+
     max_key_age_epochs: int = 8_760  # ~1 year at 1hr epochs
     rotation_warning_epochs: int = 720  # ~30 days warning before expiry
     require_rotation_on_compromise: bool = True
@@ -894,20 +908,22 @@ class KeyRotationManager:
 
         # Enforce max retained versions
         if len(versions) > self.policy.max_versions_retained:
-            versions[:] = versions[:self.policy.max_versions_retained]
+            versions[:] = versions[: self.policy.max_versions_retained]
 
         if self._audit_logger:
-            self._audit_logger.log(AuditEvent(
-                event_type=AuditEventType.KEY_GENERATED,
-                actor_id=identity_id,
-                action="key_registered",
-                details={
-                    "version": version_num,
-                    "algorithm": algorithm,
-                    "expires_epoch": expires,
-                },
-                epoch=epoch,
-            ))
+            self._audit_logger.log(
+                AuditEvent(
+                    event_type=AuditEventType.KEY_GENERATED,
+                    actor_id=identity_id,
+                    action="key_registered",
+                    details={
+                        "version": version_num,
+                        "algorithm": algorithm,
+                        "expires_epoch": expires,
+                    },
+                    epoch=epoch,
+                )
+            )
 
         return key_ver
 
@@ -938,9 +954,7 @@ class KeyRotationManager:
                 return (True, "approaching_expiry")
         return (False, None)
 
-    def revoke_key(
-        self, identity_id: str, version: int, epoch: int, reason: str = ""
-    ) -> bool:
+    def revoke_key(self, identity_id: str, version: int, epoch: int, reason: str = "") -> bool:
         """Revoke a specific key version."""
         versions = self._key_versions.get(identity_id, [])
         for v in versions:
@@ -948,16 +962,18 @@ class KeyRotationManager:
                 v.revoked = True
                 v.revoked_epoch = epoch
                 if self._audit_logger:
-                    self._audit_logger.log(AuditEvent(
-                        event_type=AuditEventType.KEY_REVOKED,
-                        actor_id=identity_id,
-                        action="key_revoked",
-                        details={
-                            "version": version,
-                            "reason": reason,
-                        },
-                        epoch=epoch,
-                    ))
+                    self._audit_logger.log(
+                        AuditEvent(
+                            event_type=AuditEventType.KEY_REVOKED,
+                            actor_id=identity_id,
+                            action="key_revoked",
+                            details={
+                                "version": version,
+                                "reason": reason,
+                            },
+                            epoch=epoch,
+                        )
+                    )
                 return True
         return False
 
@@ -970,6 +986,7 @@ class KeyRotationManager:
 # 6. GDPR Deletion Manager
 # ============================================================================
 
+
 @dataclass
 class DeletionRequest:
     """
@@ -978,6 +995,7 @@ class DeletionRequest:
     Tracks the lifecycle of a deletion request from submission to
     cryptographic proof of completion.
     """
+
     request_id: str
     entity_id: str
     requester_id: str
@@ -1011,6 +1029,7 @@ class DeletionProof:
     GDPR Art. 17(1): Erasure verification.
     SOC 2 TSC CC6.5: Data disposal.
     """
+
     entity_id: str
     deletion_epoch: int
     shard_count_destroyed: int
@@ -1078,14 +1097,16 @@ class GDPRDeletionManager:
         self._requests[request_id] = request
 
         if self._audit_logger:
-            self._audit_logger.log(AuditEvent(
-                event_type=AuditEventType.GDPR_DELETION_REQUEST,
-                actor_id=requester_id,
-                target_id=entity_id,
-                action="deletion_requested",
-                details={"reason": reason},
-                epoch=epoch,
-            ))
+            self._audit_logger.log(
+                AuditEvent(
+                    event_type=AuditEventType.GDPR_DELETION_REQUEST,
+                    actor_id=requester_id,
+                    target_id=entity_id,
+                    action="deletion_requested",
+                    details={"reason": reason},
+                    epoch=epoch,
+                )
+            )
 
         return request
 
@@ -1118,8 +1139,7 @@ class GDPRDeletionManager:
             node_id = getattr(node, "node_id", str(id(node)))
             shards_removed = 0
             keys_to_remove = [
-                key for key in getattr(node, "shards", {}).keys()
-                if key[0] == entity_id
+                key for key in getattr(node, "shards", {}).keys() if key[0] == entity_id
             ]
             for key in keys_to_remove:
                 shard_data = node.shards.get(key)
@@ -1162,18 +1182,20 @@ class GDPRDeletionManager:
         request.deletion_proof = proof.proof_hash
 
         if self._audit_logger:
-            self._audit_logger.log(AuditEvent(
-                event_type=AuditEventType.GDPR_DELETION_COMPLETE,
-                actor_id=request.requester_id,
-                target_id=entity_id,
-                action="deletion_completed",
-                details={
-                    "shards_destroyed": len(shard_hashes),
-                    "nodes_participating": nodes_participating,
-                    "proof_hash": proof.proof_hash,
-                },
-                epoch=epoch,
-            ))
+            self._audit_logger.log(
+                AuditEvent(
+                    event_type=AuditEventType.GDPR_DELETION_COMPLETE,
+                    actor_id=request.requester_id,
+                    target_id=entity_id,
+                    action="deletion_completed",
+                    details={
+                        "shards_destroyed": len(shard_hashes),
+                        "nodes_participating": nodes_participating,
+                        "proof_hash": proof.proof_hash,
+                    },
+                    epoch=epoch,
+                )
+            )
 
         return proof
 
@@ -1193,11 +1215,13 @@ class GDPRDeletionManager:
 # 7. SIEM Exporter
 # ============================================================================
 
+
 class SIEMFormat(Enum):
     """Output formats for Security Information and Event Management systems."""
-    JSON = "json"          # Structured JSON (Splunk, ELK, Datadog)
-    CEF = "cef"            # Common Event Format (ArcSight, QRadar)
-    JSON_LD = "json-ld"    # Linked Data format (semantic interop)
+
+    JSON = "json"  # Structured JSON (Splunk, ELK, Datadog)
+    CEF = "cef"  # Common Event Format (ArcSight, QRadar)
+    JSON_LD = "json-ld"  # Linked Data format (semantic interop)
 
 
 class SIEMExporter:
@@ -1246,9 +1270,7 @@ class SIEMExporter:
     }
 
     @classmethod
-    def export_event(
-        cls, event: AuditEvent, fmt: SIEMFormat = SIEMFormat.JSON
-    ) -> str:
+    def export_event(cls, event: AuditEvent, fmt: SIEMFormat = SIEMFormat.JSON) -> str:
         """Export a single audit event in the specified format."""
         if fmt == SIEMFormat.CEF:
             return cls._to_cef(event)
@@ -1322,6 +1344,7 @@ class SIEMExporter:
 # 8. HSM Interface (Hardware Security Module)
 # ============================================================================
 
+
 @dataclass
 class HSMConfig:
     """
@@ -1331,6 +1354,7 @@ class HSMConfig:
     NIST SP 800-57: Cryptographic key management recommendations.
     PCI-DSS 3.5: Protect stored cryptographic keys.
     """
+
     provider: str = "software"  # "software", "pkcs11", "aws-cloudhsm", "azure-keyvault"
     pkcs11_library_path: Optional[str] = None
     pkcs11_slot: int = 0
@@ -1398,6 +1422,7 @@ class SoftwareHSM(HSMInterface):
     def generate_keypair(self, label: str) -> dict:
         """Generate a keypair in software (PoC — not hardware-protected)."""
         from .keypair import KeyPair
+
         kp = KeyPair.generate(label=label)
         key_id = f"{self.config.key_label_prefix}{self._next_id}"
         self._next_id += 1
@@ -1423,6 +1448,7 @@ class SoftwareHSM(HSMInterface):
         if key_data is None:
             raise KeyError(f"Key '{key_id}' not found in HSM")
         from .primitives import MLDSA
+
         return MLDSA.sign(key_data["sk"], message)
 
     def decrypt(self, key_id: str, ciphertext: bytes) -> bytes:
@@ -1430,6 +1456,7 @@ class SoftwareHSM(HSMInterface):
         if key_data is None:
             raise KeyError(f"Key '{key_id}' not found in HSM")
         from .keypair import KeyPair, SealedBox
+
         kp = KeyPair(
             ek=key_data["ek"],
             dk=key_data["dk"],
@@ -1443,20 +1470,17 @@ class SoftwareHSM(HSMInterface):
             # Overwrite private key material before deletion (best-effort zeroization)
             key_data = self._keys[key_id]
             if "private_key" in key_data:
-                key_data["private_key"] = b'\x00' * len(key_data["private_key"])
+                key_data["private_key"] = b"\x00" * len(key_data["private_key"])
             if "dk" in key_data:
-                key_data["dk"] = b'\x00' * len(key_data["dk"])
+                key_data["dk"] = b"\x00" * len(key_data["dk"])
             if "sk" in key_data:
-                key_data["sk"] = b'\x00' * len(key_data["sk"])
+                key_data["sk"] = b"\x00" * len(key_data["sk"])
             del self._keys[key_id]
             return True
         return False
 
     def list_keys(self) -> list[dict]:
-        return [
-            {"key_id": kid, "label": kdata["label"]}
-            for kid, kdata in self._keys.items()
-        ]
+        return [{"key_id": kid, "label": kdata["label"]} for kid, kdata in self._keys.items()]
 
     def export_public_key(self, key_id: str) -> bytes:
         key_data = self._keys.get(key_id)
@@ -1469,8 +1493,10 @@ class SoftwareHSM(HSMInterface):
 # 9. Compliance Configuration & Framework
 # ============================================================================
 
+
 class ComplianceFramework(Enum):
     """Regulatory compliance frameworks."""
+
     SOC2_TYPE2 = "soc2-type2"
     FEDRAMP_MODERATE = "fedramp-moderate"
     FEDRAMP_HIGH = "fedramp-high"
@@ -1490,6 +1516,7 @@ class ComplianceConfig:
     Aggregates all compliance-related settings into a single configuration
     that can be validated against target frameworks.
     """
+
     # Target frameworks
     frameworks: set[ComplianceFramework] = field(default_factory=set)
 
@@ -1531,22 +1558,20 @@ class ComplianceConfig:
         """
         violations = []
 
-        if ComplianceFramework.FEDRAMP_MODERATE in self.frameworks or \
-           ComplianceFramework.FEDRAMP_HIGH in self.frameworks:
+        if (
+            ComplianceFramework.FEDRAMP_MODERATE in self.frameworks
+            or ComplianceFramework.FEDRAMP_HIGH in self.frameworks
+        ):
             if self.crypto_mode != CryptoProviderMode.FIPS:
                 violations.append(
                     "FedRAMP requires FIPS 140-3 crypto mode "
                     "(set crypto_mode=CryptoProviderMode.FIPS)"
                 )
             if not self.enable_rbac:
-                violations.append(
-                    "FedRAMP AC-2/AC-3 requires RBAC "
-                    "(set enable_rbac=True)"
-                )
+                violations.append("FedRAMP AC-2/AC-3 requires RBAC (set enable_rbac=True)")
             if not self.enable_audit_logging:
                 violations.append(
-                    "FedRAMP AU-2 requires audit logging "
-                    "(set enable_audit_logging=True)"
+                    "FedRAMP AU-2 requires audit logging (set enable_audit_logging=True)"
                 )
             if self.enable_geo_fencing:
                 geo = self.default_geo_policy
@@ -1559,8 +1584,7 @@ class ComplianceConfig:
         if ComplianceFramework.FEDRAMP_HIGH in self.frameworks:
             if not self.enable_key_rotation:
                 violations.append(
-                    "FedRAMP High requires key rotation controls "
-                    "(set enable_key_rotation=True)"
+                    "FedRAMP High requires key rotation controls (set enable_key_rotation=True)"
                 )
             if self.hsm_config is None or self.hsm_config.provider in {"software", "memory"}:
                 violations.append(
@@ -1578,31 +1602,22 @@ class ComplianceConfig:
 
         if ComplianceFramework.SOC2_TYPE2 in self.frameworks:
             if not self.enable_rbac:
-                violations.append(
-                    "SOC 2 CC6.1 requires access control "
-                    "(set enable_rbac=True)"
-                )
+                violations.append("SOC 2 CC6.1 requires access control (set enable_rbac=True)")
             if not self.enable_audit_logging:
-                violations.append(
-                    "SOC 2 CC7.1 requires monitoring "
-                    "(set enable_audit_logging=True)"
-                )
+                violations.append("SOC 2 CC7.1 requires monitoring (set enable_audit_logging=True)")
             if not self.enable_key_rotation:
                 violations.append(
-                    "SOC 2 CC6.7 requires key management controls "
-                    "(set enable_key_rotation=True)"
+                    "SOC 2 CC6.7 requires key management controls (set enable_key_rotation=True)"
                 )
 
         if ComplianceFramework.GDPR in self.frameworks:
             if not self.enable_gdpr_deletion:
                 violations.append(
-                    "GDPR Art. 17 requires deletion capability "
-                    "(set enable_gdpr_deletion=True)"
+                    "GDPR Art. 17 requires deletion capability (set enable_gdpr_deletion=True)"
                 )
             if not self.enable_audit_logging:
                 violations.append(
-                    "GDPR Art. 30 requires processing records "
-                    "(set enable_audit_logging=True)"
+                    "GDPR Art. 30 requires processing records (set enable_audit_logging=True)"
                 )
 
         if ComplianceFramework.PCI_DSS in self.frameworks:
@@ -1613,40 +1628,30 @@ class ComplianceConfig:
                 )
             if not self.enable_key_rotation:
                 violations.append(
-                    "PCI-DSS 3.6 requires key management "
-                    "(set enable_key_rotation=True)"
+                    "PCI-DSS 3.6 requires key management (set enable_key_rotation=True)"
                 )
 
         if ComplianceFramework.HIPAA in self.frameworks:
             if not self.enable_rbac:
                 violations.append(
-                    "HIPAA §164.312(a) requires access control "
-                    "(set enable_rbac=True)"
+                    "HIPAA §164.312(a) requires access control (set enable_rbac=True)"
                 )
             if not self.enable_audit_logging:
                 violations.append(
-                    "HIPAA §164.312(b) requires audit controls "
-                    "(set enable_audit_logging=True)"
+                    "HIPAA §164.312(b) requires audit controls (set enable_audit_logging=True)"
                 )
 
         if ComplianceFramework.BASEL_III in self.frameworks:
             if not self.enable_rbac:
-                violations.append(
-                    "Basel III requires segregation of duties "
-                    "(set enable_rbac=True)"
-                )
+                violations.append("Basel III requires segregation of duties (set enable_rbac=True)")
             if self.hsm_config is None or self.hsm_config.provider == "software":
                 violations.append(
-                    "Basel III requires hardware key protection "
-                    "(configure HSM provider)"
+                    "Basel III requires hardware key protection (configure HSM provider)"
                 )
 
         if ComplianceFramework.OCC_CUSTODY in self.frameworks:
             if not self.enable_rbac:
-                violations.append(
-                    "OCC custody requires access controls "
-                    "(set enable_rbac=True)"
-                )
+                violations.append("OCC custody requires access controls (set enable_rbac=True)")
             if not self.enable_audit_logging:
                 violations.append(
                     "OCC custody requires comprehensive audit trails "
@@ -1667,12 +1672,8 @@ class ComplianceConfig:
             "siem_format": self.siem_format.value,
             "siem_export_enabled": self.siem_export_enabled,
             "key_rotation_enabled": self.enable_key_rotation,
-            "key_rotation_max_age_years": round(
-                self.key_rotation_max_age_epochs / 8760, 1
-            ),
+            "key_rotation_max_age_years": round(self.key_rotation_max_age_epochs / 8760, 1),
             "gdpr_deletion_enabled": self.enable_gdpr_deletion,
-            "hsm_provider": (
-                self.hsm_config.provider if self.hsm_config else "none"
-            ),
+            "hsm_provider": (self.hsm_config.provider if self.hsm_config else "none"),
             "target_frameworks": [f.value for f in self.frameworks],
         }

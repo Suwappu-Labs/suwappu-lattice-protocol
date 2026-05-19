@@ -1,7 +1,9 @@
 """Stress scenarios 5, 6: Bad payloads and malformed commitments."""
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from tests.stress.conftest import make_raw_log, make_service
 
 

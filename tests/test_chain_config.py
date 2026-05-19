@@ -8,7 +8,6 @@ import pytest
 
 from src.ltp.anchor.chain_config import ChainConfig, create_anchor_client
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -26,8 +25,8 @@ _VALID = {
 # from_dict
 # ---------------------------------------------------------------------------
 
-class TestChainConfigFromDict:
 
+class TestChainConfigFromDict:
     def test_from_dict(self):
         """Round-trip: from_dict produces correct ChainConfig."""
         cfg = ChainConfig.from_dict(_VALID)
@@ -87,8 +86,8 @@ class TestChainConfigFromDict:
 # from_env
 # ---------------------------------------------------------------------------
 
-class TestChainConfigFromEnv:
 
+class TestChainConfigFromEnv:
     def test_from_env(self, monkeypatch):
         prefix = "TEST_CHAIN_"
         monkeypatch.setenv(f"{prefix}CHAIN_ID", "84532")
@@ -114,8 +113,8 @@ class TestChainConfigFromEnv:
 # Frozen / repr
 # ---------------------------------------------------------------------------
 
-class TestChainConfigProperties:
 
+class TestChainConfigProperties:
     def test_frozen(self):
         cfg = ChainConfig.from_dict(_VALID)
         with pytest.raises(AttributeError):
@@ -144,12 +143,13 @@ class TestChainConfigProperties:
 # create_anchor_client factory
 # ---------------------------------------------------------------------------
 
-class TestCreateAnchorClient:
 
+class TestCreateAnchorClient:
     def test_create_anchor_client(self, monkeypatch):
         """Factory produces an AnchorClient with correct chain params (mock web3)."""
         # Mock web3 import to avoid dependency
         import types
+
         mock_web3_mod = types.ModuleType("web3")
 
         class _MockProvider:
@@ -167,6 +167,7 @@ class TestCreateAnchorClient:
             def from_key(self, key):
                 class _Acct:
                     address = "0x" + "00" * 20
+
                 return _Acct()
 
             def contract(self, address, abi):
@@ -186,6 +187,7 @@ class TestCreateAnchorClient:
         mock_web3_mod.Web3 = _MockW3  # type: ignore[attr-defined]
 
         import sys
+
         monkeypatch.setitem(sys.modules, "web3", mock_web3_mod)
 
         cfg = ChainConfig.from_dict(_VALID)

@@ -31,14 +31,13 @@ from ltp.primitives import MLDSA
 def _blake3_available() -> bool:
     try:
         import blake3  # noqa: F401
+
         return True
     except ImportError:
         return False
 
 
-pytestmark = pytest.mark.skipif(
-    not _blake3_available(), reason="blake3 library not installed"
-)
+pytestmark = pytest.mark.skipif(not _blake3_available(), reason="blake3 library not installed")
 
 
 def _make_doc_with_ci_method(did_seed: int) -> tuple[DidDocument, bytes, bytes]:
@@ -79,9 +78,7 @@ def test_canonical_hash_changes_with_services() -> None:
         id=doc.id,
         verification_methods=doc.verification_methods,
         relationships=doc.relationships,
-        services=(
-            Service(id=0, service_type="LinkedDomains", endpoint="https://gsn.com"),
-        ),
+        services=(Service(id=0, service_type="LinkedDomains", endpoint="https://gsn.com"),),
     )
     assert doc.canonical_hash() != with_service.canonical_hash()
 
@@ -99,8 +96,12 @@ def test_validate_rejects_duplicate_method_id() -> None:
     doc = DidDocument(
         id=did,
         verification_methods=(
-            VerificationMethod(id=0, controller=did, algorithm=KeyAlgorithm.ML_DSA_65, public_key=pk),
-            VerificationMethod(id=0, controller=did, algorithm=KeyAlgorithm.ML_DSA_65, public_key=pk2),
+            VerificationMethod(
+                id=0, controller=did, algorithm=KeyAlgorithm.ML_DSA_65, public_key=pk
+            ),
+            VerificationMethod(
+                id=0, controller=did, algorithm=KeyAlgorithm.ML_DSA_65, public_key=pk2
+            ),
         ),
     )
     with pytest.raises(DuplicateMethodId):
@@ -114,7 +115,9 @@ def test_validate_rejects_cross_did_controller() -> None:
     doc = DidDocument(
         id=did,
         verification_methods=(
-            VerificationMethod(id=0, controller=other, algorithm=KeyAlgorithm.ML_DSA_65, public_key=pk),
+            VerificationMethod(
+                id=0, controller=other, algorithm=KeyAlgorithm.ML_DSA_65, public_key=pk
+            ),
         ),
     )
     with pytest.raises(CrossDidController):
@@ -127,7 +130,9 @@ def test_validate_rejects_dangling_relationship() -> None:
     doc = DidDocument(
         id=did,
         verification_methods=(
-            VerificationMethod(id=0, controller=did, algorithm=KeyAlgorithm.ML_DSA_65, public_key=pk),
+            VerificationMethod(
+                id=0, controller=did, algorithm=KeyAlgorithm.ML_DSA_65, public_key=pk
+            ),
         ),
         relationships={
             VerificationRelationship.CAPABILITY_INVOCATION: frozenset({99}),
@@ -173,7 +178,9 @@ def test_method_without_capability_invocation_rejected() -> None:
     doc = DidDocument(
         id=did,
         verification_methods=(
-            VerificationMethod(id=0, controller=did, algorithm=KeyAlgorithm.ML_DSA_65, public_key=pk),
+            VerificationMethod(
+                id=0, controller=did, algorithm=KeyAlgorithm.ML_DSA_65, public_key=pk
+            ),
         ),
         # Authentication, but NOT CapabilityInvocation.
         relationships={

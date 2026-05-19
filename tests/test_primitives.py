@@ -3,14 +3,15 @@ Unit tests for cryptographic primitives (canonical_hash, AEAD, MLKEM, MLDSA).
 """
 
 import os
+
 import pytest
 
-from src.ltp.primitives import canonical_hash, canonical_hash_bytes, AEAD, MLKEM, MLDSA
-
+from src.ltp.primitives import AEAD, MLDSA, MLKEM, canonical_hash, canonical_hash_bytes
 
 # ---------------------------------------------------------------------------
 # Hash functions
 # ---------------------------------------------------------------------------
+
 
 class TestHashFunctions:
     def test_canonical_hash_returns_prefixed_string(self):
@@ -45,6 +46,7 @@ class TestHashFunctions:
 # ---------------------------------------------------------------------------
 # AEAD
 # ---------------------------------------------------------------------------
+
 
 class TestAEAD:
     def test_encrypt_decrypt_roundtrip(self):
@@ -109,6 +111,7 @@ class TestAEAD:
 # MLKEM
 # ---------------------------------------------------------------------------
 
+
 class TestMLKEM:
     def test_keygen_sizes(self):
         ek, dk = MLKEM.keygen()
@@ -154,6 +157,7 @@ class TestMLKEM:
 # ---------------------------------------------------------------------------
 # MLDSA
 # ---------------------------------------------------------------------------
+
 
 class TestMLDSA:
     def test_keygen_sizes(self):

@@ -63,10 +63,7 @@ def test_seven_signatures_attest_and_verify() -> None:
     corridor, sks = _build_corridor()
     payload = _payload()
     digest = payload.canonical_digest()
-    sigs = [
-        WitnessSignature(witness=i, signature=corridor_sign(sks[i], digest))
-        for i in range(7)
-    ]
+    sigs = [WitnessSignature(witness=i, signature=corridor_sign(sks[i], digest)) for i in range(7)]
     att = attest(corridor, payload, sigs)
     verify_attestation(corridor, att)
     assert len(att.signers) == 7
@@ -76,10 +73,7 @@ def test_six_signatures_below_quorum() -> None:
     corridor, sks = _build_corridor()
     payload = _payload()
     digest = payload.canonical_digest()
-    sigs = [
-        WitnessSignature(witness=i, signature=corridor_sign(sks[i], digest))
-        for i in range(6)
-    ]
+    sigs = [WitnessSignature(witness=i, signature=corridor_sign(sks[i], digest)) for i in range(6)]
     with pytest.raises(BelowQuorum) as e:
         attest(corridor, payload, sigs)
     assert e.value.have == 6 and e.value.need == 7
@@ -106,10 +100,7 @@ def test_tampered_state_root_breaks_verification() -> None:
     corridor, sks = _build_corridor()
     payload = _payload()
     digest = payload.canonical_digest()
-    sigs = [
-        WitnessSignature(witness=i, signature=corridor_sign(sks[i], digest))
-        for i in range(7)
-    ]
+    sigs = [WitnessSignature(witness=i, signature=corridor_sign(sks[i], digest)) for i in range(7)]
     att = attest(corridor, payload, sigs)
 
     tampered_payload = AttestationPayload(
@@ -132,10 +123,7 @@ def test_duplicate_signer_collapsed() -> None:
     corridor, sks = _build_corridor()
     payload = _payload()
     digest = payload.canonical_digest()
-    sigs = [
-        WitnessSignature(witness=i, signature=corridor_sign(sks[i], digest))
-        for i in range(7)
-    ]
+    sigs = [WitnessSignature(witness=i, signature=corridor_sign(sks[i], digest)) for i in range(7)]
     # Same signer twice — must be collapsed, not double-counted as 8.
     sigs.append(sigs[0])
     att = attest(corridor, payload, sigs)

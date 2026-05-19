@@ -41,7 +41,7 @@ class InclusionProof:
     leaf_index: int
     tree_size: int
     audit_path: list[bytes] = field(default_factory=list)
-    root_hash: bytes = b''
+    root_hash: bytes = b""
 
     def verify(self, data: bytes, claimed_root: bytes) -> bool:
         """
@@ -75,6 +75,7 @@ class InclusionProof:
             data:      The raw leaf data (needed to compute leaf_hash)
         """
         from .portable_proof import PortableMerkleProof
+
         return PortableMerkleProof.from_inclusion_proof(self, tree_type, data)
 
     @property

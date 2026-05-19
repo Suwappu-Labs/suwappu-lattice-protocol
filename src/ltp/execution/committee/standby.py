@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from typing import Optional
 
-from .types import CommitteeMember, CommitteeRoster
-from .policy import CommitteePolicy, StandbyStrategy
 from ..writer import IdentityTier
+from .policy import CommitteePolicy, StandbyStrategy
+from .types import CommitteeMember, CommitteeRoster
 
 __all__ = ["StandbySelector", "score_member"]
 
 _TIER_WEIGHT: dict[IdentityTier, int] = {
-    IdentityTier.MLDSA:     1,
-    IdentityTier.BLS:       2,
+    IdentityTier.MLDSA: 1,
+    IdentityTier.BLS: 2,
     IdentityTier.COMPOSITE: 3,
 }
 

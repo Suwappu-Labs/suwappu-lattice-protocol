@@ -13,12 +13,12 @@ from __future__ import annotations
 from typing import Optional
 
 from .writer import (
+    TRANSACTABLE_STATES,
     ApprovalPath,
     TransitionEntry,
     WriterIdentity,
     WriterRecord,
     WriterState,
-    TRANSACTABLE_STATES,
     validate_writer_transition,
 )
 from .writer_config import RegistryConfig
@@ -126,9 +126,7 @@ class WriterRegistry:
         """
         record = self._get_or_raise(fingerprint)
         if record.state != WriterState.PENDING:
-            raise ValueError(
-                f"approve requires PENDING state; writer is {record.state.value}."
-            )
+            raise ValueError(f"approve requires PENDING state; writer is {record.state.value}.")
 
         self._transition(
             fingerprint=fingerprint,
@@ -365,7 +363,8 @@ class WriterRegistry:
         """
         # Collect first, then mutate — safe against future dict-size changes
         to_expire = [
-            fp for fp, record in self._records.items()
+            fp
+            for fp, record in self._records.items()
             if (
                 record.state == WriterState.ACTIVE
                 and record.expires_at is not None
@@ -399,9 +398,7 @@ class WriterRegistry:
         """Retrieve a record by fingerprint or raise KeyError."""
         record = self._records.get(fingerprint)
         if record is None:
-            raise KeyError(
-                f"No writer registered with fingerprint {fingerprint.hex()[:16]}…"
-            )
+            raise KeyError(f"No writer registered with fingerprint {fingerprint.hex()[:16]}…")
         return record
 
     def _transition(
@@ -430,9 +427,7 @@ class WriterRegistry:
         record = self._get_or_raise(fingerprint)
         ok, msg = validate_writer_transition(record.state, target)
         if not ok:
-            raise ValueError(
-                f"Transition rejected for {fingerprint.hex()[:16]}…: {msg}"
-            )
+            raise ValueError(f"Transition rejected for {fingerprint.hex()[:16]}…: {msg}")
 
         entry = TransitionEntry(
             timestamp=timestamp,

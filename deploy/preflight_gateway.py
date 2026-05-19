@@ -29,8 +29,8 @@ Checks performed:
 import json
 import os
 import sys
-import urllib.parse
 import urllib.error
+import urllib.parse
 import urllib.request
 
 # ---------------------------------------------------------------------------
@@ -109,12 +109,12 @@ PROVER_MODE_VARS = [
 
 DEV_CHAIN_IDS = {
     0,
-    5,          # Goerli
-    11155111,   # Sepolia
-    17000,      # Holesky
+    5,  # Goerli
+    11155111,  # Sepolia
+    17000,  # Holesky
     1337,
     31337,
-    84532,      # Base Sepolia
+    84532,  # Base Sepolia
     103115120,  # GSX testnet/devnet default
 }
 
@@ -146,6 +146,7 @@ RPC_TIMEOUT = 10  # seconds
 # JSON-RPC helper
 # ---------------------------------------------------------------------------
 
+
 def _rpc_call(url: str, method: str, params: list) -> dict:
     """
     Execute a raw JSON-RPC 2.0 call over HTTP POST.
@@ -154,12 +155,14 @@ def _rpc_call(url: str, method: str, params: list) -> dict:
     Raises urllib.error.URLError on network failure.
     Raises ValueError if the response is not valid JSON.
     """
-    payload = json.dumps({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": method,
-        "params": params,
-    }).encode("utf-8")
+    payload = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": method,
+            "params": params,
+        }
+    ).encode("utf-8")
 
     req = urllib.request.Request(
         url,
@@ -175,6 +178,7 @@ def _rpc_call(url: str, method: str, params: list) -> dict:
 # ---------------------------------------------------------------------------
 # Individual checks
 # ---------------------------------------------------------------------------
+
 
 def get_deployment_profile() -> str:
     """Return the configured deployment profile."""
@@ -373,9 +377,7 @@ def check_fedramp_production_networks(source_url: str, dest_url: str) -> tuple[b
     return True, "production RPC endpoints and chain IDs configured"
 
 
-def check_fedramp_contract_addresses(
-    bridge_contract: str, registry_addr: str
-) -> tuple[bool, str]:
+def check_fedramp_contract_addresses(bridge_contract: str, registry_addr: str) -> tuple[bool, str]:
     """FedRAMP High requires non-placeholder EVM contract addresses."""
     violations = []
     for label, addr in (
@@ -438,6 +440,7 @@ def check_registry_version(dest_url: str, registry_addr: str) -> tuple[bool, str
 # ---------------------------------------------------------------------------
 # Main runner
 # ---------------------------------------------------------------------------
+
 
 def main() -> int:
     """Run all pre-flight checks and print a checklist. Returns exit code."""

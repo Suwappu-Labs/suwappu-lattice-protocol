@@ -19,26 +19,32 @@ from src.ltp.observability.alerts import (
 )
 from src.ltp.observability.metrics import MetricsRegistry, create_etp_metrics
 
-
 # ---------------------------------------------------------------------------
 # AlertRule
 # ---------------------------------------------------------------------------
 
 
 class TestAlertRule:
-
     def test_rule_is_frozen(self):
         rule = AlertRule(
-            name="test", metric_name="m", condition=AlertCondition.GREATER_THAN,
-            threshold=10.0, severity=AlertSeverity.CRITICAL, description="Test",
+            name="test",
+            metric_name="m",
+            condition=AlertCondition.GREATER_THAN,
+            threshold=10.0,
+            severity=AlertSeverity.CRITICAL,
+            description="Test",
         )
         with pytest.raises(AttributeError):
             rule.name = "changed"
 
     def test_rule_fields(self):
         rule = AlertRule(
-            name="sth_gap", metric_name="etp_sth_gap", condition=AlertCondition.GREATER_THAN,
-            threshold=60.0, severity=AlertSeverity.CRITICAL, description="STH gap",
+            name="sth_gap",
+            metric_name="etp_sth_gap",
+            condition=AlertCondition.GREATER_THAN,
+            threshold=60.0,
+            severity=AlertSeverity.CRITICAL,
+            description="STH gap",
             for_seconds=30.0,
         )
         assert rule.name == "sth_gap"
@@ -52,16 +58,18 @@ class TestAlertRule:
 
 
 class TestAlertEvaluator:
-
     def test_counter_above_threshold_fires(self):
         reg = MetricsRegistry()
         c = reg.counter("errors_total", "Error count")
         c.inc(10)
 
         rule = AlertRule(
-            name="high_errors", metric_name="errors_total",
-            condition=AlertCondition.GREATER_THAN, threshold=5.0,
-            severity=AlertSeverity.CRITICAL, description="Too many errors",
+            name="high_errors",
+            metric_name="errors_total",
+            condition=AlertCondition.GREATER_THAN,
+            threshold=5.0,
+            severity=AlertSeverity.CRITICAL,
+            description="Too many errors",
         )
         evaluator = AlertEvaluator([rule], reg)
         results = evaluator.evaluate_all()
@@ -75,9 +83,12 @@ class TestAlertEvaluator:
         c.inc(2)
 
         rule = AlertRule(
-            name="high_errors", metric_name="errors_total",
-            condition=AlertCondition.GREATER_THAN, threshold=5.0,
-            severity=AlertSeverity.WARNING, description="Too many errors",
+            name="high_errors",
+            metric_name="errors_total",
+            condition=AlertCondition.GREATER_THAN,
+            threshold=5.0,
+            severity=AlertSeverity.WARNING,
+            description="Too many errors",
         )
         evaluator = AlertEvaluator([rule], reg)
         results = evaluator.evaluate_all()
@@ -89,9 +100,12 @@ class TestAlertEvaluator:
         g.set(75.0)
 
         rule = AlertRule(
-            name="hot", metric_name="temperature",
-            condition=AlertCondition.GREATER_THAN, threshold=70.0,
-            severity=AlertSeverity.WARNING, description="Temperature high",
+            name="hot",
+            metric_name="temperature",
+            condition=AlertCondition.GREATER_THAN,
+            threshold=70.0,
+            severity=AlertSeverity.WARNING,
+            description="Temperature high",
         )
         evaluator = AlertEvaluator([rule], reg)
         assert evaluator.firing_alerts()[0].firing is True
@@ -102,9 +116,12 @@ class TestAlertEvaluator:
         c.inc(1)
 
         rule = AlertRule(
-            name="violation", metric_name="violations_total",
-            condition=AlertCondition.ANY_OCCURRENCE, threshold=0.0,
-            severity=AlertSeverity.CRITICAL, description="Any violation",
+            name="violation",
+            metric_name="violations_total",
+            condition=AlertCondition.ANY_OCCURRENCE,
+            threshold=0.0,
+            severity=AlertSeverity.CRITICAL,
+            description="Any violation",
         )
         evaluator = AlertEvaluator([rule], reg)
         assert evaluator.firing_alerts()[0].firing is True
@@ -114,9 +131,12 @@ class TestAlertEvaluator:
         reg.counter("violations_total")  # Never incremented
 
         rule = AlertRule(
-            name="violation", metric_name="violations_total",
-            condition=AlertCondition.ANY_OCCURRENCE, threshold=0.0,
-            severity=AlertSeverity.CRITICAL, description="Any violation",
+            name="violation",
+            metric_name="violations_total",
+            condition=AlertCondition.ANY_OCCURRENCE,
+            threshold=0.0,
+            severity=AlertSeverity.CRITICAL,
+            description="Any violation",
         )
         evaluator = AlertEvaluator([rule], reg)
         assert len(evaluator.firing_alerts()) == 0
@@ -124,9 +144,12 @@ class TestAlertEvaluator:
     def test_missing_metric_not_firing(self):
         reg = MetricsRegistry()
         rule = AlertRule(
-            name="missing", metric_name="nonexistent_metric",
-            condition=AlertCondition.GREATER_THAN, threshold=0.0,
-            severity=AlertSeverity.WARNING, description="Missing metric",
+            name="missing",
+            metric_name="nonexistent_metric",
+            condition=AlertCondition.GREATER_THAN,
+            threshold=0.0,
+            severity=AlertSeverity.WARNING,
+            description="Missing metric",
         )
         evaluator = AlertEvaluator([rule], reg)
         results = evaluator.evaluate_all()
@@ -138,8 +161,12 @@ class TestAlertEvaluator:
         reg.counter("b").inc(1)
 
         rules = [
-            AlertRule("high_a", "a", AlertCondition.GREATER_THAN, 5.0, AlertSeverity.CRITICAL, "A high"),
-            AlertRule("high_b", "b", AlertCondition.GREATER_THAN, 5.0, AlertSeverity.WARNING, "B high"),
+            AlertRule(
+                "high_a", "a", AlertCondition.GREATER_THAN, 5.0, AlertSeverity.CRITICAL, "A high"
+            ),
+            AlertRule(
+                "high_b", "b", AlertCondition.GREATER_THAN, 5.0, AlertSeverity.WARNING, "B high"
+            ),
         ]
         evaluator = AlertEvaluator(rules, reg)
         firing = evaluator.firing_alerts()
@@ -147,10 +174,13 @@ class TestAlertEvaluator:
         assert firing[0].rule_name == "high_a"
 
     def test_rule_count(self):
-        evaluator = AlertEvaluator([
-            AlertRule("r1", "m1", AlertCondition.GREATER_THAN, 0, AlertSeverity.WARNING, ""),
-            AlertRule("r2", "m2", AlertCondition.GREATER_THAN, 0, AlertSeverity.CRITICAL, ""),
-        ], MetricsRegistry())
+        evaluator = AlertEvaluator(
+            [
+                AlertRule("r1", "m1", AlertCondition.GREATER_THAN, 0, AlertSeverity.WARNING, ""),
+                AlertRule("r2", "m2", AlertCondition.GREATER_THAN, 0, AlertSeverity.CRITICAL, ""),
+            ],
+            MetricsRegistry(),
+        )
         assert evaluator.rule_count == 2
 
 
@@ -160,7 +190,6 @@ class TestAlertEvaluator:
 
 
 class TestETPAlertRules:
-
     def test_create_returns_10_rules(self):
         rules = create_etp_alert_rules()
         assert len(rules) == 10
@@ -193,7 +222,6 @@ class TestETPAlertRules:
 
 
 class TestAuditFixes:
-
     def test_all_alert_metrics_registered(self):
         """Every alert rule references a metric that exists in the ETP registry."""
         reg = MetricsRegistry()

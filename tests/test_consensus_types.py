@@ -44,12 +44,19 @@ class TestBlock:
 
     def test_digest_changes_with_parents(self):
         b1 = Block(author=0, round=1, payload=(b"tx1",), parents=frozenset(), timestamp_ms=1000)
-        b2 = Block(author=0, round=1, payload=(b"tx1",), parents=frozenset({b"\x00" * 32}), timestamp_ms=1000)
+        b2 = Block(
+            author=0,
+            round=1,
+            payload=(b"tx1",),
+            parents=frozenset({b"\x00" * 32}),
+            timestamp_ms=1000,
+        )
         assert b1.digest != b2.digest
 
     def test_block_is_frozen(self):
         b = Block(author=0, round=1, payload=(b"tx1",), parents=frozenset(), timestamp_ms=1000)
         import dataclasses
+
         assert dataclasses.is_dataclass(b)
         try:
             b.author = 1  # type: ignore[misc]
@@ -138,7 +145,7 @@ class TestRoundState:
         assert 0 in rs.proposals
 
 
-from ltp.consensus.faults import FaultType, FaultConfig, PartitionConfig
+from ltp.consensus.faults import FaultConfig, FaultType, PartitionConfig
 from ltp.consensus.message_bus import MessageBus
 
 

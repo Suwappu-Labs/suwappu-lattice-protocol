@@ -121,7 +121,7 @@ jobs:
 
       - name: Run solhint
         working-directory: contracts
-        run: solhint 'src/**/*.sol' || true
+        run: solhint 'src/**/*.sol' --max-warnings=0
 
   contracts-invariants:
     name: Foundry invariant suite (contracts/test/invariant/)

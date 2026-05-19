@@ -2,6 +2,7 @@
 
 import math
 import struct
+
 import pytest
 
 from src.ltp.encoding import CanonicalEncoder
@@ -12,15 +13,15 @@ class TestCanonicalEncoderPrimitives:
 
     def test_uint8(self):
         result = CanonicalEncoder(b"tag\x00").uint8(42).finalize()
-        assert result == b"tag\x00" + struct.pack('>B', 42)
+        assert result == b"tag\x00" + struct.pack(">B", 42)
 
     def test_uint8_zero(self):
         result = CanonicalEncoder(b"tag\x00").uint8(0).finalize()
-        assert result == b"tag\x00" + b'\x00'
+        assert result == b"tag\x00" + b"\x00"
 
     def test_uint8_max(self):
         result = CanonicalEncoder(b"tag\x00").uint8(255).finalize()
-        assert result == b"tag\x00" + struct.pack('>B', 255)
+        assert result == b"tag\x00" + struct.pack(">B", 255)
 
     def test_uint8_out_of_range(self):
         with pytest.raises(ValueError):
@@ -30,11 +31,11 @@ class TestCanonicalEncoderPrimitives:
 
     def test_uint32(self):
         result = CanonicalEncoder(b"tag\x00").uint32(123456).finalize()
-        assert result == b"tag\x00" + struct.pack('>I', 123456)
+        assert result == b"tag\x00" + struct.pack(">I", 123456)
 
     def test_uint32_max(self):
         result = CanonicalEncoder(b"tag\x00").uint32(0xFFFFFFFF).finalize()
-        assert result == b"tag\x00" + struct.pack('>I', 0xFFFFFFFF)
+        assert result == b"tag\x00" + struct.pack(">I", 0xFFFFFFFF)
 
     def test_uint32_out_of_range(self):
         with pytest.raises(ValueError):
@@ -42,11 +43,11 @@ class TestCanonicalEncoderPrimitives:
 
     def test_uint64(self):
         result = CanonicalEncoder(b"tag\x00").uint64(2**48).finalize()
-        assert result == b"tag\x00" + struct.pack('>Q', 2**48)
+        assert result == b"tag\x00" + struct.pack(">Q", 2**48)
 
     def test_uint64_max(self):
         result = CanonicalEncoder(b"tag\x00").uint64(0xFFFFFFFFFFFFFFFF).finalize()
-        assert result == b"tag\x00" + struct.pack('>Q', 0xFFFFFFFFFFFFFFFF)
+        assert result == b"tag\x00" + struct.pack(">Q", 0xFFFFFFFFFFFFFFFF)
 
     def test_uint64_out_of_range(self):
         with pytest.raises(ValueError):
@@ -54,21 +55,21 @@ class TestCanonicalEncoderPrimitives:
 
     def test_float64(self):
         result = CanonicalEncoder(b"tag\x00").float64(3.14).finalize()
-        assert result == b"tag\x00" + struct.pack('>d', 3.14)
+        assert result == b"tag\x00" + struct.pack(">d", 3.14)
 
     def test_float64_rejects_nan(self):
         with pytest.raises(ValueError, match="NaN"):
-            CanonicalEncoder(b"tag\x00").float64(float('nan'))
+            CanonicalEncoder(b"tag\x00").float64(float("nan"))
 
     def test_float64_rejects_inf(self):
         with pytest.raises(ValueError, match="Inf"):
-            CanonicalEncoder(b"tag\x00").float64(float('inf'))
+            CanonicalEncoder(b"tag\x00").float64(float("inf"))
         with pytest.raises(ValueError, match="Inf"):
-            CanonicalEncoder(b"tag\x00").float64(float('-inf'))
+            CanonicalEncoder(b"tag\x00").float64(float("-inf"))
 
     def test_float64_zero(self):
         result = CanonicalEncoder(b"tag\x00").float64(0.0).finalize()
-        assert result == b"tag\x00" + struct.pack('>d', 0.0)
+        assert result == b"tag\x00" + struct.pack(">d", 0.0)
 
     def test_raw_bytes(self):
         data = b"\xde\xad\xbe\xef"
@@ -82,49 +83,49 @@ class TestCanonicalEncoderPrimitives:
     def test_length_prefixed_bytes(self):
         data = b"hello"
         result = CanonicalEncoder(b"tag\x00").length_prefixed_bytes(data).finalize()
-        assert result == b"tag\x00" + struct.pack('>I', 5) + b"hello"
+        assert result == b"tag\x00" + struct.pack(">I", 5) + b"hello"
 
     def test_length_prefixed_bytes_empty(self):
         result = CanonicalEncoder(b"tag\x00").length_prefixed_bytes(b"").finalize()
-        assert result == b"tag\x00" + struct.pack('>I', 0)
+        assert result == b"tag\x00" + struct.pack(">I", 0)
 
     def test_string(self):
         result = CanonicalEncoder(b"tag\x00").string("hello").finalize()
-        assert result == b"tag\x00" + struct.pack('>I', 5) + b"hello"
+        assert result == b"tag\x00" + struct.pack(">I", 5) + b"hello"
 
     def test_string_utf8(self):
         s = "\u00e9"  # é
-        raw = s.encode('utf-8')
+        raw = s.encode("utf-8")
         result = CanonicalEncoder(b"tag\x00").string(s).finalize()
-        assert result == b"tag\x00" + struct.pack('>I', len(raw)) + raw
+        assert result == b"tag\x00" + struct.pack(">I", len(raw)) + raw
 
     def test_string_empty(self):
         result = CanonicalEncoder(b"tag\x00").string("").finalize()
-        assert result == b"tag\x00" + struct.pack('>I', 0)
+        assert result == b"tag\x00" + struct.pack(">I", 0)
 
     def test_optional_bytes_present(self):
         result = CanonicalEncoder(b"tag\x00").optional_bytes(b"data").finalize()
-        assert result == b"tag\x00" + b'\x01' + struct.pack('>I', 4) + b"data"
+        assert result == b"tag\x00" + b"\x01" + struct.pack(">I", 4) + b"data"
 
     def test_optional_bytes_absent(self):
         result = CanonicalEncoder(b"tag\x00").optional_bytes(None).finalize()
-        assert result == b"tag\x00" + b'\x00'
+        assert result == b"tag\x00" + b"\x00"
 
     def test_optional_string_present(self):
         result = CanonicalEncoder(b"tag\x00").optional_string("hi").finalize()
-        assert result == b"tag\x00" + b'\x01' + struct.pack('>I', 2) + b"hi"
+        assert result == b"tag\x00" + b"\x01" + struct.pack(">I", 2) + b"hi"
 
     def test_optional_string_absent(self):
         result = CanonicalEncoder(b"tag\x00").optional_string(None).finalize()
-        assert result == b"tag\x00" + b'\x00'
+        assert result == b"tag\x00" + b"\x00"
 
     def test_optional_uint64_present(self):
         result = CanonicalEncoder(b"tag\x00").optional_uint64(42).finalize()
-        assert result == b"tag\x00" + b'\x01' + struct.pack('>Q', 42)
+        assert result == b"tag\x00" + b"\x01" + struct.pack(">Q", 42)
 
     def test_optional_uint64_absent(self):
         result = CanonicalEncoder(b"tag\x00").optional_uint64(None).finalize()
-        assert result == b"tag\x00" + b'\x00'
+        assert result == b"tag\x00" + b"\x00"
 
 
 class TestCanonicalEncoderMaps:
@@ -132,7 +133,7 @@ class TestCanonicalEncoderMaps:
 
     def test_sorted_map_empty(self):
         result = CanonicalEncoder(b"tag\x00").sorted_map({}).finalize()
-        assert result == b"tag\x00" + struct.pack('>I', 0)
+        assert result == b"tag\x00" + struct.pack(">I", 0)
 
     def test_sorted_map_order(self):
         # Keys must be sorted lexicographically
@@ -140,7 +141,7 @@ class TestCanonicalEncoderMaps:
         result = CanonicalEncoder(b"tag\x00").sorted_map(d).finalize()
         # Build expected
         enc = CanonicalEncoder(b"tag\x00")
-        enc._parts.append(struct.pack('>I', 3))
+        enc._parts.append(struct.pack(">I", 3))
         for k, v in [("a", "1"), ("b", "2"), ("c", "3")]:
             enc.string(k)
             enc.string(v)
@@ -205,6 +206,7 @@ class TestCanonicalEncoderIntegration:
 
     def test_commitment_record_canonical_bytes(self):
         from src.ltp import CommitmentRecord
+
         record = CommitmentRecord(
             entity_id="a" * 64,
             sender_id="alice",
@@ -223,6 +225,7 @@ class TestCanonicalEncoderIntegration:
 
     def test_commitment_record_canonical_record_bytes(self):
         from src.ltp import CommitmentRecord
+
         record = CommitmentRecord(
             entity_id="a" * 64,
             sender_id="alice",
@@ -240,8 +243,10 @@ class TestCanonicalEncoderIntegration:
 
     def test_sth_canonical_bytes(self):
         from src.ltp import KeyPair
+
         kp = KeyPair.generate("test-op")
         from src.ltp.merkle_log.sth import SignedTreeHead
+
         sth = SignedTreeHead.sign(1, 5, b"\x00" * 32, kp.vk, kp.sk)
         cb = sth.canonical_bytes()
         assert isinstance(cb, bytes)
@@ -249,6 +254,7 @@ class TestCanonicalEncoderIntegration:
 
     def test_lattice_key_canonical_bytes(self):
         from src.ltp import LatticeKey
+
         lk = LatticeKey(
             entity_id="a" * 64,
             cek=b"\x01" * 32,
@@ -261,6 +267,7 @@ class TestCanonicalEncoderIntegration:
     def test_signable_payload_unchanged(self):
         """Verify legacy signable_payload() still works unchanged."""
         from src.ltp import CommitmentRecord
+
         record = CommitmentRecord(
             entity_id="a" * 64,
             sender_id="alice",

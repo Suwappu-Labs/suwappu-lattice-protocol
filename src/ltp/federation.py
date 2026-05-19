@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable, Optional
 
-from .domain import DOMAIN_NIR, DOMAIN_FED_AGREEMENT
+from .domain import DOMAIN_FED_AGREEMENT, DOMAIN_NIR
 from .primitives import MLDSA, canonical_hash, canonical_hash_bytes, internal_hash_bytes
 
 __all__ = [
@@ -47,26 +47,29 @@ __all__ = [
 
 class TrustLevel(Enum):
     """Trust level for a federated network."""
-    UNTRUSTED = "untrusted"       # Discovered but not verified
-    VERIFIED = "verified"         # STH exchange successful, identity confirmed
-    FEDERATED = "federated"       # Full bidirectional federation established
+
+    UNTRUSTED = "untrusted"  # Discovered but not verified
+    VERIFIED = "verified"  # STH exchange successful, identity confirmed
+    FEDERATED = "federated"  # Full bidirectional federation established
 
 
 class DiscoveryMethod(Enum):
     """How networks discover each other."""
-    STATIC = "static"             # Manually configured
-    DNS = "dns"                   # DNS-based discovery (like ENR)
-    ONCHAIN = "onchain"           # Shared L1 registry
+
+    STATIC = "static"  # Manually configured
+    DNS = "dns"  # DNS-based discovery (like ENR)
+    ONCHAIN = "onchain"  # Shared L1 registry
 
 
 @dataclass
 class FederationConfig:
     """Configuration for federation behavior."""
+
     enabled: bool = False
     discovery_method: DiscoveryMethod = DiscoveryMethod.STATIC
     min_trust_for_resolution: TrustLevel = TrustLevel.VERIFIED
-    sth_exchange_interval_epochs: int = 24   # Exchange STHs every 24 epochs
-    max_resolution_hops: int = 2             # Max networks to traverse
+    sth_exchange_interval_epochs: int = 24  # Exchange STHs every 24 epochs
+    max_resolution_hops: int = 2  # Max networks to traverse
 
 
 @dataclass
@@ -80,15 +83,16 @@ class FederatedNetwork:
       - A public key for STH signature verification
       - Trust level tracking for progressive trust establishment
     """
-    network_id: str                # Unique identifier (H(genesis_sth))
-    display_name: str              # Human-readable name
-    discovery_endpoint: str        # URL or address for resolution queries
-    public_key: bytes              # ML-DSA-65 public key for STH verification
+
+    network_id: str  # Unique identifier (H(genesis_sth))
+    display_name: str  # Human-readable name
+    discovery_endpoint: str  # URL or address for resolution queries
+    public_key: bytes  # ML-DSA-65 public key for STH verification
     trust_level: TrustLevel = TrustLevel.UNTRUSTED
     last_sth: Optional[dict] = None
     last_sth_verified_epoch: int = -1
     registered_at: float = 0.0
-    entity_count: int = 0          # Known entity count from last STH
+    entity_count: int = 0  # Known entity count from last STH
 
     @property
     def is_trusted(self) -> bool:
@@ -107,6 +111,7 @@ class EntityResolution:
     Used by receivers to find which network holds the shards
     for a given entity_id when it's not in the local network.
     """
+
     entity_id: str
     found: bool
     home_network_id: Optional[str] = None
@@ -184,8 +189,7 @@ class FederationRegistry:
         if removed:
             # Clean resolution cache
             self._resolution_cache = {
-                eid: nid for eid, nid in self._resolution_cache.items()
-                if nid != network_id
+                eid: nid for eid, nid in self._resolution_cache.items() if nid != network_id
             }
         return removed is not None
 
@@ -351,7 +355,9 @@ class FederationRegistry:
             # Query remote network via transport (if available)
             if transport is not None and auth is not None:
                 result = transport.query_entity(
-                    network.discovery_endpoint, entity_id, auth,
+                    network.discovery_endpoint,
+                    entity_id,
+                    auth,
                 )
                 if result is not None and result.get("found"):
                     self._resolution_cache[entity_id] = network.network_id
@@ -434,9 +440,7 @@ class FederationRegistry:
             raise ValueError(f"Network {remote_id!r} is not registered")
 
         if network.trust_level == TrustLevel.UNTRUSTED:
-            raise ValueError(
-                f"Network {remote_id!r} must be at least VERIFIED before federation"
-            )
+            raise ValueError(f"Network {remote_id!r} must be at least VERIFIED before federation")
 
         if network.trust_level == TrustLevel.FEDERATED:
             return True  # Already federated — idempotent
@@ -476,6 +480,7 @@ class NetworkIdentityRecord:
       H(DOMAIN_NIR + genesis_sth_root + operator_vk)
     Changing any input changes the ID.
     """
+
     network_id: str
     operator_vk: bytes
     genesis_sth_root: bytes
@@ -516,12 +521,8 @@ class NetworkIdentityRecord:
         Raises ValueError if genesis_sth_root is not exactly 32 bytes.
         """
         if len(genesis_sth_root) != 32:
-            raise ValueError(
-                f"genesis_sth_root must be 32 bytes, got {len(genesis_sth_root)}"
-            )
-        network_id = canonical_hash_bytes(
-            DOMAIN_NIR + genesis_sth_root + keypair.vk
-        ).hex()
+            raise ValueError(f"genesis_sth_root must be 32 bytes, got {len(genesis_sth_root)}")
+        network_id = canonical_hash_bytes(DOMAIN_NIR + genesis_sth_root + keypair.vk).hex()
 
         now = time.time()
 
@@ -588,8 +589,7 @@ class StaticDiscoveryService(DiscoveryService):
     def discover(self, query: str = "") -> list[NetworkIdentityRecord]:
         if not query:
             return list(self._nirs.values())
-        return [n for n in self._nirs.values()
-                if query in n.display_name or query in n.network_id]
+        return [n for n in self._nirs.values() if query in n.display_name or query in n.network_id]
 
     def resolve(self, network_id: str) -> Optional[NetworkIdentityRecord]:
         return self._nirs.get(network_id)
@@ -668,9 +668,7 @@ class Route53DNSProvider(DNSProvider):
         try:
             import boto3  # type: ignore
         except ImportError as e:
-            raise RuntimeError(
-                "Route53DNSProvider requires boto3: pip install 'ltp[cloud]'"
-            ) from e
+            raise RuntimeError("Route53DNSProvider requires boto3: pip install 'ltp[cloud]'") from e
         return boto3.client("route53")
 
     def _change(self, action: str, name: str, values: list[str]) -> bool:
@@ -679,21 +677,27 @@ class Route53DNSProvider(DNSProvider):
         chunks = []
         for v in values:
             encoded = v.encode("utf-8")
-            pieces = [encoded[i:i + 255] for i in range(0, len(encoded), 255)]
-            quoted = " ".join('"' + p.decode("utf-8", "replace").replace('"', r"\"") + '"' for p in pieces)
+            pieces = [encoded[i : i + 255] for i in range(0, len(encoded), 255)]
+            quoted = " ".join(
+                '"' + p.decode("utf-8", "replace").replace('"', r"\"") + '"' for p in pieces
+            )
             chunks.append({"Value": quoted})
         try:
             client.change_resource_record_sets(
                 HostedZoneId=self._hosted_zone_id,
-                ChangeBatch={"Changes": [{
-                    "Action": action,
-                    "ResourceRecordSet": {
-                        "Name": name,
-                        "Type": "TXT",
-                        "TTL": self._ttl,
-                        "ResourceRecords": chunks,
-                    },
-                }]},
+                ChangeBatch={
+                    "Changes": [
+                        {
+                            "Action": action,
+                            "ResourceRecordSet": {
+                                "Name": name,
+                                "Type": "TXT",
+                                "TTL": self._ttl,
+                                "ResourceRecords": chunks,
+                            },
+                        }
+                    ]
+                },
             )
             return True
         except Exception:
@@ -708,7 +712,9 @@ class Route53DNSProvider(DNSProvider):
         try:
             client = self._client()
             resp = client.list_resource_record_sets(
-                HostedZoneId=self._hosted_zone_id, StartRecordName=name, StartRecordType="TXT",
+                HostedZoneId=self._hosted_zone_id,
+                StartRecordName=name,
+                StartRecordType="TXT",
             )
             for rr in resp.get("ResourceRecordSets", []):
                 if rr.get("Name") == name and rr.get("Type") == "TXT":
@@ -756,7 +762,8 @@ class CloudflareDNSProvider(DNSProvider):
         url = f"{self.API_BASE}/zones/{self._zone_id}/dns_records"
         try:
             resp = httpx_mod.post(
-                url, headers=self._headers(),
+                url,
+                headers=self._headers(),
                 json={"type": "TXT", "name": name, "content": value, "ttl": self._ttl},
                 timeout=10.0,
             )
@@ -770,8 +777,10 @@ class CloudflareDNSProvider(DNSProvider):
             # Look up the record id first.
             list_url = f"{self.API_BASE}/zones/{self._zone_id}/dns_records"
             resp = httpx_mod.get(
-                list_url, headers=self._headers(),
-                params={"type": "TXT", "name": name}, timeout=10.0,
+                list_url,
+                headers=self._headers(),
+                params={"type": "TXT", "name": name},
+                timeout=10.0,
             )
             if resp.status_code != 200:
                 return False
@@ -782,7 +791,8 @@ class CloudflareDNSProvider(DNSProvider):
                     continue
                 d = httpx_mod.delete(
                     f"{self.API_BASE}/zones/{self._zone_id}/dns_records/{rec_id}",
-                    headers=self._headers(), timeout=10.0,
+                    headers=self._headers(),
+                    timeout=10.0,
                 )
                 if d.status_code == 200:
                     deleted = True
@@ -833,22 +843,27 @@ class DNSDiscoveryService(DiscoveryService):
     def _serialize_nir(cls, nir: NetworkIdentityRecord) -> str:
         """Serialize an NIR to a compact JSON string (hex-encoded bytes)."""
         import json
-        return json.dumps({
-            "v": cls.SCHEMA_VERSION,
-            "network_id": nir.network_id,
-            "operator_vk": nir.operator_vk.hex(),
-            "genesis_sth_root": nir.genesis_sth_root.hex(),
-            "genesis_sth_sequence": nir.genesis_sth_sequence,
-            "display_name": nir.display_name,
-            "discovery_endpoint": nir.discovery_endpoint,
-            "created_at": nir.created_at,
-            "signature": nir.signature.hex(),
-        }, separators=(",", ":"))
+
+        return json.dumps(
+            {
+                "v": cls.SCHEMA_VERSION,
+                "network_id": nir.network_id,
+                "operator_vk": nir.operator_vk.hex(),
+                "genesis_sth_root": nir.genesis_sth_root.hex(),
+                "genesis_sth_sequence": nir.genesis_sth_sequence,
+                "display_name": nir.display_name,
+                "discovery_endpoint": nir.discovery_endpoint,
+                "created_at": nir.created_at,
+                "signature": nir.signature.hex(),
+            },
+            separators=(",", ":"),
+        )
 
     @classmethod
     def _deserialize_nir(cls, txt: str) -> Optional[NetworkIdentityRecord]:
         """Parse a TXT record into an NIR. Returns None on malformed input."""
         import json
+
         try:
             data = json.loads(txt)
             if data.get("v") != cls.SCHEMA_VERSION:
@@ -874,8 +889,8 @@ class DNSDiscoveryService(DiscoveryService):
     def _query_real_dns(name: str, timeout: float = 5.0) -> list[str]:
         """Query TXT records at `name` via dnspython. Returns [] on failure."""
         try:
-            import dns.resolver  # type: ignore
             import dns.exception  # type: ignore
+            import dns.resolver  # type: ignore
         except ImportError:
             return []
         try:
@@ -951,7 +966,8 @@ class DNSDiscoveryService(DiscoveryService):
         results = list(seen.values())
         if query:
             filtered = [
-                n for n in results
+                n
+                for n in results
                 if query in (n.discovery_endpoint or "") or query in n.display_name
             ]
             # Substring match wins when we have any hits; otherwise
@@ -1006,6 +1022,7 @@ class FederationAgreement:
       verify_both() -> True if both signatures valid
 
     """
+
     initiator_network_id: str
     responder_network_id: str
     initiator_vk: bytes
@@ -1057,9 +1074,7 @@ class FederationAgreement:
         or if initiator and responder are the same network.
         """
         if initiator_keypair.vk != initiator_nir.operator_vk:
-            raise ValueError(
-                "Initiator keypair does not match initiator NIR operator_vk"
-            )
+            raise ValueError("Initiator keypair does not match initiator NIR operator_vk")
         if initiator_nir.network_id == responder_nir.network_id:
             raise ValueError("Cannot federate a network with itself")
 
@@ -1123,6 +1138,7 @@ class FederationAuth:
       1. requester_nir.verify() — requester identity is authentic
       2. agreement.verify_both() — bilateral federation agreement is valid
     """
+
     requester_nir: NetworkIdentityRecord
     agreement: FederationAgreement
 
@@ -1151,8 +1167,11 @@ class FederationTransport(ABC):
 
     @abstractmethod
     def fetch_shards(
-        self, endpoint: str, entity_id: str,
-        shard_indices: list[int], auth: FederationAuth,
+        self,
+        endpoint: str,
+        entity_id: str,
+        shard_indices: list[int],
+        auth: FederationAuth,
     ) -> dict[int, bytes]:
         """Fetch encrypted shards from a remote network.
 
@@ -1163,7 +1182,10 @@ class FederationTransport(ABC):
 
     @abstractmethod
     def query_entity(
-        self, endpoint: str, entity_id: str, auth: FederationAuth,
+        self,
+        endpoint: str,
+        entity_id: str,
+        auth: FederationAuth,
     ) -> Optional[dict]:
         """Query if a remote network holds an entity.
 
@@ -1180,8 +1202,8 @@ class InMemoryFederationTransport(FederationTransport):
     """
 
     def __init__(self) -> None:
-        self._networks: dict[str, object] = {}       # endpoint → CommitmentNetwork
-        self._network_ids: dict[str, str] = {}        # endpoint → network_id
+        self._networks: dict[str, object] = {}  # endpoint → CommitmentNetwork
+        self._network_ids: dict[str, str] = {}  # endpoint → network_id
 
     def register_network(self, endpoint: str, network, network_id: str = "") -> None:
         """Register a CommitmentNetwork for an endpoint (testing only)."""
@@ -1190,8 +1212,11 @@ class InMemoryFederationTransport(FederationTransport):
             self._network_ids[endpoint] = network_id
 
     def fetch_shards(
-        self, endpoint: str, entity_id: str,
-        shard_indices: list[int], auth: FederationAuth,
+        self,
+        endpoint: str,
+        entity_id: str,
+        shard_indices: list[int],
+        auth: FederationAuth,
     ) -> dict[int, bytes]:
         """Fetch shards from a registered network after auth verification.
 
@@ -1219,7 +1244,10 @@ class InMemoryFederationTransport(FederationTransport):
         return result
 
     def query_entity(
-        self, endpoint: str, entity_id: str, auth: FederationAuth,
+        self,
+        endpoint: str,
+        entity_id: str,
+        auth: FederationAuth,
     ) -> Optional[dict]:
         """Query if entity exists in a registered network.
 
@@ -1283,7 +1311,9 @@ class CrossNetworkFetcher:
         self._rate_limiter = rate_limiter
 
     def fetch_entity_shards(
-        self, entity_id: str, shard_indices: list[int],
+        self,
+        entity_id: str,
+        shard_indices: list[int],
     ) -> Optional[dict[int, bytes]]:
         """Resolve entity → authenticate → fetch shards from remote network.
 
@@ -1297,7 +1327,9 @@ class CrossNetworkFetcher:
 
         # Resolve entity location
         resolution = self._registry.resolve_entity(
-            entity_id, transport=self._transport, auth=resolution_auth,
+            entity_id,
+            transport=self._transport,
+            auth=resolution_auth,
         )
         if not resolution.found or resolution.home_network_id is None:
             return None
@@ -1322,7 +1354,10 @@ class CrossNetworkFetcher:
             return None
 
         shards = self._transport.fetch_shards(
-            endpoint, entity_id, shard_indices, auth,
+            endpoint,
+            entity_id,
+            shard_indices,
+            auth,
         )
         return shards if shards else None
 

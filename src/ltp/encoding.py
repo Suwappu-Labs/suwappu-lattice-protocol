@@ -56,28 +56,28 @@ class CanonicalEncoder:
         """Encode unsigned 8-bit integer (big-endian)."""
         if not (0 <= value <= 0xFF):
             raise ValueError(f"uint8 out of range: {value}")
-        self._parts.append(struct.pack('>B', value))
+        self._parts.append(struct.pack(">B", value))
         return self
 
     def uint32(self, value: int) -> "CanonicalEncoder":
         """Encode unsigned 32-bit integer (big-endian)."""
         if not (0 <= value <= 0xFFFFFFFF):
             raise ValueError(f"uint32 out of range: {value}")
-        self._parts.append(struct.pack('>I', value))
+        self._parts.append(struct.pack(">I", value))
         return self
 
     def uint64(self, value: int) -> "CanonicalEncoder":
         """Encode unsigned 64-bit integer (big-endian)."""
         if not (0 <= value <= 0xFFFFFFFFFFFFFFFF):
             raise ValueError(f"uint64 out of range: {value}")
-        self._parts.append(struct.pack('>Q', value))
+        self._parts.append(struct.pack(">Q", value))
         return self
 
     def float64(self, value: float) -> "CanonicalEncoder":
         """Encode IEEE 754 big-endian double. Rejects NaN and Inf."""
         if math.isnan(value) or math.isinf(value):
             raise ValueError(f"float64 rejects NaN/Inf: {value}")
-        self._parts.append(struct.pack('>d', value))
+        self._parts.append(struct.pack(">d", value))
         return self
 
     def raw_bytes(self, value: bytes) -> "CanonicalEncoder":
@@ -87,39 +87,39 @@ class CanonicalEncoder:
 
     def length_prefixed_bytes(self, value: bytes) -> "CanonicalEncoder":
         """Encode bytes with a 4B big-endian length prefix."""
-        self._parts.append(struct.pack('>I', len(value)) + value)
+        self._parts.append(struct.pack(">I", len(value)) + value)
         return self
 
     def string(self, value: str) -> "CanonicalEncoder":
         """Encode a UTF-8 string with a 4B big-endian length prefix."""
-        raw = value.encode('utf-8')
-        self._parts.append(struct.pack('>I', len(raw)) + raw)
+        raw = value.encode("utf-8")
+        self._parts.append(struct.pack(">I", len(raw)) + raw)
         return self
 
     def optional_bytes(self, value: bytes | None) -> "CanonicalEncoder":
         """Encode optional bytes: 0x00 flag if absent, 0x01 + LP bytes if present."""
         if value is None:
-            self._parts.append(b'\x00')
+            self._parts.append(b"\x00")
         else:
-            self._parts.append(b'\x01')
+            self._parts.append(b"\x01")
             self.length_prefixed_bytes(value)
         return self
 
     def optional_string(self, value: str | None) -> "CanonicalEncoder":
         """Encode optional string: 0x00 flag if absent, 0x01 + LP string if present."""
         if value is None:
-            self._parts.append(b'\x00')
+            self._parts.append(b"\x00")
         else:
-            self._parts.append(b'\x01')
+            self._parts.append(b"\x01")
             self.string(value)
         return self
 
     def optional_uint64(self, value: int | None) -> "CanonicalEncoder":
         """Encode optional uint64: 0x00 flag if absent, 0x01 + uint64 if present."""
         if value is None:
-            self._parts.append(b'\x00')
+            self._parts.append(b"\x00")
         else:
-            self._parts.append(b'\x01')
+            self._parts.append(b"\x01")
             self.uint64(value)
         return self
 
@@ -128,7 +128,7 @@ class CanonicalEncoder:
 
         Format: uint32(count) + for each sorted entry: LP(key) + LP(value)
         """
-        self._parts.append(struct.pack('>I', len(d)))
+        self._parts.append(struct.pack(">I", len(d)))
         for k in sorted(d.keys()):
             self.string(k)
             self.string(str(d[k]))

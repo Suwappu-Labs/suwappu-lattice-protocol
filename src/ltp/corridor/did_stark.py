@@ -138,9 +138,7 @@ class UnknownMethod(DidStarkError):
 
 class UnauthorizedMethod(DidStarkError):
     def __init__(self, method_id: VerificationMethodId) -> None:
-        super().__init__(
-            f"signing method id {method_id} lacks CapabilityInvocation"
-        )
+        super().__init__(f"signing method id {method_id} lacks CapabilityInvocation")
         self.method_id = method_id
 
 

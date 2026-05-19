@@ -24,11 +24,11 @@ __all__ = ["AnchorStatus", "AnchorRecord", "AnchorStatusTracker"]
 class AnchorStatus(Enum):
     """Lifecycle states for an on-chain anchor submission."""
 
-    PENDING = "pending"          # Submission built, not yet sent
-    SUBMITTED = "submitted"      # Tx sent, awaiting receipt
-    CONFIRMED = "confirmed"      # Tx receipt received, below confirmation depth
-    FINALIZED = "finalized"      # Sufficient block confirmations
-    FAILED = "failed"            # Permanently failed (e.g., revert)
+    PENDING = "pending"  # Submission built, not yet sent
+    SUBMITTED = "submitted"  # Tx sent, awaiting receipt
+    CONFIRMED = "confirmed"  # Tx receipt received, below confirmation depth
+    FINALIZED = "finalized"  # Sufficient block confirmations
+    FAILED = "failed"  # Permanently failed (e.g., revert)
 
 
 @dataclass
@@ -36,16 +36,16 @@ class AnchorRecord:
     """Mutable record tracking a single entity's anchor lifecycle."""
 
     entity_id: str
-    anchor_digest: bytes         # 32-byte digest for contract queries
+    anchor_digest: bytes  # 32-byte digest for contract queries
     status: AnchorStatus
-    tx_hash: str = ""            # hex, empty until submitted
-    block_number: int = 0        # 0 until confirmed
-    gas_used: int = 0            # 0 until confirmed
+    tx_hash: str = ""  # hex, empty until submitted
+    block_number: int = 0  # 0 until confirmed
+    gas_used: int = 0  # 0 until confirmed
     submitted_at: float = field(default_factory=time.time)
-    confirmed_at: float = 0.0    # 0.0 until confirmed
-    error: str = ""              # empty unless failed
+    confirmed_at: float = 0.0  # 0.0 until confirmed
+    error: str = ""  # empty unless failed
     retry_count: int = 0
-    chain_id: int = 0            # target chain (0 = legacy/unset)
+    chain_id: int = 0  # target chain (0 = legacy/unset)
 
 
 class AnchorStatusTracker:
@@ -59,15 +59,17 @@ class AnchorStatusTracker:
 
     # Valid (from_status, to_status) pairs — mirrors the Solidity contract's
     # _isValidTransition() pattern.  FAILED is reachable from any active state.
-    _VALID_TRANSITIONS: frozenset[tuple[AnchorStatus, AnchorStatus]] = frozenset({
-        (AnchorStatus.PENDING,   AnchorStatus.SUBMITTED),
-        (AnchorStatus.SUBMITTED, AnchorStatus.CONFIRMED),
-        (AnchorStatus.CONFIRMED, AnchorStatus.FINALIZED),
-        # FAILED is a terminal sink — reachable from any non-terminal state
-        (AnchorStatus.PENDING,   AnchorStatus.FAILED),
-        (AnchorStatus.SUBMITTED, AnchorStatus.FAILED),
-        (AnchorStatus.CONFIRMED, AnchorStatus.FAILED),
-    })
+    _VALID_TRANSITIONS: frozenset[tuple[AnchorStatus, AnchorStatus]] = frozenset(
+        {
+            (AnchorStatus.PENDING, AnchorStatus.SUBMITTED),
+            (AnchorStatus.SUBMITTED, AnchorStatus.CONFIRMED),
+            (AnchorStatus.CONFIRMED, AnchorStatus.FINALIZED),
+            # FAILED is a terminal sink — reachable from any non-terminal state
+            (AnchorStatus.PENDING, AnchorStatus.FAILED),
+            (AnchorStatus.SUBMITTED, AnchorStatus.FAILED),
+            (AnchorStatus.CONFIRMED, AnchorStatus.FAILED),
+        }
+    )
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -90,18 +92,14 @@ class AnchorStatusTracker:
     # State transitions
     # ------------------------------------------------------------------
 
-    def mark_pending(
-        self, entity_id: str, anchor_digest: bytes, chain_id: int = 0
-    ) -> None:
+    def mark_pending(self, entity_id: str, anchor_digest: bytes, chain_id: int = 0) -> None:
         """Create a new record in PENDING state.
 
         Raises ``ValueError`` if *anchor_digest* is not exactly 32 bytes
         (the on-chain contract expects ``bytes32``).
         """
         if len(anchor_digest) != 32:
-            raise ValueError(
-                f"anchor_digest must be exactly 32 bytes, got {len(anchor_digest)}"
-            )
+            raise ValueError(f"anchor_digest must be exactly 32 bytes, got {len(anchor_digest)}")
         with self._lock:
             self._records[entity_id] = AnchorRecord(
                 entity_id=entity_id,

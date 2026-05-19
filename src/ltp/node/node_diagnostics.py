@@ -13,11 +13,11 @@ from __future__ import annotations
 
 import json
 import logging
-import time
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import TYPE_CHECKING, Optional
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
 if TYPE_CHECKING:
     from ..protocol import LTPProtocol
@@ -45,7 +45,7 @@ class _DiagnosticsHandler(BaseHTTPRequestHandler):
             ("/node/network/nodes/", self._handle_network_node_detail, "node_id"),
         ]:
             if raw_path.startswith(prefix):
-                param = raw_path[len(prefix):].rstrip("/")
+                param = raw_path[len(prefix) :].rstrip("/")
                 if not param:
                     self._send_json({"error": f"missing {param_name}"}, 400)
                     return
@@ -102,10 +102,12 @@ class _DiagnosticsHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "peer manager not available"}, 503)
             return
         peers = pm.get_connected_peers()
-        self._send_json({
-            "connected_count": pm.connected_count,
-            "peers": [self._peer_dict(p) for p in peers],
-        })
+        self._send_json(
+            {
+                "connected_count": pm.connected_count,
+                "peers": [self._peer_dict(p) for p in peers],
+            }
+        )
 
     def _handle_peer_detail(self, node_id: str) -> None:
         """GET /node/peers/<node_id> — single peer lookup."""
@@ -145,22 +147,28 @@ class _DiagnosticsHandler(BaseHTTPRequestHandler):
         state_filter = params.get("state")
         if state_filter:
             from ..protocol import TransferState
+
             try:
                 state_enum = TransferState[state_filter.strip().upper()]
             except KeyError:
                 valid = [s.name for s in TransferState]
-                self._send_json({
-                    "error": "invalid state",
-                    "valid_states": valid,
-                }, 400)
+                self._send_json(
+                    {
+                        "error": "invalid state",
+                        "valid_states": valid,
+                    },
+                    400,
+                )
                 return
             sessions = protocol.list_sessions(state=state_enum)
         else:
             sessions = protocol.list_sessions()
-        self._send_json({
-            "count": len(sessions),
-            "sessions": [self._session_dict(s) for s in sessions],
-        })
+        self._send_json(
+            {
+                "count": len(sessions),
+                "sessions": [self._session_dict(s) for s in sessions],
+            }
+        )
 
     def _handle_transfer_detail(self, entity_id: str) -> None:
         """GET /node/transfers/<entity_id> — single session lookup."""
@@ -196,10 +204,12 @@ class _DiagnosticsHandler(BaseHTTPRequestHandler):
         if scheduler is None:
             self._send_json({"error": "audit scheduler not available"}, 503)
             return
-        self._send_json({
-            "epoch": scheduler.epoch,
-            "running": scheduler.running,
-        })
+        self._send_json(
+            {
+                "epoch": scheduler.epoch,
+                "running": scheduler.running,
+            }
+        )
 
     # ------------------------------------------------------------------
     # Network (CommitmentNetwork nodes)
@@ -212,11 +222,13 @@ class _DiagnosticsHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "network not available"}, 503)
             return
         nodes = network.nodes
-        self._send_json({
-            "active_node_count": network.active_node_count,
-            "total_node_count": len(nodes),
-            "nodes": [self._node_summary(n) for n in nodes],
-        })
+        self._send_json(
+            {
+                "active_node_count": network.active_node_count,
+                "total_node_count": len(nodes),
+                "nodes": [self._node_summary(n) for n in nodes],
+            }
+        )
 
     def _handle_network_node_detail(self, node_id: str) -> None:
         """GET /node/network/nodes/<node_id> — single node details."""
@@ -288,12 +300,14 @@ class _DiagnosticsHandler(BaseHTTPRequestHandler):
         limit = max(1, min(limit, self._BURN_HISTORY_MAX))
         history = endowment.burn_history
         capped = history[-limit:] if len(history) > limit else history
-        self._send_json({
-            "balance": endowment.balance,
-            "total_burned": endowment.total_burned,
-            "burn_count": len(history),
-            "burn_history": capped,
-        })
+        self._send_json(
+            {
+                "balance": endowment.balance,
+                "total_burned": endowment.total_burned,
+                "burn_count": len(history),
+                "burn_history": capped,
+            }
+        )
 
     # ------------------------------------------------------------------
     # Storage
@@ -305,11 +319,13 @@ class _DiagnosticsHandler(BaseHTTPRequestHandler):
         if cnode is None:
             self._send_json({"error": "commitment node not available"}, 503)
             return
-        self._send_json({
-            "node_id": cnode.node_id,
-            "shard_count": cnode.shard_count,
-            "evicted": cnode.evicted,
-        })
+        self._send_json(
+            {
+                "node_id": cnode.node_id,
+                "shard_count": cnode.shard_count,
+                "evicted": cnode.evicted,
+            }
+        )
 
     # ------------------------------------------------------------------
     # Commitment log summary
@@ -333,12 +349,14 @@ class _DiagnosticsHandler(BaseHTTPRequestHandler):
                 "root_hash": sth.root_hash.hex(),
             }
             sth_age = round(max(0, time.time() - sth.timestamp), 2)
-        self._send_json({
-            "length": log.length,
-            "head_hash": log.head_hash,
-            "latest_sth": sth_dict,
-            "sth_age_seconds": sth_age,
-        })
+        self._send_json(
+            {
+                "length": log.length,
+                "head_hash": log.head_hash,
+                "latest_sth": sth_dict,
+                "sth_age_seconds": sth_age,
+            }
+        )
 
     def log_message(self, format, *args):
         """Suppress default request logging."""

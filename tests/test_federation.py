@@ -3,18 +3,18 @@
 import pytest
 
 from src.ltp.federation import (
-    TrustLevel,
     DiscoveryMethod,
-    FederationConfig,
-    FederatedNetwork,
     EntityResolution,
+    FederatedNetwork,
+    FederationConfig,
     FederationRegistry,
+    TrustLevel,
 )
-
 
 # ---------------------------------------------------------------------------
 # FederationConfig
 # ---------------------------------------------------------------------------
+
 
 class TestFederationConfig:
     def test_defaults(self):
@@ -37,6 +37,7 @@ class TestFederationConfig:
 # ---------------------------------------------------------------------------
 # FederatedNetwork
 # ---------------------------------------------------------------------------
+
 
 class TestFederatedNetwork:
     def test_defaults(self):
@@ -77,6 +78,7 @@ class TestFederatedNetwork:
 # EntityResolution
 # ---------------------------------------------------------------------------
 
+
 class TestEntityResolution:
     def test_local_resolution(self):
         r = EntityResolution(entity_id="e1", found=True)
@@ -100,15 +102,14 @@ class TestEntityResolution:
 # FederationRegistry — registration
 # ---------------------------------------------------------------------------
 
+
 class TestFederationRegistryRegistration:
     def setup_method(self):
         self.reg = FederationRegistry(FederationConfig(enabled=True))
         self.reg.set_local_network_id("local-net")
 
     def test_register_network(self):
-        net = self.reg.register_network(
-            "net-1", "Network One", "https://net1.example.com", b"pk-1"
-        )
+        net = self.reg.register_network("net-1", "Network One", "https://net1.example.com", b"pk-1")
         assert net.network_id == "net-1"
         assert net.trust_level == TrustLevel.UNTRUSTED
         assert len(self.reg.all_networks) == 1
@@ -142,6 +143,7 @@ class TestFederationRegistryRegistration:
 # ---------------------------------------------------------------------------
 # FederationRegistry — trust management
 # ---------------------------------------------------------------------------
+
 
 class TestFederationRegistryTrust:
     def setup_method(self):
@@ -192,9 +194,11 @@ class TestFederationRegistryTrust:
 # FederationRegistry — STH verification
 # ---------------------------------------------------------------------------
 
+
 class TestFederationRegistrySTH:
     def setup_method(self):
         from src.ltp.primitives import MLDSA
+
         self._vk, self._sk = MLDSA.keygen()
         self.reg = FederationRegistry(FederationConfig(enabled=True))
         self.reg.set_local_network_id("local-net")
@@ -202,7 +206,9 @@ class TestFederationRegistrySTH:
 
     def _make_sth(self, seq=1, root="abc", ts=1000.0, count=10):
         import struct
+
         from src.ltp.primitives import MLDSA
+
         sth = {
             "sequence": seq,
             "root_hash": root,
@@ -258,6 +264,7 @@ class TestFederationRegistrySTH:
 # FederationRegistry — entity resolution
 # ---------------------------------------------------------------------------
 
+
 class TestFederationRegistryResolution:
     def setup_method(self):
         self.reg = FederationRegistry(FederationConfig(enabled=True))
@@ -297,6 +304,7 @@ class TestFederationRegistryResolution:
 # ---------------------------------------------------------------------------
 # FederationRegistry — default config
 # ---------------------------------------------------------------------------
+
 
 class TestFederationRegistryDefaults:
     def test_default_config(self):

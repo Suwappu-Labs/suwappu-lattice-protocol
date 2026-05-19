@@ -41,6 +41,7 @@ class MultiVMStateRoot:
       Level 2: per-family subtree = merkle_root(sorted VM leaves)
       Level 3: root = SHA3(DOMAIN + merkle_root(sorted family subtrees) + round)
     """
+
     vm_roots: dict[int, bytes]
     batch_round: int
 
@@ -81,7 +82,4 @@ class MultiVMStateRoot:
             leaf = canonical_hash_bytes(tag.to_bytes(1, "big") + self.vm_roots[tag])
             family_leaves.setdefault(family_id, []).append(leaf)
 
-        return {
-            fid: _merkle_root(leaves)
-            for fid, leaves in family_leaves.items()
-        }
+        return {fid: _merkle_root(leaves) for fid, leaves in family_leaves.items()}

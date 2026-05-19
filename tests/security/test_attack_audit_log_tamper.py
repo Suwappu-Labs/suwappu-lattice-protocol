@@ -25,13 +25,15 @@ from src.ltp.compliance import (
 
 def _seed(logger: ComplianceAuditLogger, n: int = 5) -> None:
     for i in range(n):
-        logger.log(AuditEvent(
-            event_type=AuditEventType.ANCHOR_SUBMITTED,
-            actor_id=f"actor-{i}",
-            action="submit",
-            target_id=f"anchor-{i}",
-            outcome="success",
-        ))
+        logger.log(
+            AuditEvent(
+                event_type=AuditEventType.ANCHOR_SUBMITTED,
+                actor_id=f"actor-{i}",
+                action="submit",
+                target_id=f"anchor-{i}",
+                outcome="success",
+            )
+        )
 
 
 def test_clean_chain_verifies():
@@ -72,10 +74,12 @@ def test_head_hash_advances_monotonically():
     logger = ComplianceAuditLogger(operator_id="test")
     seen = {logger.head_hash}
     for i in range(10):
-        logger.log(AuditEvent(
-            event_type=AuditEventType.ANCHOR_SUBMITTED,
-            actor_id=f"a{i}",
-            action="x",
-        ))
+        logger.log(
+            AuditEvent(
+                event_type=AuditEventType.ANCHOR_SUBMITTED,
+                actor_id=f"a{i}",
+                action="x",
+            )
+        )
         assert logger.head_hash not in seen, "head_hash collided across events"
         seen.add(logger.head_hash)

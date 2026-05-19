@@ -15,18 +15,17 @@ Two hash lanes serve different trust boundaries:
 from __future__ import annotations
 
 import hashlib
-from enum import Enum
-
 
 # ---------------------------------------------------------------------------
 # BLAKE3 optional dependency detection
 # ---------------------------------------------------------------------------
-
 import os
+from enum import Enum
 
 _blake3_available = False
 try:
     import blake3 as _blake3_mod
+
     _blake3_available = True
 except ImportError:
     _blake3_mod = None
@@ -42,6 +41,7 @@ if os.environ.get("ETP_REQUIRE_REAL_CRYPTO") == "1" and not _blake3_available:
 # HashFunction enum
 # ---------------------------------------------------------------------------
 
+
 class HashFunction(Enum):
     """
     Supported hash functions.
@@ -52,6 +52,7 @@ class HashFunction(Enum):
     SHA_384:     FIPS 180-4, CNSA 2.0 approved, 384-bit output
     SHA_512:     FIPS 180-4, CNSA 2.0 approved, 512-bit output
     """
+
     SHA3_256 = "sha3-256"
     BLAKE3_256 = "blake3"
     BLAKE2B_256 = "blake2b"
@@ -62,6 +63,7 @@ class HashFunction(Enum):
 # ---------------------------------------------------------------------------
 # Core hash dispatch
 # ---------------------------------------------------------------------------
+
 
 def _hash_digest(data: bytes, algo: HashFunction, raw: bool = False):
     """Compute hash with the specified algorithm."""
@@ -109,13 +111,14 @@ def _hash_digest(data: bytes, algo: HashFunction, raw: bool = False):
 # provider without hashing.py importing from primitives.py.
 # ---------------------------------------------------------------------------
 
-_get_active_profile = None   # -> get_security_profile()
+_get_active_profile = None  # -> get_security_profile()
 _get_crypto_provider = None  # -> get_crypto_provider()
 
 
 # ---------------------------------------------------------------------------
 # Dual-lane hash functions
 # ---------------------------------------------------------------------------
+
 
 def canonical_hash(data: bytes) -> str:
     """Canonical lane hash. Returns '<algo>:<hex>' string.
@@ -130,7 +133,7 @@ def canonical_hash(data: bytes) -> str:
     from .lanes import COMPLIANCE_APPROVED
 
     provider = _get_crypto_provider() if _get_crypto_provider else None
-    if provider is not None and getattr(provider, 'is_fips_mode', False):
+    if provider is not None and getattr(provider, "is_fips_mode", False):
         return provider.hash(data)
     profile = _get_active_profile()
     algo = profile.canonical_hash_fn
@@ -152,7 +155,7 @@ def canonical_hash_bytes(data: bytes) -> bytes:
     from .lanes import COMPLIANCE_APPROVED
 
     provider = _get_crypto_provider() if _get_crypto_provider else None
-    if provider is not None and getattr(provider, 'is_fips_mode', False):
+    if provider is not None and getattr(provider, "is_fips_mode", False):
         return provider.hash_bytes(data)
     profile = _get_active_profile()
     algo = profile.canonical_hash_fn

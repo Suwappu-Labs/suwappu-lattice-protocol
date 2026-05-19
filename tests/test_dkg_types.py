@@ -5,31 +5,35 @@ from __future__ import annotations
 import pytest
 
 from src.ltp.execution.committee.dkg.types import (
-    DKGState,
-    DKGPhase,
     DKGCommitment,
-    DKGShare,
     DKGComplaint,
+    DKGPhase,
     DKGResult,
     DKGSessionConfig,
+    DKGShare,
+    DKGState,
 )
 
 
 class TestDKGState:
-
     def test_has_eight_states(self):
         assert len(DKGState) == 8
 
     def test_state_values(self):
         expected = {
-            "idle", "committing", "sharing", "verifying",
-            "complaining", "finalizing", "completed", "failed",
+            "idle",
+            "committing",
+            "sharing",
+            "verifying",
+            "complaining",
+            "finalizing",
+            "completed",
+            "failed",
         }
         assert {s.value for s in DKGState} == expected
 
 
 class TestDKGPhase:
-
     def test_has_two_phases(self):
         assert len(DKGPhase) == 2
 
@@ -38,7 +42,6 @@ class TestDKGPhase:
 
 
 class TestDKGCommitment:
-
     def test_frozen(self):
         c = DKGCommitment(
             dealer_fp=b"\x01" * 32,
@@ -64,7 +67,6 @@ class TestDKGCommitment:
 
 
 class TestDKGShare:
-
     def test_frozen(self):
         s = DKGShare(
             dealer_fp=b"\x01" * 32,
@@ -89,7 +91,6 @@ class TestDKGShare:
 
 
 class TestDKGComplaint:
-
     def test_frozen(self):
         c = DKGComplaint(
             complainant_fp=b"\x01" * 32,
@@ -103,7 +104,6 @@ class TestDKGComplaint:
 
 
 class TestDKGResult:
-
     def test_frozen(self):
         r = DKGResult(
             vm_tag=0x01,
@@ -139,7 +139,6 @@ class TestDKGResult:
 
 
 class TestDKGSessionConfig:
-
     def test_mutable(self):
         cfg = DKGSessionConfig(
             vm_tag=0x01,

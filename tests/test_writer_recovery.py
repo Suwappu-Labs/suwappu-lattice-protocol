@@ -11,14 +11,6 @@ from __future__ import annotations
 
 import pytest
 
-from src.ltp.execution.writer_recovery import (
-    EmergencyAction,
-    EmergencyIntervention,
-    EmergencyState,
-    PolicySnapshotStore,
-    RecoveryQuorum,
-)
-from src.ltp.execution.writer_policy import VMWriterPolicy
 from src.ltp.execution.writer import (
     ApprovalPath,
     IdentityTier,
@@ -26,15 +18,22 @@ from src.ltp.execution.writer import (
     WriterRecord,
     WriterState,
 )
+from src.ltp.execution.writer_policy import VMWriterPolicy
+from src.ltp.execution.writer_recovery import (
+    EmergencyAction,
+    EmergencyIntervention,
+    EmergencyState,
+    PolicySnapshotStore,
+    RecoveryQuorum,
+)
 from src.ltp.execution.writer_registry import WriterRegistry
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-_ACTOR = b"\xde\xad\xbe\xef" * 8   # 32 bytes
-_TS    = 1_700_000_000
+_ACTOR = b"\xde\xad\xbe\xef" * 8  # 32 bytes
+_TS = 1_700_000_000
 
 
 def _policy(vm_tag: int = 1, max_writers: int = 0) -> VMWriterPolicy:
@@ -44,6 +43,7 @@ def _policy(vm_tag: int = 1, max_writers: int = 0) -> VMWriterPolicy:
 # ---------------------------------------------------------------------------
 # TestEmergencyAction
 # ---------------------------------------------------------------------------
+
 
 class TestEmergencyAction:
     """All twelve enum members must exist with the correct values."""
@@ -91,6 +91,7 @@ class TestEmergencyAction:
 # ---------------------------------------------------------------------------
 # TestEmergencyState
 # ---------------------------------------------------------------------------
+
 
 class TestEmergencyState:
     """EmergencyState lifecycle — freeze, unfreeze, bypass, clear."""
@@ -215,6 +216,7 @@ class TestEmergencyState:
 # TestPolicySnapshots
 # ---------------------------------------------------------------------------
 
+
 class TestPolicySnapshots:
     """PolicySnapshotStore — append-only snapshots and rollback."""
 
@@ -287,6 +289,7 @@ class TestPolicySnapshots:
 # TestRecoveryQuorum
 # ---------------------------------------------------------------------------
 
+
 class TestRecoveryQuorum:
     """RecoveryQuorum — threshold voting lifecycle."""
 
@@ -313,7 +316,7 @@ class TestRecoveryQuorum:
         keys = [b"\x01" * 32, b"\x02" * 32]
         q = RecoveryQuorum(keys, threshold=2)
         q.add_vote(b"\x01" * 32)
-        q.add_vote(b"\x01" * 32)   # same key again
+        q.add_vote(b"\x01" * 32)  # same key again
         assert q.is_met() is False  # only 1 unique vote
 
     def test_invalid_key_raises_value_error(self):
@@ -362,6 +365,7 @@ def _registry_with_active_writer(fp: bytes = _WRITER_FP) -> WriterRegistry:
 # TestEmergencyForceRevoke
 # ---------------------------------------------------------------------------
 
+
 class TestEmergencyForceRevoke:
     """EmergencyState.force_revoke bypasses RBAC and revokes a writer."""
 
@@ -409,6 +413,7 @@ class TestEmergencyForceRevoke:
 # TestDispatchOverride
 # ---------------------------------------------------------------------------
 
+
 class TestDispatchOverride:
     """EmergencyState dispatch override — per-writer force-allow / force-block."""
 
@@ -419,21 +424,33 @@ class TestDispatchOverride:
     def test_set_override_allow(self):
         state = EmergencyState()
         state.set_dispatch_override(
-            _WRITER_FP, allow=True, actor_fp=_ACTOR, reason="VIP pass", timestamp=_TS,
+            _WRITER_FP,
+            allow=True,
+            actor_fp=_ACTOR,
+            reason="VIP pass",
+            timestamp=_TS,
         )
         assert state.get_dispatch_override(_WRITER_FP) is True
 
     def test_set_override_block(self):
         state = EmergencyState()
         state.set_dispatch_override(
-            _WRITER_FP, allow=False, actor_fp=_ACTOR, reason="quarantine", timestamp=_TS,
+            _WRITER_FP,
+            allow=False,
+            actor_fp=_ACTOR,
+            reason="quarantine",
+            timestamp=_TS,
         )
         assert state.get_dispatch_override(_WRITER_FP) is False
 
     def test_set_override_logs_intervention(self):
         state = EmergencyState()
         state.set_dispatch_override(
-            _WRITER_FP, allow=True, actor_fp=_ACTOR, reason="VIP pass", timestamp=_TS,
+            _WRITER_FP,
+            allow=True,
+            actor_fp=_ACTOR,
+            reason="VIP pass",
+            timestamp=_TS,
         )
         assert len(state.interventions) == 1
         iv = state.interventions[0]
@@ -443,7 +460,11 @@ class TestDispatchOverride:
     def test_clear_override_removes_it(self):
         state = EmergencyState()
         state.set_dispatch_override(
-            _WRITER_FP, allow=False, actor_fp=_ACTOR, reason="quarantine", timestamp=_TS,
+            _WRITER_FP,
+            allow=False,
+            actor_fp=_ACTOR,
+            reason="quarantine",
+            timestamp=_TS,
         )
         state.clear_dispatch_override(_WRITER_FP, _ACTOR, _TS + 100)
         assert state.get_dispatch_override(_WRITER_FP) is None
@@ -451,7 +472,11 @@ class TestDispatchOverride:
     def test_clear_override_logs_intervention(self):
         state = EmergencyState()
         state.set_dispatch_override(
-            _WRITER_FP, allow=True, actor_fp=_ACTOR, reason="test", timestamp=_TS,
+            _WRITER_FP,
+            allow=True,
+            actor_fp=_ACTOR,
+            reason="test",
+            timestamp=_TS,
         )
         state.clear_dispatch_override(_WRITER_FP, _ACTOR, _TS + 100)
         assert len(state.interventions) == 2
@@ -468,6 +493,10 @@ class TestDispatchOverride:
         state = EmergencyState()
         other_fp = b"\x22" * 32
         state.set_dispatch_override(
-            _WRITER_FP, allow=True, actor_fp=_ACTOR, reason="test", timestamp=_TS,
+            _WRITER_FP,
+            allow=True,
+            actor_fp=_ACTOR,
+            reason="test",
+            timestamp=_TS,
         )
         assert state.get_dispatch_override(other_fp) is None

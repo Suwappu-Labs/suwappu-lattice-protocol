@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-from .types import CommitteeRoster, EpochRecord, EpochTrigger
-from .policy import CommitteePolicy, EpochStrategy
-from .formation import CommitteeFormation
 from ..writer_recovery import EmergencyState
+from .formation import CommitteeFormation
+from .policy import CommitteePolicy, EpochStrategy
+from .types import CommitteeRoster, EpochRecord, EpochTrigger
 
 __all__ = ["EpochManager"]
 
@@ -86,7 +86,10 @@ class EpochManager:
         self._current_epoch += 1
 
         roster = self._formation.build_roster(
-            self._policy, self._current_epoch, current_round, timestamp,
+            self._policy,
+            self._current_epoch,
+            current_round,
+            timestamp,
         )
         self._roster = roster
 

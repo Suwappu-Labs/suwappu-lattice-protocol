@@ -27,7 +27,9 @@ import sys
 from itertools import combinations
 
 from . import (
-    AEAD, MLKEM, MLDSA,
+    AEAD,
+    MLDSA,
+    MLKEM,
     CommitmentNetwork,
     Entity,
     ErasureCoder,
@@ -37,10 +39,10 @@ from . import (
     canonical_hash,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _setup_network() -> tuple[CommitmentNetwork, list[tuple[str, str]]]:
     """Create and populate a commitment network with 6 regional nodes."""
@@ -63,6 +65,7 @@ def _setup_network() -> tuple[CommitmentNetwork, list[tuple[str, str]]]:
 # Phase demos
 # ---------------------------------------------------------------------------
 
+
 def demo_transfers(
     protocol: LTPProtocol,
     network: CommitmentNetwork,
@@ -72,22 +75,23 @@ def demo_transfers(
 ) -> list[tuple[str, bytes, str]]:
     """Run three-phase transfers with security tests."""
     test_cases = [
-        ("Small message",
-         b"Hello, this is a secure immutable transfer via LTP!",
-         "text/plain"),
-        ("JSON document",
-         json.dumps({
-             "patient_id": "P-29381",
-             "diagnosis": "healthy",
-             "lab_results": {"blood_pressure": "120/80", "heart_rate": 72},
-             "timestamp": "2026-02-24T00:00:00Z",
-             "physician": "Dr. Smith",
-             "notes": "Regular checkup. All vitals normal.",
-         }, indent=2).encode(),
-         "application/json"),
-        ("Large payload",
-         os.urandom(100_000),
-         "application/octet-stream"),
+        ("Small message", b"Hello, this is a secure immutable transfer via LTP!", "text/plain"),
+        (
+            "JSON document",
+            json.dumps(
+                {
+                    "patient_id": "P-29381",
+                    "diagnosis": "healthy",
+                    "lab_results": {"blood_pressure": "120/80", "heart_rate": 72},
+                    "timestamp": "2026-02-24T00:00:00Z",
+                    "physician": "Dr. Smith",
+                    "notes": "Regular checkup. All vitals normal.",
+                },
+                indent=2,
+            ).encode(),
+            "application/json",
+        ),
+        ("Large payload", os.urandom(100_000), "application/octet-stream"),
     ]
 
     for name, content, shape in test_cases:
@@ -104,7 +108,10 @@ def demo_transfers(
 
         print("┌─ PHASE 2: LATTICE (Alice → Bob, ML-KEM sealed)")
         sealed_key = protocol.lattice(
-            entity_id, record, cek, bob,
+            entity_id,
+            record,
+            cek,
+            bob,
             access_policy={"type": "one-time", "expires": "2026-03-24"},
         )
         print(f"  [LATTICE] ═══ SEALED KEY (ML-KEM-768): {len(sealed_key):,} bytes ═══")
@@ -145,6 +152,7 @@ def demo_transfers(
 # Shard integrity (Theorem 4 — SINT)
 # ---------------------------------------------------------------------------
 
+
 def demo_shard_integrity(
     protocol: LTPProtocol,
     network: CommitmentNetwork,
@@ -161,7 +169,10 @@ def demo_shard_integrity(
     tamper_entity = Entity(content=tamper_content, shape="x-ltp/integrity-test")
     tamper_eid, tamper_record, tamper_cek = protocol.commit(tamper_entity, alice, n=8, k=4)
     tamper_sealed = protocol.lattice(
-        tamper_eid, tamper_record, tamper_cek, bob,
+        tamper_eid,
+        tamper_record,
+        tamper_cek,
+        bob,
         access_policy={"type": "integrity-test"},
     )
     print()
@@ -197,6 +208,7 @@ def demo_shard_integrity(
 # ---------------------------------------------------------------------------
 # Audit protocol
 # ---------------------------------------------------------------------------
+
 
 def demo_audit(
     protocol: LTPProtocol,
@@ -260,7 +272,9 @@ def demo_audit(
     if strike_node:
         print(f"┌─ EVICTION PROTOCOL: {strike_node.node_id}")
         strike_node.strikes = 3
-        print(f"  [EVICTION] {strike_node.node_id} has {strike_node.strikes} strikes (threshold: 3)")
+        print(
+            f"  [EVICTION] {strike_node.node_id} has {strike_node.strikes} strikes (threshold: 3)"
+        )
         print(f"  [EVICTION] Initiating eviction + shard repair...")
         eviction = network.evict_node(strike_node)
         print(f"  [EVICTION] Node evicted: {eviction['evicted_node']}")
@@ -274,15 +288,17 @@ def demo_audit(
         last_entity = Entity(content=test_cases[-1][1], shape=test_cases[-1][2])
         last_eid, last_record, last_cek = protocol.commit(last_entity, alice, n=8, k=4)
         last_sealed = protocol.lattice(
-            last_eid, last_record, last_cek, bob,
+            last_eid,
+            last_record,
+            last_cek,
+            bob,
             access_policy={"type": "one-time"},
         )
         last_materialized = protocol.materialize(last_sealed, bob)
         if last_materialized is not None:
             match = last_materialized == test_cases[-1][1]
             print(
-                f"  [VERIFY] Post-eviction transfer: "
-                f"{'✓ EXACT MATCH' if match else '✗ MISMATCH'}"
+                f"  [VERIFY] Post-eviction transfer: {'✓ EXACT MATCH' if match else '✗ MISMATCH'}"
             )
         else:
             print(f"  [VERIFY] ✗ Transfer failed after eviction")
@@ -292,6 +308,7 @@ def demo_audit(
 # ---------------------------------------------------------------------------
 # Degraded materialization
 # ---------------------------------------------------------------------------
+
 
 def demo_degraded_materialization(
     protocol: LTPProtocol,
@@ -309,7 +326,10 @@ def demo_degraded_materialization(
     degraded_entity = Entity(content=degraded_content, shape="x-ltp/availability-test")
     entity_id, record, cek = protocol.commit(degraded_entity, alice, n=8, k=4)
     sealed_key = protocol.lattice(
-        entity_id, record, cek, bob,
+        entity_id,
+        record,
+        cek,
+        bob,
         access_policy={"type": "availability-test"},
     )
 
@@ -336,16 +356,16 @@ def demo_degraded_materialization(
 
     print("┌─ DEGRADED MATERIALIZATION: From non-sequential shards")
     sealed_key2 = protocol.lattice(
-        entity_id, record, cek, bob,
+        entity_id,
+        record,
+        cek,
+        bob,
         access_policy={"type": "availability-test"},
     )
     degraded_result = protocol.materialize(sealed_key2, bob)
     if degraded_result is not None:
         match = degraded_result == degraded_content
-        print(
-            f"  [VERIFY] Degraded reconstruction: "
-            f"{'✓ EXACT MATCH' if match else '✗ MISMATCH'}"
-        )
+        print(f"  [VERIFY] Degraded reconstruction: {'✓ EXACT MATCH' if match else '✗ MISMATCH'}")
         print(
             f"  [VERIFY] ═══ ANY {record.encoding_params['k']}-of-"
             f"{record.encoding_params['n']} shards reconstruct the entity ═══"
@@ -360,15 +380,16 @@ def demo_degraded_materialization(
             node.remove_shard(entity_id, 3)
     print(f"  [BOUNDARY] Destroyed shard 3 — exactly k=4 shards remain (4,5,6,7)")
     sealed_key3 = protocol.lattice(
-        entity_id, record, cek, bob,
+        entity_id,
+        record,
+        cek,
+        bob,
         access_policy={"type": "boundary-test"},
     )
     boundary_result = protocol.materialize(sealed_key3, bob)
     if boundary_result is not None:
         match = boundary_result == degraded_content
-        print(
-            f"  [VERIFY] At k boundary: {'✓ EXACT MATCH' if match else '✗ MISMATCH'}"
-        )
+        print(f"  [VERIFY] At k boundary: {'✓ EXACT MATCH' if match else '✗ MISMATCH'}")
     print("└─ Done\n")
 
     print("┌─ BELOW THRESHOLD: Only k-1 shards remain")
@@ -377,7 +398,10 @@ def demo_degraded_materialization(
             node.remove_shard(entity_id, 4)
     print(f"  [BOUNDARY] Destroyed shard 4 — only 3 shards remain (k=4 needed)")
     sealed_key4 = protocol.lattice(
-        entity_id, record, cek, bob,
+        entity_id,
+        record,
+        cek,
+        bob,
         access_policy={"type": "below-threshold"},
     )
     below_result = protocol.materialize(sealed_key4, bob)
@@ -391,6 +415,7 @@ def demo_degraded_materialization(
 # ---------------------------------------------------------------------------
 # Threshold secrecy (Theorem 7 — TSEC)
 # ---------------------------------------------------------------------------
+
 
 def demo_threshold_secrecy() -> None:
     """Validate information-theoretic threshold secrecy."""
@@ -453,6 +478,7 @@ def demo_threshold_secrecy() -> None:
     # Validation 3: Statistical uniformity
     print("┌─ TSEC VALIDATION 3: Statistical uniformity of k-1 shard bytes")
     import random as _tsec_rng
+
     _tsec_rng.seed(42)
     tsec_large_msg = bytes(_tsec_rng.randint(0, 255) for _ in range(16384))
     tsec_large_shards = ErasureCoder.encode(tsec_large_msg, tsec_n, tsec_k)
@@ -466,8 +492,7 @@ def demo_threshold_secrecy() -> None:
     total_bytes = len(all_bytes)
     expected_count = total_bytes / 256
     max_deviation = max(
-        abs(c - expected_count) / expected_count
-        for c in byte_counts if expected_count > 0
+        abs(c - expected_count) / expected_count for c in byte_counts if expected_count > 0
     )
     unique_values = sum(1 for c in byte_counts if c > 0)
     chi2 = sum((c - expected_count) ** 2 / expected_count for c in byte_counts)
@@ -485,12 +510,10 @@ def demo_threshold_secrecy() -> None:
     tsec_cek = ShardEncryptor.generate_cek()
     tsec_entity_id = canonical_hash(tsec_cek + b"tsec-validation-4")
     enc_shards_0 = [
-        ShardEncryptor.encrypt_shard(tsec_cek, tsec_entity_id, s, i)
-        for i, s in enumerate(shards_0)
+        ShardEncryptor.encrypt_shard(tsec_cek, tsec_entity_id, s, i) for i, s in enumerate(shards_0)
     ]
     enc_shards_1 = [
-        ShardEncryptor.encrypt_shard(tsec_cek, tsec_entity_id, s, i)
-        for i, s in enumerate(shards_1)
+        ShardEncryptor.encrypt_shard(tsec_cek, tsec_entity_id, s, i) for i, s in enumerate(shards_1)
     ]
     compromised = [0, 1, 2]
     print(f"  Adversary compromises nodes storing shards {compromised} AND obtains CEK")
@@ -518,9 +541,7 @@ def demo_threshold_secrecy() -> None:
 
     # Validation 5: Sharp threshold boundary (k-1 → k)
     print("┌─ TSEC VALIDATION 5: Sharp threshold boundary (k-1 → k)")
-    recon_from_k = ErasureCoder.decode(
-        {i: shards_0[i] for i in range(tsec_k)}, tsec_n, tsec_k
-    )
+    recon_from_k = ErasureCoder.decode({i: shards_0[i] for i in range(tsec_k)}, tsec_n, tsec_k)
     print(
         f"  With k={tsec_k} shards: message FULLY determined: "
         f"{'✓ EXACT MATCH' if recon_from_k == msg_0 else '✗ MISMATCH'}"
@@ -532,6 +553,7 @@ def demo_threshold_secrecy() -> None:
 # ---------------------------------------------------------------------------
 # Entity immutability (Theorem 3 — IMM)
 # ---------------------------------------------------------------------------
+
 
 def demo_entity_immutability(
     protocol: LTPProtocol,
@@ -553,7 +575,7 @@ def demo_entity_immutability(
     eid_1 = imm_entity.compute_id(imm_sender.vk, imm_timestamp)
     eid_2 = imm_entity.compute_id(imm_sender.vk, imm_timestamp)
     eid_3 = imm_entity.compute_id(imm_sender.vk, imm_timestamp)
-    all_equal = (eid_1 == eid_2 == eid_3)
+    all_equal = eid_1 == eid_2 == eid_3
     print(f"  All identical: {'✓ YES' if all_equal else '✗ NO'}")
     print("└─ Done\n")
 
@@ -574,15 +596,13 @@ def demo_entity_immutability(
     print("└─ Done\n")
 
     print("┌─ IMM VALIDATION 3: Encoding injectivity")
+
     def encode_entity_raw(entity: Entity, sender_vk: bytes, ts: float) -> bytes:
-        return (entity.content + entity.shape.encode()
-                + struct.pack('>d', ts) + sender_vk)
+        return entity.content + entity.shape.encode() + struct.pack(">d", ts) + sender_vk
+
     enc_original = encode_entity_raw(imm_entity, imm_sender.vk, imm_timestamp)
     enc_v1 = encode_entity_raw(entity_v1, imm_sender.vk, imm_timestamp)
-    print(
-        f"  Raw encodings differ: "
-        f"{'✓ YES' if enc_original != enc_v1 else '✗ NO (BUG!)'}"
-    )
+    print(f"  Raw encodings differ: {'✓ YES' if enc_original != enc_v1 else '✗ NO (BUG!)'}")
     print("└─ Done\n")
 
     print("┌─ IMM VALIDATION 4: Empirical collision search")
@@ -591,7 +611,7 @@ def demo_entity_immutability(
     collision_found = False
     collision_tester_vk = imm_sender.vk
     for i in range(n_entities):
-        random_content = os.urandom(64) + struct.pack('>I', i)
+        random_content = os.urandom(64) + struct.pack(">I", i)
         random_entity = Entity(content=random_content, shape="x-ltp/collision-test")
         eid = random_entity.compute_id(collision_tester_vk, float(i))
         if eid in collision_set:
@@ -609,8 +629,7 @@ def demo_entity_immutability(
     imm_eid, imm_record, imm_cek = protocol.commit(imm_test_entity, alice, n=8, k=4)
     original_sig_valid = imm_record.verify_signature(alice.vk)
     print(
-        f"  ML-DSA signature on original record: "
-        f"{'✓ VALID' if original_sig_valid else '✗ INVALID'}"
+        f"  ML-DSA signature on original record: {'✓ VALID' if original_sig_valid else '✗ INVALID'}"
     )
     saved_hash = imm_record.content_hash
     imm_record.content_hash = canonical_hash(b"fake-content")
@@ -621,22 +640,23 @@ def demo_entity_immutability(
     )
     imm_record.content_hash = saved_hash
     imm_sealed = protocol.lattice(
-        imm_eid, imm_record, imm_cek, bob,
+        imm_eid,
+        imm_record,
+        imm_cek,
+        bob,
         access_policy={"type": "immutability-test"},
     )
     imm_materialized = protocol.materialize(imm_sealed, bob)
     if imm_materialized is not None:
         match = imm_materialized == imm_test_content
-        print(
-            f"  Materialize → content integrity: "
-            f"{'✓ EXACT MATCH' if match else '✗ MISMATCH'}"
-        )
+        print(f"  Materialize → content integrity: {'✓ EXACT MATCH' if match else '✗ MISMATCH'}")
     print("└─ Done\n")
 
 
 # ---------------------------------------------------------------------------
 # Commitment log trust model (§5.1.4)
 # ---------------------------------------------------------------------------
+
 
 def demo_commitment_log_trust(network: CommitmentNetwork) -> None:
     """Validate hash-chain integrity, inclusion proofs, tamper detection, STH."""
@@ -647,9 +667,7 @@ def demo_commitment_log_trust(network: CommitmentNetwork) -> None:
 
     print("┌─ 4.2 VALIDATION 1: Hash-chain integrity")
     chain_ok, last_idx = network.log.verify_chain_integrity()
-    print(
-        f"  Integrity: {'✓ INTACT' if chain_ok else '✗ BROKEN at index ' + str(last_idx)}"
-    )
+    print(f"  Integrity: {'✓ INTACT' if chain_ok else '✗ BROKEN at index ' + str(last_idx)}")
     assert chain_ok
     print("└─ Done\n")
 
@@ -675,9 +693,7 @@ def demo_commitment_log_trust(network: CommitmentNetwork) -> None:
     tampered_hash = _prefix + ":" + hex(int(_hex, 16) ^ 1)[2:].zfill(64)
     original_record.content_hash = tampered_hash
     tamper_ok, break_idx = network.log.verify_chain_integrity()
-    print(
-        f"  Chain after tamper: {'✗ BROKEN' if not tamper_ok else '✓ INTACT (UNEXPECTED)'}"
-    )
+    print(f"  Chain after tamper: {'✗ BROKEN' if not tamper_ok else '✓ INTACT (UNEXPECTED)'}")
     assert not tamper_ok and break_idx == 0
     original_record.content_hash = original_content_hash
     restore_ok, _ = network.log.verify_chain_integrity()
@@ -694,14 +710,19 @@ def demo_commitment_log_trust(network: CommitmentNetwork) -> None:
         if sth_list[i].sequence != sth_list[i - 1].sequence + 1:
             sth_monotonic = False
     sth_verified = all(sth.verify() for sth in sth_list[:5])
-    print(f"  Monotonically increasing timestamps + sequential indices: {'✓' if sth_monotonic else '✗'}")
-    print(f"  ML-DSA-65 STH signatures verified: {'✓' if sth_verified else '✗'} ({min(5, len(sth_list))} checked)")
+    print(
+        f"  Monotonically increasing timestamps + sequential indices: {'✓' if sth_monotonic else '✗'}"
+    )
+    print(
+        f"  ML-DSA-65 STH signatures verified: {'✓' if sth_verified else '✗'} ({min(5, len(sth_list))} checked)"
+    )
     print("└─ Done\n")
 
 
 # ---------------------------------------------------------------------------
 # Storage proof strengthening (§5.2.2)
 # ---------------------------------------------------------------------------
+
 
 def demo_storage_proofs(network: CommitmentNetwork) -> None:
     """Validate burst-challenge storage proofs."""
@@ -715,8 +736,7 @@ def demo_storage_proofs(network: CommitmentNetwork) -> None:
     for r in baseline_audit:
         if r.result == "PASS":
             print(
-                f"  [{r.node_id}] ✓ PASS — "
-                f"{r.challenged} challenges, avg {r.avg_response_us:.1f}µs"
+                f"  [{r.node_id}] ✓ PASS — {r.challenged} challenges, avg {r.avg_response_us:.1f}µs"
             )
     print("└─ Done\n")
 
@@ -761,6 +781,7 @@ def demo_storage_proofs(network: CommitmentNetwork) -> None:
 # ---------------------------------------------------------------------------
 # Correlated failure model (§5.4.1.1)
 # ---------------------------------------------------------------------------
+
 
 def demo_correlated_failure(
     network: CommitmentNetwork,
@@ -830,7 +851,10 @@ def demo_correlated_failure(
     print()
 
     from .economics import (
-        EconomicsConfig, EconomicsEngine, NodeEconomics, WEI_PER_LTP,
+        WEI_PER_LTP,
+        EconomicsConfig,
+        EconomicsEngine,
+        NodeEconomics,
     )
 
     econ_config = EconomicsConfig()
@@ -908,7 +932,9 @@ def demo_correlated_failure(
             break
     if pdp_target:
         pdp_result = network.audit_node_pdp(
-            pdp_target, epoch=epoch, sample_size=4,
+            pdp_target,
+            epoch=epoch,
+            sample_size=4,
             vdf_verifier=pipeline.vdf_verifier,
         )
         print(f"  Node: {pdp_result['node_id']}")
@@ -917,13 +943,18 @@ def demo_correlated_failure(
         print(f"  Result: {'PASS' if pdp_result['result'] == 'PASS' else 'FAIL'}")
         if "vdf" in pdp_result:
             vdf = pdp_result["vdf"]
-            print(f"  VDF verified: {'yes' if vdf['verified'] else 'no'} ({vdf['computation_time_ms']:.1f}ms)")
+            print(
+                f"  VDF verified: {'yes' if vdf['verified'] else 'no'} ({vdf['computation_time_ms']:.1f}ms)"
+            )
 
         # Run through enforcement pipeline
         if econ_nodes:
             total_stake = sum(n.stake for n in econ_nodes)
             slash_result = pipeline.handle_pdp_result(
-                pdp_result, econ_nodes[0], engine, epoch,
+                pdp_result,
+                econ_nodes[0],
+                engine,
+                epoch,
                 total_network_stake=total_stake,
             )
             if slash_result and slash_result.violated:
@@ -939,13 +970,16 @@ def demo_correlated_failure(
     print(f"  Pending slashes created: {finalization['pending_created']}")
     print(f"  Slashes finalized (past grace): {finalization['slashes_finalized']}")
     print(f"  Stake deducted: {finalization['stake_deducted'] / WEI_PER_LTP:.4f} LTP")
-    if finalization['nodes_evicted']:
+    if finalization["nodes_evicted"]:
         print(f"  Nodes evicted: {finalization['nodes_evicted']}")
     print("└─ Epoch finalization complete\n")
 
     print("┌─ GOVERNANCE TRANSITION CHECK")
     can_grow, unmet = pipeline.check_governance_transition(
-        "bootstrap", "growth", econ_nodes, governance_participation=0.10,
+        "bootstrap",
+        "growth",
+        econ_nodes,
+        governance_participation=0.10,
     )
     print(f"  Bootstrap → Growth: {'READY' if can_grow else 'NOT READY'}")
     for u in unmet:
@@ -979,6 +1013,7 @@ def demo_correlated_failure(
 # Summary
 # ---------------------------------------------------------------------------
 
+
 def print_summary(network: CommitmentNetwork) -> None:
     """Print the final transfer summary."""
     print("=" * 74)
@@ -994,7 +1029,9 @@ def print_summary(network: CommitmentNetwork) -> None:
     print()
     print("  CRYPTOGRAPHIC POSTURE:")
     print(f"  Key encapsulation:  ML-KEM-768 (FIPS 203, NIST Level 3)")
-    print(f"    ek: {MLKEM.EK_SIZE}B  dk: {MLKEM.DK_SIZE}B  ct: {MLKEM.CT_SIZE}B  ss: {MLKEM.SS_SIZE}B")
+    print(
+        f"    ek: {MLKEM.EK_SIZE}B  dk: {MLKEM.DK_SIZE}B  ct: {MLKEM.CT_SIZE}B  ss: {MLKEM.SS_SIZE}B"
+    )
     print(f"  Digital signatures: ML-DSA-65 (FIPS 204, NIST Level 3)")
     print(f"    vk: {MLDSA.VK_SIZE}B  sk: {MLDSA.SK_SIZE}B  sig: {MLDSA.SIG_SIZE}B")
     print(f"  Shard encryption:   AEAD (BLAKE2b keystream + 32B auth tag)")
@@ -1026,10 +1063,10 @@ def print_summary(network: CommitmentNetwork) -> None:
     print("=" * 74)
 
 
-
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
+
 
 def demo() -> None:
     """Run a full LTP transfer demo with post-quantum security."""
@@ -1123,6 +1160,7 @@ def compliance_demo() -> None:
     print(f"  Hash output: {h[:40]}...")
     # Test AEAD round-trip
     from .primitives import AEAD
+
     key = os.urandom(32)
     nonce = os.urandom(AEAD.NONCE_SIZE)
     ct = provider.encrypt(key, test_data, nonce)

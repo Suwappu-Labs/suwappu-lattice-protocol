@@ -1,15 +1,17 @@
 """Tests for gateway REST endpoints — status, health, events."""
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 
 def _make_test_app():
     """Create a FastAPI test app with gateway routers."""
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
-    from src.ltp.gateway_vm.routers.status import router as status_router
+
     from src.ltp.gateway_vm.routers.events import router as events_router
+    from src.ltp.gateway_vm.routers.status import router as status_router
     from src.ltp.gateway_vm.tracker import GatewayTracker
 
     app = FastAPI()
@@ -84,10 +86,18 @@ class TestGatewayEvents:
         events = []
         for i, suffix in enumerate(["aaa", "bbb", "ccc"]):
             event = BridgeEvent(
-                source_chain_id=84532, bridge_contract="0x5083",
-                tx_hash=f"0x{suffix}", block_number=100 + i, log_index=0,
-                event_name="AnchorCreated", sender="0xaa", recipient="0xbb",
-                payload_hash="sha3-256:ff", amount=0, nonce=i, timestamp=1700000000.0,
+                source_chain_id=84532,
+                bridge_contract="0x5083",
+                tx_hash=f"0x{suffix}",
+                block_number=100 + i,
+                log_index=0,
+                event_name="AnchorCreated",
+                sender="0xaa",
+                recipient="0xbb",
+                payload_hash="sha3-256:ff",
+                amount=0,
+                nonce=i,
+                timestamp=1700000000.0,
             )
             att = writer.create_attestation(event)
             tracker.mark_pending(att)
@@ -99,6 +109,7 @@ class TestGatewayEvents:
 
     def test_list_all_events(self):
         from src.ltp.keypair import KeyPair
+
         client, tracker = _make_test_app()
         kp = KeyPair.generate("events-test")
         self._seed_tracker(tracker, kp)
@@ -109,6 +120,7 @@ class TestGatewayEvents:
 
     def test_filter_by_status(self):
         from src.ltp.keypair import KeyPair
+
         client, tracker = _make_test_app()
         kp = KeyPair.generate("filter-test")
         self._seed_tracker(tracker, kp)
@@ -120,6 +132,7 @@ class TestGatewayEvents:
 
     def test_lookup_by_tx_hash(self):
         from src.ltp.keypair import KeyPair
+
         client, tracker = _make_test_app()
         kp = KeyPair.generate("lookup-test")
         self._seed_tracker(tracker, kp)

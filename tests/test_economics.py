@@ -21,7 +21,10 @@ Covers:
 
 import pytest
 
+from src.ltp.backends import BackendConfig, create_backend
 from src.ltp.economics import (
+    SLASHING_RATES,
+    WEI_PER_LTP,
     EconomicsConfig,
     EconomicsEngine,
     EpochSnapshot,
@@ -30,17 +33,14 @@ from src.ltp.economics import (
     PendingSlash,
     RewardBreakdown,
     SlashingTier,
-    SLASHING_RATES,
     VestingEntry,
-    WEI_PER_LTP,
     tier_for_offense_count,
 )
-from src.ltp.backends import BackendConfig, create_backend
-
 
 # ---------------------------------------------------------------------------
 # Network phase detection (extended bootstrap = 180 days)
 # ---------------------------------------------------------------------------
+
 
 class TestNetworkPhase:
     def test_bootstrap_phase(self):
@@ -71,6 +71,7 @@ class TestNetworkPhase:
 # ---------------------------------------------------------------------------
 # Bootstrap subsidy multiplier (180-day taper)
 # ---------------------------------------------------------------------------
+
 
 class TestBootstrapMultiplier:
     def test_starts_at_3x(self):
@@ -104,6 +105,7 @@ class TestBootstrapMultiplier:
 # Growth-phase declining subsidies
 # ---------------------------------------------------------------------------
 
+
 class TestGrowthSubsidy:
     def test_starts_at_1_5x(self):
         engine = EconomicsEngine()
@@ -133,9 +135,7 @@ class TestGrowthSubsidy:
 
     def test_growth_subsidy_in_rewards(self):
         engine = EconomicsEngine()
-        node = NodeEconomics(
-            node_id="n1", stake=1000 * WEI_PER_LTP, shards_stored=50
-        )
+        node = NodeEconomics(node_id="n1", stake=1000 * WEI_PER_LTP, shards_stored=50)
         reward = engine.compute_node_reward(node, epoch=5000, fee_pool_share=0)
         assert reward.growth_subsidy > 0
         assert reward.phase == NetworkPhase.GROWTH
@@ -144,6 +144,7 @@ class TestGrowthSubsidy:
 # ---------------------------------------------------------------------------
 # Dynamic fee pricing
 # ---------------------------------------------------------------------------
+
 
 class TestDynamicFee:
     def test_zero_utilization_gives_min_fee(self):
@@ -185,6 +186,7 @@ class TestDynamicFee:
 # Fee split (4-way: operator / burn / endowment / insurance)
 # ---------------------------------------------------------------------------
 
+
 class TestFeeSplit:
     def test_split_sums_to_total(self):
         engine = EconomicsEngine()
@@ -196,10 +198,10 @@ class TestFeeSplit:
         engine = EconomicsEngine()
         fee = 10_000
         operator, burn, endowment, insurance = engine.split_fee(fee)
-        assert operator == 6000     # 60%
-        assert burn == 1500         # 15%
-        assert endowment == 1000    # 10%
-        assert insurance == 1500    # 15%
+        assert operator == 6000  # 60%
+        assert burn == 1500  # 15%
+        assert endowment == 1000  # 10%
+        assert insurance == 1500  # 15%
 
     def test_invalid_split_raises(self):
         with pytest.raises(ValueError, match="10000 bps"):
@@ -233,6 +235,7 @@ class TestFeeSplit:
 # Minimum stake scaling
 # ---------------------------------------------------------------------------
 
+
 class TestMinStake:
     def test_bootstrap_min_stake(self):
         engine = EconomicsEngine()
@@ -255,6 +258,7 @@ class TestMinStake:
 # Progressive slashing
 # ---------------------------------------------------------------------------
 
+
 class TestSlashing:
     def test_tier_progression(self):
         assert tier_for_offense_count(0) == SlashingTier.WARNING
@@ -268,9 +272,9 @@ class TestSlashing:
 
     def test_tier_boundaries_exact(self):
         """Verify exact offense count → tier mapping at boundaries."""
-        assert tier_for_offense_count(1) == SlashingTier.WARNING   # 1st offense
-        assert tier_for_offense_count(2) == SlashingTier.MINOR     # 2nd offense
-        assert tier_for_offense_count(4) == SlashingTier.MAJOR     # 4th offense
+        assert tier_for_offense_count(1) == SlashingTier.WARNING  # 1st offense
+        assert tier_for_offense_count(2) == SlashingTier.MINOR  # 2nd offense
+        assert tier_for_offense_count(4) == SlashingTier.MAJOR  # 4th offense
         assert tier_for_offense_count(6) == SlashingTier.CRITICAL  # 6th offense
 
     def test_slash_amounts_escalate(self):
@@ -314,12 +318,15 @@ class TestSlashing:
 # Correlation penalty (Ethereum-inspired)
 # ---------------------------------------------------------------------------
 
+
 class TestCorrelationPenalty:
     def test_no_correlation_gives_base_rate(self):
         engine = EconomicsEngine()
         node = NodeEconomics(node_id="n", stake=10_000, offense_count=1)
         amt_solo, _ = engine.compute_slash(node)
-        amt_no_ctx, _ = engine.compute_slash(node, concurrent_slashed_stake=0, total_network_stake=0)
+        amt_no_ctx, _ = engine.compute_slash(
+            node, concurrent_slashed_stake=0, total_network_stake=0
+        )
         assert amt_solo == amt_no_ctx  # same as base
 
     def test_correlated_attack_costs_more(self):
@@ -389,54 +396,47 @@ class TestCorrelationPenalty:
 # Offense decay
 # ---------------------------------------------------------------------------
 
+
 class TestOffenseDecay:
     def test_decay_after_clean_window(self):
         engine = EconomicsEngine()
-        node = NodeEconomics(
-            node_id="n", offense_count=3, clean_epochs_since_offense=720
-        )
+        node = NodeEconomics(node_id="n", offense_count=3, clean_epochs_since_offense=720)
         decayed = engine.apply_offense_decay(node, current_epoch=1000)
         assert decayed == 1
         assert node.offense_count == 2
 
     def test_no_decay_before_window(self):
         engine = EconomicsEngine()
-        node = NodeEconomics(
-            node_id="n", offense_count=3, clean_epochs_since_offense=500
-        )
+        node = NodeEconomics(node_id="n", offense_count=3, clean_epochs_since_offense=500)
         decayed = engine.apply_offense_decay(node, current_epoch=1000)
         assert decayed == 0
         assert node.offense_count == 3
 
     def test_multiple_decays(self):
         engine = EconomicsEngine()
-        node = NodeEconomics(
-            node_id="n", offense_count=3, clean_epochs_since_offense=2160
-        )
+        node = NodeEconomics(node_id="n", offense_count=3, clean_epochs_since_offense=2160)
         decayed = engine.apply_offense_decay(node, current_epoch=5000)
         assert decayed == 3  # 2160 // 720 = 3, but capped at offense_count
         assert node.offense_count == 0
 
     def test_no_decay_at_zero(self):
         engine = EconomicsEngine()
-        node = NodeEconomics(
-            node_id="n", offense_count=0, clean_epochs_since_offense=2000
-        )
+        node = NodeEconomics(node_id="n", offense_count=0, clean_epochs_since_offense=2000)
         decayed = engine.apply_offense_decay(node, current_epoch=5000)
         assert decayed == 0
 
     def test_decay_resets_clean_counter(self):
         engine = EconomicsEngine()
-        node = NodeEconomics(
-            node_id="n", offense_count=2, clean_epochs_since_offense=720
-        )
+        node = NodeEconomics(node_id="n", offense_count=2, clean_epochs_since_offense=720)
         engine.apply_offense_decay(node, current_epoch=1000)
         assert node.clean_epochs_since_offense == 0
 
     def test_epoch_processing_increments_clean_epochs(self):
         engine = EconomicsEngine()
         node = NodeEconomics(
-            node_id="n", stake=1000 * WEI_PER_LTP, offense_count=1,
+            node_id="n",
+            stake=1000 * WEI_PER_LTP,
+            offense_count=1,
             clean_epochs_since_offense=0,
         )
         engine.process_epoch(epoch=0, nodes=[node])
@@ -446,6 +446,7 @@ class TestOffenseDecay:
 # ---------------------------------------------------------------------------
 # Reward vesting
 # ---------------------------------------------------------------------------
+
 
 class TestRewardVesting:
     def test_vesting_entry_claimable(self):
@@ -464,9 +465,7 @@ class TestRewardVesting:
 
     def test_reward_breakdown_has_vesting_split(self):
         engine = EconomicsEngine()
-        node = NodeEconomics(
-            node_id="n1", stake=1000 * WEI_PER_LTP, shards_stored=100
-        )
+        node = NodeEconomics(node_id="n1", stake=1000 * WEI_PER_LTP, shards_stored=100)
         reward = engine.compute_node_reward(node, epoch=0, fee_pool_share=0)
         assert reward.total > 0
         assert reward.immediate_payout == reward.total * 50 // 100
@@ -474,23 +473,32 @@ class TestRewardVesting:
         assert reward.immediate_payout + reward.vested_amount == reward.total
 
     def test_node_claim_vested(self):
-        node = NodeEconomics(node_id="n", vesting_entries=[
-            VestingEntry(amount=1000, start_epoch=0, duration_epochs=100),
-        ])
+        node = NodeEconomics(
+            node_id="n",
+            vesting_entries=[
+                VestingEntry(amount=1000, start_epoch=0, duration_epochs=100),
+            ],
+        )
         released = node.claim_vested(current_epoch=50)
         assert released == 500
 
     def test_node_total_vesting(self):
-        node = NodeEconomics(node_id="n", vesting_entries=[
-            VestingEntry(amount=1000, start_epoch=0, duration_epochs=100),
-            VestingEntry(amount=2000, start_epoch=50, duration_epochs=100),
-        ])
+        node = NodeEconomics(
+            node_id="n",
+            vesting_entries=[
+                VestingEntry(amount=1000, start_epoch=0, duration_epochs=100),
+                VestingEntry(amount=2000, start_epoch=50, duration_epochs=100),
+            ],
+        )
         assert node.total_vesting == 3000
 
     def test_fully_vested_entries_cleaned_up(self):
-        node = NodeEconomics(node_id="n", vesting_entries=[
-            VestingEntry(amount=1000, start_epoch=0, duration_epochs=10),
-        ])
+        node = NodeEconomics(
+            node_id="n",
+            vesting_entries=[
+                VestingEntry(amount=1000, start_epoch=0, duration_epochs=10),
+            ],
+        )
         node.claim_vested(current_epoch=100)
         assert len(node.vesting_entries) == 0
 
@@ -498,6 +506,7 @@ class TestRewardVesting:
 # ---------------------------------------------------------------------------
 # Slashing grace period
 # ---------------------------------------------------------------------------
+
 
 class TestSlashingGracePeriod:
     def test_pending_slash_creation(self):
@@ -550,6 +559,7 @@ class TestSlashingGracePeriod:
 # Reward computation
 # ---------------------------------------------------------------------------
 
+
 class TestRewardComputation:
     def test_basic_storage_reward(self):
         engine = EconomicsEngine()
@@ -567,8 +577,10 @@ class TestRewardComputation:
     def test_audit_bonus_for_perfect_score(self):
         engine = EconomicsEngine()
         node = NodeEconomics(
-            node_id="n1", stake=1000 * WEI_PER_LTP,
-            shards_stored=100, audit_score=100,
+            node_id="n1",
+            stake=1000 * WEI_PER_LTP,
+            shards_stored=100,
+            audit_score=100,
         )
         reward = engine.compute_node_reward(node, epoch=0, fee_pool_share=0)
         assert reward.audit_bonus > 0
@@ -576,8 +588,10 @@ class TestRewardComputation:
     def test_no_audit_bonus_for_imperfect_score(self):
         engine = EconomicsEngine()
         node = NodeEconomics(
-            node_id="n1", stake=1000 * WEI_PER_LTP,
-            shards_stored=100, audit_score=90,
+            node_id="n1",
+            stake=1000 * WEI_PER_LTP,
+            shards_stored=100,
+            audit_score=90,
         )
         reward = engine.compute_node_reward(node, epoch=0, fee_pool_share=0)
         assert reward.audit_bonus == 0
@@ -606,8 +620,10 @@ class TestRewardComputation:
     def test_cooldown_blocks_rewards(self):
         engine = EconomicsEngine()
         node = NodeEconomics(
-            node_id="n1", stake=1000 * WEI_PER_LTP,
-            shards_stored=100, cooldown_until_epoch=10,
+            node_id="n1",
+            stake=1000 * WEI_PER_LTP,
+            shards_stored=100,
+            cooldown_until_epoch=10,
         )
         reward = engine.compute_node_reward(node, epoch=5, fee_pool_share=10000)
         assert reward.total == 0
@@ -615,8 +631,10 @@ class TestRewardComputation:
     def test_evicted_node_earns_nothing(self):
         engine = EconomicsEngine()
         node = NodeEconomics(
-            node_id="n1", stake=1000 * WEI_PER_LTP,
-            shards_stored=100, evicted=True,
+            node_id="n1",
+            stake=1000 * WEI_PER_LTP,
+            shards_stored=100,
+            evicted=True,
         )
         reward = engine.compute_node_reward(node, epoch=0, fee_pool_share=10000)
         assert reward.total == 0
@@ -624,14 +642,19 @@ class TestRewardComputation:
     def test_total_equals_sum_of_components(self):
         engine = EconomicsEngine()
         node = NodeEconomics(
-            node_id="n1", stake=1000 * WEI_PER_LTP,
-            shards_stored=100, audit_score=100,
+            node_id="n1",
+            stake=1000 * WEI_PER_LTP,
+            shards_stored=100,
+            audit_score=100,
         )
         r = engine.compute_node_reward(node, epoch=0, fee_pool_share=5000)
         expected = (
-            r.storage_reward + r.availability_reward
-            + r.audit_bonus + r.bootstrap_subsidy
-            + r.growth_subsidy + r.fee_share
+            r.storage_reward
+            + r.availability_reward
+            + r.audit_bonus
+            + r.bootstrap_subsidy
+            + r.growth_subsidy
+            + r.fee_share
         )
         assert r.total == expected
 
@@ -639,6 +662,7 @@ class TestRewardComputation:
 # ---------------------------------------------------------------------------
 # Epoch processing
 # ---------------------------------------------------------------------------
+
 
 class TestEpochProcessing:
     def _make_nodes(self, count: int, shards: int = 100) -> list[NodeEconomics]:
@@ -682,7 +706,8 @@ class TestEpochProcessing:
         engine = EconomicsEngine()
         nodes = self._make_nodes(3)
         snap = engine.process_epoch(
-            epoch=5000, nodes=nodes,
+            epoch=5000,
+            nodes=nodes,
             total_commitments_this_epoch=500,
             network_capacity=10000,
         )
@@ -710,12 +735,14 @@ class TestEpochProcessing:
         engine = EconomicsEngine()
         nodes = self._make_nodes(3)
         snap_low = engine.process_epoch(
-            epoch=0, nodes=nodes,
+            epoch=0,
+            nodes=nodes,
             total_commitments_this_epoch=10,
             network_capacity=10000,
         )
         snap_high = engine.process_epoch(
-            epoch=1, nodes=nodes,
+            epoch=1,
+            nodes=nodes,
             total_commitments_this_epoch=9000,
             network_capacity=10000,
         )
@@ -728,7 +755,8 @@ class TestEpochProcessing:
             NodeEconomics(node_id="small", stake=1000 * WEI_PER_LTP, shards_stored=100),
         ]
         snap = engine.process_epoch(
-            epoch=5000, nodes=nodes,
+            epoch=5000,
+            nodes=nodes,
             total_commitments_this_epoch=1000,
             network_capacity=10000,
         )
@@ -740,6 +768,7 @@ class TestEpochProcessing:
 # ---------------------------------------------------------------------------
 # Capacity scaling
 # ---------------------------------------------------------------------------
+
 
 class TestCapacityScaling:
     def test_overloaded_node(self):
@@ -764,6 +793,7 @@ class TestCapacityScaling:
 # NodeEconomics properties
 # ---------------------------------------------------------------------------
 
+
 class TestNodeEconomics:
     def test_effective_stake_with_perfect_score(self):
         node = NodeEconomics(node_id="n", stake=10000, audit_score=100)
@@ -784,13 +814,16 @@ class TestNodeEconomics:
 # Base L1 backend integration
 # ---------------------------------------------------------------------------
 
+
 class TestBaseL1EconomicsIntegration:
     def _create_backend(self):
-        return create_backend(BackendConfig(
-            backend_type="base-l1",
-            enable_economics_engine=True,
-            min_stake_wei=100 * WEI_PER_LTP,
-        ))
+        return create_backend(
+            BackendConfig(
+                backend_type="base-l1",
+                enable_economics_engine=True,
+                min_stake_wei=100 * WEI_PER_LTP,
+            )
+        )
 
     def test_economics_engine_initialized(self):
         backend = self._create_backend()
@@ -880,7 +913,8 @@ class TestBaseL1EconomicsIntegration:
 
         # Slash with 50% of network stake concurrent
         amt_corr = backend2.slash_node(
-            "node-0", b"evidence",
+            "node-0",
+            b"evidence",
             concurrent_slashed_stake=1000 * WEI_PER_LTP,
         )
         assert amt_corr > amt_solo
@@ -903,10 +937,12 @@ class TestBaseL1EconomicsIntegration:
         assert len(node_econ.pending_slashes) > 0
 
     def test_process_epoch_returns_none_without_engine(self):
-        backend = create_backend(BackendConfig(
-            backend_type="base-l1",
-            enable_economics_engine=False,
-        ))
+        backend = create_backend(
+            BackendConfig(
+                backend_type="base-l1",
+                enable_economics_engine=False,
+            )
+        )
         assert backend.process_epoch(epoch=0) is None
 
     def test_epoch_commitment_counter_resets(self):
@@ -914,10 +950,9 @@ class TestBaseL1EconomicsIntegration:
         backend.register_node("node-0", "US-East", stake_wei=500 * WEI_PER_LTP)
 
         from src.ltp.primitives import canonical_hash
+
         eid = canonical_hash(b"test-entity-1")
-        backend.append_commitment(
-            eid, b'{"test":true}', b"\x00" * 64, b"\x01" * 32
-        )
+        backend.append_commitment(eid, b'{"test":true}', b"\x00" * 64, b"\x01" * 32)
         assert backend._epoch_commitment_count == 1
 
         backend.process_epoch(epoch=0)

@@ -39,9 +39,7 @@ def test_old_doc_hash_mismatch_rejected() -> None:
     pk, sk = MLDSA.keygen()
     stmt = _statement(old_hash)
     with pytest.raises(OldDocHashMismatch):
-        prove_rotation(
-            stmt, expected_old_doc_hash=bytes([0xFF] * 32), signing_method_id=0, sk=sk
-        )
+        prove_rotation(stmt, expected_old_doc_hash=bytes([0xFF] * 32), signing_method_id=0, sk=sk)
 
 
 def test_tampered_new_hash_breaks_verification() -> None:

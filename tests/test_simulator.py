@@ -15,19 +15,20 @@ Organized by component:
 """
 
 import os
+
 import pytest
 
 from src.simulator.clock import Event, EventQueue, EventType, SimClock
-from src.simulator.topology import Link, Region, Topology
-from src.simulator.node import SimNode, StorageCapacity
 from src.simulator.message import Message, MessageBus, MessageType
 from src.simulator.metrics import MetricsCollector, TransferMetrics
 from src.simulator.network import NetworkSimulator
-
+from src.simulator.node import SimNode, StorageCapacity
+from src.simulator.topology import Link, Region, Topology
 
 # =========================================================================
 # Fixtures
 # =========================================================================
+
 
 @pytest.fixture
 def clock():
@@ -46,9 +47,15 @@ def topology():
     topo.add_region("us-east", intra_latency_ms=1.0)
     topo.add_region("eu-west", intra_latency_ms=1.0)
     topo.add_region("ap-south", intra_latency_ms=1.5)
-    topo.connect_regions("us-east", "eu-west", latency_ms=80.0, bandwidth_mbps=1000.0, jitter_ms=0.0)
-    topo.connect_regions("us-east", "ap-south", latency_ms=180.0, bandwidth_mbps=500.0, jitter_ms=0.0)
-    topo.connect_regions("eu-west", "ap-south", latency_ms=120.0, bandwidth_mbps=800.0, jitter_ms=0.0)
+    topo.connect_regions(
+        "us-east", "eu-west", latency_ms=80.0, bandwidth_mbps=1000.0, jitter_ms=0.0
+    )
+    topo.connect_regions(
+        "us-east", "ap-south", latency_ms=180.0, bandwidth_mbps=500.0, jitter_ms=0.0
+    )
+    topo.connect_regions(
+        "eu-west", "ap-south", latency_ms=120.0, bandwidth_mbps=800.0, jitter_ms=0.0
+    )
     return topo
 
 
@@ -76,6 +83,7 @@ def sim_with_clients(sim):
 # =========================================================================
 # SimClock Tests
 # =========================================================================
+
 
 class TestSimClock:
     def test_starts_at_zero(self, clock):
@@ -113,6 +121,7 @@ class TestSimClock:
 # =========================================================================
 # EventQueue Tests
 # =========================================================================
+
 
 class TestEventQueue:
     def test_empty_queue(self, event_queue):
@@ -187,6 +196,7 @@ class TestEventQueue:
 # Topology Tests
 # =========================================================================
 
+
 class TestTopology:
     def test_add_region(self, topology):
         assert "us-east" in topology.regions
@@ -219,7 +229,7 @@ class TestTopology:
         topology.register_node("n2", "eu-west")
         topology.partition_region("eu-west")
         lat = topology.latency_between_nodes("n1", "n2")
-        assert lat == float('inf')
+        assert lat == float("inf")
 
     def test_restore_region(self, topology):
         topology.register_node("n1", "us-east")
@@ -227,7 +237,7 @@ class TestTopology:
         topology.partition_region("eu-west")
         topology.restore_region("eu-west")
         lat = topology.latency_between_nodes("n1", "n2", payload_bytes=0)
-        assert lat != float('inf')
+        assert lat != float("inf")
 
     def test_sever_link(self, topology):
         topology.register_node("n1", "us-east")
@@ -261,6 +271,7 @@ class TestTopology:
 # =========================================================================
 # SimNode Tests
 # =========================================================================
+
 
 class TestSimNode:
     def test_store_and_fetch(self):
@@ -361,6 +372,7 @@ class TestSimNode:
 # MessageBus Tests
 # =========================================================================
 
+
 class TestMessageBus:
     def test_send_and_record(self):
         bus = MessageBus()
@@ -419,6 +431,7 @@ class TestMessageBus:
 # =========================================================================
 # NetworkSimulator Tests
 # =========================================================================
+
 
 class TestNetworkSimulator:
     def test_add_region_creates_nodes(self, sim):
@@ -495,6 +508,7 @@ class TestNetworkSimulator:
 # End-to-End Transfer Tests (SimClient)
 # =========================================================================
 
+
 class TestSimClientTransfer:
     def test_basic_transfer(self, sim_with_clients):
         sim, alice, bob = sim_with_clients
@@ -508,6 +522,7 @@ class TestSimClientTransfer:
 
     def test_transfer_json(self, sim_with_clients):
         import json
+
         sim, alice, bob = sim_with_clients
         content = json.dumps({"patient": "P-001", "status": "healthy"}).encode()
 
@@ -583,6 +598,7 @@ class TestSimClientTransfer:
 # =========================================================================
 # Transfer Metrics Tests
 # =========================================================================
+
 
 class TestTransferMetrics:
     def test_metrics_recorded(self, sim_with_clients):
@@ -663,6 +679,7 @@ class TestTransferMetrics:
 # =========================================================================
 # Failure Scenario Tests
 # =========================================================================
+
 
 class TestFailureScenarios:
     def test_materialize_after_one_region_partition(self, sim_with_clients):
@@ -748,6 +765,7 @@ class TestFailureScenarios:
 # Geographic Optimization Tests
 # =========================================================================
 
+
 class TestGeographicOptimization:
     def test_local_shards_preferred(self, sim_with_clients):
         """Verify that materialization prefers shards from the receiver's region."""
@@ -760,9 +778,7 @@ class TestGeographicOptimization:
 
         metrics = sim.metrics.get_transfer(entity_id)
         # At least some shards should come from local region (if available)
-        fetch_regions = [
-            sm.target_region for sm in metrics.shard_fetch_metrics if sm.success
-        ]
+        fetch_regions = [sm.target_region for sm in metrics.shard_fetch_metrics if sm.success]
         assert len(fetch_regions) > 0
 
     def test_sender_bandwidth_independent_of_entity_size(self, sim_with_clients):
@@ -785,13 +801,22 @@ class TestGeographicOptimization:
 # Large Topology / Scale Tests
 # =========================================================================
 
+
 class TestLargeTopology:
     def test_ten_region_topology(self):
         """Build a 10-region, 30-node topology and run a transfer."""
         sim = NetworkSimulator(seed=42)
         regions = [
-            "us-east", "us-west", "eu-west", "eu-east", "ap-south",
-            "ap-east", "sa-east", "af-south", "me-south", "oc-east",
+            "us-east",
+            "us-west",
+            "eu-west",
+            "eu-east",
+            "ap-south",
+            "ap-east",
+            "sa-east",
+            "af-south",
+            "me-south",
+            "oc-east",
         ]
         for r in regions:
             sim.add_region(r, node_count=3)

@@ -5,7 +5,7 @@ Usage:
     PYTHONPATH=. python examples/quickstart.py
 """
 
-from src.ltp import KeyPair, Entity, CommitmentNetwork, LTPProtocol, reset_poc_state
+from src.ltp import CommitmentNetwork, Entity, KeyPair, LTPProtocol, reset_poc_state
 
 reset_poc_state()
 alice, bob = KeyPair.generate("alice"), KeyPair.generate("bob")

@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class WatcherTickResult:
     """Result of a single watcher verification epoch."""
+
     epoch: int
     anchors_checked: int = 0
     signatures_verified: int = 0
@@ -70,8 +71,10 @@ class STHStore:
             if existing.root_hash != sth.root_hash:
                 logger.warning(
                     "STH FORK detected: operator=%s, seq=%d, root_a=%s, root_b=%s",
-                    vk_hex[:16], sth.sequence,
-                    existing.root_hash.hex()[:16], sth.root_hash.hex()[:16],
+                    vk_hex[:16],
+                    sth.sequence,
+                    existing.root_hash.hex()[:16],
+                    sth.root_hash.hex()[:16],
                 )
                 return InconsistentSTHFraudProof(sth_a=existing, sth_b=sth)
         else:
@@ -135,11 +138,13 @@ class WatcherService:
         entity_id: str,
     ) -> None:
         """Queue an anchor for verification in the next tick."""
-        self._pending.append({
-            "anchor_digest": anchor_digest,
-            "sth": sth,
-            "entity_id": entity_id,
-        })
+        self._pending.append(
+            {
+                "anchor_digest": anchor_digest,
+                "sth": sth,
+                "entity_id": entity_id,
+            }
+        )
 
     def tick(self, epoch: int) -> WatcherTickResult:
         """Execute a single verification epoch.
@@ -169,6 +174,7 @@ class WatcherService:
                 result.signatures_invalid += 1
                 # Submit InvalidSignature fraud proof
                 from .fraud_proof import InvalidSignatureFraudProof
+
                 proof = InvalidSignatureFraudProof(
                     anchor_digest=anchor_digest,
                     claimed_signer_vk=sth.operator_vk,
@@ -177,13 +183,13 @@ class WatcherService:
                 )
                 try:
                     self._challenge_manager.submit_challenge(
-                        entity_id, proof, challenger_id=self._watcher_id,
+                        entity_id,
+                        proof,
+                        challenger_id=self._watcher_id,
                     )
                     result.fraud_proofs_submitted += 1
                 except (KeyError, ValueError) as e:
-                    logger.warning(
-                        "Watcher: failed to submit sig fraud proof: %s", e
-                    )
+                    logger.warning("Watcher: failed to submit sig fraud proof: %s", e)
                 continue
 
             # 2. Check STH consistency (fork detection)
@@ -192,13 +198,13 @@ class WatcherService:
                 result.forks_detected += 1
                 try:
                     self._challenge_manager.submit_challenge(
-                        entity_id, fork_proof, challenger_id=self._watcher_id,
+                        entity_id,
+                        fork_proof,
+                        challenger_id=self._watcher_id,
                     )
                     result.fraud_proofs_submitted += 1
                 except (KeyError, ValueError) as e:
-                    logger.warning(
-                        "Watcher: failed to submit fork fraud proof: %s", e
-                    )
+                    logger.warning("Watcher: failed to submit fork fraud proof: %s", e)
 
         return result
 

@@ -11,15 +11,14 @@ import pytest
 
 from src.ltp import KeyPair
 from src.ltp.federation import (
+    DNSDiscoveryService,
+    FederationConfig,
+    FederationRegistry,
     NetworkIdentityRecord,
     StaticDiscoveryService,
-    DNSDiscoveryService,
-    FederationRegistry,
-    FederationConfig,
     TrustLevel,
 )
 from src.ltp.primitives import canonical_hash_bytes
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -46,10 +45,13 @@ def _genesis_root() -> bytes:
 
 
 class TestNetworkIdentityRecord:
-
     def test_create_nir(self, operator):
         nir = NetworkIdentityRecord.create(
-            operator, _genesis_root(), 0, "GSX Testnet", "https://gsx.example.com",
+            operator,
+            _genesis_root(),
+            0,
+            "GSX Testnet",
+            "https://gsx.example.com",
         )
         assert nir.network_id != ""
         assert nir.operator_vk == operator.vk
@@ -59,13 +61,21 @@ class TestNetworkIdentityRecord:
 
     def test_verify_signature(self, operator):
         nir = NetworkIdentityRecord.create(
-            operator, _genesis_root(), 0, "Test Net", "https://test.example.com",
+            operator,
+            _genesis_root(),
+            0,
+            "Test Net",
+            "https://test.example.com",
         )
         assert nir.verify() is True
 
     def test_tampered_nir_rejected(self, operator):
         nir = NetworkIdentityRecord.create(
-            operator, _genesis_root(), 0, "Test", "https://test.com",
+            operator,
+            _genesis_root(),
+            0,
+            "Test",
+            "https://test.com",
         )
         # Create a tampered NIR with different display_name but same signature
         tampered = NetworkIdentityRecord(
@@ -109,7 +119,6 @@ class TestNetworkIdentityRecord:
 
 
 class TestStaticDiscovery:
-
     def test_publish_and_discover(self, operator):
         svc = StaticDiscoveryService()
         nir = NetworkIdentityRecord.create(operator, _genesis_root(), 0, "Net A", "http://a")
@@ -132,8 +141,12 @@ class TestStaticDiscovery:
 
     def test_discover_with_query(self, operator, other_operator):
         svc = StaticDiscoveryService()
-        svc.publish(NetworkIdentityRecord.create(operator, b"\x01" * 32, 0, "Alpha Net", "http://alpha"))
-        svc.publish(NetworkIdentityRecord.create(other_operator, b"\x02" * 32, 0, "Beta Net", "http://beta"))
+        svc.publish(
+            NetworkIdentityRecord.create(operator, b"\x01" * 32, 0, "Alpha Net", "http://alpha")
+        )
+        svc.publish(
+            NetworkIdentityRecord.create(other_operator, b"\x02" * 32, 0, "Beta Net", "http://beta")
+        )
         results = svc.discover("Alpha")
         assert len(results) == 1
         assert results[0].display_name == "Alpha Net"
@@ -145,10 +158,11 @@ class TestStaticDiscovery:
 
 
 class TestDNSDiscovery:
-
     def test_publish_and_discover(self, operator):
         svc = DNSDiscoveryService()
-        nir = NetworkIdentityRecord.create(operator, _genesis_root(), 0, "DNS Net", "dns.example.com")
+        nir = NetworkIdentityRecord.create(
+            operator, _genesis_root(), 0, "DNS Net", "dns.example.com"
+        )
         assert svc.publish(nir) is True
         assert len(svc.discover()) == 1
 
@@ -161,7 +175,9 @@ class TestDNSDiscovery:
 
     def test_discover_by_domain(self, operator):
         svc = DNSDiscoveryService()
-        svc.publish(NetworkIdentityRecord.create(operator, b"\x01" * 32, 0, "A", "alpha.example.com"))
+        svc.publish(
+            NetworkIdentityRecord.create(operator, b"\x01" * 32, 0, "A", "alpha.example.com")
+        )
         results = svc.discover("alpha")
         assert len(results) == 1
 
@@ -172,7 +188,6 @@ class TestDNSDiscovery:
 
 
 class TestFederationRegistryNIR:
-
     def test_register_from_nir(self, operator):
         registry = FederationRegistry()
         nir = NetworkIdentityRecord.create(operator, _genesis_root(), 0, "NIR Net", "http://nir")
@@ -213,7 +228,6 @@ class TestFederationRegistryNIR:
 
 
 class TestAuditFixes:
-
     def test_short_genesis_root_rejected(self, operator):
         """genesis_sth_root must be exactly 32 bytes."""
         with pytest.raises(ValueError, match="32 bytes"):
@@ -227,7 +241,9 @@ class TestAuditFixes:
         """Two NIRs at the same endpoint should both be discoverable."""
         svc = DNSDiscoveryService()
         nir1 = NetworkIdentityRecord.create(operator, b"\x01" * 32, 0, "Net1", "shared.example.com")
-        nir2 = NetworkIdentityRecord.create(other_operator, b"\x02" * 32, 0, "Net2", "shared.example.com")
+        nir2 = NetworkIdentityRecord.create(
+            other_operator, b"\x02" * 32, 0, "Net2", "shared.example.com"
+        )
         svc.publish(nir1)
         svc.publish(nir2)
         all_nirs = svc.discover()

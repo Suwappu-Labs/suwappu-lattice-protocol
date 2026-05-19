@@ -3,6 +3,7 @@ Unit tests for canonicalize_shape() and Entity.compute_id().
 """
 
 import struct
+
 import pytest
 
 from src.ltp.entity import Entity, canonicalize_shape
@@ -99,10 +100,11 @@ class TestEntity:
 
     def test_no_collision_in_10k_entities(self):
         import os
+
         kp = KeyPair.generate("tester")
         seen: set[str] = set()
         for i in range(10_000):
-            content = os.urandom(32) + struct.pack('>I', i)
+            content = os.urandom(32) + struct.pack(">I", i)
             e = Entity(content=content, shape="x-ltp/collision-test")
             eid = e.compute_id(kp.vk, float(i))
             assert eid not in seen, f"Collision at entity {i}"

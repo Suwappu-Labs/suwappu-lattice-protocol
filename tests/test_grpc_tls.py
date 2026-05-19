@@ -11,35 +11,38 @@ import tempfile
 import pytest
 
 from src.ltp.network.credentials import (
-    load_server_credentials,
     load_channel_credentials,
+    load_server_credentials,
 )
 from src.ltp.network.interceptors import NetworkPolicyInterceptor
 from src.ltp.node.config import NodeConfig
 from src.ltp.observability.tls import (
-    TLSConfig,
     NetworkPolicy,
     NetworkPolicyRegistry,
+    TLSConfig,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures: self-signed test certs
 # ---------------------------------------------------------------------------
 
+
 def _generate_self_signed_cert(directory: str, name: str = "server"):
     """Generate a real self-signed cert + key using cryptography library."""
     try:
-        from cryptography import x509
-        from cryptography.x509.oid import NameOID
-        from cryptography.hazmat.primitives import hashes, serialization
-        from cryptography.hazmat.primitives.asymmetric import rsa
         import datetime
 
+        from cryptography import x509
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from cryptography.x509.oid import NameOID
+
         key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-        subject = issuer = x509.Name([
-            x509.NameAttribute(NameOID.COMMON_NAME, f"{name}.etp.test"),
-        ])
+        subject = issuer = x509.Name(
+            [
+                x509.NameAttribute(NameOID.COMMON_NAME, f"{name}.etp.test"),
+            ]
+        )
         cert = (
             x509.CertificateBuilder()
             .subject_name(subject)
@@ -55,22 +58,40 @@ def _generate_self_signed_cert(directory: str, name: str = "server"):
         with open(cert_path, "wb") as f:
             f.write(cert.public_bytes(serialization.Encoding.PEM))
         with open(key_path, "wb") as f:
-            f.write(key.private_bytes(
-                serialization.Encoding.PEM,
-                serialization.PrivateFormat.TraditionalOpenSSL,
-                serialization.NoEncryption(),
-            ))
+            f.write(
+                key.private_bytes(
+                    serialization.Encoding.PEM,
+                    serialization.PrivateFormat.TraditionalOpenSSL,
+                    serialization.NoEncryption(),
+                )
+            )
         return cert_path, key_path
     except ImportError:
         # Fallback: generate via openssl subprocess
         import subprocess
+
         cert_path = os.path.join(directory, f"{name}.pem")
         key_path = os.path.join(directory, f"{name}.key")
-        subprocess.run([
-            "openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout", key_path,
-            "-out", cert_path, "-days", "1", "-nodes",
-            "-subj", f"/CN={name}.etp.test",
-        ], check=True, capture_output=True)
+        subprocess.run(
+            [
+                "openssl",
+                "req",
+                "-x509",
+                "-newkey",
+                "rsa:2048",
+                "-keyout",
+                key_path,
+                "-out",
+                cert_path,
+                "-days",
+                "1",
+                "-nodes",
+                "-subj",
+                f"/CN={name}.etp.test",
+            ],
+            check=True,
+            capture_output=True,
+        )
         return cert_path, key_path
 
 
@@ -89,7 +110,6 @@ def cert_dir():
 
 
 class TestLoadServerCredentials:
-
     def test_disabled_returns_none(self):
         config = TLSConfig(enabled=False)
         result = load_server_credentials(config)
@@ -133,7 +153,6 @@ class TestLoadServerCredentials:
 
 
 class TestLoadChannelCredentials:
-
     def test_disabled_returns_none(self):
         config = TLSConfig(enabled=False)
         result = load_channel_credentials(config)
@@ -166,7 +185,6 @@ class TestLoadChannelCredentials:
 
 
 class TestNetworkPolicyInterceptor:
-
     def test_no_registry_allows_all(self):
         interceptor = NetworkPolicyInterceptor(policy_registry=None)
         # Mock handler_call_details
@@ -185,13 +203,16 @@ class TestNetworkPolicyInterceptor:
 
     def test_allowed_caller_passes(self):
         registry = NetworkPolicyRegistry()
-        registry.register_policy(NetworkPolicy(
-            service_id="etp-node",
-            allowed_callers=["trusted-peer"],
-        ))
+        registry.register_policy(
+            NetworkPolicy(
+                service_id="etp-node",
+                allowed_callers=["trusted-peer"],
+            )
+        )
 
         interceptor = NetworkPolicyInterceptor(
-            policy_registry=registry, service_id="etp-node",
+            policy_registry=registry,
+            service_id="etp-node",
         )
         called = [False]
 
@@ -207,13 +228,16 @@ class TestNetworkPolicyInterceptor:
 
     def test_denied_caller_rejected(self):
         registry = NetworkPolicyRegistry()
-        registry.register_policy(NetworkPolicy(
-            service_id="etp-node",
-            allowed_callers=["trusted-peer"],
-        ))
+        registry.register_policy(
+            NetworkPolicy(
+                service_id="etp-node",
+                allowed_callers=["trusted-peer"],
+            )
+        )
 
         interceptor = NetworkPolicyInterceptor(
-            policy_registry=registry, service_id="etp-node",
+            policy_registry=registry,
+            service_id="etp-node",
         )
         called = [False]
 
@@ -229,13 +253,16 @@ class TestNetworkPolicyInterceptor:
 
     def test_no_caller_id_with_allow_list_rejected(self):
         registry = NetworkPolicyRegistry()
-        registry.register_policy(NetworkPolicy(
-            service_id="etp-node",
-            allowed_callers=["trusted-peer"],
-        ))
+        registry.register_policy(
+            NetworkPolicy(
+                service_id="etp-node",
+                allowed_callers=["trusted-peer"],
+            )
+        )
 
         interceptor = NetworkPolicyInterceptor(
-            policy_registry=registry, service_id="etp-node",
+            policy_registry=registry,
+            service_id="etp-node",
         )
 
         class MockDetails:
@@ -259,7 +286,6 @@ class TestNetworkPolicyInterceptor:
 
 
 class TestNodeConfigTLS:
-
     def test_defaults(self):
         config = NodeConfig()
         assert config.tls_enabled is False
@@ -296,11 +322,10 @@ class TestNodeConfigTLS:
 
 
 class TestNodeServerTLS:
-
     def test_insecure_port_when_tls_disabled(self):
         """NodeServer defaults to insecure port when no TLS config."""
-        from src.ltp.network.server import NodeServer
         from src.ltp.commitment import CommitmentNode
+        from src.ltp.network.server import NodeServer
         from src.ltp.storage import MemoryShardStore
 
         node = CommitmentNode("test-node", "test-region", MemoryShardStore())
@@ -311,8 +336,8 @@ class TestNodeServerTLS:
 
     def test_tls_config_accepted(self, cert_dir):
         """NodeServer accepts TLS config without crashing."""
-        from src.ltp.network.server import NodeServer
         from src.ltp.commitment import CommitmentNode
+        from src.ltp.network.server import NodeServer
         from src.ltp.storage import MemoryShardStore
 
         tls = TLSConfig(

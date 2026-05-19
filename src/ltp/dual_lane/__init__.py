@@ -19,14 +19,12 @@ from .hashing import (
     internal_hash,
     internal_hash_bytes,
 )
-
 from .lanes import (
-    CryptoLane,
     COMPLIANCE_APPROVED,
-    set_compliance_strict,
+    CryptoLane,
     get_compliance_strict,
+    set_compliance_strict,
 )
-
 from .profiles import SecurityProfile
 
 __all__ = [

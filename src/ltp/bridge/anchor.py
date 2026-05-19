@@ -119,14 +119,15 @@ class L1Anchor:
 
         logger.info(
             "[L1Anchor] Committing bridge message: %s %s→%s nonce=%d seq=%d",
-            message.msg_type, message.source_chain, message.dest_chain,
-            message.nonce, self._sequence_counter,
+            message.msg_type,
+            message.source_chain,
+            message.dest_chain,
+            message.nonce,
+            self._sequence_counter,
         )
 
         # COMMIT phase
-        entity_id, record, cek = self.protocol.commit(
-            entity, self.operator_keypair, n=n, k=k
-        )
+        entity_id, record, cek = self.protocol.commit(entity, self.operator_keypair, n=n, k=k)
 
         # Create ApprovalReceipt for on-chain anchoring (if STH available)
         sth = self.protocol.network.log.latest_sth
@@ -156,9 +157,7 @@ class L1Anchor:
         # Generate Merkle inclusion proof
         proof = self.protocol.network.log.get_inclusion_proof(entity_id)
         if proof is None:
-            raise RuntimeError(
-                f"Failed to generate inclusion proof for {entity_id[:16]}..."
-            )
+            raise RuntimeError(f"Failed to generate inclusion proof for {entity_id[:16]}...")
 
         # Advance simulated block height
         self._block_counter += 1
@@ -174,7 +173,9 @@ class L1Anchor:
         receipt_info = receipt.receipt_id[:16] if receipt else "n/a"
         logger.info(
             "[L1Anchor] Committed at block %d, entity_id=%s..., receipt_id=%s...",
-            self._block_counter, entity_id[:16], receipt_info,
+            self._block_counter,
+            entity_id[:16],
+            receipt_info,
         )
 
         return commitment, cek

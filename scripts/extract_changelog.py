@@ -18,7 +18,6 @@ import re
 import sys
 from pathlib import Path
 
-
 _SECTION_RE = re.compile(r"^##\s+\[([^\]]+)\]")
 
 

@@ -18,7 +18,6 @@ from src.ltp.federation import (
     NetworkIdentityRecord,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -37,14 +36,22 @@ def net_b_kp() -> KeyPair:
 @pytest.fixture
 def nir_a(net_a_kp):
     return NetworkIdentityRecord.create(
-        net_a_kp, b"\xaa" * 32, 0, "Net A", "https://a.example.com",
+        net_a_kp,
+        b"\xaa" * 32,
+        0,
+        "Net A",
+        "https://a.example.com",
     )
 
 
 @pytest.fixture
 def nir_b(net_b_kp):
     return NetworkIdentityRecord.create(
-        net_b_kp, b"\xbb" * 32, 0, "Net B", "https://b.example.com",
+        net_b_kp,
+        b"\xbb" * 32,
+        0,
+        "Net B",
+        "https://b.example.com",
     )
 
 
@@ -71,7 +78,6 @@ def network_b():
 
 
 class TestFederationAuth:
-
     def test_valid_auth_verifies(self, valid_auth):
         assert valid_auth.verify() is True
 
@@ -106,7 +112,6 @@ class TestFederationAuth:
 
 
 class TestInMemoryTransport:
-
     def test_fetch_shards_returns_data(self, valid_auth, network_b, net_b_kp):
         """Fetch shards from a registered network with valid auth."""
         protocol = LTPProtocol(network_b)
@@ -117,7 +122,10 @@ class TestInMemoryTransport:
         transport.register_network("https://b.example.com", network_b)
 
         shards = transport.fetch_shards(
-            "https://b.example.com", entity_id, [0, 1, 2], valid_auth,
+            "https://b.example.com",
+            entity_id,
+            [0, 1, 2],
+            valid_auth,
         )
         assert len(shards) >= 1
         # Shards should be bytes (encrypted)
@@ -162,7 +170,6 @@ class TestInMemoryTransport:
 
 
 class TestTransportAuth:
-
     def test_invalid_auth_fetch_rejected(self, net_a_kp, nir_a, nir_b, network_b, net_b_kp):
         """Fetch with half-signed (invalid) auth returns empty."""
         half = FederationAgreement.initiate(net_a_kp, nir_a, nir_b)

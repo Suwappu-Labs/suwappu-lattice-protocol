@@ -38,16 +38,18 @@ async def gateway_status(request: Request) -> JSONResponse:
         else:
             status = "active"
 
-        return JSONResponse({
-            "status": status,
-            "gateway_id": config.gateway_id,
-            "epoch": svc.epoch,
-            "source_chain_id": config.source_chain_id,
-            "dest_chain_id": config.dest_chain_id,
-            "challenge_mode": config.challenge_mode,
-            "retry_queue_size": svc.retry_queue_size,
-            "tracker": tracker.stats(),
-        })
+        return JSONResponse(
+            {
+                "status": status,
+                "gateway_id": config.gateway_id,
+                "epoch": svc.epoch,
+                "source_chain_id": config.source_chain_id,
+                "dest_chain_id": config.dest_chain_id,
+                "challenge_mode": config.challenge_mode,
+                "retry_queue_size": svc.retry_queue_size,
+                "tracker": tracker.stats(),
+            }
+        )
     except Exception as exc:
         return _internal_error("gateway_status", exc)
 
@@ -60,7 +62,9 @@ async def gateway_health(request: Request) -> JSONResponse:
 
         checks = {
             "service": "running" if svc.running else "stopped",
-            "retry_queue": "ok" if svc.retry_queue_size < _RETRY_QUEUE_DEGRADED_THRESHOLD else "degraded",
+            "retry_queue": "ok"
+            if svc.retry_queue_size < _RETRY_QUEUE_DEGRADED_THRESHOLD
+            else "degraded",
         }
 
         healthy = svc.running

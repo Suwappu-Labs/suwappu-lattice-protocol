@@ -33,9 +33,7 @@ def test_no_domain_tag_is_prefix_of_another():
         for j, b in enumerate(ALL_DOMAIN_TAGS):
             if i == j:
                 continue
-            assert not a.startswith(b), (
-                f"domain tag {a!r} starts with {b!r}; rename for clarity"
-            )
+            assert not a.startswith(b), f"domain tag {a!r} starts with {b!r}; rename for clarity"
 
 
 def test_every_domain_tag_is_nontrivial():

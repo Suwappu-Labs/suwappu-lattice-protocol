@@ -10,7 +10,10 @@ Usage:
 """
 
 from src.ltp import (
-    KeyPair, Entity, CommitmentNetwork, LTPProtocol,
+    CommitmentNetwork,
+    Entity,
+    KeyPair,
+    LTPProtocol,
     reset_poc_state,
 )
 
@@ -18,8 +21,8 @@ reset_poc_state()
 
 # ── Setup ────────────────────────────────────────────────────────────────
 print("Setting up keypairs and network...")
-alice = KeyPair.generate("alice")   # Sender
-bob = KeyPair.generate("bob")       # Receiver
+alice = KeyPair.generate("alice")  # Sender
+bob = KeyPair.generate("bob")  # Receiver
 
 # Create a 3-node commitment network
 network = CommitmentNetwork()

@@ -13,6 +13,7 @@ from .service import GatewayVMService
 @dataclass
 class BenchmarkResult:
     """Results from a throughput benchmark run."""
+
     total_events: int
     total_accepted: int
     total_rejected: int
@@ -35,20 +36,22 @@ def run_benchmark(
     """
     all_logs = []
     for i in range(event_count):
-        all_logs.append({
-            "transactionHash": f"0xbench_{i:06d}",
-            "blockNumber": 100 + (i // events_per_tick),
-            "logIndex": i % events_per_tick,
-            "address": "0x5083194d9e8EB54Fc397E69A518Be9503C767Dd0",
-            "event": "AnchorCreated",
-            "args": {
-                "sender": "0xbenchsender",
-                "recipient": "0xbenchrecipient",
-                "payloadHash": f"sha3-256:bench{i:06d}",
-                "amount": 1_000_000,
-                "nonce": i,
-            },
-        })
+        all_logs.append(
+            {
+                "transactionHash": f"0xbench_{i:06d}",
+                "blockNumber": 100 + (i // events_per_tick),
+                "logIndex": i % events_per_tick,
+                "address": "0x5083194d9e8EB54Fc397E69A518Be9503C767Dd0",
+                "event": "AnchorCreated",
+                "args": {
+                    "sender": "0xbenchsender",
+                    "recipient": "0xbenchrecipient",
+                    "payloadHash": f"sha3-256:bench{i:06d}",
+                    "amount": 1_000_000,
+                    "nonce": i,
+                },
+            }
+        )
 
     cursor = [0]
 

@@ -15,18 +15,17 @@ from enum import IntEnum
 import pytest
 
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol
+from src.ltp.bridge.challenge import ChallengeManager, ChallengeStatus
+from src.ltp.bridge.fraud_proof import FraudProofType, InvalidSignatureFraudProof
 from src.ltp.bridge.zk_bridge import (
-    ZKBridgeBackend,
-    ZKBridgePublicInputs,
-    ZKBridgeProof,
     SimulatedZKBridgeProver,
+    ZKBridgeBackend,
+    ZKBridgeProof,
+    ZKBridgePublicInputs,
     ZKBridgeVerifier,
 )
-from src.ltp.bridge.challenge import ChallengeManager, ChallengeStatus
-from src.ltp.bridge.fraud_proof import InvalidSignatureFraudProof, FraudProofType
-from src.ltp.verify import verify_zk_bridge_proof
 from src.ltp.primitives import MLDSA, canonical_hash_bytes
-
+from src.ltp.verify import verify_zk_bridge_proof
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -91,7 +90,6 @@ def verifier() -> KeyPair:
 
 
 class TestZKBridgePublicInputs:
-
     def test_from_sth(self, operator):
         sth = _make_sth(operator, sequence=5, root_hash=b"\xaa" * 32)
         inputs = ZKBridgePublicInputs.from_sth(sth)
@@ -120,7 +118,6 @@ class TestZKBridgePublicInputs:
 
 
 class TestSimulatedZKBridgeProver:
-
     def test_prove_valid_sth(self, operator):
         sth = _make_sth(operator, sequence=1)
         prover = SimulatedZKBridgeProver()
@@ -167,7 +164,6 @@ class TestSimulatedZKBridgeProver:
 
 
 class TestZKBridgeVerifier:
-
     def test_verify_valid_proof(self, operator):
         sth = _make_sth(operator, sequence=1)
         prover = SimulatedZKBridgeProver()
@@ -235,7 +231,6 @@ class TestZKBridgeVerifier:
 
 
 class TestVerifySDK:
-
     def test_valid_proof_returns_valid(self, operator):
         sth = _make_sth(operator)
         proof = SimulatedZKBridgeProver().prove_sth_signature(sth)
@@ -266,7 +261,6 @@ class TestVerifySDK:
 
 
 class TestChallengeManagerZK:
-
     def test_resolve_open_window_with_proof(self, operator):
         mgr = ChallengeManager(challenge_period=100.0)
         mgr.open_challenge_window("ent-zk1", b"\x01" * 32)
@@ -351,13 +345,15 @@ class _MockClient:
 
 
 class TestLiveBridgeZK:
-
     def _make_bridge(self, challenge_manager=None, zk_prover=None):
         net = CommitmentNetwork()
         for nid, region in [
-            ("zk-1", "US-East"), ("zk-2", "US-West"),
-            ("zk-3", "EU-West"), ("zk-4", "EU-East"),
-            ("zk-5", "AP-East"), ("zk-6", "AP-South"),
+            ("zk-1", "US-East"),
+            ("zk-2", "US-West"),
+            ("zk-3", "EU-West"),
+            ("zk-4", "EU-East"),
+            ("zk-5", "AP-East"),
+            ("zk-6", "AP-South"),
         ]:
             net.add_node(nid, region)
         protocol = LTPProtocol(net)
@@ -366,6 +362,7 @@ class TestLiveBridgeZK:
         client = _MockClient()
 
         from src.ltp.bridge.live import LiveBridge
+
         return LiveBridge(
             protocol=protocol,
             l1_client=client,
@@ -378,6 +375,7 @@ class TestLiveBridgeZK:
 
     def _make_msg(self, nonce=0):
         from src.ltp.bridge.message import BridgeMessage
+
         return BridgeMessage(
             msg_type="token_lock",
             source_chain="ethereum",
@@ -427,7 +425,6 @@ class TestLiveBridgeZK:
 
 
 class TestEndToEnd:
-
     def test_full_commit_prove_verify_finalize(self, operator, verifier):
         """Complete flow: commit -> get STH -> prove -> verify -> finalize."""
         net = CommitmentNetwork()
@@ -437,6 +434,7 @@ class TestEndToEnd:
 
         # Commit an entity
         from src.ltp.entity import Entity
+
         entity = Entity(content=b"ZK end-to-end test data " * 10, shape="text/plain")
         entity_id, record, cek = protocol.commit(entity, operator)
 

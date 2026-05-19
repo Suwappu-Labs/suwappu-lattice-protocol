@@ -30,11 +30,11 @@ This module reuses the existing AEAD wrapper from `ltp.primitives`
 from __future__ import annotations
 
 import base64
-import hmac
 import hashlib
+import hmac
 import logging
 import os
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from .primitives import AEAD
 
@@ -64,15 +64,13 @@ class KeyVault:
 
     KEK_SIZE = 32
     NONCE_SIZE = AEAD.NONCE_SIZE  # 24
-    TAG_SIZE = AEAD.TAG_SIZE      # 16
+    TAG_SIZE = AEAD.TAG_SIZE  # 16
 
     def __init__(self, kek: bytes) -> None:
         if not isinstance(kek, (bytes, bytearray)):
             raise TypeError("KEK must be bytes")
         if len(kek) != self.KEK_SIZE:
-            raise ValueError(
-                f"KEK must be {self.KEK_SIZE} bytes, got {len(kek)}"
-            )
+            raise ValueError(f"KEK must be {self.KEK_SIZE} bytes, got {len(kek)}")
         self._kek = bytes(kek)
 
     @classmethod
@@ -97,13 +95,10 @@ class KeyVault:
             try:
                 kek = base64.b64decode(env_kek, validate=True)
             except Exception as exc:
-                raise KeyVaultError(
-                    f"{_ENV_VAR} is not valid base64"
-                ) from exc
+                raise KeyVaultError(f"{_ENV_VAR} is not valid base64") from exc
             if len(kek) != cls.KEK_SIZE:
                 raise KeyVaultError(
-                    f"{_ENV_VAR} must decode to {cls.KEK_SIZE} bytes, "
-                    f"got {len(kek)}"
+                    f"{_ENV_VAR} must decode to {cls.KEK_SIZE} bytes, got {len(kek)}"
                 )
             return cls(kek)
 
@@ -113,12 +108,12 @@ class KeyVault:
         # ephemeral path instead of crashing init (Codex P1).
         try:
             import keyring  # type: ignore[import-not-found]
+
             try:
                 kek_b64 = keyring.get_password(_KEYRING_SERVICE, _KEYRING_USERNAME)
             except Exception as exc:  # noqa: BLE001 — keyring backends raise many types
                 _LOG.warning(
-                    "KeyVault: OS keychain lookup failed (%s); "
-                    "falling through to next KEK source.",
+                    "KeyVault: OS keychain lookup failed (%s); falling through to next KEK source.",
                     exc,
                 )
                 kek_b64 = None
@@ -126,13 +121,10 @@ class KeyVault:
                 try:
                     kek = base64.b64decode(kek_b64, validate=True)
                 except Exception as exc:
-                    raise KeyVaultError(
-                        "OS keychain KEK is not valid base64"
-                    ) from exc
+                    raise KeyVaultError("OS keychain KEK is not valid base64") from exc
                 if len(kek) != cls.KEK_SIZE:
                     raise KeyVaultError(
-                        f"OS keychain KEK must decode to {cls.KEK_SIZE} "
-                        f"bytes, got {len(kek)}"
+                        f"OS keychain KEK must decode to {cls.KEK_SIZE} bytes, got {len(kek)}"
                     )
                 return cls(kek)
         except ImportError:
@@ -142,8 +134,7 @@ class KeyVault:
             kek = hsm.derive_kek(_HSM_LABEL)
             if len(kek) != cls.KEK_SIZE:
                 raise KeyVaultError(
-                    f"HSM derive_kek returned {len(kek)} bytes, "
-                    f"expected {cls.KEK_SIZE}"
+                    f"HSM derive_kek returned {len(kek)} bytes, expected {cls.KEK_SIZE}"
                 )
             return cls(kek)
 
@@ -182,8 +173,7 @@ class KeyVault:
             raise TypeError("wrapped must be bytes")
         if len(wrapped) < self.NONCE_SIZE + self.TAG_SIZE:
             raise KeyVaultError(
-                f"wrapped blob too short: {len(wrapped)} < "
-                f"{self.NONCE_SIZE + self.TAG_SIZE}"
+                f"wrapped blob too short: {len(wrapped)} < {self.NONCE_SIZE + self.TAG_SIZE}"
             )
         nonce = bytes(wrapped[: self.NONCE_SIZE])
         ciphertext = bytes(wrapped[self.NONCE_SIZE :])

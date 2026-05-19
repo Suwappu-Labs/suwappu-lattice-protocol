@@ -17,6 +17,7 @@ from typing import Any, Optional
 
 class MessageType(Enum):
     """Types of network messages in the LTP simulation."""
+
     SHARD_STORE_REQUEST = auto()
     SHARD_STORE_ACK = auto()
     SHARD_FETCH_REQUEST = auto()
@@ -36,6 +37,7 @@ class Message:
 
     Tracks source, destination, timing, payload size, and delivery status.
     """
+
     msg_id: str
     msg_type: MessageType
     source: str
@@ -150,21 +152,16 @@ class MessageBus:
     def messages_for_entity(self, entity_id: str) -> list[Message]:
         """Get all messages related to a specific entity transfer."""
         return [
-            m for m in self._messages
-            if m.payload and isinstance(m.payload, dict)
-            and m.payload.get("entity_id") == entity_id
+            m
+            for m in self._messages
+            if m.payload and isinstance(m.payload, dict) and m.payload.get("entity_id") == entity_id
         ]
 
     def messages_by_type(self, msg_type: MessageType) -> list[Message]:
         return [m for m in self._messages if m.msg_type == msg_type]
 
-    def messages_between(
-        self, source: str, destination: str
-    ) -> list[Message]:
-        return [
-            m for m in self._messages
-            if m.source == source and m.destination == destination
-        ]
+    def messages_between(self, source: str, destination: str) -> list[Message]:
+        return [m for m in self._messages if m.source == source and m.destination == destination]
 
     @property
     def all_messages(self) -> list[Message]:

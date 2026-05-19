@@ -11,9 +11,7 @@ import pytest
 
 from src.ltp.zk.ec_backend import bls12_381_available
 
-pytestmark = pytest.mark.skipif(
-    not bls12_381_available(), reason="py_ecc not installed"
-)
+pytestmark = pytest.mark.skipif(not bls12_381_available(), reason="py_ecc not installed")
 
 
 # ---------------------------------------------------------------------------
@@ -26,13 +24,13 @@ class TestECBackend:
         assert bls12_381_available() is True
 
     def test_g1_generator_is_not_identity(self):
-        from src.ltp.zk.ec_backend import g1_generator, g1_identity, g1_eq
+        from src.ltp.zk.ec_backend import g1_eq, g1_generator, g1_identity
 
         G = g1_generator()
         assert not g1_eq(G, g1_identity())
 
     def test_h_generator_is_not_g(self):
-        from src.ltp.zk.ec_backend import g1_generator, g1_h_generator, g1_eq
+        from src.ltp.zk.ec_backend import g1_eq, g1_generator, g1_h_generator
 
         G = g1_generator()
         H = g1_h_generator()
@@ -44,7 +42,7 @@ class TestECBackend:
 
         H = g1_h_generator()
         x, y = H[0], H[1]
-        assert y ** 2 == x ** 3 + type(x)(4)
+        assert y**2 == x**3 + type(x)(4)
 
     def test_h_generator_is_cached(self):
         from src.ltp.zk.ec_backend import g1_h_generator
@@ -63,7 +61,11 @@ class TestECBackend:
     def test_scalar_mul_additive_homomorphism(self):
         """a*G + b*G should equal (a+b)*G."""
         from src.ltp.zk.ec_backend import (
-            g1_generator, g1_scalar_mul, g1_add, g1_eq, curve_order,
+            curve_order,
+            g1_add,
+            g1_eq,
+            g1_generator,
+            g1_scalar_mul,
         )
 
         G = g1_generator()
@@ -75,7 +77,7 @@ class TestECBackend:
         assert g1_eq(abG, expected)
 
     def test_scalar_from_entity_id_in_range(self):
-        from src.ltp.zk.ec_backend import scalar_from_entity_id, curve_order
+        from src.ltp.zk.ec_backend import curve_order, scalar_from_entity_id
 
         s = scalar_from_entity_id("test-entity")
         assert 0 < s < curve_order()
@@ -95,7 +97,7 @@ class TestECBackend:
         assert s1 != s2
 
     def test_random_scalar_in_range(self):
-        from src.ltp.zk.ec_backend import random_scalar, curve_order
+        from src.ltp.zk.ec_backend import curve_order, random_scalar
 
         for _ in range(10):
             s = random_scalar()
@@ -103,8 +105,12 @@ class TestECBackend:
 
     def test_g1_serialize_deserialize_roundtrip(self):
         from src.ltp.zk.ec_backend import (
-            g1_generator, g1_h_generator, g1_serialize, g1_deserialize,
-            g1_scalar_mul, g1_eq,
+            g1_deserialize,
+            g1_eq,
+            g1_generator,
+            g1_h_generator,
+            g1_scalar_mul,
+            g1_serialize,
         )
 
         for point in [g1_generator(), g1_h_generator(), g1_scalar_mul(g1_generator(), 42)]:
@@ -114,7 +120,7 @@ class TestECBackend:
             assert g1_eq(point, restored)
 
     def test_g1_serialize_identity(self):
-        from src.ltp.zk.ec_backend import g1_identity, g1_serialize, g1_deserialize
+        from src.ltp.zk.ec_backend import g1_deserialize, g1_identity, g1_serialize
 
         data = g1_serialize(g1_identity())
         assert data == b"\x00" * 96
@@ -179,7 +185,7 @@ class TestPedersenCommitment:
         point = g1_deserialize(c_bytes)
         assert point is not None
         x, y = point[0], point[1]
-        assert y ** 2 == x ** 3 + type(x)(4)
+        assert y**2 == x**3 + type(x)(4)
 
     def test_open_correct(self):
         from src.ltp.zk.pedersen import pedersen_commit, pedersen_open
@@ -293,8 +299,9 @@ class TestSigmaProof:
         It does not accept entity_id or blinding_factor — this is the
         core zero-knowledge property.
         """
-        from src.ltp.zk.sigma_proof import verify_sigma_proof
         import inspect
+
+        from src.ltp.zk.sigma_proof import verify_sigma_proof
 
         sig = inspect.signature(verify_sigma_proof)
         params = list(sig.parameters.keys())

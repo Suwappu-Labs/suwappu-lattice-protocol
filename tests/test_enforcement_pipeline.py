@@ -10,30 +10,30 @@ import json
 
 import pytest
 
-from src.ltp.enforcement_pipeline import (
-    EnforcementPipeline,
-    EnforcementPipelineConfig,
-)
-from src.ltp.enforcement import (
-    StorageProofStrategy,
-    VDFConfig,
-    VDFVerifier,
-    DecentralizationMetrics,
-    DisputeResolution,
-)
+from src.ltp.commitment import CommitmentNetwork
 from src.ltp.economics import (
+    WEI_PER_LTP,
     EconomicsConfig,
     EconomicsEngine,
     NodeEconomics,
     SlashingTier,
-    WEI_PER_LTP,
 )
-from src.ltp.commitment import CommitmentNetwork
-
+from src.ltp.enforcement import (
+    DecentralizationMetrics,
+    DisputeResolution,
+    StorageProofStrategy,
+    VDFConfig,
+    VDFVerifier,
+)
+from src.ltp.enforcement_pipeline import (
+    EnforcementPipeline,
+    EnforcementPipelineConfig,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_engine() -> EconomicsEngine:
     return EconomicsEngine(EconomicsConfig())
@@ -56,6 +56,7 @@ def _make_pipeline(**kwargs) -> EnforcementPipeline:
 # ---------------------------------------------------------------------------
 # Pipeline config and initialization
 # ---------------------------------------------------------------------------
+
 
 class TestPipelineInit:
     def test_default_config(self):
@@ -88,6 +89,7 @@ class TestPipelineInit:
 # Audit result → enforcement pipeline
 # ---------------------------------------------------------------------------
 
+
 class TestHandleAuditResult:
     def setup_method(self):
         self.pipeline = _make_pipeline()
@@ -97,7 +99,10 @@ class TestHandleAuditResult:
     def test_pass_result_no_violation(self):
         audit = {"result": "PASS", "node_id": "node-1"}
         result = self.pipeline.handle_audit_result(
-            audit, self.node, self.engine, epoch=100,
+            audit,
+            self.node,
+            self.engine,
+            epoch=100,
         )
         assert result is None
         assert self.pipeline._total_violations == 0
@@ -106,7 +111,10 @@ class TestHandleAuditResult:
         # 1 failure is below audit_failure threshold of 3
         audit = {"result": "FAIL", "strikes": 1, "challenged": 5, "failed": 1, "missing": 0}
         result = self.pipeline.handle_audit_result(
-            audit, self.node, self.engine, epoch=100,
+            audit,
+            self.node,
+            self.engine,
+            epoch=100,
         )
         assert result is not None
         assert result.violated is False  # Below 3-failure threshold
@@ -114,7 +122,10 @@ class TestHandleAuditResult:
     def test_fail_result_above_threshold(self):
         audit = {"result": "FAIL", "strikes": 4, "challenged": 10, "failed": 5, "missing": 2}
         result = self.pipeline.handle_audit_result(
-            audit, self.node, self.engine, epoch=100,
+            audit,
+            self.node,
+            self.engine,
+            epoch=100,
         )
         assert result is not None
         assert result.violated is True
@@ -125,7 +136,10 @@ class TestHandleAuditResult:
     def test_violation_queues_in_batch(self):
         audit = {"result": "FAIL", "strikes": 4, "challenged": 10, "failed": 5, "missing": 0}
         self.pipeline.handle_audit_result(
-            audit, self.node, self.engine, epoch=100,
+            audit,
+            self.node,
+            self.engine,
+            epoch=100,
         )
         pending = self.pipeline.batch_accumulator.pending_for_epoch(100)
         assert len(pending) == 1
@@ -136,7 +150,10 @@ class TestHandleAuditResult:
         initial = self.node.offense_count
         audit = {"result": "FAIL", "strikes": 4, "challenged": 10, "failed": 5, "missing": 0}
         self.pipeline.handle_audit_result(
-            audit, self.node, self.engine, epoch=100,
+            audit,
+            self.node,
+            self.engine,
+            epoch=100,
         )
         assert self.node.offense_count == initial + 1
 
@@ -144,6 +161,7 @@ class TestHandleAuditResult:
 # ---------------------------------------------------------------------------
 # PDP result → enforcement pipeline
 # ---------------------------------------------------------------------------
+
 
 class TestHandlePDPResult:
     def setup_method(self):
@@ -154,14 +172,20 @@ class TestHandlePDPResult:
     def test_pass_result(self):
         pdp = {"result": "PASS", "passed": 3, "failed": 0}
         result = self.pipeline.handle_pdp_result(
-            pdp, self.node, self.engine, epoch=100,
+            pdp,
+            self.node,
+            self.engine,
+            epoch=100,
         )
         assert result is None
 
     def test_fail_triggers_proof_failure_condition(self):
         pdp = {"result": "FAIL", "passed": 1, "failed": 2}
         result = self.pipeline.handle_pdp_result(
-            pdp, self.node, self.engine, epoch=100,
+            pdp,
+            self.node,
+            self.engine,
+            epoch=100,
         )
         assert result is not None
         assert result.violated is True
@@ -172,6 +196,7 @@ class TestHandlePDPResult:
 # ---------------------------------------------------------------------------
 # Epoch finalization
 # ---------------------------------------------------------------------------
+
 
 class TestEpochFinalization:
     def setup_method(self):
@@ -189,7 +214,10 @@ class TestEpochFinalization:
         # Queue a slash
         audit = {"result": "FAIL", "strikes": 4, "challenged": 10, "failed": 5, "missing": 0}
         self.pipeline.handle_audit_result(
-            audit, self.nodes[0], self.engine, epoch=100,
+            audit,
+            self.nodes[0],
+            self.engine,
+            epoch=100,
         )
 
         # Finalize epoch
@@ -203,7 +231,10 @@ class TestEpochFinalization:
         # Queue and finalize to create pending slash at epoch 100
         audit = {"result": "FAIL", "strikes": 4, "challenged": 10, "failed": 5, "missing": 0}
         self.pipeline.handle_audit_result(
-            audit, self.nodes[0], self.engine, epoch=100,
+            audit,
+            self.nodes[0],
+            self.engine,
+            epoch=100,
         )
         self.pipeline.finalize_epoch(100, self.nodes, self.engine)
 
@@ -232,6 +263,7 @@ class TestEpochFinalization:
 # Multiple violations in single epoch (batch processing)
 # ---------------------------------------------------------------------------
 
+
 class TestBatchProcessing:
     def test_multiple_nodes_slashed_in_epoch(self):
         pipeline = _make_pipeline()
@@ -257,6 +289,7 @@ class TestBatchProcessing:
 # VDF integration
 # ---------------------------------------------------------------------------
 
+
 class TestVDFIntegration:
     def test_vdf_challenge_in_audit(self):
         pipeline = _make_pipeline(
@@ -278,6 +311,7 @@ class TestVDFIntegration:
 
         # Commit some data
         from src.ltp.primitives import canonical_hash
+
         entity_id = canonical_hash(b"test-entity")
         shards = [b"shard-" + bytes([i]) * 100 for i in range(8)]
         network.distribute_encrypted_shards(entity_id, shards)
@@ -301,6 +335,7 @@ class TestVDFIntegration:
 # ---------------------------------------------------------------------------
 # Dispute integration
 # ---------------------------------------------------------------------------
+
 
 class TestDisputeIntegration:
     def setup_method(self):
@@ -362,12 +397,16 @@ class TestDisputeIntegration:
 # Governance transitions
 # ---------------------------------------------------------------------------
 
+
 class TestGovernanceTransitions:
     def test_bootstrap_to_growth_ready(self):
         pipeline = _make_pipeline()
         nodes = [_make_node(f"node-{i}") for i in range(10)]
         can, unmet = pipeline.check_governance_transition(
-            "bootstrap", "growth", nodes, governance_participation=0.0,
+            "bootstrap",
+            "growth",
+            nodes,
+            governance_participation=0.0,
         )
         assert can is True
         assert len(unmet) == 0
@@ -376,7 +415,9 @@ class TestGovernanceTransitions:
         pipeline = _make_pipeline()
         nodes = [_make_node(f"node-{i}") for i in range(3)]
         can, unmet = pipeline.check_governance_transition(
-            "bootstrap", "growth", nodes,
+            "bootstrap",
+            "growth",
+            nodes,
         )
         assert can is False
         assert any("Operators" in u for u in unmet)
@@ -386,7 +427,10 @@ class TestGovernanceTransitions:
         # Only 5 nodes — maturity needs 100
         nodes = [_make_node(f"node-{i}") for i in range(5)]
         can, unmet = pipeline.check_governance_transition(
-            "growth", "maturity", nodes, governance_participation=0.20,
+            "growth",
+            "maturity",
+            nodes,
+            governance_participation=0.20,
         )
         assert can is False
         assert any("Operators" in u for u in unmet)
@@ -395,7 +439,9 @@ class TestGovernanceTransitions:
         pipeline = _make_pipeline()
         nodes = [_make_node(f"node-{i}") for i in range(10)]
         executed = pipeline.execute_governance_transition(
-            "bootstrap", "growth", nodes,
+            "bootstrap",
+            "growth",
+            nodes,
         )
         assert executed is True
         assert "bootstrap_to_growth" in pipeline.governance.completed_transitions
@@ -412,6 +458,7 @@ class TestGovernanceTransitions:
 # ---------------------------------------------------------------------------
 # Runtime invariant checking
 # ---------------------------------------------------------------------------
+
 
 class TestRuntimeInvariants:
     def test_invariants_enabled(self):
@@ -438,6 +485,7 @@ class TestRuntimeInvariants:
 # Backward compatibility
 # ---------------------------------------------------------------------------
 
+
 class TestBackwardCompatibility:
     def test_commitment_network_without_pipeline(self):
         """CommitmentNetwork works without pipeline attached."""
@@ -457,6 +505,7 @@ class TestBackwardCompatibility:
             network.add_node(f"node-{i}", f"region-{i}")
 
         from src.ltp.primitives import canonical_hash
+
         entity_id = canonical_hash(b"test-entity")
         shards = [b"shard-" + bytes([i]) * 100 for i in range(8)]
         network.distribute_encrypted_shards(entity_id, shards)
@@ -476,6 +525,7 @@ class TestBackwardCompatibility:
 # ---------------------------------------------------------------------------
 # Pipeline stats
 # ---------------------------------------------------------------------------
+
 
 class TestPipelineStats:
     def test_initial_stats(self):
@@ -505,31 +555,37 @@ class TestPipelineStats:
 # Ethereum backend parity
 # ---------------------------------------------------------------------------
 
+
 class TestEthereumBackendParity:
     def test_slash_with_correlation_penalty(self):
-        from src.ltp.backends import create_backend, BackendConfig
+        from src.ltp.backends import BackendConfig, create_backend
 
-        backend = create_backend(BackendConfig(
-            backend_type="ethereum",
-            eth_finality_mode="latest",
-        ))
+        backend = create_backend(
+            BackendConfig(
+                backend_type="ethereum",
+                eth_finality_mode="latest",
+            )
+        )
         backend.register_node("node-1", "us-east", stake_wei=1000 * WEI_PER_LTP)
 
         # Slash with correlation context
         amount = backend.slash_node(
-            "node-1", b"evidence",
+            "node-1",
+            b"evidence",
             concurrent_slashed_stake=500 * WEI_PER_LTP,
             total_network_stake=2000 * WEI_PER_LTP,
         )
         assert amount > 0
 
     def test_pending_slash_grace_period(self):
-        from src.ltp.backends import create_backend, BackendConfig
+        from src.ltp.backends import BackendConfig, create_backend
 
-        backend = create_backend(BackendConfig(
-            backend_type="ethereum",
-            eth_finality_mode="latest",
-        ))
+        backend = create_backend(
+            BackendConfig(
+                backend_type="ethereum",
+                eth_finality_mode="latest",
+            )
+        )
         backend.register_node("node-1", "us-east", stake_wei=1000 * WEI_PER_LTP)
 
         # Slash creates pending entry
@@ -541,12 +597,14 @@ class TestEthereumBackendParity:
         assert len(pending) == 0
 
     def test_correlation_penalty_increases_slash(self):
-        from src.ltp.backends import create_backend, BackendConfig
+        from src.ltp.backends import BackendConfig, create_backend
 
-        backend = create_backend(BackendConfig(
-            backend_type="ethereum",
-            eth_finality_mode="latest",
-        ))
+        backend = create_backend(
+            BackendConfig(
+                backend_type="ethereum",
+                eth_finality_mode="latest",
+            )
+        )
         backend.register_node("node-a", "us-east", stake_wei=1000 * WEI_PER_LTP)
         backend.register_node("node-b", "us-west", stake_wei=1000 * WEI_PER_LTP)
 
@@ -555,7 +613,8 @@ class TestEthereumBackendParity:
 
         # Slash with high correlation
         amount_correlated = backend.slash_node(
-            "node-b", b"evidence",
+            "node-b",
+            b"evidence",
             concurrent_slashed_stake=1000 * WEI_PER_LTP,
             total_network_stake=2000 * WEI_PER_LTP,
         )

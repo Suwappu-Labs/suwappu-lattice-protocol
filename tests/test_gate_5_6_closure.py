@@ -48,15 +48,14 @@ from src.ltp.execution.committee.dkg.threshold_signing import (
     DOMAIN_ATTESTATION,
     threshold_verify,
 )
+from src.ltp.execution.committee.dkg.types import DKGSessionConfig
 from src.ltp.execution.committee.types import (
     CommitteeMember,
     CommitteeRole,
     CommitteeRoster,
 )
-from src.ltp.execution.committee.dkg.types import DKGSessionConfig
 from src.ltp.execution.writer import IdentityTier
 from src.ltp.zk.ec_backend import bls12_381_available
-
 
 # ---------------------------------------------------------------------------
 # Helpers (copied from tests/test_consensus_adapter.py:27 to keep this test
@@ -161,8 +160,8 @@ class _ManualCommitteeManager:
     def sign_as_committee(self, message: bytes, domain: bytes):
         """Same contract as production CommitteeManager.sign_as_committee."""
         from src.ltp.execution.committee.dkg.threshold_signing import (
-            partial_sign,
             combine_partial_signatures,
+            partial_sign,
         )
 
         partials = [partial_sign(k, message, domain) for k in self._keys[: self._threshold]]
@@ -243,9 +242,7 @@ def test_gate_5_6_closure_dkg_consensus_threshold_sign_wire_roundtrip():
     assert decoded.payload == attestation.payload
     assert decoded.aggregate_signature == attestation.aggregate_signature
     assert decoded.signers == attestation.signers
-    assert threshold_verify(
-        group_pk, batch_digest, decoded.aggregate_signature, DOMAIN_ATTESTATION
-    )
+    assert threshold_verify(group_pk, batch_digest, decoded.aggregate_signature, DOMAIN_ATTESTATION)
 
 
 @pytest.mark.skipif(not bls12_381_available(), reason="py_ecc / blst not installed")

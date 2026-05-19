@@ -11,14 +11,15 @@ Covers:
 
 import json
 import os
+
 import pytest
 
 from src.ltp import Entity, LTPProtocol
 
-
 # ---------------------------------------------------------------------------
 # Three-phase transfer scenarios
 # ---------------------------------------------------------------------------
+
 
 class TestTransfers:
     def test_transfer_small_message(self, protocol, alice, bob):
@@ -27,7 +28,10 @@ class TestTransfers:
 
         entity_id, record, cek = protocol.commit(entity, alice, n=8, k=4)
         sealed = protocol.lattice(
-            entity_id, record, cek, bob,
+            entity_id,
+            record,
+            cek,
+            bob,
             access_policy={"type": "one-time"},
         )
         result = protocol.materialize(sealed, bob)
@@ -35,11 +39,14 @@ class TestTransfers:
         assert result == content
 
     def test_transfer_json_document(self, protocol, alice, bob):
-        content = json.dumps({
-            "patient_id": "P-29381",
-            "diagnosis": "healthy",
-            "lab_results": {"blood_pressure": "120/80", "heart_rate": 72},
-        }, indent=2).encode()
+        content = json.dumps(
+            {
+                "patient_id": "P-29381",
+                "diagnosis": "healthy",
+                "lab_results": {"blood_pressure": "120/80", "heart_rate": 72},
+            },
+            indent=2,
+        ).encode()
         entity = Entity(content=content, shape="application/json")
 
         entity_id, record, cek = protocol.commit(entity, alice, n=8, k=4)
@@ -80,6 +87,7 @@ class TestTransfers:
 # Security: unauthorized receiver
 # ---------------------------------------------------------------------------
 
+
 class TestUnauthorizedReceiver:
     def test_wrong_receiver_cannot_materialize(self, protocol, alice, bob, eve):
         content = b"confidential"
@@ -118,6 +126,7 @@ class TestUnauthorizedReceiver:
 # ---------------------------------------------------------------------------
 # Degraded materialization (availability guarantee)
 # ---------------------------------------------------------------------------
+
 
 class TestDegradedMaterialization:
     def test_reconstruct_from_non_sequential_shards(self, protocol, network, alice, bob):
@@ -170,6 +179,7 @@ class TestDegradedMaterialization:
 # Regional failure resilience
 # ---------------------------------------------------------------------------
 
+
 class TestRegionalFailure:
     def test_survives_single_region_failure(self, protocol, network, alice, bob):
         content = b"survives regional outage"
@@ -180,8 +190,7 @@ class TestRegionalFailure:
         regions = sorted(set(nd.region for nd in network.nodes))
         for region in regions:
             avail = network.availability_under_region_failure(entity_id, 8, 4, region)
-            assert avail["can_reconstruct"] is True, \
-                f"Cannot reconstruct after {region} failure"
+            assert avail["can_reconstruct"] is True, f"Cannot reconstruct after {region} failure"
 
     def test_live_region_failure_materialization(self, protocol, network, alice, bob):
         content = b"live failure test"

@@ -17,6 +17,7 @@ from typing import Any, Callable
 
 class EventType(Enum):
     """Categories of simulation events."""
+
     SHARD_STORE = auto()
     SHARD_FETCH = auto()
     SHARD_RESPONSE = auto()
@@ -45,6 +46,7 @@ class Event:
     Events are ordered by (time, sequence) to ensure deterministic
     processing when multiple events share the same timestamp.
     """
+
     time: float
     sequence: int = field(compare=True)
     event_type: EventType = field(compare=False)
@@ -89,9 +91,7 @@ class SimClock:
     def advance_to(self, time: float) -> None:
         """Advance the clock to the given time. Must be >= current time."""
         if time < self._now:
-            raise ValueError(
-                f"Cannot move clock backward: {time} < {self._now}"
-            )
+            raise ValueError(f"Cannot move clock backward: {time} < {self._now}")
         self._now = time
         self._ticks += 1
 

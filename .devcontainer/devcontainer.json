@@ -1,0 +1,28 @@
+{
+  "name": "LTP — Lattice Transfer Protocol",
+  "build": { "dockerfile": "Dockerfile" },
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" },
+    "ghcr.io/devcontainers/features/common-utils:2": {}
+  },
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "ms-python.python",
+        "ms-python.mypy-type-checker",
+        "NomicFoundation.hardhat-solidity",
+        "tamasfe.even-better-toml",
+        "skellock.just"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "editor.formatOnSave": true,
+        "[python]": { "editor.defaultFormatter": "charliermarsh.ruff" },
+        "[solidity]": { "editor.defaultFormatter": "NomicFoundation.hardhat-solidity" }
+      }
+    }
+  }
+}

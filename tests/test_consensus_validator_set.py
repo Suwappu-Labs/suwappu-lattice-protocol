@@ -130,8 +130,12 @@ class TestValidatorSet:
 
     def test_from_roster_empty_roster(self):
         roster = CommitteeRoster(
-            vm_tag=1, epoch=1, active_members=[], standby_members=[],
-            formed_at=0, formation_round=0,
+            vm_tag=1,
+            epoch=1,
+            active_members=[],
+            standby_members=[],
+            formed_at=0,
+            formation_round=0,
         )
         vs = ValidatorSet.from_roster(roster)
         assert vs.size == 0

@@ -14,19 +14,27 @@ Also validates:
 """
 
 import struct
+
 import pytest
 
 from src.ltp import (
-    KeyPair, CommitmentRecord, CommitmentNetwork, LTPProtocol, Entity, reset_poc_state,
+    CommitmentNetwork,
+    CommitmentRecord,
+    Entity,
+    KeyPair,
+    LTPProtocol,
+    reset_poc_state,
+)
+from src.ltp.anchor import AnchorSubmission
+from src.ltp.domain import (
+    _ALL_TAGS,
+    DOMAIN_COMMIT_RECORD,
+    DOMAIN_STH_SIGN,
+    signer_fingerprint,
 )
 from src.ltp.encoding import CanonicalEncoder
-from src.ltp.domain import (
-    DOMAIN_COMMIT_RECORD, DOMAIN_STH_SIGN,
-    _ALL_TAGS, signer_fingerprint,
-)
-from src.ltp.primitives import canonical_hash, canonical_hash_bytes
 from src.ltp.merkle_log.portable_proof import TreeType
-from src.ltp.anchor import AnchorSubmission
+from src.ltp.primitives import canonical_hash, canonical_hash_bytes
 from src.ltp.receipt import ApprovalReceipt
 
 
@@ -56,6 +64,7 @@ def committed(alice):
 
 # ── Audit Issue #8: sorted_map vs signable_payload ────────────────────────
 
+
 class TestSortedMapVsSignablePayload:
     """Audit Issue #8: sorted_map key ordering matches signable_payload."""
 
@@ -84,10 +93,10 @@ class TestSortedMapVsSignablePayload:
 
         # Confirm the key encoding (length-prefix format) is identical per entry
         for k in ep:
-            kb = k.encode('utf-8')
-            legacy_encoded  = struct.pack('>I', len(kb)) + kb
+            kb = k.encode("utf-8")
+            legacy_encoded = struct.pack(">I", len(kb)) + kb
             # CanonicalEncoder.string() produces the same format
-            canonical_encoded = struct.pack('>I', len(kb)) + kb
+            canonical_encoded = struct.pack(">I", len(kb)) + kb
             assert legacy_encoded == canonical_encoded, (
                 f"Key '{k}' encodes differently between paths"
             )
@@ -99,9 +108,7 @@ class TestSortedMapVsSignablePayload:
         enc = CanonicalEncoder(b"t\x00").sorted_map({k: "v" for k in keys})
         result = enc.finalize()
         # Rebuild expected with sorted order
-        expected = CanonicalEncoder(b"t\x00").sorted_map(
-            {k: "v" for k in sorted_keys}
-        ).finalize()
+        expected = CanonicalEncoder(b"t\x00").sorted_map({k: "v" for k in sorted_keys}).finalize()
         assert result == expected
 
     def test_encoding_params_round_trip(self, committed):
@@ -134,32 +141,39 @@ class TestSortedMapVsSignablePayload:
 
         # Both contain the same key strings (just differently framed)
         for k in ep:
-            kb = k.encode('utf-8')
+            kb = k.encode("utf-8")
             assert kb in sp1, f"Key '{k}' missing from signable_payload"
             assert kb in cb1, f"Key '{k}' missing from canonical_bytes"
 
 
 # ── Encoding path divergence (expected) ───────────────────────────────────
 
+
 class TestEncodingPathDivergence:
     """Legacy and canonical paths diverge in known, controlled ways."""
 
     def test_signable_payload_has_legacy_tag(self):
         record = CommitmentRecord(
-            entity_id="a" * 64, sender_id="alice",
-            shard_map_root="b" * 64, content_hash="c" * 64,
+            entity_id="a" * 64,
+            sender_id="alice",
+            shard_map_root="b" * 64,
+            content_hash="c" * 64,
             encoding_params={"n": "8", "k": "4"},
-            shape="text/plain", shape_hash="d" * 64,
+            shape="text/plain",
+            shape_hash="d" * 64,
             timestamp=1234567890.0,
         )
         assert record.signable_payload().startswith(b"LTP-COMMIT-v1\x00")
 
     def test_canonical_bytes_has_new_tag(self):
         record = CommitmentRecord(
-            entity_id="a" * 64, sender_id="alice",
-            shard_map_root="b" * 64, content_hash="c" * 64,
+            entity_id="a" * 64,
+            sender_id="alice",
+            shard_map_root="b" * 64,
+            content_hash="c" * 64,
             encoding_params={"n": "8", "k": "4"},
-            shape="text/plain", shape_hash="d" * 64,
+            shape="text/plain",
+            shape_hash="d" * 64,
             timestamp=1234567890.0,
         )
         assert record.canonical_bytes().startswith(b"GSX-LTP:commit-record:v1\x00")
@@ -167,18 +181,26 @@ class TestEncodingPathDivergence:
     def test_signable_payload_excludes_ttl_epochs(self):
         """signable_payload() omits ttl_epochs; canonical_bytes() includes it."""
         r1 = CommitmentRecord(
-            entity_id="a" * 64, sender_id="alice",
-            shard_map_root="b" * 64, content_hash="c" * 64,
+            entity_id="a" * 64,
+            sender_id="alice",
+            shard_map_root="b" * 64,
+            content_hash="c" * 64,
             encoding_params={"n": "8", "k": "4"},
-            shape="text/plain", shape_hash="d" * 64,
-            timestamp=1234567890.0, ttl_epochs=None,
+            shape="text/plain",
+            shape_hash="d" * 64,
+            timestamp=1234567890.0,
+            ttl_epochs=None,
         )
         r2 = CommitmentRecord(
-            entity_id="a" * 64, sender_id="alice",
-            shard_map_root="b" * 64, content_hash="c" * 64,
+            entity_id="a" * 64,
+            sender_id="alice",
+            shard_map_root="b" * 64,
+            content_hash="c" * 64,
             encoding_params={"n": "8", "k": "4"},
-            shape="text/plain", shape_hash="d" * 64,
-            timestamp=1234567890.0, ttl_epochs=100,
+            shape="text/plain",
+            shape_hash="d" * 64,
+            timestamp=1234567890.0,
+            ttl_epochs=100,
         )
         # signable_payload doesn't include ttl_epochs → same bytes
         assert r1.signable_payload() == r2.signable_payload()
@@ -188,10 +210,13 @@ class TestEncodingPathDivergence:
     def test_canonical_record_bytes_longer_than_canonical_bytes(self):
         """canonical_record_bytes includes sig + predecessor → always longer."""
         record = CommitmentRecord(
-            entity_id="a" * 64, sender_id="alice",
-            shard_map_root="b" * 64, content_hash="c" * 64,
+            entity_id="a" * 64,
+            sender_id="alice",
+            shard_map_root="b" * 64,
+            content_hash="c" * 64,
             encoding_params={"n": "8", "k": "4"},
-            shape="text/plain", shape_hash="d" * 64,
+            shape="text/plain",
+            shape_hash="d" * 64,
             timestamp=1234567890.0,
             signature=b"\x00" * 3309,
         )
@@ -199,12 +224,14 @@ class TestEncodingPathDivergence:
 
     def test_sth_canonical_bytes_has_new_tag(self, alice):
         from src.ltp.merkle_log.sth import SignedTreeHead
+
         sth = SignedTreeHead.sign(1, 5, b"\xab" * 32, alice.vk, alice.sk)
-        assert sth.signable_payload()[:4] == struct.pack('>Q', 1)[:4]  # Legacy: raw fields
+        assert sth.signable_payload()[:4] == struct.pack(">Q", 1)[:4]  # Legacy: raw fields
         assert sth.canonical_bytes().startswith(b"GSX-LTP:sth-sign:v1\x00")
 
 
 # ── Key fingerprint consistency ────────────────────────────────────────────
+
 
 class TestFingerprintConsistency:
     """signer_fingerprint must equal canonical_hash_bytes(vk)."""
@@ -216,10 +243,13 @@ class TestFingerprintConsistency:
 
     def test_fingerprint_in_envelope_matches_vk(self, alice):
         from src.ltp.envelope import SignedEnvelope
+
         env = SignedEnvelope.create(
             domain=DOMAIN_COMMIT_RECORD,
-            signer_vk=alice.vk, signer_sk=alice.sk,
-            signer_id="alice", payload_type="test",
+            signer_vk=alice.vk,
+            signer_sk=alice.sk,
+            signer_id="alice",
+            payload_type="test",
             payload=b"p",
         )
         assert env.signer_kid == signer_fingerprint(alice.vk)
@@ -228,9 +258,13 @@ class TestFingerprintConsistency:
     def test_fingerprint_in_receipt_matches_vk(self, alice, committed):
         eid, record, sth, net = committed
         receipt = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=0,
+            target_chain_id="base-testnet",
         )
         # signer_vk in receipt is alice's VK
         assert receipt.signer_vk == alice.vk
@@ -238,9 +272,13 @@ class TestFingerprintConsistency:
     def test_fingerprint_in_anchor_submission_matches(self, alice, committed):
         eid, record, sth, net = committed
         receipt = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=0,
+            target_chain_id="base-testnet",
         )
         sub = AnchorSubmission.from_receipt(
             receipt=receipt,
@@ -253,15 +291,20 @@ class TestFingerprintConsistency:
 
 # ── Anchor digest consistency ──────────────────────────────────────────────
 
+
 class TestAnchorDigestConsistency:
     """anchor_digest in receipt must match AnchorSubmission."""
 
     def test_anchor_digest_consistent_with_submission(self, alice, committed):
         eid, record, sth, net = committed
         receipt = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=0,
+            target_chain_id="base-testnet",
         )
         sub = AnchorSubmission.from_receipt(
             receipt=receipt,
@@ -273,9 +316,13 @@ class TestAnchorDigestConsistency:
     def test_anchor_digest_in_calldata(self, alice, committed):
         eid, record, sth, net = committed
         receipt = ApprovalReceipt.for_commit(
-            entity_id=eid, record=record, sth=sth,
-            signer_kp=alice, signer_role="operator",
-            sequence=0, target_chain_id="base-testnet",
+            entity_id=eid,
+            record=record,
+            sth=sth,
+            signer_kp=alice,
+            signer_role="operator",
+            sequence=0,
+            target_chain_id="base-testnet",
         )
         sub = AnchorSubmission.from_receipt(
             receipt=receipt,
@@ -288,6 +335,7 @@ class TestAnchorDigestConsistency:
 
 
 # ── PortableMerkleProof round-trip ────────────────────────────────────────
+
 
 class TestPortableMerkleProofRoundTrip:
     """to_portable() must produce a proof that verifies independently."""
@@ -324,6 +372,7 @@ class TestPortableMerkleProofRoundTrip:
 
 # ── Domain tag stability ───────────────────────────────────────────────────
 
+
 class TestDomainTagStability:
     """Domain tags must be byte-stable (not computed dynamically)."""
 
@@ -342,7 +391,9 @@ class TestDomainTagStability:
     def test_tags_stable_on_reimport(self):
         """Reimporting domain module returns identical bytes."""
         import importlib
+
         import src.ltp.domain as domain_mod
+
         importlib.reload(domain_mod)
         assert domain_mod.DOMAIN_COMMIT_RECORD == DOMAIN_COMMIT_RECORD
         assert domain_mod.DOMAIN_STH_SIGN == DOMAIN_STH_SIGN

@@ -11,22 +11,21 @@ Covers:
 from __future__ import annotations
 
 import pytest
-from hypothesis import given, assume, settings
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
+from src.ltp.execution.types import OperationType, infer_operation_type
 from src.ltp.execution.writer import (
-    WriterState,
     VALID_WRITER_TRANSITIONS,
+    WriterState,
     validate_writer_transition,
 )
-from src.ltp.execution.types import OperationType, infer_operation_type
+from src.ltp.execution.writer_epoch import EpochTracker
+from src.ltp.execution.writer_policy import VMWriterPolicy
 from src.ltp.execution.writer_recovery import (
     PolicySnapshotStore,
     RecoveryQuorum,
 )
-from src.ltp.execution.writer_policy import VMWriterPolicy
-from src.ltp.execution.writer_epoch import EpochTracker
-
 
 # ---------------------------------------------------------------------------
 # Strategies
@@ -44,8 +43,8 @@ epochs = st.integers(min_value=1, max_value=10_000)
 # Writer state machine properties
 # ---------------------------------------------------------------------------
 
-class TestWriterTransitionProperties:
 
+class TestWriterTransitionProperties:
     @given(src=writer_states, dst=writer_states)
     def test_valid_transitions_match_set(self, src, dst):
         """validate_writer_transition agrees with VALID_WRITER_TRANSITIONS."""
@@ -77,8 +76,8 @@ class TestWriterTransitionProperties:
 # Operation type inference properties
 # ---------------------------------------------------------------------------
 
-class TestOperationTypeInferenceProperties:
 
+class TestOperationTypeInferenceProperties:
     @given(byte=st.integers(min_value=0, max_value=4))
     def test_known_bytes_never_return_wrong_type(self, byte):
         """All 5 known op-type bytes map to the correct OperationType."""
@@ -109,8 +108,8 @@ class TestOperationTypeInferenceProperties:
 # PolicySnapshotStore properties
 # ---------------------------------------------------------------------------
 
-class TestPolicySnapshotProperties:
 
+class TestPolicySnapshotProperties:
     @given(n=st.integers(min_value=1, max_value=20))
     def test_versions_are_monotonically_increasing(self, n):
         """snapshot() returns strictly incrementing version numbers."""
@@ -147,10 +146,12 @@ class TestPolicySnapshotProperties:
 # RecoveryQuorum properties
 # ---------------------------------------------------------------------------
 
-class TestRecoveryQuorumProperties:
 
-    @given(n_keys=st.integers(min_value=1, max_value=10),
-           threshold=st.integers(min_value=1, max_value=10))
+class TestRecoveryQuorumProperties:
+    @given(
+        n_keys=st.integers(min_value=1, max_value=10),
+        threshold=st.integers(min_value=1, max_value=10),
+    )
     def test_quorum_needs_threshold_unique_votes(self, n_keys, threshold):
         """Quorum is met iff >= threshold unique votes are collected."""
         assume(threshold <= n_keys)
@@ -187,8 +188,8 @@ class TestRecoveryQuorumProperties:
 # EpochTracker properties
 # ---------------------------------------------------------------------------
 
-class TestEpochTrackerProperties:
 
+class TestEpochTrackerProperties:
     @given(n=st.integers(min_value=1, max_value=50))
     def test_tx_count_equals_increment_calls(self, n):
         """get_tx_count returns exactly the number of increment() calls."""

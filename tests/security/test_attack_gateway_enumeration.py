@@ -60,7 +60,7 @@ def test_internal_error_response_is_redacted():
     # And the exception variable name must NOT appear inside the JSON body.
     # This is a structural check: the response builder must not f-string the exc.
     # If a future refactor breaks this, the test will fail visibly.
-    assert "JSONResponse({\"error\": str(exc)" not in src
+    assert 'JSONResponse({"error": str(exc)' not in src
     assert "JSONResponse({'error': str(exc)" not in src
 
 

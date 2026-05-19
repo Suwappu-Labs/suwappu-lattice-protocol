@@ -4,19 +4,19 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
+from ..consensus.events import ConsensusEvent, ConsensusEventType
 from .batch_executor import BatchExecutor
-from .state_attestor import StateAttestor, AttestationResult
-from .execution_monitor import ExecutionMonitor
 from .execution_config import ExecutionConfig
 from .execution_events import ExecutionEvent, ExecutionEventType
-from ..consensus.events import ConsensusEvent, ConsensusEventType
+from .execution_monitor import ExecutionMonitor
+from .state_attestor import AttestationResult, StateAttestor
 
 if TYPE_CHECKING:
+    from .attestation import AttestationEngine
     from .consensus import ConsensusAdapter
     from .router import TransactionRouter
-    from .attestation import AttestationEngine
     from .types import OrderedBatch
 
 __all__ = ["RoundResult", "NodeExecutor"]
@@ -50,7 +50,9 @@ class NodeExecutor:
         self._config = config or ExecutionConfig()
         self._batch_executor = BatchExecutor(router)
         self._state_attestor = StateAttestor(
-            attestation_engine, committee_manager, self._config,
+            attestation_engine,
+            committee_manager,
+            self._config,
         )
         self._monitor = ExecutionMonitor(self._config)
         self._results: list[RoundResult] = []

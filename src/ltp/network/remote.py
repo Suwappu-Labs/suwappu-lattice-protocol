@@ -106,12 +106,15 @@ class RemoteNode:
     def record_offense(self, offense_type: str, weight: float = 1.0, now=None):
         """Record offense locally (remote node doesn't need to know)."""
         import time as _time
+
         now = now or _time.time()
-        self.offense_history.append({
-            "type": offense_type,
-            "weight": weight,
-            "timestamp": now,
-        })
+        self.offense_history.append(
+            {
+                "type": offense_type,
+                "weight": weight,
+                "timestamp": now,
+            }
+        )
 
     def deposit_stake(self, amount: float, now=None) -> bool:
         """Stub — staking is local."""

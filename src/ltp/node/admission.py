@@ -39,41 +39,44 @@ logger = logging.getLogger(__name__)
 
 class AdmissionState(Enum):
     """Node admission lifecycle states."""
-    APPLYING  = "applying"     # Application submitted, awaiting endorsements
-    ENDORSED  = "endorsed"     # Received m-of-n endorsements
-    ADMITTED  = "admitted"     # Stake deposited, ready to activate
-    ACTIVE    = "active"       # Operating in the network
-    SUSPENDED = "suspended"    # Temporarily suspended (audit failure)
-    EVICTED   = "evicted"      # Permanently removed
+
+    APPLYING = "applying"  # Application submitted, awaiting endorsements
+    ENDORSED = "endorsed"  # Received m-of-n endorsements
+    ADMITTED = "admitted"  # Stake deposited, ready to activate
+    ACTIVE = "active"  # Operating in the network
+    SUSPENDED = "suspended"  # Temporarily suspended (audit failure)
+    EVICTED = "evicted"  # Permanently removed
 
 
 class InvalidAdmissionTransition(Exception):
     """Raised when an illegal admission state transition is attempted."""
+
     def __init__(self, current: AdmissionState, target: AdmissionState):
-        super().__init__(
-            f"Invalid admission transition: {current.value} -> {target.value}"
-        )
+        super().__init__(f"Invalid admission transition: {current.value} -> {target.value}")
         self.current = current
         self.target = target
 
 
-_VALID_ADMISSION_TRANSITIONS: frozenset[tuple[AdmissionState, AdmissionState]] = frozenset({
-    (AdmissionState.APPLYING, AdmissionState.ENDORSED),
-    (AdmissionState.ENDORSED, AdmissionState.ADMITTED),
-    (AdmissionState.ADMITTED, AdmissionState.ACTIVE),
-    (AdmissionState.ACTIVE, AdmissionState.SUSPENDED),
-    (AdmissionState.SUSPENDED, AdmissionState.ACTIVE),
-    (AdmissionState.ACTIVE, AdmissionState.EVICTED),
-    (AdmissionState.SUSPENDED, AdmissionState.EVICTED),
-})
+_VALID_ADMISSION_TRANSITIONS: frozenset[tuple[AdmissionState, AdmissionState]] = frozenset(
+    {
+        (AdmissionState.APPLYING, AdmissionState.ENDORSED),
+        (AdmissionState.ENDORSED, AdmissionState.ADMITTED),
+        (AdmissionState.ADMITTED, AdmissionState.ACTIVE),
+        (AdmissionState.ACTIVE, AdmissionState.SUSPENDED),
+        (AdmissionState.SUSPENDED, AdmissionState.ACTIVE),
+        (AdmissionState.ACTIVE, AdmissionState.EVICTED),
+        (AdmissionState.SUSPENDED, AdmissionState.EVICTED),
+    }
+)
 
 
 @dataclass
 class EndorsementVote:
     """A single operator's endorsement of a node application."""
-    endorser_vk_hash: str       # H(endorser.vk)
+
+    endorser_vk_hash: str  # H(endorser.vk)
     applicant_node_id: str
-    signature: bytes            # domain_sign(DOMAIN_NODE_ENDORSEMENT, endorser.sk, payload)
+    signature: bytes  # domain_sign(DOMAIN_NODE_ENDORSEMENT, endorser.sk, payload)
     timestamp: float
     endorser_label: str = ""
 
@@ -81,13 +84,14 @@ class EndorsementVote:
 @dataclass
 class AdmissionRecord:
     """Tracks a node's admission lifecycle."""
+
     node_id: str
-    applicant_vk_hash: str      # H(applicant.vk)
+    applicant_vk_hash: str  # H(applicant.vk)
     state: AdmissionState
     applied_at: float
     endorsements: list[EndorsementVote] = field(default_factory=list)
-    required_endorsements: int = 2   # m (threshold)
-    total_operators: int = 3         # n (pool size)
+    required_endorsements: int = 2  # m (threshold)
+    total_operators: int = 3  # n (pool size)
     admitted_at: float = 0.0
     activated_at: float = 0.0
     suspended_at: float = 0.0
@@ -100,11 +104,7 @@ def create_endorsement(endorser_keypair, applicant_node_id: str) -> EndorsementV
     The endorsement payload is domain-separated with DOMAIN_NODE_ENDORSEMENT
     to prevent cross-domain signature replay.
     """
-    payload = (
-        DOMAIN_NODE_ENDORSEMENT
-        + applicant_node_id.encode()
-        + endorser_keypair.vk
-    )
+    payload = DOMAIN_NODE_ENDORSEMENT + applicant_node_id.encode() + endorser_keypair.vk
     sig = endorser_keypair.sign(payload)
     return EndorsementVote(
         endorser_vk_hash=canonical_hash(endorser_keypair.vk),
@@ -117,11 +117,7 @@ def create_endorsement(endorser_keypair, applicant_node_id: str) -> EndorsementV
 
 def verify_endorsement(vote: EndorsementVote, endorser_vk: bytes) -> bool:
     """Verify an endorsement signature against the endorser's VK."""
-    payload = (
-        DOMAIN_NODE_ENDORSEMENT
-        + vote.applicant_node_id.encode()
-        + endorser_vk
-    )
+    payload = DOMAIN_NODE_ENDORSEMENT + vote.applicant_node_id.encode() + endorser_vk
     return MLDSA.verify(endorser_vk, payload, vote.signature)
 
 
@@ -188,7 +184,9 @@ class NodeAdmissionManager:
             return self._snapshot(rec)
 
     def endorse(
-        self, node_id: str, vote: EndorsementVote,
+        self,
+        node_id: str,
+        vote: EndorsementVote,
         endorser_vk: Optional[bytes] = None,
     ) -> AdmissionRecord:
         """Add an endorsement vote. Auto-transitions to ENDORSED when m reached.
@@ -218,14 +216,20 @@ class NodeAdmissionManager:
             rec.endorsements.append(vote)
             logger.info(
                 "Endorsement received for %s: %d/%d",
-                node_id, len(rec.endorsements), rec.required_endorsements,
+                node_id,
+                len(rec.endorsements),
+                rec.required_endorsements,
             )
 
             # Auto-transition to ENDORSED when threshold reached
             if len(rec.endorsements) >= rec.required_endorsements:
                 rec.state = AdmissionState.ENDORSED
-                logger.info("Node %s reached endorsement threshold (%d-of-%d)",
-                           node_id, rec.required_endorsements, rec.total_operators)
+                logger.info(
+                    "Node %s reached endorsement threshold (%d-of-%d)",
+                    node_id,
+                    rec.required_endorsements,
+                    rec.total_operators,
+                )
 
             return self._snapshot(rec)
 
@@ -297,11 +301,7 @@ class NodeAdmissionManager:
     def get_by_state(self, state: AdmissionState) -> list[AdmissionRecord]:
         """Return snapshot copies of all records matching state."""
         with self._lock:
-            return [
-                self._snapshot(r)
-                for r in self._records.values()
-                if r.state is state
-            ]
+            return [self._snapshot(r) for r in self._records.values() if r.state is state]
 
     @property
     def m(self) -> int:

@@ -9,7 +9,7 @@ import time
 
 import pytest
 
-from src.ltp.domain import DOMAIN_PEER_GOSSIP, _ALL_TAGS, signer_fingerprint
+from src.ltp.domain import _ALL_TAGS, DOMAIN_PEER_GOSSIP, signer_fingerprint
 from src.ltp.keypair import KeyPair
 from src.ltp.node.gossip import (
     GossipConfig,
@@ -20,10 +20,10 @@ from src.ltp.node.gossip import (
 )
 from src.ltp.node.peer_manager import PeerManager, PeerState
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def alice():
@@ -62,7 +62,6 @@ def gossip(peer_manager, alice):
 
 
 class TestDomainTag:
-
     def test_peer_gossip_tag_registered(self):
         assert "DOMAIN_PEER_GOSSIP" in _ALL_TAGS
         assert _ALL_TAGS["DOMAIN_PEER_GOSSIP"] == b"GSX-LTP:peer-gossip:v1\x00"
@@ -74,7 +73,6 @@ class TestDomainTag:
 
 
 class TestPeerAnnouncement:
-
     def test_roundtrip(self):
         ann = PeerAnnouncement(
             node_id="node-1",
@@ -102,7 +100,6 @@ class TestPeerAnnouncement:
 
 
 class TestPeerExchangeMessage:
-
     def test_roundtrip_empty(self):
         msg = PeerExchangeMessage(sender_id="sender-1", timestamp=1234567890.5, peers=[])
         data = msg.to_bytes()
@@ -151,7 +148,6 @@ class TestPeerExchangeMessage:
 
 
 class TestBuildExchangeMessage:
-
     def test_builds_from_connected_peers(self, gossip, peer_manager, bob):
         peer_manager.mark_connected("bob-node", bob.vk, "10.0.1.2:50051", "EU")
         msg = gossip.build_exchange_message()
@@ -191,7 +187,6 @@ class TestBuildExchangeMessage:
 
 
 class TestHandlePeerExchange:
-
     def test_discovers_new_peers(self, gossip, peer_manager, bob):
         msg = PeerExchangeMessage(
             sender_id="bob-node",
@@ -269,8 +264,7 @@ class TestHandlePeerExchange:
     def test_enforces_max_peers(self, gossip, bob):
         """Even if message has 50 peers, only max_peers are processed."""
         peers = [
-            PeerAnnouncement(f"node-{i}", f"10.0.{i}.1:50051", "X", "aa" * 32)
-            for i in range(50)
+            PeerAnnouncement(f"node-{i}", f"10.0.{i}.1:50051", "X", "aa" * 32) for i in range(50)
         ]
         msg = PeerExchangeMessage(sender_id="bob-node", timestamp=time.time(), peers=peers)
         sig = msg.sign(bob.sk)
@@ -308,7 +302,6 @@ class TestHandlePeerExchange:
 
 
 class TestLiveness:
-
     def test_stale_peer_marked_disconnected(self, peer_manager, alice, bob):
         peer_manager.mark_connected("bob-node", bob.vk, "10.0.1.2:50051", "EU")
         # Set last_seen to 200 seconds ago
@@ -367,7 +360,6 @@ class TestLiveness:
 
 
 class TestGossipLifecycle:
-
     def test_tick_increments_epoch(self, gossip):
         assert gossip.epoch == 0
         gossip.tick()
@@ -405,7 +397,6 @@ class TestGossipLifecycle:
 
 
 class TestPeerManagerExtensions:
-
     def test_update_last_seen(self):
         pm = PeerManager()
         kp = KeyPair.generate("test")
@@ -413,6 +404,7 @@ class TestPeerManagerExtensions:
         old_ts = pm.get_peer_by_id("node-1").last_seen
 
         import time as t
+
         t.sleep(0.01)
         pm.update_last_seen("node-1")
         new_ts = pm.get_peer_by_id("node-1").last_seen

@@ -24,6 +24,7 @@ Defenses pinned:
     GR3  Concurrent streams capped at 100
     GR4  Thread pool capped at 10 by default
 """
+
 from __future__ import annotations
 
 import inspect
@@ -37,8 +38,7 @@ pytest.importorskip("grpc", reason="grpc not available")
 try:
     from ltp.network import server as _server_module
 except Exception as exc:  # pragma: no cover
-    pytest.skip(f"ltp.network.server import failed: {exc}",
-                allow_module_level=True)
+    pytest.skip(f"ltp.network.server import failed: {exc}", allow_module_level=True)
 
 
 # ---------------------------------------------------------------------------
@@ -59,21 +59,20 @@ def _server_source() -> str:
 
 def test_GR1_max_receive_message_length_present():
     src = _server_source()
-    assert "grpc.max_receive_message_length" in src, \
+    assert "grpc.max_receive_message_length" in src, (
         "server must configure max_receive_message_length to prevent OOM"
+    )
 
 
 def test_GR2_max_send_message_length_present():
     src = _server_source()
-    assert "grpc.max_send_message_length" in src, \
-        "server must configure max_send_message_length"
+    assert "grpc.max_send_message_length" in src, "server must configure max_send_message_length"
 
 
 def test_GR1_GR2_message_caps_at_4_mib():
     """Audit-tier check: the cap should be 4 MiB (4 * 1024 * 1024)."""
     src = _server_source()
-    assert "4 * 1024 * 1024" in src, \
-        "message-size cap should be 4 MiB (4 * 1024 * 1024)"
+    assert "4 * 1024 * 1024" in src, "message-size cap should be 4 MiB (4 * 1024 * 1024)"
 
 
 # ---------------------------------------------------------------------------
@@ -83,8 +82,7 @@ def test_GR1_GR2_message_caps_at_4_mib():
 
 def test_GR3_max_concurrent_streams_present():
     src = _server_source()
-    assert "grpc.max_concurrent_streams" in src, \
-        "server must cap concurrent streams"
+    assert "grpc.max_concurrent_streams" in src, "server must cap concurrent streams"
 
 
 def test_GR3_concurrent_streams_finite_and_low():
@@ -92,9 +90,9 @@ def test_GR3_concurrent_streams_finite_and_low():
     # Look for the option being set to a small constant.
     # The current value is 100; we assert the option is paired with
     # an integer literal somewhere in the file.
-    assert '("grpc.max_concurrent_streams", 100)' in src \
-        or '"grpc.max_concurrent_streams", 100' in src, \
-        "concurrent-streams cap should be a small constant (current: 100)"
+    assert (
+        '("grpc.max_concurrent_streams", 100)' in src or '"grpc.max_concurrent_streams", 100' in src
+    ), "concurrent-streams cap should be a small constant (current: 100)"
 
 
 # ---------------------------------------------------------------------------
@@ -106,9 +104,9 @@ def test_GR4_thread_pool_default_capped():
     """The default max_workers should be a small constant, not unbounded."""
     src = _server_source()
     # The signature defines max_workers: int = 10
-    assert "max_workers: int = 10" in src \
-        or "max_workers=10" in src, \
+    assert "max_workers: int = 10" in src or "max_workers=10" in src, (
         "thread-pool default should be a small constant (current: 10)"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -121,5 +119,4 @@ def test_GR_options_passed_to_grpc_server():
     in scope and forgotten. A simple text-search verifies."""
     src = _server_source()
     assert "grpc.server(" in src, "server must call grpc.server()"
-    assert "ThreadPoolExecutor" in src, \
-        "server must use bounded ThreadPoolExecutor"
+    assert "ThreadPoolExecutor" in src, "server must use bounded ThreadPoolExecutor"

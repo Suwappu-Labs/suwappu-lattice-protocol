@@ -17,7 +17,6 @@ from ltp.corridor import (
     hash_anchor_keccak256,
 )
 
-
 CHAIN_ID = 103_115_120
 HEIGHT = 0
 STATE_ROOT = bytes([7] * 32)
@@ -39,6 +38,7 @@ BLAKE3_HASH_HEX = "d580aced8d776279d779598553385855dbd8f115d5db2b86aa2c0012c792f
 def _blake3_available() -> bool:
     try:
         import blake3  # noqa: F401
+
         return True
     except ImportError:
         return False

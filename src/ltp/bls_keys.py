@@ -21,7 +21,6 @@ from .bls import BLS
 from .keypair import KeyState
 from .primitives import canonical_hash_bytes
 
-
 __all__ = [
     "BLSKeyPair",
     "BLSIdentity",
@@ -56,11 +55,12 @@ class BLSIdentity:
     of how the key was produced. The sk_accessor is callable to support
     HSM-backed keys where the signing key never leaves the secure element.
     """
-    pk: bytes              # 48-byte compressed G1 public key
+
+    pk: bytes  # 48-byte compressed G1 public key
     sk_accessor: Callable  # Returns sk bytes when called
-    fingerprint: bytes     # 32-byte SHA3 identity
-    mode: str              # "composite" | "standalone" | "derived"
-    label: str             # Human-readable label
+    fingerprint: bytes  # 32-byte SHA3 identity
+    mode: str  # "composite" | "standalone" | "derived"
+    label: str  # Human-readable label
 
 
 @dataclass
@@ -69,6 +69,7 @@ class BLSKeyPair:
 
     For Mode 1 (composite), see KeyPair.generate(with_bls=True) in keypair.py.
     """
+
     pk: bytes
     sk: bytes
     label: str = ""
@@ -105,9 +106,11 @@ class BLSKeyPair:
         okm = hmac.new(prk, info, hashlib.sha3_256).digest()
 
         # Reduce to valid BLS scalar range
-        from .bls import _py_ecc_bls_available, _blst_available
+        from .bls import _blst_available, _py_ecc_bls_available
+
         if _py_ecc_bls_available:
             from py_ecc.optimized_bls12_381 import curve_order
+
             sk_int = int.from_bytes(okm, "big") % (curve_order - 1) + 1
             sk_bytes = sk_int.to_bytes(BLS.SK_SIZE, "big")
         else:
@@ -117,11 +120,13 @@ class BLSKeyPair:
         # Derive pk from sk using the BLS backend
         if _blst_available:
             import blst as _blst_mod
+
             secret = _blst_mod.SecretKey()
             secret.from_bytes(sk_bytes)
             pk = bytes(_blst_mod.P1(secret).compress())
         elif _py_ecc_bls_available:
             from py_ecc.bls import G2ProofOfPossession as _bls
+
             pk = bytes(_bls.SkToPk(sk_int))
         else:
             raise RuntimeError("No BLS backend available for key derivation")

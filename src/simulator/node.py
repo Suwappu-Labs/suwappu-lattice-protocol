@@ -20,6 +20,7 @@ from src.ltp.primitives import internal_hash
 @dataclass
 class StorageCapacity:
     """Storage limits for a simulation node."""
+
     max_bytes: int = 10 * 1024 * 1024 * 1024  # 10 GB default
     max_shards: int = 100_000
     used_bytes: int = 0
@@ -41,10 +42,7 @@ class StorageCapacity:
         return self.used_bytes / self.max_bytes
 
     def can_store(self, data_bytes: int) -> bool:
-        return (
-            self.used_bytes + data_bytes <= self.max_bytes
-            and self.shard_count < self.max_shards
-        )
+        return self.used_bytes + data_bytes <= self.max_bytes and self.shard_count < self.max_shards
 
     def allocate(self, data_bytes: int) -> None:
         self.used_bytes += data_bytes
@@ -128,9 +126,7 @@ class SimNode:
 
     # --- Shard operations ---
 
-    def store_shard(
-        self, entity_id: str, shard_index: int, encrypted_data: bytes
-    ) -> bool:
+    def store_shard(self, entity_id: str, shard_index: int, encrypted_data: bytes) -> bool:
         """
         Store an encrypted shard.
 
@@ -155,9 +151,7 @@ class SimNode:
         self.total_stores += 1
         return True
 
-    def fetch_shard(
-        self, entity_id: str, shard_index: int
-    ) -> Optional[bytes]:
+    def fetch_shard(self, entity_id: str, shard_index: int) -> Optional[bytes]:
         """
         Fetch an encrypted shard. Returns None if missing or offline.
         """
@@ -182,9 +176,7 @@ class SimNode:
 
     # --- Audit ---
 
-    def respond_to_audit(
-        self, entity_id: str, shard_index: int, nonce: bytes
-    ) -> Optional[str]:
+    def respond_to_audit(self, entity_id: str, shard_index: int, nonce: bytes) -> Optional[str]:
         """
         Respond to a storage proof challenge.
 
@@ -206,9 +198,7 @@ class SimNode:
         """List all (entity_id, shard_index) pairs stored on this node."""
         return list(self._shards.keys())
 
-    def copy_shard_to(
-        self, entity_id: str, shard_index: int, target: 'SimNode'
-    ) -> bool:
+    def copy_shard_to(self, entity_id: str, shard_index: int, target: "SimNode") -> bool:
         """Copy a shard to another node (for repair)."""
         data = self._shards.get((entity_id, shard_index))
         if data is None:

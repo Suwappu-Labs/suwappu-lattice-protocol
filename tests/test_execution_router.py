@@ -1,7 +1,8 @@
 """Tests for TransactionRouter — tag-based batch dispatch."""
 
 import pytest
-from src.ltp.execution.types import OrderedBatch, TxResult, StateQuery, StateResult
+
+from src.ltp.execution.types import OrderedBatch, StateQuery, StateResult, TxResult
 
 
 class FakeExecutor:
@@ -28,8 +29,12 @@ class FakeExecutor:
 
 def _make_batch(txs: list[bytes], round_num: int = 1) -> OrderedBatch:
     return OrderedBatch(
-        round=round_num, epoch=0, transactions=txs,
-        leader_authority=0, timestamp_ms=1000, consensus_type="dag",
+        round=round_num,
+        epoch=0,
+        transactions=txs,
+        leader_authority=0,
+        timestamp_ms=1000,
+        consensus_type="dag",
     )
 
 
@@ -37,6 +42,7 @@ class TestTransactionRouter:
     def _build_router(self, *executors):
         from src.ltp.execution.registry import VMRegistry
         from src.ltp.execution.router import TransactionRouter
+
         reg = VMRegistry()
         for ex in executors:
             reg.register(ex)
@@ -54,11 +60,15 @@ class TestTransactionRouter:
         evm = FakeExecutor(0x01, "evm", "account")
         move = FakeExecutor(0x10, "move", "object")
         router = self._build_router(evm, move)
-        result = router.execute_batch(_make_batch([
-            b"\x01evm_tx",
-            b"\x10move_tx",
-            b"\x01evm_tx2",
-        ]))
+        result = router.execute_batch(
+            _make_batch(
+                [
+                    b"\x01evm_tx",
+                    b"\x10move_tx",
+                    b"\x01evm_tx2",
+                ]
+            )
+        )
         assert len(result.tx_results) == 3
         assert evm.executed == [b"evm_tx", b"evm_tx2"]
         assert move.executed == [b"move_tx"]
@@ -86,13 +96,17 @@ class TestTransactionRouter:
                 self.vm_tag = tag
                 self.vm_name = name
                 self.family = family
+
             def execute(self, tx_bytes):
                 order.append((self.vm_tag, tx_bytes))
                 return TxResult.accepted()
+
             def state_root(self):
                 return b"\x00" * 32
+
             def validate_tx(self, tx_bytes):
                 return True
+
             def query_state(self, query):
                 return StateResult.not_found()
 
@@ -100,11 +114,15 @@ class TestTransactionRouter:
         move = OrderTracker(0x10, "move", "object")
         router = self._build_router(evm, move)
 
-        router.execute_batch(_make_batch([
-            b"\x10first",
-            b"\x01second",
-            b"\x10third",
-        ]))
+        router.execute_batch(
+            _make_batch(
+                [
+                    b"\x10first",
+                    b"\x01second",
+                    b"\x10third",
+                ]
+            )
+        )
         assert order == [
             (0x10, b"first"),
             (0x01, b"second"),
@@ -113,6 +131,7 @@ class TestTransactionRouter:
 
     def test_state_root_computed(self):
         from src.ltp.execution.state_root import MultiVMStateRoot
+
         evm = FakeExecutor(0x01, "evm", "account")
         move = FakeExecutor(0x10, "move", "object")
         router = self._build_router(evm, move)
@@ -127,12 +146,16 @@ class TestTransactionRouter:
             vm_tag = 0x01
             vm_name = "evm"
             family = "account"
+
             def execute(self, tx_bytes):
                 return TxResult.accepted()
+
             def state_root(self):
                 raise ConnectionError("node down")
+
             def validate_tx(self, tx_bytes):
                 return True
+
             def query_state(self, query):
                 return StateResult.not_found()
 

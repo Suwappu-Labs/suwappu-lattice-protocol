@@ -3,9 +3,9 @@
 import pytest
 
 from src.ltp.execution.batch_executor import BatchExecutor
-from src.ltp.execution.types import OrderedBatch, TxResult, BatchResult, StateResult
 from src.ltp.execution.registry import VMRegistry
 from src.ltp.execution.router import TransactionRouter
+from src.ltp.execution.types import BatchResult, OrderedBatch, StateResult, TxResult
 
 
 class FakeExecutor:
@@ -35,8 +35,12 @@ class FakeExecutor:
 
 def _make_batch(txs: list[bytes], round_num: int = 0, epoch: int = 1) -> OrderedBatch:
     return OrderedBatch(
-        round=round_num, epoch=epoch, transactions=txs,
-        leader_authority=0, timestamp_ms=round_num * 1000, consensus_type="dag",
+        round=round_num,
+        epoch=epoch,
+        transactions=txs,
+        leader_authority=0,
+        timestamp_ms=round_num * 1000,
+        consensus_type="dag",
     )
 
 
@@ -48,7 +52,6 @@ def _build_router(*executors) -> TransactionRouter:
 
 
 class TestBatchExecutorNormal:
-
     def test_delegates_to_router(self):
         evm = FakeExecutor(0x01)
         router = _build_router(evm)
@@ -98,7 +101,7 @@ class TestBatchExecutorNormal:
         evm = FakeExecutor(0x01)
         router = _build_router(evm)
         executor = BatchExecutor(router)
-        batch = _make_batch([b"\xFFbad"])
+        batch = _make_batch([b"\xffbad"])
         result = executor.execute(batch)
         assert result.tx_results[0].success is False
         assert executor.last_was_catastrophic() is False
@@ -112,7 +115,6 @@ class TestBatchExecutorNormal:
 
 
 class TestBatchExecutorCatastrophic:
-
     def test_exception_captured(self):
         evm = FakeExecutor(0x01)
         evm._should_raise = True
@@ -151,8 +153,10 @@ class TestBatchExecutorCatastrophic:
         router = _build_router(evm)
         executor = BatchExecutor(router)
         original = evm.state_root
+
         def bad_root():
             raise RuntimeError("state root unavailable")
+
         evm.state_root = bad_root
         batch = _make_batch([b"\x01tx"])
         result = executor.execute(batch)

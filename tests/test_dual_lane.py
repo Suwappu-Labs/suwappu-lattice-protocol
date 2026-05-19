@@ -12,6 +12,7 @@ Covers:
 """
 
 import os
+
 import pytest
 
 from src.ltp import Entity, LTPProtocol
@@ -19,6 +20,7 @@ from src.ltp.primitives import (
     CryptoLane,
     HashFunction,
     SecurityProfile,
+    _blake3_available,
     canonical_hash,
     canonical_hash_bytes,
     get_compliance_strict,
@@ -27,7 +29,6 @@ from src.ltp.primitives import (
     internal_hash_bytes,
     set_compliance_strict,
     set_security_profile,
-    _blake3_available,
 )
 
 
@@ -44,6 +45,7 @@ def _restore_profile():
 # ---------------------------------------------------------------------------
 # Lane isolation
 # ---------------------------------------------------------------------------
+
 
 class TestLaneIsolation:
     def test_canonical_hash_uses_sha3_prefix(self):
@@ -94,6 +96,7 @@ class TestLaneIsolation:
 # Cross-lane determinism
 # ---------------------------------------------------------------------------
 
+
 class TestCrossLaneDeterminism:
     def test_same_input_different_lanes(self):
         """Same input to both lanes should produce different outputs if algorithms differ."""
@@ -124,6 +127,7 @@ class TestCrossLaneDeterminism:
 # ---------------------------------------------------------------------------
 # Compliance strict mode
 # ---------------------------------------------------------------------------
+
 
 class TestComplianceStrictMode:
     def test_strict_mode_allows_sha3(self):
@@ -174,6 +178,7 @@ class TestComplianceStrictMode:
 # SecurityProfile dual-lane configuration
 # ---------------------------------------------------------------------------
 
+
 class TestSecurityProfileDualLane:
     def test_default_profile_canonical_sha3(self):
         p = SecurityProfile.level3()
@@ -222,6 +227,7 @@ class TestSecurityProfileDualLane:
 # CryptoLane enum
 # ---------------------------------------------------------------------------
 
+
 class TestCryptoLane:
     def test_canonical_value(self):
         assert CryptoLane.CANONICAL.value == "canonical"
@@ -236,6 +242,7 @@ class TestCryptoLane:
 # ---------------------------------------------------------------------------
 # FIPS mode forces both lanes to SHA3
 # ---------------------------------------------------------------------------
+
 
 class TestFIPSModeDualLane:
     def test_cefi_profile_both_sha3(self):
@@ -257,6 +264,7 @@ class TestFIPSModeDualLane:
 # ---------------------------------------------------------------------------
 # Full protocol round-trip with dual-lane profile
 # ---------------------------------------------------------------------------
+
 
 class TestDualLaneProtocolRoundTrip:
     def test_transfer_with_default_dual_lane(self, protocol, alice, bob):

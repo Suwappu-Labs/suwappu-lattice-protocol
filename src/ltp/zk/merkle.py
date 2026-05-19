@@ -13,7 +13,6 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
-
 _DOMAIN = b"GSX-LTP:zk-stark:v1\x00"
 _LEAF_TAG = _DOMAIN + b"stark-leaf"
 _NODE_TAG = _DOMAIN + b"stark-node"
@@ -31,6 +30,7 @@ def _hash_node(left: bytes, right: bytes) -> bytes:
 @dataclass(frozen=True)
 class MerkleProof:
     """Merkle authentication path for a single leaf."""
+
     index: int
     leaf_data: bytes
     siblings: tuple[bytes, ...]  # from leaf level to root

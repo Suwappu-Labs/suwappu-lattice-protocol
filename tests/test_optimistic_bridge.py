@@ -17,24 +17,24 @@ from unittest.mock import MagicMock
 import pytest
 
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol
-from src.ltp.bridge.fraud_proof import (
-    FraudProofType,
-    InvalidSignatureFraudProof,
-    InconsistentSTHFraudProof,
-    InvalidMerkleProofFraudProof,
-)
 from src.ltp.bridge.challenge import (
     ChallengeManager,
-    ChallengeStatus,
     ChallengeRecord,
+    ChallengeStatus,
 )
-from src.ltp.bridge.watcher import WatcherService, STHStore, WatcherTickResult
+from src.ltp.bridge.fraud_proof import (
+    FraudProofType,
+    InconsistentSTHFraudProof,
+    InvalidMerkleProofFraudProof,
+    InvalidSignatureFraudProof,
+)
+from src.ltp.bridge.watcher import STHStore, WatcherService, WatcherTickResult
 from src.ltp.primitives import MLDSA
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_sth(keypair: KeyPair, sequence: int, root_hash: bytes):
     """Create a SignedTreeHead with a real ML-DSA signature."""
@@ -79,6 +79,7 @@ def _make_bad_sth(keypair: KeyPair, sequence: int, root_hash: bytes):
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def operator_kp() -> KeyPair:
@@ -449,6 +450,7 @@ class _MockEntityState(IntEnum):
 
 class _MockClient:
     """Minimal mock for LiveBridge tests."""
+
     def __init__(self, chain_id=1, block_height=100):
         self._anchored = set()
         self._sequence = 0
@@ -478,9 +480,12 @@ class TestOptimisticLiveBridge:
     def _make_bridge(self, challenge_manager=None):
         net = CommitmentNetwork()
         for nid, region in [
-            ("ob-1", "US-East"), ("ob-2", "US-West"),
-            ("ob-3", "EU-West"), ("ob-4", "EU-East"),
-            ("ob-5", "AP-East"), ("ob-6", "AP-South"),
+            ("ob-1", "US-East"),
+            ("ob-2", "US-West"),
+            ("ob-3", "EU-West"),
+            ("ob-4", "EU-East"),
+            ("ob-5", "AP-East"),
+            ("ob-6", "AP-South"),
         ]:
             net.add_node(nid, region)
 
@@ -490,6 +495,7 @@ class TestOptimisticLiveBridge:
         client = _MockClient()
 
         from src.ltp.bridge.live import LiveBridge
+
         bridge = LiveBridge(
             protocol=protocol,
             l1_client=client,
@@ -502,6 +508,7 @@ class TestOptimisticLiveBridge:
 
     def _make_msg(self, nonce=0):
         from src.ltp.bridge.message import BridgeMessage
+
         return BridgeMessage(
             msg_type="token_lock",
             source_chain="ethereum",

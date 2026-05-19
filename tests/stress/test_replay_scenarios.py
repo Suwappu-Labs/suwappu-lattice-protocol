@@ -1,6 +1,7 @@
 """Stress scenarios 1 & 10: Replay protection."""
 
 import pytest
+
 from tests.stress.conftest import make_raw_log, make_service
 
 
@@ -28,7 +29,7 @@ class TestScenario1_DuplicateEvents:
         svc.tick()  # first: accepted
         for i in range(100):
             r = svc.tick()
-            assert r.events_rejected == 1, f"duplicate {i+1} should be rejected"
+            assert r.events_rejected == 1, f"duplicate {i + 1} should be rejected"
             assert r.events_accepted == 0
 
     def test_different_log_index_is_not_duplicate(self, stress_kp):

@@ -88,9 +88,11 @@ class GatewayVM:
         signal.signal(signal.SIGINT, self._signal_handler)
 
         self._running = True
-        self._log.info("gateway VM started",
-                       source_chain=self._config.source_chain_id,
-                       dest_chain=self._config.dest_chain_id)
+        self._log.info(
+            "gateway VM started",
+            source_chain=self._config.source_chain_id,
+            dest_chain=self._config.dest_chain_id,
+        )
 
     def stop(self) -> None:
         """Stop the gateway VM in reverse startup order."""

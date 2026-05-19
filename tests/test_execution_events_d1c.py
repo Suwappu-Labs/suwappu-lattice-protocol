@@ -2,13 +2,12 @@
 
 import pytest
 
-from src.ltp.execution.execution_events import ExecutionEventType, ExecutionEvent
 from src.ltp.consensus.events import ConsensusEventType
 from src.ltp.execution.execution_config import ExecutionConfig
+from src.ltp.execution.execution_events import ExecutionEvent, ExecutionEventType
 
 
 class TestExecutionEventType:
-
     def test_enum_has_five_values(self):
         values = list(ExecutionEventType)
         assert len(values) == 5
@@ -30,11 +29,12 @@ class TestExecutionEventType:
 
 
 class TestExecutionEvent:
-
     def test_creation_with_all_fields(self):
         event = ExecutionEvent(
             event_type=ExecutionEventType.LOOP_STARTED,
-            round=0, epoch=1, timestamp_ms=1000,
+            round=0,
+            epoch=1,
+            timestamp_ms=1000,
             payload={"round": 0, "epoch": 1},
         )
         assert event.event_type == ExecutionEventType.LOOP_STARTED
@@ -46,7 +46,9 @@ class TestExecutionEvent:
     def test_frozen_dataclass(self):
         event = ExecutionEvent(
             event_type=ExecutionEventType.LOOP_STOPPED,
-            round=5, epoch=1, timestamp_ms=5000,
+            round=5,
+            epoch=1,
+            timestamp_ms=5000,
             payload={"round": 5, "epoch": 1, "total_batches": 5},
         )
         with pytest.raises(AttributeError):
@@ -54,7 +56,6 @@ class TestExecutionEvent:
 
 
 class TestConsensusEventTypeExtensions:
-
     def test_batch_executed_exists(self):
         assert ConsensusEventType.BATCH_EXECUTED.value == "batch_executed"
 
@@ -72,7 +73,6 @@ class TestConsensusEventTypeExtensions:
 
 
 class TestExecutionConfig:
-
     def test_default_values(self):
         cfg = ExecutionConfig()
         assert cfg.failure_threshold_pct == 50.0

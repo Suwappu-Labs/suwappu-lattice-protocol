@@ -15,14 +15,12 @@ import pytest
 from src.ltp.observability.endpoint import ETPObservability
 from src.ltp.observability.tls import ETPSecurityConfig
 
-
 # ---------------------------------------------------------------------------
 # Observability with Alerts
 # ---------------------------------------------------------------------------
 
 
 class TestObservabilityAlerts:
-
     def test_no_alerts_firing_on_init(self):
         """Fresh observability has no firing alerts (all metrics at zero)."""
         obs = ETPObservability(node_id="alert-test")
@@ -45,8 +43,8 @@ class TestObservabilityAlerts:
     def test_multiple_alerts_can_fire(self):
         """Multiple metrics over threshold triggers multiple alerts."""
         obs = ETPObservability()
-        obs.metrics["sth_publish_gap"].set(100.0)       # > 60s → CRITICAL
-        obs.metrics["bridge_message_age"].set(7200.0)    # > 3600s → WARNING
+        obs.metrics["sth_publish_gap"].set(100.0)  # > 60s → CRITICAL
+        obs.metrics["bridge_message_age"].set(7200.0)  # > 3600s → WARNING
         firing = obs.check_alerts()
         assert len(firing) >= 2
 
@@ -57,7 +55,6 @@ class TestObservabilityAlerts:
 
 
 class TestETPSecurityConfig:
-
     def test_default_creates_policies(self):
         """Default config has policies for shard-node, log-service, api-gateway."""
         sec = ETPSecurityConfig.default()
@@ -89,7 +86,6 @@ class TestETPSecurityConfig:
 
 
 class TestCombinedIntegration:
-
     def test_metrics_alerts_and_security_together(self):
         """All three systems work together from a single node setup."""
         obs = ETPObservability(node_id="integrated-node", region="US-East")

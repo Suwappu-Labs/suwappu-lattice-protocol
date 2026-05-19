@@ -10,7 +10,8 @@ PR #8 wire-hardening introduced).
 from __future__ import annotations
 
 import pytest
-from hypothesis import given, strategies as st, settings, HealthCheck
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
 
 from src.ltp.corridor.wire import (
     WireFormatError,
@@ -18,7 +19,6 @@ from src.ltp.corridor.wire import (
     corridor_attestation_from_dict,
     state_anchor_from_dict,
 )
-
 
 # Any input that is not a dict at all should still raise WireFormatError,
 # not TypeError / KeyError leaking through.
@@ -51,7 +51,7 @@ _hex_or_garbage = st.one_of(
     st.none(),
 )
 _int_or_garbage = st.one_of(
-    st.integers(min_value=-10**9, max_value=10**9),
+    st.integers(min_value=-(10**9), max_value=10**9),
     st.text(min_size=0, max_size=20),
     st.none(),
 )
@@ -88,9 +88,7 @@ def test_attestation_payload_fuzz_never_crashes(
     except WireFormatError:
         return  # expected failure mode
     except Exception as e:  # pragma: no cover
-        pytest.fail(
-            f"non-WireFormatError exception escaped: {type(e).__name__}: {e}"
-        )
+        pytest.fail(f"non-WireFormatError exception escaped: {type(e).__name__}: {e}")
 
 
 @given(
@@ -119,9 +117,7 @@ def test_corridor_attestation_fuzz_never_crashes(aggregate_signature, signers):
     except WireFormatError:
         return
     except Exception as e:  # pragma: no cover
-        pytest.fail(
-            f"non-WireFormatError exception escaped: {type(e).__name__}: {e}"
-        )
+        pytest.fail(f"non-WireFormatError exception escaped: {type(e).__name__}: {e}")
 
 
 @given(
@@ -133,9 +129,7 @@ def test_corridor_attestation_fuzz_never_crashes(aggregate_signature, signers):
     auth_scheme=st.integers(min_value=-5, max_value=1000),
 )
 @settings(max_examples=200, deadline=None)
-def test_state_anchor_fuzz_never_crashes(
-    chain_id, height, state_root, parent, mac, auth_scheme
-):
+def test_state_anchor_fuzz_never_crashes(chain_id, height, state_root, parent, mac, auth_scheme):
     d = {
         "chain_id": chain_id,
         "height": height,
@@ -149,9 +143,7 @@ def test_state_anchor_fuzz_never_crashes(
     except WireFormatError:
         return
     except Exception as e:  # pragma: no cover
-        pytest.fail(
-            f"non-WireFormatError exception escaped: {type(e).__name__}: {e}"
-        )
+        pytest.fail(f"non-WireFormatError exception escaped: {type(e).__name__}: {e}")
 
 
 def test_oversized_hex_field_rejected():

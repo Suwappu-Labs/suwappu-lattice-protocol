@@ -57,37 +57,37 @@ __all__ = [
 # Canonical trust boundary tags
 # ---------------------------------------------------------------------------
 
-DOMAIN_ENTITY_ID        = b"GSX-LTP:entity-id:v1\x00"
-DOMAIN_COMMIT_SIGN      = b"GSX-LTP:commit-sign:v1\x00"
-DOMAIN_COMMIT_RECORD    = b"GSX-LTP:commit-record:v1\x00"
-DOMAIN_STH_SIGN         = b"GSX-LTP:sth-sign:v1\x00"
-DOMAIN_SHARD_NONCE      = b"GSX-LTP:shard-nonce:v1\x00"
+DOMAIN_ENTITY_ID = b"GSX-LTP:entity-id:v1\x00"
+DOMAIN_COMMIT_SIGN = b"GSX-LTP:commit-sign:v1\x00"
+DOMAIN_COMMIT_RECORD = b"GSX-LTP:commit-record:v1\x00"
+DOMAIN_STH_SIGN = b"GSX-LTP:sth-sign:v1\x00"
+DOMAIN_SHARD_NONCE = b"GSX-LTP:shard-nonce:v1\x00"
 DOMAIN_APPROVAL_RECEIPT = b"GSX-LTP:approval-receipt:v1\x00"
-DOMAIN_ANCHOR_DIGEST    = b"GSX-LTP:anchor-digest:v1\x00"
-DOMAIN_SIGNED_ENVELOPE  = b"GSX-LTP:signed-envelope:v1\x00"
-DOMAIN_SIGNER_POLICY    = b"GSX-LTP:signer-policy:v1\x00"
-DOMAIN_LATTICE_KEY      = b"GSX-LTP:lattice-key:v1\x00"
-DOMAIN_BRIDGE_MSG       = b"GSX-LTP:bridge-msg:v1\x00"
-DOMAIN_NODE_HANDSHAKE   = b"GSX-LTP:node-handshake:v1\x00"
-DOMAIN_FRAUD_PROOF      = b"GSX-LTP:fraud-proof:v1\x00"
-DOMAIN_CHALLENGE        = b"GSX-LTP:challenge:v1\x00"
-DOMAIN_WATCHER          = b"GSX-LTP:watcher:v1\x00"
-DOMAIN_ZK_BRIDGE        = b"GSX-LTP:zk-bridge:v1\x00"
-DOMAIN_KEY_ROTATION     = b"GSX-LTP:key-rotation:v1\x00"
-DOMAIN_KEY_ADMISSION    = b"GSX-LTP:key-admission:v1\x00"
+DOMAIN_ANCHOR_DIGEST = b"GSX-LTP:anchor-digest:v1\x00"
+DOMAIN_SIGNED_ENVELOPE = b"GSX-LTP:signed-envelope:v1\x00"
+DOMAIN_SIGNER_POLICY = b"GSX-LTP:signer-policy:v1\x00"
+DOMAIN_LATTICE_KEY = b"GSX-LTP:lattice-key:v1\x00"
+DOMAIN_BRIDGE_MSG = b"GSX-LTP:bridge-msg:v1\x00"
+DOMAIN_NODE_HANDSHAKE = b"GSX-LTP:node-handshake:v1\x00"
+DOMAIN_FRAUD_PROOF = b"GSX-LTP:fraud-proof:v1\x00"
+DOMAIN_CHALLENGE = b"GSX-LTP:challenge:v1\x00"
+DOMAIN_WATCHER = b"GSX-LTP:watcher:v1\x00"
+DOMAIN_ZK_BRIDGE = b"GSX-LTP:zk-bridge:v1\x00"
+DOMAIN_KEY_ROTATION = b"GSX-LTP:key-rotation:v1\x00"
+DOMAIN_KEY_ADMISSION = b"GSX-LTP:key-admission:v1\x00"
 DOMAIN_NODE_ENDORSEMENT = b"GSX-LTP:node-endorsement:v1\x00"
-DOMAIN_GOVERNANCE_VOTE  = b"GSX-LTP:governance-vote:v1\x00"
-DOMAIN_NIR              = b"GSX-LTP:nir:v1\x00"
-DOMAIN_FED_AGREEMENT    = b"GSX-LTP:fed-agreement:v1\x00"
-DOMAIN_JWT_TOKEN        = b"GSX-LTP:jwt-token:v1\x00"
-DOMAIN_PEER_GOSSIP      = b"GSX-LTP:peer-gossip:v1\x00"
-DOMAIN_ZK_TRANSFER      = b"GSX-LTP:zk-transfer:v1\x00"
-DOMAIN_GATEWAY_ATTEST   = b"GSX-LTP:gateway-attest:v1\x00"
-DOMAIN_EXTERNAL_EVENT   = b"GSX-LTP:external-event:v1\x00"
+DOMAIN_GOVERNANCE_VOTE = b"GSX-LTP:governance-vote:v1\x00"
+DOMAIN_NIR = b"GSX-LTP:nir:v1\x00"
+DOMAIN_FED_AGREEMENT = b"GSX-LTP:fed-agreement:v1\x00"
+DOMAIN_JWT_TOKEN = b"GSX-LTP:jwt-token:v1\x00"
+DOMAIN_PEER_GOSSIP = b"GSX-LTP:peer-gossip:v1\x00"
+DOMAIN_ZK_TRANSFER = b"GSX-LTP:zk-transfer:v1\x00"
+DOMAIN_GATEWAY_ATTEST = b"GSX-LTP:gateway-attest:v1\x00"
+DOMAIN_EXTERNAL_EVENT = b"GSX-LTP:external-event:v1\x00"
 DOMAIN_MULTI_VM_STATE_ROOT = b"GSX-LTP:multi-vm-state-root:v1\x00"
-DOMAIN_MULTI_VM_ATTEST     = b"GSX-LTP:multi-vm-attest:v1\x00"
-DOMAIN_BLS_SIGN            = b"GSX-LTP:bls-sign:v1\x00"
-DOMAIN_BLS_ATTEST          = b"GSX-LTP:bls-attest:v1\x00"
+DOMAIN_MULTI_VM_ATTEST = b"GSX-LTP:multi-vm-attest:v1\x00"
+DOMAIN_BLS_SIGN = b"GSX-LTP:bls-sign:v1\x00"
+DOMAIN_BLS_ATTEST = b"GSX-LTP:bls-attest:v1\x00"
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +141,7 @@ del _seen_bytes
 # Domain-separated hash functions
 # ---------------------------------------------------------------------------
 
+
 def domain_hash(domain: bytes, data: bytes) -> str:
     """Compute canonical_hash(domain || data).
 
@@ -161,6 +162,7 @@ def domain_hash_bytes(domain: bytes, data: bytes) -> bytes:
 # Domain-separated signing
 # ---------------------------------------------------------------------------
 
+
 def domain_sign(domain: bytes, signer, data: bytes) -> bytes:
     """Sign domain-separated data: MLDSA.sign(sk, domain || data).
 
@@ -177,6 +179,7 @@ def domain_sign(domain: bytes, signer, data: bytes) -> bytes:
     """
     # Avoid an import cycle: `keypair.py` imports from this module.
     from .keypair import KeyPair as _KeyPair
+
     if isinstance(signer, _KeyPair):
         return signer.sign(domain + data)
     return MLDSA.sign(signer, domain + data)
@@ -190,6 +193,7 @@ def domain_verify(domain: bytes, vk: bytes, data: bytes, sig: bytes) -> bool:
 # ---------------------------------------------------------------------------
 # Key fingerprint
 # ---------------------------------------------------------------------------
+
 
 def signer_fingerprint(vk: bytes) -> bytes:
     """Compute a 32-byte signer fingerprint from a verification key.
@@ -210,21 +214,25 @@ def signer_fingerprint(vk: bytes) -> bytes:
 # Domain-separated BLS signing (Spec C1 §4)
 # ---------------------------------------------------------------------------
 
+
 def bls_domain_sign(domain: bytes, sk: bytes, data: bytes) -> bytes:
     """Sign domain-separated data with BLS: BLS.sign(sk, domain || data)."""
     from .bls import BLS
+
     return BLS.sign(sk, domain + data)
 
 
 def bls_domain_verify(domain: bytes, pk: bytes, data: bytes, sig: bytes) -> bool:
     """Verify domain-separated BLS signature: BLS.verify(pk, domain || data, sig)."""
     from .bls import BLS
+
     return BLS.verify(pk, domain + data, sig)
 
 
 def bls_aggregate_sigs(sigs: list[bytes]) -> bytes:
     """Aggregate multiple BLS signatures into one 96-byte signature."""
     from .bls import BLS
+
     return BLS.aggregate_signatures(sigs)
 
 
@@ -234,4 +242,5 @@ def bls_aggregate_verify(domain: bytes, pks: list[bytes], data: bytes, agg_sig: 
     All signers must have signed domain || data.
     """
     from .bls import BLS
+
     return BLS.aggregate_verify_same_message(pks, domain + data, agg_sig)

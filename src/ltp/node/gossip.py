@@ -38,9 +38,11 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class GossipConfig:
     """Gossip protocol configuration."""
+
     enabled: bool = True
     interval_seconds: float = 30.0
     max_peers: int = 20
@@ -51,6 +53,7 @@ class GossipConfig:
 @dataclass
 class GossipTickResult:
     """Result of a single gossip round."""
+
     peers_announced: int = 0
     peers_discovered: int = 0
     peers_timed_out: int = 0
@@ -61,9 +64,11 @@ class GossipTickResult:
 # Wire format
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PeerAnnouncement:
     """Single peer entry in a gossip exchange message."""
+
     node_id: str
     address: str
     region: str
@@ -89,7 +94,7 @@ class PeerAnnouncement:
         def _read_lp_string(off: int) -> tuple[str, int]:
             length = struct.unpack_from(">I", data, off)[0]
             off += 4
-            value = data[off:off + length].decode("utf-8")
+            value = data[off : off + length].decode("utf-8")
             return value, off + length
 
         node_id, offset = _read_lp_string(offset)
@@ -106,6 +111,7 @@ class PeerExchangeMessage:
 
     Signed by the sender to prevent spoofed peer injection.
     """
+
     sender_id: str
     timestamp: float
     peers: list[PeerAnnouncement] = field(default_factory=list)
@@ -133,7 +139,7 @@ class PeerExchangeMessage:
         def _read_lp_string(off: int) -> tuple[str, int]:
             length = struct.unpack_from(">I", data, off)[0]
             off += 4
-            value = data[off:off + length].decode("utf-8")
+            value = data[off : off + length].decode("utf-8")
             return value, off + length
 
         sender_id, offset = _read_lp_string(offset)
@@ -148,9 +154,14 @@ class PeerExchangeMessage:
             address, offset = _read_lp_string(offset)
             region, offset = _read_lp_string(offset)
             vk_hash, offset = _read_lp_string(offset)
-            peers.append(PeerAnnouncement(
-                node_id=node_id, address=address, region=region, vk_hash=vk_hash,
-            ))
+            peers.append(
+                PeerAnnouncement(
+                    node_id=node_id,
+                    address=address,
+                    region=region,
+                    vk_hash=vk_hash,
+                )
+            )
 
         return cls(sender_id=sender_id, timestamp=timestamp, peers=peers)
 
@@ -170,6 +181,7 @@ class PeerExchangeMessage:
 # ---------------------------------------------------------------------------
 # Gossip Protocol
 # ---------------------------------------------------------------------------
+
 
 class GossipProtocol:
     """Periodic peer exchange protocol.
@@ -232,8 +244,11 @@ class GossipProtocol:
             name=f"gossip-{self._node_id}",
         )
         self._thread.start()
-        logger.info("Gossip started (interval=%.1fs, max_peers=%d)",
-                     self._config.interval_seconds, self._config.max_peers)
+        logger.info(
+            "Gossip started (interval=%.1fs, max_peers=%d)",
+            self._config.interval_seconds,
+            self._config.max_peers,
+        )
 
     def stop(self) -> None:
         """Stop the gossip daemon thread."""
@@ -306,12 +321,14 @@ class GossipProtocol:
             if peer.node_id == self._node_id:
                 continue
             vk_hash = signer_fingerprint(peer.public_key).hex() if peer.public_key else ""
-            announcements.append(PeerAnnouncement(
-                node_id=peer.node_id,
-                address=peer.address,
-                region=peer.region,
-                vk_hash=vk_hash,
-            ))
+            announcements.append(
+                PeerAnnouncement(
+                    node_id=peer.node_id,
+                    address=peer.address,
+                    region=peer.region,
+                    vk_hash=vk_hash,
+                )
+            )
             if len(announcements) >= self._config.max_peers:
                 break
 
@@ -347,7 +364,7 @@ class GossipProtocol:
             return 0
 
         # Enforce max peers
-        peers = message.peers[:self._config.max_peers]
+        peers = message.peers[: self._config.max_peers]
 
         discovered = 0
         for ann in peers:
@@ -365,8 +382,12 @@ class GossipProtocol:
             # Register as discovered
             self._peer_manager.add_seed_peer(ann.address)
             discovered += 1
-            logger.info("Gossip: discovered peer %s at %s (via %s)",
-                        ann.node_id, ann.address, message.sender_id)
+            logger.info(
+                "Gossip: discovered peer %s at %s (via %s)",
+                ann.node_id,
+                ann.address,
+                message.sender_id,
+            )
 
             # Notify callback for handshake attempt
             if self._on_new_peer_discovered:
@@ -391,8 +412,11 @@ class GossipProtocol:
             if peer.last_seen > 0 and peer.last_seen < threshold:
                 self._peer_manager.mark_disconnected(peer.node_id)
                 timed_out.append(peer.node_id)
-                logger.info("Gossip: peer %s timed out (last_seen=%.0fs ago)",
-                            peer.node_id, now - peer.last_seen)
+                logger.info(
+                    "Gossip: peer %s timed out (last_seen=%.0fs ago)",
+                    peer.node_id,
+                    now - peer.last_seen,
+                )
 
         return timed_out
 

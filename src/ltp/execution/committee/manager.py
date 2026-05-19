@@ -4,18 +4,17 @@ from __future__ import annotations
 
 from typing import Optional
 
-from .types import CommitteeRoster, EpochRecord
-from .policy import CommitteePolicy
-from .formation import CommitteeFormation
-from .epoch import EpochManager
-from .eviction import EvictionHandler
-from .standby import StandbySelector
 from ..writer import WriterRecord, WriterState
 from ..writer_recovery import EmergencyState
 from ..writer_registry import WriterRegistry
-
 from .dkg.registry import DKGKeyRegistry
 from .dkg.types import DKGSessionConfig, DKGState
+from .epoch import EpochManager
+from .eviction import EvictionHandler
+from .formation import CommitteeFormation
+from .policy import CommitteePolicy
+from .standby import StandbySelector
+from .types import CommitteeRoster, EpochRecord
 
 __all__ = ["CommitteeManager"]
 
@@ -51,7 +50,10 @@ class CommitteeManager:
         if roster is None:
             return
         self._eviction.handle_state_change(
-            roster, writer.identity.fingerprint, old_state, new_state,
+            roster,
+            writer.identity.fingerprint,
+            old_state,
+            new_state,
             timestamp=0,
         )
 
@@ -83,10 +85,7 @@ class CommitteeManager:
             start_round=0,
         )
 
-        sessions = [
-            DKGSession(cfg, fp, idx + 1)
-            for idx, fp in enumerate(participants)
-        ]
+        sessions = [DKGSession(cfg, fp, idx + 1) for idx, fp in enumerate(participants)]
 
         # Phase 1: begin
         commitments = []
@@ -138,7 +137,7 @@ class CommitteeManager:
         if not keys:
             return None
 
-        from .dkg.threshold_signing import partial_sign, combine_partial_signatures
+        from .dkg.threshold_signing import combine_partial_signatures, partial_sign
 
         threshold = self._policy.dkg_threshold
         partials = [partial_sign(k, message, domain) for k in keys[:threshold]]

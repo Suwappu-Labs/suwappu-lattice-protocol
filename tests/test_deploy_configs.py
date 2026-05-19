@@ -8,9 +8,9 @@ structurally correct and parseable.
 from __future__ import annotations
 
 import os
-import yaml
 
 import pytest
+import yaml
 
 DEPLOY_DIR = os.path.join(os.path.dirname(__file__), "..", "deploy")
 
@@ -21,7 +21,6 @@ DEPLOY_DIR = os.path.join(os.path.dirname(__file__), "..", "deploy")
 
 
 class TestDockerfile:
-
     def test_dockerfile_exists(self):
         path = os.path.join(DEPLOY_DIR, "Dockerfile")
         assert os.path.isfile(path)
@@ -52,7 +51,6 @@ class TestDockerfile:
 
 
 class TestHelmValues:
-
     def test_values_yaml_parseable(self):
         path = os.path.join(DEPLOY_DIR, "helm", "values.yaml")
         with open(path) as f:
@@ -77,7 +75,7 @@ class TestHelmValues:
         chains = values["anchor"]["chains"]
         chain_ids = {c["chainId"] for c in chains}
         assert 103115120 in chain_ids  # GSX Testnet
-        assert 84532 in chain_ids      # Base Sepolia
+        assert 84532 in chain_ids  # Base Sepolia
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +84,6 @@ class TestHelmValues:
 
 
 class TestK8sManifests:
-
     def test_namespace_yaml_valid(self):
         path = os.path.join(DEPLOY_DIR, "k8s", "namespace.yaml")
         with open(path) as f:

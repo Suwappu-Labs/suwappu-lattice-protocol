@@ -6,8 +6,8 @@ import pytest
 
 from src.ltp.execution.committee.epoch import EpochManager
 from src.ltp.execution.committee.formation import CommitteeFormation
-from src.ltp.execution.committee.types import EpochTrigger
 from src.ltp.execution.committee.policy import CommitteePolicy, EpochStrategy
+from src.ltp.execution.committee.types import EpochTrigger
 from src.ltp.execution.writer import IdentityTier, WriterIdentity
 from src.ltp.execution.writer_recovery import EmergencyState
 from src.ltp.execution.writer_registry import WriterRegistry
@@ -15,20 +15,22 @@ from src.ltp.execution.writer_registry import WriterRegistry
 ADMIN_FP = b"\xff" * 32
 
 
-def _setup(epoch_strategy=EpochStrategy.ROUND_COUNT, epoch_length=100,
-           n_writers=3):
+def _setup(epoch_strategy=EpochStrategy.ROUND_COUNT, epoch_length=100, n_writers=3):
     reg = WriterRegistry()
     for i in range(1, n_writers + 1):
         fp = bytes([i]) * 32
         identity = WriterIdentity(
-            tier=IdentityTier.BLS, fingerprint=fp,
+            tier=IdentityTier.BLS,
+            fingerprint=fp,
             bls_pk=bytes([i]) * 48,
         )
         reg.enroll(identity, timestamp=1000 + i)
         reg.approve(fp, admin_fp=ADMIN_FP, timestamp=2000 + i)
 
     policy = CommitteePolicy(
-        vm_tag=0x01, epoch_strategy=epoch_strategy, epoch_length=epoch_length,
+        vm_tag=0x01,
+        epoch_strategy=epoch_strategy,
+        epoch_length=epoch_length,
     )
     formation = CommitteeFormation(reg)
     emergency = EmergencyState()
@@ -111,7 +113,9 @@ class TestEmergencyAdvance:
     def test_emergency_advance_logs_trigger(self):
         mgr, _, emergency = _setup()
         roster = mgr.emergency_advance(
-            actor_fp=ADMIN_FP, reason="compromised member", timestamp=9000,
+            actor_fp=ADMIN_FP,
+            reason="compromised member",
+            timestamp=9000,
         )
         assert mgr.current_epoch == 1
         assert mgr.history[0].trigger is EpochTrigger.EMERGENCY

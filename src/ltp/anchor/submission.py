@@ -73,16 +73,17 @@ class AnchorSubmission:
         if len(self.signer_vk_hash) != 32:
             raise ValueError(f"signer_vk_hash must be 32B, got {len(self.signer_vk_hash)}")
 
-        rt_bytes = self.receipt_type.encode('utf-8')
+        rt_bytes = self.receipt_type.encode("utf-8")
         return (
             self.anchor_digest
             + self.merkle_root
             + self.policy_hash
             + self.signer_vk_hash
-            + struct.pack('>Q', self.sequence)
-            + struct.pack('>Q', self.valid_until)
-            + struct.pack('>Q', self.target_chain_id)
-            + struct.pack('>I', len(rt_bytes)) + rt_bytes
+            + struct.pack(">Q", self.sequence)
+            + struct.pack(">Q", self.valid_until)
+            + struct.pack(">Q", self.target_chain_id)
+            + struct.pack(">I", len(rt_bytes))
+            + rt_bytes
         )
 
     @classmethod
@@ -100,6 +101,7 @@ class AnchorSubmission:
             target_chain_id_int:  Numeric chain ID
         """
         from ..domain import signer_fingerprint
+
         return cls(
             anchor_digest=receipt.anchor_digest(),
             merkle_root=receipt.merkle_root,

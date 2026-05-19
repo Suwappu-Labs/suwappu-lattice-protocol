@@ -13,13 +13,12 @@ import logging
 import pytest
 
 from src.ltp.observability.endpoint import (
+    PROMETHEUS_CONTENT_TYPE,
     ETPObservability,
     MetricsRequestHandler,
-    PROMETHEUS_CONTENT_TYPE,
 )
-from src.ltp.observability.metrics import MetricsRegistry
 from src.ltp.observability.logging import CorrelationContext
-
+from src.ltp.observability.metrics import MetricsRegistry
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -41,7 +40,6 @@ class _CaptureHandler(logging.Handler):
 
 
 class TestMetricsEndpoint:
-
     def test_returns_200(self):
         reg = MetricsRegistry()
         handler = MetricsRequestHandler(reg)
@@ -77,13 +75,14 @@ class TestMetricsEndpoint:
 
 
 class TestETPObservability:
-
     def test_creates_metrics_and_logger(self):
         obs = ETPObservability(node_id="node-1", region="US-East")
         assert obs.registry is not None
         assert obs.logger is not None
         assert obs.metrics_handler is not None
-        assert len(obs.metrics) == 16  # 16 pre-registered ETP metrics (10 original + 6 bridge/gossip)
+        assert (
+            len(obs.metrics) == 16
+        )  # 16 pre-registered ETP metrics (10 original + 6 bridge/gossip)
 
     def test_metrics_usable(self):
         obs = ETPObservability(node_id="test")
@@ -114,7 +113,6 @@ class TestETPObservability:
 
 
 class TestMetricsAndLoggingTogether:
-
     def setup_method(self):
         CorrelationContext.clear()
 

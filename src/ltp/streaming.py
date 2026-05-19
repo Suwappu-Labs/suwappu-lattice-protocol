@@ -29,20 +29,22 @@ __all__ = [
 
 class StreamState(Enum):
     """Lifecycle state of an entity stream."""
-    OPEN = "open"               # Accepting chunks
-    CLOSED = "closed"           # No more chunks, awaiting finalization
-    FINALIZED = "finalized"     # Stream complete, aggregate entity_id computed
-    FAILED = "failed"           # Stream failed (timeout, corruption)
+
+    OPEN = "open"  # Accepting chunks
+    CLOSED = "closed"  # No more chunks, awaiting finalization
+    FINALIZED = "finalized"  # Stream complete, aggregate entity_id computed
+    FAILED = "failed"  # Stream failed (timeout, corruption)
 
 
 @dataclass
 class StreamConfig:
     """Configuration for streaming entity transfers."""
-    chunk_size_bytes: int = 65_536       # 64 KB per chunk
-    max_concurrent_chunks: int = 4       # Pipeline depth
-    pipeline_enabled: bool = True        # Enable pipelined distribution
+
+    chunk_size_bytes: int = 65_536  # 64 KB per chunk
+    max_concurrent_chunks: int = 4  # Pipeline depth
+    pipeline_enabled: bool = True  # Enable pipelined distribution
     max_chunks_per_stream: int = 100_000  # Safety limit
-    stream_timeout_epochs: int = 720     # 30 days timeout
+    stream_timeout_epochs: int = 720  # 30 days timeout
 
 
 @dataclass
@@ -53,10 +55,11 @@ class StreamChunk:
     Each chunk is independently committed to the network and can be
     materialized before the full stream is finalized.
     """
+
     stream_id: str
-    sequence: int               # 0-indexed position in stream
-    data: bytes                 # Chunk content
-    chunk_entity_id: str        # H(stream_id || sequence || data)
+    sequence: int  # 0-indexed position in stream
+    data: bytes  # Chunk content
+    chunk_entity_id: str  # H(stream_id || sequence || data)
     committed: bool = False
     committed_epoch: int = -1
 
@@ -73,8 +76,9 @@ class StreamManifest:
     The manifest is created when the stream is finalized and serves as
     the aggregate record that ties all chunks together.
     """
+
     stream_id: str
-    stream_entity_id: str       # Aggregate entity_id over all chunks
+    stream_entity_id: str  # Aggregate entity_id over all chunks
     total_chunks: int
     total_size: int
     shape: str
@@ -124,9 +128,7 @@ class EntityStream:
 
         Returns a stream_id that must be used for all subsequent operations.
         """
-        stream_id = canonical_hash(
-            f"{sender_id}:{shape}:{time.time()}:{id(self)}".encode()
-        )
+        stream_id = canonical_hash(f"{sender_id}:{shape}:{time.time()}:{id(self)}".encode())
 
         self._streams[stream_id] = {
             "state": StreamState.OPEN,
@@ -158,9 +160,7 @@ class EntityStream:
         if stream is None:
             raise ValueError(f"Unknown stream: {stream_id}")
         if stream["state"] != StreamState.OPEN:
-            raise ValueError(
-                f"Stream {stream_id} is {stream['state'].value}, not open"
-            )
+            raise ValueError(f"Stream {stream_id} is {stream['state'].value}, not open")
 
         if sequence is None:
             sequence = stream["chunk_count"]
@@ -168,16 +168,11 @@ class EntityStream:
         # Safety limit
         if sequence >= self.config.max_chunks_per_stream:
             raise ValueError(
-                f"Chunk sequence {sequence} exceeds maximum "
-                f"{self.config.max_chunks_per_stream}"
+                f"Chunk sequence {sequence} exceeds maximum {self.config.max_chunks_per_stream}"
             )
 
         # Compute chunk entity_id
-        chunk_entity_id = canonical_hash(
-            stream_id.encode()
-            + sequence.to_bytes(4, "big")
-            + data
-        )
+        chunk_entity_id = canonical_hash(stream_id.encode() + sequence.to_bytes(4, "big") + data)
 
         chunk = StreamChunk(
             stream_id=stream_id,
@@ -266,9 +261,7 @@ class EntityStream:
         stream["state"] = StreamState.FINALIZED
         return manifest
 
-    def get_chunk(
-        self, stream_id: str, sequence: int
-    ) -> Optional[StreamChunk]:
+    def get_chunk(self, stream_id: str, sequence: int) -> Optional[StreamChunk]:
         """Get a specific chunk from a stream."""
         chunks = self._chunks.get(stream_id)
         if chunks is None or sequence >= len(chunks):
@@ -298,9 +291,7 @@ class EntityStream:
 
         return b"".join(c.data for c in chunks)
 
-    def compute_pipeline_schedule(
-        self, total_size: int
-    ) -> dict:
+    def compute_pipeline_schedule(self, total_size: int) -> dict:
         """
         Compute the pipelining schedule for bandwidth amortization.
 
@@ -325,21 +316,19 @@ class EntityStream:
             "pipeline_depth": pipeline_depth,
             "monolithic_sequential_phases": monolithic_phases,
             "pipelined_sequential_phases": pipelined_phases,
-            "speedup_factor": round(
-                chunk_count / max(1, pipelined_phases), 2
-            ) if pipeline_depth > 1 else 1.0,
+            "speedup_factor": round(chunk_count / max(1, pipelined_phases), 2)
+            if pipeline_depth > 1
+            else 1.0,
         }
 
     @property
     def active_streams(self) -> list[str]:
         return [
-            sid for sid, s in self._streams.items()
+            sid
+            for sid, s in self._streams.items()
             if s["state"] in (StreamState.OPEN, StreamState.CLOSED)
         ]
 
     @property
     def finalized_streams(self) -> list[str]:
-        return [
-            sid for sid, s in self._streams.items()
-            if s["state"] == StreamState.FINALIZED
-        ]
+        return [sid for sid, s in self._streams.items() if s["state"] == StreamState.FINALIZED]

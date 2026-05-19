@@ -15,7 +15,6 @@ import pytest
 from src.ltp.bridge.sp1_prover import SP1ZKBridgeProver
 from src.ltp.bridge.zk_bridge import ZKBridgeBackend, ZKBridgeVerifier
 
-
 HOST_BINARY = os.path.join(
     os.path.dirname(__file__), "..", "zkvm", "sp1-host", "target", "release", "sp1-host"
 )
@@ -33,7 +32,6 @@ has_verify = os.path.exists(VERIFY_BINARY)
 
 
 class TestBinaries:
-
     @pytest.mark.skipif(not has_host, reason="sp1-host binary not built")
     def test_host_binary_exists(self):
         """sp1-host binary should exist after cargo build --release."""
@@ -60,19 +58,23 @@ class TestBinaries:
 
 
 class TestMockRegression:
-
     def test_mock_still_works(self):
         """Mock mode produces real STARK proofs that verify."""
-        from src.ltp.commitment import CommitmentLog, CommitmentRecord
         import time
+
+        from src.ltp.commitment import CommitmentLog, CommitmentRecord
 
         log = CommitmentLog()
         record = CommitmentRecord(
-            entity_id="mock-regression", sender_id="s",
-            content_hash="h", shard_map_root="r",
+            entity_id="mock-regression",
+            sender_id="s",
+            content_hash="h",
+            shard_map_root="r",
             encoding_params={"n": 5, "k": 3},
-            shape="test", shape_hash="sh",
-            timestamp=time.time(), signature=b"\x00" * 64,
+            shape="test",
+            shape_hash="sh",
+            timestamp=time.time(),
+            signature=b"\x00" * 64,
         )
         log.append(record)
         sth = log.latest_sth
@@ -85,16 +87,21 @@ class TestMockRegression:
 
     def test_mock_proof_non_deterministic(self):
         """Real STARK uses random blinding, so proofs differ each time."""
-        from src.ltp.commitment import CommitmentLog, CommitmentRecord
         import time
+
+        from src.ltp.commitment import CommitmentLog, CommitmentRecord
 
         log = CommitmentLog()
         record = CommitmentRecord(
-            entity_id="determ-test", sender_id="s",
-            content_hash="h", shard_map_root="r",
+            entity_id="determ-test",
+            sender_id="s",
+            content_hash="h",
+            shard_map_root="r",
             encoding_params={"n": 5, "k": 3},
-            shape="test", shape_hash="sh",
-            timestamp=time.time(), signature=b"\x00" * 64,
+            shape="test",
+            shape_hash="sh",
+            timestamp=time.time(),
+            signature=b"\x00" * 64,
         )
         log.append(record)
         sth = log.latest_sth

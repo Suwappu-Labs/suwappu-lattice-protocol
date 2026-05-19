@@ -37,9 +37,7 @@ class ReplayDB:
         ).fetchone()
         return row is not None
 
-    def mark_processed(
-        self, event_id: str, *, tx_hash: str, block_number: int
-    ) -> None:
+    def mark_processed(self, event_id: str, *, tx_hash: str, block_number: int) -> None:
         """Record an event as processed. Idempotent — duplicates are ignored."""
         self._conn.execute(
             """

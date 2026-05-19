@@ -38,12 +38,12 @@ Defenses pinned:
     B7  per-signer verify rejects when the message is altered after
         signing (Bifrost-style decode tamper)
 """
+
 from __future__ import annotations
 
 import pytest
 
 from ltp.bls import BLS, _blst_available, _py_ecc_bls_available
-
 
 pytestmark = pytest.mark.skipif(
     not (_blst_available or _py_ecc_bls_available),
@@ -61,8 +61,9 @@ def _gen_signers(n: int) -> list[tuple[bytes, bytes]]:
     return [BLS.keygen() for _ in range(n)]
 
 
-def _sign_distinct(signers: list[tuple[bytes, bytes]], msg_prefix: bytes
-                   ) -> tuple[list[bytes], list[bytes], bytes]:
+def _sign_distinct(
+    signers: list[tuple[bytes, bytes]], msg_prefix: bytes
+) -> tuple[list[bytes], list[bytes], bytes]:
     """Each signer signs a distinct message (msg_prefix || index).
 
     Returns (pks, messages, aggregated_signature).
@@ -74,8 +75,7 @@ def _sign_distinct(signers: list[tuple[bytes, bytes]], msg_prefix: bytes
     return pks, messages, agg
 
 
-def _sign_same(signers: list[tuple[bytes, bytes]], msg: bytes
-               ) -> tuple[list[bytes], bytes]:
+def _sign_same(signers: list[tuple[bytes, bytes]], msg: bytes) -> tuple[list[bytes], bytes]:
     """Every signer signs the same message. Returns (pks, agg)."""
     pks = [pk for pk, _ in signers]
     sigs = [BLS.sign(sk, msg) for _, sk in signers]
@@ -181,9 +181,7 @@ def test_B5_fast_aggregate_verify_rejects_extra_unrelated_pk():
     # Now claim a 4th signer joined by appending a non-signing pk.
     rogue_pk, _ = BLS.keygen()
     inflated = pks + [rogue_pk]
-    assert BLS.aggregate_verify_same_message(
-        inflated, b"scn010-same-msg", agg
-    ) is False
+    assert BLS.aggregate_verify_same_message(inflated, b"scn010-same-msg", agg) is False
 
 
 def test_B5_fast_aggregate_verify_rejects_swapped_pk():
@@ -192,9 +190,7 @@ def test_B5_fast_aggregate_verify_rejects_swapped_pk():
     rogue_pk, _ = BLS.keygen()
     swapped = list(pks)
     swapped[1] = rogue_pk
-    assert BLS.aggregate_verify_same_message(
-        swapped, b"scn010-same-msg", agg
-    ) is False
+    assert BLS.aggregate_verify_same_message(swapped, b"scn010-same-msg", agg) is False
 
 
 # ---------------------------------------------------------------------------

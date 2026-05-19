@@ -9,11 +9,10 @@ import time
 import pytest
 
 from src.ltp.network.resilience import (
-    PeerCircuitBreaker,
     ExponentialBackoff,
+    PeerCircuitBreaker,
     RetryPolicy,
 )
-
 
 # ---------------------------------------------------------------------------
 # PeerCircuitBreaker
@@ -21,7 +20,6 @@ from src.ltp.network.resilience import (
 
 
 class TestPeerCircuitBreaker:
-
     def test_starts_closed(self):
         cb = PeerCircuitBreaker(peer_id="node-1", failure_threshold=3)
         assert cb.state == "closed"
@@ -85,6 +83,7 @@ class TestPeerCircuitBreaker:
 
     def test_thread_safety(self):
         import threading
+
         cb = PeerCircuitBreaker(failure_threshold=100, cooldown_seconds=60)
         errors = []
 
@@ -110,7 +109,6 @@ class TestPeerCircuitBreaker:
 
 
 class TestExponentialBackoff:
-
     def test_first_attempt_is_base(self):
         eb = ExponentialBackoff(base_delay=1.0, max_delay=60.0, jitter=0.0)
         assert eb.delay_for(0) == 1.0
@@ -138,15 +136,16 @@ class TestExponentialBackoff:
 
 
 class TestRetryPolicy:
-
     def test_allows_when_breaker_closed(self):
         policy = RetryPolicy(peer_id="node-1", max_attempts=3)
         assert policy.should_attempt() is True
 
     def test_blocks_when_breaker_open(self):
         policy = RetryPolicy(
-            peer_id="node-1", max_attempts=3,
-            failure_threshold=2, cooldown_seconds=60,
+            peer_id="node-1",
+            max_attempts=3,
+            failure_threshold=2,
+            cooldown_seconds=60,
         )
         policy.record_failure(0)
         policy.record_failure(1)

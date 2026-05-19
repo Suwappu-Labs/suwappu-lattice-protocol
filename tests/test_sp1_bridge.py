@@ -21,10 +21,10 @@ from src.ltp.commitment import CommitmentLog
 from src.ltp.keypair import KeyPair
 from src.ltp.primitives import canonical_hash_bytes
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def operator_kp():
@@ -35,8 +35,10 @@ def operator_kp():
 def sth(operator_kp):
     """Create a real SignedTreeHead from a commitment log."""
     log = CommitmentLog()
-    from src.ltp.commitment import CommitmentRecord
     import time
+
+    from src.ltp.commitment import CommitmentRecord
+
     record = CommitmentRecord(
         entity_id="sp1-test-entity",
         sender_id="sender",
@@ -63,7 +65,6 @@ def prover():
 
 
 class TestBackend:
-
     def test_backend_is_sp1(self, prover):
         assert prover.backend == ZKBridgeBackend.SP1
 
@@ -81,7 +82,6 @@ class TestBackend:
 
 
 class TestProveSTH:
-
     def test_returns_zkbridge_proof(self, prover, sth):
         proof = prover.prove_sth_signature(sth)
         assert isinstance(proof, ZKBridgeProof)
@@ -114,8 +114,11 @@ class TestProveSTH:
     def test_invalid_sth_raises(self, prover):
         """STH with invalid signature should raise ValueError."""
         from src.ltp.merkle_log.sth import SignedTreeHead
+
         bad_sth = SignedTreeHead(
-            sequence=1, tree_size=1, timestamp=0.0,
+            sequence=1,
+            tree_size=1,
+            timestamp=0.0,
             root_hash=b"\x00" * 32,
             operator_vk=b"\x00" * 1952,
             signature=b"\x00" * 3309,
@@ -130,7 +133,6 @@ class TestProveSTH:
 
 
 class TestMarshalWitnesses:
-
     def test_format_is_length_prefixed_le(self, prover, sth):
         data = prover._marshal_witnesses(sth)
 
@@ -164,7 +166,6 @@ class TestMarshalWitnesses:
 
 
 class TestVerifierIntegration:
-
     def test_mock_proof_verifiable(self, prover, sth):
         """ZKBridgeVerifier should accept SP1 mock proofs."""
         proof = prover.prove_sth_signature(sth)

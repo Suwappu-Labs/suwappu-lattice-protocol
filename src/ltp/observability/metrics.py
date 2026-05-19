@@ -107,7 +107,9 @@ class Histogram:
     """Distribution of observed values. Thread-safe."""
 
     def __init__(
-        self, name: str, description: str = "",
+        self,
+        name: str,
+        description: str = "",
         buckets: tuple[float, ...] = DEFAULT_BUCKETS,
     ) -> None:
         self.name = name
@@ -149,11 +151,16 @@ class Histogram:
         with self._lock:
             result = []
             for key in self._counts:
-                result.append((key, {
-                    "buckets": dict(self._bucket_counts.get(key, {})),
-                    "sum": self._sums[key],
-                    "count": self._counts[key],
-                }))
+                result.append(
+                    (
+                        key,
+                        {
+                            "buckets": dict(self._bucket_counts.get(key, {})),
+                            "sum": self._sums[key],
+                            "count": self._counts[key],
+                        },
+                    )
+                )
             return result
 
 
@@ -193,7 +200,9 @@ class MetricsRegistry:
             return g
 
     def histogram(
-        self, name: str, description: str = "",
+        self,
+        name: str,
+        description: str = "",
         buckets: tuple[float, ...] = DEFAULT_BUCKETS,
     ) -> Histogram:
         """Register and return a histogram metric."""
@@ -235,8 +244,12 @@ class MetricsRegistry:
             elif isinstance(metric, Histogram):
                 for label_key, data in metric._samples():
                     for bound, count in sorted(data["buckets"].items()):
-                        lines.append(f"{metric.name}_bucket{{{label_key + ',' if label_key else ''}le=\"{bound}\"}} {count}")
-                    lines.append(f"{metric.name}_bucket{{{label_key + ',' if label_key else ''}le=\"+Inf\"}} {data['count']}")
+                        lines.append(
+                            f'{metric.name}_bucket{{{label_key + "," if label_key else ""}le="{bound}"}} {count}'
+                        )
+                    lines.append(
+                        f'{metric.name}_bucket{{{label_key + "," if label_key else ""}le="+Inf"}} {data["count"]}'
+                    )
                     if label_key:
                         lines.append(f"{metric.name}_sum{{{label_key}}} {data['sum']}")
                         lines.append(f"{metric.name}_count{{{label_key}}} {data['count']}")
@@ -263,55 +276,71 @@ def create_etp_metrics(registry: MetricsRegistry) -> dict[str, Counter | Gauge |
     """Pre-register all ETP metrics matching the deployment plan alert table."""
     return {
         "sth_publish_gap": registry.gauge(
-            "etp_sth_publish_gap_seconds", "Seconds since last STH was published",
+            "etp_sth_publish_gap_seconds",
+            "Seconds since last STH was published",
         ),
         "audit_failure_rate": registry.gauge(
-            "etp_audit_failure_rate", "Current audit failure rate (0-1)",
+            "etp_audit_failure_rate",
+            "Current audit failure rate (0-1)",
         ),
         "materialize_failures": registry.counter(
-            "etp_materialize_failure_total", "Total materialization failures",
+            "etp_materialize_failure_total",
+            "Total materialization failures",
         ),
         "rest_5xx": registry.counter(
-            "etp_rest_5xx_total", "Total REST API 5xx responses",
+            "etp_rest_5xx_total",
+            "Total REST API 5xx responses",
         ),
         "rest_latency": registry.histogram(
-            "etp_rest_latency_seconds", "REST API request latency",
+            "etp_rest_latency_seconds",
+            "REST API request latency",
             buckets=(0.01, 0.025, 0.05, 0.1, 0.2, 0.5, 1.0),
         ),
         "shard_fetch_latency": registry.histogram(
-            "etp_shard_fetch_latency_seconds", "Shard fetch latency",
+            "etp_shard_fetch_latency_seconds",
+            "Shard fetch latency",
             buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0),
         ),
         "key_rotation_failures": registry.counter(
-            "etp_key_rotation_failures_total", "Key rotation task failures",
+            "etp_key_rotation_failures_total",
+            "Key rotation task failures",
         ),
         "bridge_message_age": registry.gauge(
-            "etp_bridge_message_age_seconds", "Age of oldest unfinalized bridge message",
+            "etp_bridge_message_age_seconds",
+            "Age of oldest unfinalized bridge message",
         ),
         "nonce_violations": registry.counter(
-            "etp_nonce_violation_total", "Total nonce monotonicity violations",
+            "etp_nonce_violation_total",
+            "Total nonce monotonicity violations",
         ),
         "dst_regressions": registry.counter(
-            "etp_dst_regression_total", "DST nightly regression failures",
+            "etp_dst_regression_total",
+            "DST nightly regression failures",
         ),
         # Bridge operator metrics
         "bridge_records_bridged": registry.counter(
-            "etp_bridge_records_bridged_total", "Records successfully bridged cross-chain",
+            "etp_bridge_records_bridged_total",
+            "Records successfully bridged cross-chain",
         ),
         "bridge_records_failed": registry.counter(
-            "etp_bridge_records_failed_total", "Bridge transfer failures",
+            "etp_bridge_records_failed_total",
+            "Bridge transfer failures",
         ),
         "bridge_retry_queue_size": registry.gauge(
-            "etp_bridge_retry_queue_size", "Current bridge retry queue depth",
+            "etp_bridge_retry_queue_size",
+            "Current bridge retry queue depth",
         ),
         # Gossip metrics
         "gossip_peers_discovered": registry.counter(
-            "etp_gossip_peers_discovered_total", "Peers discovered via gossip exchange",
+            "etp_gossip_peers_discovered_total",
+            "Peers discovered via gossip exchange",
         ),
         "gossip_peers_timed_out": registry.counter(
-            "etp_gossip_peers_timed_out_total", "Peers marked disconnected by liveness timeout",
+            "etp_gossip_peers_timed_out_total",
+            "Peers marked disconnected by liveness timeout",
         ),
         "gossip_exchanges_sent": registry.counter(
-            "etp_gossip_exchanges_sent_total", "Peer exchange messages sent",
+            "etp_gossip_exchanges_sent_total",
+            "Peer exchange messages sent",
         ),
     }

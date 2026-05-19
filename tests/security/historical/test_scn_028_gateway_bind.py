@@ -21,6 +21,7 @@ The actual `uvicorn.run` call happens in
 parsing logic that constructs `host` and `port` rather than
 running uvicorn itself (which would block).
 """
+
 from __future__ import annotations
 
 import os
@@ -48,23 +49,19 @@ def test_GW1_default_host_is_loopback():
     """With no env vars set, host is 127.0.0.1 — not 0.0.0.0."""
     # Use clear=False so other env vars stay (PATH, HOME, etc.)
     # but pop the specific vars under test.
-    env = {k: v for k, v in os.environ.items()
-           if k not in {"ETP_GATEWAY_HOST", "ETP_GATEWAY_PORT"}}
+    env = {k: v for k, v in os.environ.items() if k not in {"ETP_GATEWAY_HOST", "ETP_GATEWAY_PORT"}}
     with mock.patch.dict(os.environ, env, clear=True):
         host, port = _resolve_host_port()
-        assert host == "127.0.0.1", \
-            f"default bind must be loopback, got {host}"
+        assert host == "127.0.0.1", f"default bind must be loopback, got {host}"
         assert port == 8000
 
 
 def test_GW1_default_host_is_not_zero_zero_zero_zero():
     """Explicit anti-test: the default must NOT be 0.0.0.0."""
-    env = {k: v for k, v in os.environ.items()
-           if k not in {"ETP_GATEWAY_HOST", "ETP_GATEWAY_PORT"}}
+    env = {k: v for k, v in os.environ.items() if k not in {"ETP_GATEWAY_HOST", "ETP_GATEWAY_PORT"}}
     with mock.patch.dict(os.environ, env, clear=True):
         host, _ = _resolve_host_port()
-        assert host != "0.0.0.0", \
-            "fail-safe defaults: gateway must NEVER default to 0.0.0.0"
+        assert host != "0.0.0.0", "fail-safe defaults: gateway must NEVER default to 0.0.0.0"
 
 
 # ---------------------------------------------------------------------------
@@ -109,8 +106,7 @@ def test_GW3_port_override():
 
 
 def test_GW3_default_port_is_8000():
-    env = {k: v for k, v in os.environ.items()
-           if k not in {"ETP_GATEWAY_PORT"}}
+    env = {k: v for k, v in os.environ.items() if k not in {"ETP_GATEWAY_PORT"}}
     with mock.patch.dict(os.environ, env, clear=True):
         _, port = _resolve_host_port()
         assert port == 8000

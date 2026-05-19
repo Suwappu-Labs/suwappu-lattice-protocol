@@ -42,12 +42,12 @@ class SignedTreeHead:
     Call verify() before trusting any STH received from an external source.
     """
 
-    sequence: int       # monotonically increasing counter, unique per operator
-    tree_size: int      # number of leaves in the tree at signing time
-    timestamp: float    # unix timestamp (wall clock, informational only)
-    root_hash: bytes    # 32-byte BLAKE2b-256 Merkle root
+    sequence: int  # monotonically increasing counter, unique per operator
+    tree_size: int  # number of leaves in the tree at signing time
+    timestamp: float  # unix timestamp (wall clock, informational only)
+    root_hash: bytes  # 32-byte BLAKE2b-256 Merkle root
     operator_vk: bytes  # ML-DSA-65 verification key of the signing operator
-    signature: bytes    # ML-DSA-65 signature over signable_payload()
+    signature: bytes  # ML-DSA-65 signature over signable_payload()
 
     def signable_payload(self) -> bytes:
         """
@@ -61,9 +61,9 @@ class SignedTreeHead:
         compatibility with existing signatures.
         """
         return (
-            struct.pack('>Q', self.sequence)
-            + struct.pack('>Q', self.tree_size)
-            + struct.pack('>d', self.timestamp)
+            struct.pack(">Q", self.sequence)
+            + struct.pack(">Q", self.tree_size)
+            + struct.pack(">d", self.timestamp)
             + self.root_hash
         )
 
@@ -74,8 +74,9 @@ class SignedTreeHead:
         The legacy signable_payload() (without domain prefix) is preserved
         for backward compatibility with existing ML-DSA signatures.
         """
-        from ..encoding import CanonicalEncoder
         from ..domain import DOMAIN_STH_SIGN
+        from ..encoding import CanonicalEncoder
+
         return (
             CanonicalEncoder(DOMAIN_STH_SIGN)
             .uint64(self.sequence)
@@ -104,8 +105,9 @@ class SignedTreeHead:
         Uses canonical_bytes() as the payload. The existing sign() classmethod
         is UNCHANGED — this is an additive capability.
         """
-        from ..envelope import SignedEnvelope
         from ..domain import DOMAIN_STH_SIGN
+        from ..envelope import SignedEnvelope
+
         sth = cls.sign(sequence, tree_size, root_hash, operator_vk, operator_sk)
         return SignedEnvelope.create(
             domain=DOMAIN_STH_SIGN,
@@ -137,15 +139,16 @@ class SignedTreeHead:
         """
         ts = time.time()
         payload = (
-            struct.pack('>Q', sequence)
-            + struct.pack('>Q', tree_size)
-            + struct.pack('>d', ts)
+            struct.pack(">Q", sequence)
+            + struct.pack(">Q", tree_size)
+            + struct.pack(">d", ts)
             + root_hash
         )
         # LTP-A-032 Phase 4d: operator_sk may be raw bytes (legacy) or
         # a KeyPair. Route through KeyPair.sign when applicable so
         # HSM-backed kps stay sentinel-only.
         from ..keypair import KeyPair as _KeyPair
+
         if isinstance(operator_sk, _KeyPair):
             signature = operator_sk.sign(payload)
         else:

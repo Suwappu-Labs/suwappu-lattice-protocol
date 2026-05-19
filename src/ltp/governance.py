@@ -18,28 +18,31 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-import time
-from dataclasses import dataclass, field
-
-from .encoding import CanonicalEncoder
 import math
 import threading
+import time
+from dataclasses import dataclass, field
 from typing import Callable, Optional
 
 from .domain import (
-    DOMAIN_SIGNER_POLICY,
     DOMAIN_GOVERNANCE_VOTE,
+    DOMAIN_SIGNER_POLICY,
     domain_hash_bytes,
     domain_sign,
     domain_verify,
     signer_fingerprint,
 )
+from .encoding import CanonicalEncoder
 from .primitives import MLDSA, canonical_hash
 
 __all__ = [
-    "SignerEntry", "ApprovalRule", "SignerPolicy",
-    "TransitionVote", "TransitionVoteManager",
-    "create_transition_vote", "verify_transition_vote",
+    "SignerEntry",
+    "ApprovalRule",
+    "SignerPolicy",
+    "TransitionVote",
+    "TransitionVoteManager",
+    "create_transition_vote",
+    "verify_transition_vote",
 ]
 
 
@@ -141,7 +144,9 @@ class SignerPolicy:
         """Sign this policy with the policy authority's key."""
         self.policy_id = self.policy_hash()
         self.policy_signature = domain_sign(
-            DOMAIN_SIGNER_POLICY, authority_sk, self.canonical_bytes(),
+            DOMAIN_SIGNER_POLICY,
+            authority_sk,
+            self.canonical_bytes(),
         )
 
     def verify_policy(self, authority_vk: bytes) -> bool:
@@ -149,7 +154,9 @@ class SignerPolicy:
         if not self.policy_signature:
             return False
         return domain_verify(
-            DOMAIN_SIGNER_POLICY, authority_vk, self.canonical_bytes(),
+            DOMAIN_SIGNER_POLICY,
+            authority_vk,
+            self.canonical_bytes(),
             self.policy_signature,
         )
 
@@ -226,6 +233,7 @@ class SignerPolicy:
 @dataclass
 class TransitionVote:
     """A single operator's signed vote for a phase transition."""
+
     voter_vk_hash: str
     from_phase: str
     to_phase: str
@@ -236,12 +244,7 @@ class TransitionVote:
 
 def create_transition_vote(keypair, from_phase: str, to_phase: str) -> TransitionVote:
     """Create a signed transition vote using ML-DSA-65."""
-    payload = (
-        DOMAIN_GOVERNANCE_VOTE
-        + from_phase.encode()
-        + to_phase.encode()
-        + keypair.vk
-    )
+    payload = DOMAIN_GOVERNANCE_VOTE + from_phase.encode() + to_phase.encode() + keypair.vk
     sig = keypair.sign(payload)
     return TransitionVote(
         voter_vk_hash=canonical_hash(keypair.vk),
@@ -255,12 +258,7 @@ def create_transition_vote(keypair, from_phase: str, to_phase: str) -> Transitio
 
 def verify_transition_vote(vote: TransitionVote, voter_vk: bytes) -> bool:
     """Verify a transition vote signature."""
-    payload = (
-        DOMAIN_GOVERNANCE_VOTE
-        + vote.from_phase.encode()
-        + vote.to_phase.encode()
-        + voter_vk
-    )
+    payload = DOMAIN_GOVERNANCE_VOTE + vote.from_phase.encode() + vote.to_phase.encode() + voter_vk
     return MLDSA.verify(voter_vk, payload, vote.signature)
 
 
@@ -338,12 +336,17 @@ class OnChainGovernanceClient:
         vk_key = Web3.keccak(voter_vk_hash) if len(voter_vk_hash) != 32 else voter_vk_hash
 
         tx = self._contract.functions.castVote(
-            tx_key, vk_key, sequence, valid_until,
-        ).build_transaction({
-            "from": self._account.address,
-            "nonce": self._w3.eth.get_transaction_count(self._account.address),
-            "gas": 200_000,
-        })
+            tx_key,
+            vk_key,
+            sequence,
+            valid_until,
+        ).build_transaction(
+            {
+                "from": self._account.address,
+                "nonce": self._w3.eth.get_transaction_count(self._account.address),
+                "gas": 200_000,
+            }
+        )
 
         signed = self._account.sign_transaction(tx)
         tx_hash = self._w3.eth.send_raw_transaction(signed.raw_transaction)
@@ -365,12 +368,15 @@ class OnChainGovernanceClient:
         to_key = Web3.keccak(text=to_phase)
 
         tx = self._contract.functions.executeTransition(
-            from_key, to_key,
-        ).build_transaction({
-            "from": self._account.address,
-            "nonce": self._w3.eth.get_transaction_count(self._account.address),
-            "gas": 200_000,
-        })
+            from_key,
+            to_key,
+        ).build_transaction(
+            {
+                "from": self._account.address,
+                "nonce": self._w3.eth.get_transaction_count(self._account.address),
+                "gas": 200_000,
+            }
+        )
 
         signed = self._account.sign_transaction(tx)
         tx_hash = self._w3.eth.send_raw_transaction(signed.raw_transaction)
@@ -406,7 +412,9 @@ class TransitionVoteManager:
             self._operators[operator_id] = vk_hash
 
     def cast_vote(
-        self, transition_key: str, vote: TransitionVote,
+        self,
+        transition_key: str,
+        vote: TransitionVote,
         voter_vk: Optional[bytes] = None,
     ) -> dict:
         """Cast a signed vote. Returns current tally.
@@ -421,9 +429,7 @@ class TransitionVoteManager:
         with self._lock:
             # Verify voter is a registered operator
             if vote.voter_vk_hash not in self._operators.values():
-                raise ValueError(
-                    f"Voter {vote.voter_vk_hash[:16]} is not a registered operator"
-                )
+                raise ValueError(f"Voter {vote.voter_vk_hash[:16]} is not a registered operator")
 
             votes = self._votes.setdefault(transition_key, [])
 
@@ -441,8 +447,12 @@ class TransitionVoteManager:
         if self._on_chain_client is not None:
             try:
                 self._on_chain_client.cast_vote_on_chain(
-                    transition_key=transition_key.encode() if isinstance(transition_key, str) else transition_key,
-                    voter_vk_hash=vote.voter_vk_hash.encode() if isinstance(vote.voter_vk_hash, str) else vote.voter_vk_hash,
+                    transition_key=transition_key.encode()
+                    if isinstance(transition_key, str)
+                    else transition_key,
+                    voter_vk_hash=vote.voter_vk_hash.encode()
+                    if isinstance(vote.voter_vk_hash, str)
+                    else vote.voter_vk_hash,
                     sequence=int(vote.timestamp),
                     valid_until=int(vote.timestamp) + 3600,
                 )

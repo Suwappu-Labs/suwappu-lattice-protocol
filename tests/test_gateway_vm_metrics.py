@@ -5,8 +5,8 @@ import pytest
 
 class TestGatewayMetrics:
     def test_create_registers_all_metrics(self):
-        from src.ltp.observability.metrics import MetricsRegistry
         from src.ltp.gateway_vm.metrics import create_gateway_metrics
+        from src.ltp.observability.metrics import MetricsRegistry
 
         registry = MetricsRegistry()
         metrics = create_gateway_metrics(registry)
@@ -19,8 +19,8 @@ class TestGatewayMetrics:
         assert "etp_gateway_replay_rejections" in metrics
 
     def test_counters_increment(self):
-        from src.ltp.observability.metrics import MetricsRegistry
         from src.ltp.gateway_vm.metrics import create_gateway_metrics
+        from src.ltp.observability.metrics import MetricsRegistry
 
         registry = MetricsRegistry()
         m = create_gateway_metrics(registry)
@@ -29,8 +29,8 @@ class TestGatewayMetrics:
         assert m["etp_gateway_events_observed"].get() == 2.0
 
     def test_rejected_counter_accepts_labels(self):
-        from src.ltp.observability.metrics import MetricsRegistry
         from src.ltp.gateway_vm.metrics import create_gateway_metrics
+        from src.ltp.observability.metrics import MetricsRegistry
 
         registry = MetricsRegistry()
         m = create_gateway_metrics(registry)
@@ -40,8 +40,8 @@ class TestGatewayMetrics:
         assert m["etp_gateway_events_rejected"].get(labels={"reason": "finality"}) == 1.0
 
     def test_histogram_observes(self):
-        from src.ltp.observability.metrics import MetricsRegistry
         from src.ltp.gateway_vm.metrics import create_gateway_metrics
+        from src.ltp.observability.metrics import MetricsRegistry
 
         registry = MetricsRegistry()
         m = create_gateway_metrics(registry)

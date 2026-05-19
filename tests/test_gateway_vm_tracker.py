@@ -1,6 +1,7 @@
 """Tests for GatewayTracker — attestation lifecycle tracking."""
 
 import pytest
+
 from src.ltp.keypair import KeyPair
 
 

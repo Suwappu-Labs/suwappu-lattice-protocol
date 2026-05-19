@@ -20,27 +20,34 @@ import random
 import struct
 
 import pytest
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
+from src.ltp import (
+    CommitmentNetwork,
+    Entity,
+    KeyPair,
+    LTPProtocol,
+    canonical_hash_bytes,
+    reset_poc_state,
+)
 from src.ltp.erasure import ErasureCoder
-from src.ltp.primitives import AEAD, MLKEM, MLDSA
-from src.ltp import reset_poc_state
+from src.ltp.keypair import SealedBox
+from src.ltp.merkle_log.proof import InclusionProof
 from src.ltp.merkle_log.tree import (
-    MerkleTree, _leaf_hash, _internal_hash, _compute_root,
+    MerkleTree,
+    _compute_root,
+    _internal_hash,
+    _leaf_hash,
     verify_consistency,
 )
-from src.ltp.merkle_log.proof import InclusionProof
-from src.ltp import (
-    KeyPair, Entity, CommitmentNetwork, LTPProtocol,
-    canonical_hash_bytes,
-)
-from src.ltp.keypair import SealedBox
+from src.ltp.primitives import AEAD, MLDSA, MLKEM
 from src.ltp.shards import ShardEncryptor
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 1. GF(256) FIELD AXIOM VERIFICATION (Exhaustive)
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class TestGF256FieldAxioms:
     """
@@ -95,8 +102,9 @@ class TestGF256FieldAxioms:
         """a · b = b · a for all a, b."""
         for a in range(256):
             for b in range(256):
-                assert ErasureCoder._gf_mul(a, b) == ErasureCoder._gf_mul(b, a), \
+                assert ErasureCoder._gf_mul(a, b) == ErasureCoder._gf_mul(b, a), (
                     f"gf_mul({a},{b}) ≠ gf_mul({b},{a})"
+                )
 
     def test_multiplicative_associativity(self):
         """(a · b) · c = a · (b · c) for all a, b, c.
@@ -108,8 +116,9 @@ class TestGF256FieldAxioms:
             for b in range(256):
                 ab = gf_mul(a, b)
                 for c in range(256):
-                    assert gf_mul(ab, c) == gf_mul(a, gf_mul(b, c)), \
+                    assert gf_mul(ab, c) == gf_mul(a, gf_mul(b, c)), (
                         f"Associativity failed: ({a}·{b})·{c} ≠ {a}·({b}·{c})"
+                    )
 
     def test_distributivity(self):
         """a · (b ⊕ c) = (a · b) ⊕ (a · c) for all a, b, c."""
@@ -119,8 +128,9 @@ class TestGF256FieldAxioms:
                 for c in range(256):
                     lhs = gf_mul(a, b ^ c)
                     rhs = gf_mul(a, b) ^ gf_mul(a, c)
-                    assert lhs == rhs, \
+                    assert lhs == rhs, (
                         f"Distributivity failed: {a}·({b}⊕{c})={lhs} ≠ ({a}·{b})⊕({a}·{c})={rhs}"
+                    )
 
     def test_zero_annihilation(self):
         """a · 0 = 0 for all a."""
@@ -131,6 +141,7 @@ class TestGF256FieldAxioms:
 # ═══════════════════════════════════════════════════════════════════════════
 # 2. REED-SOLOMON MDS PROPERTY (Property-based)
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class TestReedSolomonMDS:
     """
@@ -192,6 +203,7 @@ class TestReedSolomonMDS:
 # ═══════════════════════════════════════════════════════════════════════════
 # 3. AEAD CORRECTNESS (Property-based)
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class TestAEADFormalProperties:
     """Verify AEAD authenticated encryption correctness properties."""
@@ -266,6 +278,7 @@ class TestAEADFormalProperties:
 # 4. MERKLE TREE FORMAL PROPERTIES (RFC 6962)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestMerkleTreeFormalProperties:
     """Verify RFC 6962 Merkle tree mathematical invariants."""
 
@@ -324,8 +337,9 @@ class TestMerkleTreeFormalProperties:
                 audit_path=path,
                 root_hash=root,
             )
-            assert proof.verify(data_items[i], root), \
+            assert proof.verify(data_items[i], root), (
                 f"Inclusion proof failed for leaf {i} in tree of size {n}"
+            )
 
     @given(n=st.integers(min_value=1, max_value=50))
     @settings(max_examples=30, deadline=5000)
@@ -338,8 +352,9 @@ class TestMerkleTreeFormalProperties:
         max_path_len = math.ceil(math.log2(n)) if n > 1 else 0
         for i in range(n):
             path = tree.audit_path(i)
-            assert len(path) <= max_path_len + 1, \
+            assert len(path) <= max_path_len + 1, (
                 f"Path too long: {len(path)} > {max_path_len} for n={n}, i={i}"
+            )
 
     def test_consistency_proof_append_only(self):
         """Tree(N) is provably a prefix of Tree(N+M) for sequential appends."""
@@ -355,8 +370,10 @@ class TestMerkleTreeFormalProperties:
             new_size = 20
             proof = tree.consistency_proof(old_size)
             valid = verify_consistency(
-                old_size, new_size,
-                roots[old_size - 1], roots[new_size - 1],
+                old_size,
+                new_size,
+                roots[old_size - 1],
+                roots[new_size - 1],
                 proof,
             )
             assert valid, f"Consistency failed: tree({old_size}) → tree({new_size})"
@@ -364,13 +381,14 @@ class TestMerkleTreeFormalProperties:
     def test_empty_tree_sentinel(self):
         """Empty tree has a deterministic root (H(b''))."""
         tree = MerkleTree()
-        expected = canonical_hash_bytes(b'')
+        expected = canonical_hash_bytes(b"")
         assert tree.root() == expected
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 5. SEALED BOX FORWARD SECRECY
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class TestSealedBoxForwardSecrecy:
     """Verify ML-KEM envelope encryption properties."""
@@ -419,6 +437,7 @@ class TestSealedBoxForwardSecrecy:
 # 6. NONCE DERIVATION UNIQUENESS
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestNonceDerivation:
     """Verify shard nonce derivation produces unique nonces."""
 
@@ -456,6 +475,7 @@ class TestNonceDerivation:
 # ═══════════════════════════════════════════════════════════════════════════
 # 7. PROTOCOL-LEVEL PROPERTIES
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class TestProtocolFormalProperties:
     """Verify end-to-end protocol mathematical properties."""
@@ -508,8 +528,7 @@ class TestProtocolFormalProperties:
             sizes.append(len(sealed))
 
         # All sealed keys should be the same size (within a few bytes for JSON encoding)
-        assert max(sizes) - min(sizes) <= 20, \
-            f"Sealed key sizes vary too much: {sizes}"
+        assert max(sizes) - min(sizes) <= 20, f"Sealed key sizes vary too much: {sizes}"
 
     def test_cross_entity_isolation(self):
         """Materializing entity A with entity B's sealed key fails."""

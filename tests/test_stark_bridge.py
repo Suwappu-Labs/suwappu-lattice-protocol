@@ -17,18 +17,17 @@ from enum import IntEnum
 import pytest
 
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol
+from src.ltp.bridge.challenge import ChallengeManager, ChallengeStatus
 from src.ltp.bridge.zk_bridge import (
-    ZKBridgeBackend,
-    ZKBridgePublicInputs,
-    ZKBridgeProof,
     SimulatedZKBridgeProver,
     STARKBridgeProver,
+    ZKBridgeBackend,
+    ZKBridgeProof,
+    ZKBridgePublicInputs,
     ZKBridgeVerifier,
 )
-from src.ltp.bridge.challenge import ChallengeManager, ChallengeStatus
-from src.ltp.verify import verify_zk_bridge_proof
 from src.ltp.primitives import MLDSA
-
+from src.ltp.verify import verify_zk_bridge_proof
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -39,13 +38,21 @@ def _make_sth(keypair: KeyPair, sequence: int = 1, root_hash: bytes = b"\x11" * 
     from src.ltp.merkle_log.sth import SignedTreeHead
 
     sth = SignedTreeHead(
-        sequence=sequence, tree_size=sequence, timestamp=time.time(),
-        root_hash=root_hash, operator_vk=keypair.vk, signature=b"",
+        sequence=sequence,
+        tree_size=sequence,
+        timestamp=time.time(),
+        root_hash=root_hash,
+        operator_vk=keypair.vk,
+        signature=b"",
     )
     sig = MLDSA.sign(keypair.sk, sth.signable_payload())
     return SignedTreeHead(
-        sequence=sth.sequence, tree_size=sth.tree_size, timestamp=sth.timestamp,
-        root_hash=sth.root_hash, operator_vk=sth.operator_vk, signature=sig,
+        sequence=sth.sequence,
+        tree_size=sth.tree_size,
+        timestamp=sth.timestamp,
+        root_hash=sth.root_hash,
+        operator_vk=sth.operator_vk,
+        signature=sig,
     )
 
 
@@ -53,8 +60,12 @@ def _make_bad_sth(keypair: KeyPair):
     from src.ltp.merkle_log.sth import SignedTreeHead
 
     return SignedTreeHead(
-        sequence=1, tree_size=1, timestamp=time.time(),
-        root_hash=b"\x99" * 32, operator_vk=keypair.vk, signature=b"\x00" * 64,
+        sequence=1,
+        tree_size=1,
+        timestamp=time.time(),
+        root_hash=b"\x99" * 32,
+        operator_vk=keypair.vk,
+        signature=b"\x00" * 64,
     )
 
 
@@ -74,7 +85,6 @@ def verifier_kp() -> KeyPair:
 
 
 class TestSTARKBridgeProver:
-
     def test_prove_valid_sth(self, operator):
         sth = _make_sth(operator)
         prover = STARKBridgeProver()
@@ -133,7 +143,6 @@ class TestSTARKBridgeProver:
 
 
 class TestSTARKVerifier:
-
     def test_verify_valid_stark_proof(self, operator):
         sth = _make_sth(operator)
         proof = STARKBridgeProver().prove_sth_signature(sth)
@@ -144,8 +153,10 @@ class TestSTARKVerifier:
         proof = STARKBridgeProver().prove_sth_signature(sth)
         tampered = proof.proof_bytes[:96] + b"\x00" * 32
         bad = ZKBridgeProof(
-            proof_bytes=tampered, backend=ZKBridgeBackend.STARK,
-            public_inputs=proof.public_inputs, proof_id="bad",
+            proof_bytes=tampered,
+            backend=ZKBridgeBackend.STARK,
+            public_inputs=proof.public_inputs,
+            proof_id="bad",
         )
         assert ZKBridgeVerifier.verify(bad) is False
 
@@ -159,8 +170,10 @@ class TestSTARKVerifier:
             sth_sequence=proof.public_inputs.sth_sequence,
         )
         bad = ZKBridgeProof(
-            proof_bytes=proof.proof_bytes, backend=ZKBridgeBackend.STARK,
-            public_inputs=wrong, proof_id=proof.proof_id,
+            proof_bytes=proof.proof_bytes,
+            backend=ZKBridgeBackend.STARK,
+            public_inputs=wrong,
+            proof_id=proof.proof_id,
         )
         assert ZKBridgeVerifier.verify(bad) is False
 
@@ -169,8 +182,10 @@ class TestSTARKVerifier:
         sth = _make_sth(operator)
         inputs = ZKBridgePublicInputs.from_sth(sth)
         short = ZKBridgeProof(
-            proof_bytes=b"\x00" * 64, backend=ZKBridgeBackend.STARK,
-            public_inputs=inputs, proof_id="short",
+            proof_bytes=b"\x00" * 64,
+            backend=ZKBridgeBackend.STARK,
+            public_inputs=inputs,
+            proof_id="short",
         )
         assert ZKBridgeVerifier.verify(short) is False
 
@@ -181,7 +196,6 @@ class TestSTARKVerifier:
 
 
 class TestSTARKvsSNARK:
-
     def test_same_sth_different_proofs(self, operator):
         """Same STH produces structurally different proofs for STARK vs SIMULATED."""
         sth = _make_sth(operator, sequence=3, root_hash=b"\xee" * 32)
@@ -190,8 +204,8 @@ class TestSTARKvsSNARK:
         stark_proof = STARKBridgeProver().prove_sth_signature(sth)
 
         assert snark_proof.proof_bytes != stark_proof.proof_bytes
-        assert len(snark_proof.proof_bytes) > 100   # SIMULATED now uses real STARK
-        assert len(stark_proof.proof_bytes) > 100   # Real FRI-based STARK
+        assert len(snark_proof.proof_bytes) > 100  # SIMULATED now uses real STARK
+        assert len(stark_proof.proof_bytes) > 100  # Real FRI-based STARK
 
     def test_both_verify_independently(self, operator):
         """Both proof types verify for the same STH."""
@@ -221,7 +235,6 @@ class TestSTARKvsSNARK:
 
 
 class TestChallengeManagerSTARK:
-
     def test_resolve_with_stark_proof(self, operator):
         """ChallengeManager accepts STARK proofs identically to SNARK proofs."""
         mgr = ChallengeManager(challenge_period=100.0)
@@ -268,7 +281,6 @@ class _MockClient:
 
 
 class TestLiveBridgeSTARK:
-
     def test_transfer_with_stark_prover(self):
         """LiveBridge with STARKBridgeProver gives instant finality."""
         net = CommitmentNetwork()
@@ -284,16 +296,23 @@ class TestLiveBridgeSTARK:
 
         mgr = ChallengeManager(challenge_period=604800.0)
         bridge = LiveBridge(
-            protocol=protocol, l1_client=_MockClient(),
-            operator_keypair=op, l2_verifier_keypair=vf,
-            l1_chain_id=31337, challenge_manager=mgr,
+            protocol=protocol,
+            l1_client=_MockClient(),
+            operator_keypair=op,
+            l2_verifier_keypair=vf,
+            l1_chain_id=31337,
+            challenge_manager=mgr,
             zk_prover=STARKBridgeProver(),
         )
 
         msg = BridgeMessage(
-            msg_type="token_lock", source_chain="ethereum", dest_chain="optimism",
-            sender="0xAlice", recipient="0xAlice",
-            payload={"token": "USDC", "amount": 100}, nonce=0,
+            msg_type="token_lock",
+            source_chain="ethereum",
+            dest_chain="optimism",
+            sender="0xAlice",
+            recipient="0xAlice",
+            payload={"token": "USDC", "amount": 100},
+            nonce=0,
         )
 
         result = bridge.transfer(msg)
@@ -309,7 +328,6 @@ class TestLiveBridgeSTARK:
 
 
 class TestEndToEndPQ:
-
     def test_full_pq_safe_flow(self, operator):
         """Complete PQ-safe flow: commit -> STARK prove -> verify -> finalize."""
         net = CommitmentNetwork()
@@ -318,6 +336,7 @@ class TestEndToEndPQ:
         protocol = LTPProtocol(net)
 
         from src.ltp.entity import Entity
+
         entity = Entity(content=b"Post-quantum end-to-end data " * 8, shape="text/plain")
         entity_id, record, cek = protocol.commit(entity, operator)
 

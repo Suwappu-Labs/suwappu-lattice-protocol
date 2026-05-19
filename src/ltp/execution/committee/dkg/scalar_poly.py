@@ -10,7 +10,7 @@ __all__ = ["ScalarField", "ScalarPoly"]
 class ScalarField:
     """Arithmetic over BLS12-381 scalar field Z_r."""
 
-    R = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+    R = 0x73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001
 
     @staticmethod
     def add(a: int, b: int) -> int:

@@ -36,26 +36,29 @@ __all__ = [
 # Registry Action Enum
 # ---------------------------------------------------------------------------
 
+
 class RegistryAction(str, Enum):
     """Operations that can be performed on the writer registry.
 
     Each action corresponds to a distinct privilege that must be
     explicitly granted via a ``ScopedPermission`` on a ``RegistryRole``.
     """
-    APPROVE          = "approve"
-    REJECT           = "reject"
-    SUSPEND          = "suspend"
-    REINSTATE        = "reinstate"
-    REVOKE           = "revoke"
+
+    APPROVE = "approve"
+    REJECT = "reject"
+    SUSPEND = "suspend"
+    REINSTATE = "reinstate"
+    REVOKE = "revoke"
     CONFIGURE_POLICY = "configure_policy"
-    SET_RATE_LIMIT   = "set_rate_limit"
+    SET_RATE_LIMIT = "set_rate_limit"
     MANAGE_ALLOWLIST = "manage_allowlist"
-    MANAGE_DENYLIST  = "manage_denylist"
+    MANAGE_DENYLIST = "manage_denylist"
 
 
 # ---------------------------------------------------------------------------
 # Scoped Permission
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class ScopedPermission:
@@ -70,9 +73,10 @@ class ScopedPermission:
     The constructor transparently converts plain ``set`` arguments to
     ``frozenset`` so callers need not do it manually.
     """
-    action:     RegistryAction
+
+    action: RegistryAction
     tier_scope: Optional[frozenset[IdentityTier]]
-    vm_scope:   Optional[frozenset[int]]
+    vm_scope: Optional[frozenset[int]]
 
     def __init__(
         self,
@@ -122,6 +126,7 @@ class ScopedPermission:
 # Registry Role
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class RegistryRole:
     """An immutable named collection of :class:`ScopedPermission` objects.
@@ -133,9 +138,10 @@ class RegistryRole:
         is_builtin  — True for the three shipped roles; False for
                       operator-defined custom roles.
     """
-    name:        str
+
+    name: str
     permissions: tuple[ScopedPermission, ...]
-    is_builtin:  bool
+    is_builtin: bool
 
     def __init__(
         self,
@@ -161,6 +167,7 @@ class RegistryRole:
 # Role Assignment
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class RoleAssignment:
     """Binds a :class:`RegistryRole` to an actor identified by fingerprint.
@@ -173,11 +180,12 @@ class RoleAssignment:
         expires_at    — Optional epoch integer after which assignment lapses.
                         ``None`` means the assignment never expires.
     """
-    role:         RegistryRole
-    assignee_fp:  bytes
-    assigned_by:  bytes
-    assigned_at:  int
-    expires_at:   Optional[int] = None
+
+    role: RegistryRole
+    assignee_fp: bytes
+    assigned_by: bytes
+    assigned_at: int
+    expires_at: Optional[int] = None
 
     def is_active(self, current_epoch: int) -> bool:
         """Return ``True`` if the assignment has not yet expired.
@@ -194,6 +202,7 @@ class RoleAssignment:
 # ---------------------------------------------------------------------------
 # Built-in Role Factories
 # ---------------------------------------------------------------------------
+
 
 def _all_actions() -> list[ScopedPermission]:
     """Unrestricted permissions for every action."""

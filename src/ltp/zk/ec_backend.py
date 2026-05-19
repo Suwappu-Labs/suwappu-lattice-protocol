@@ -22,16 +22,28 @@ from typing import Any
 _py_ecc_available = False
 
 try:
+    from py_ecc.bls12_381 import FQ as _FQ  # type: ignore[import-untyped]
     from py_ecc.bls12_381 import (  # type: ignore[import-untyped]
         G1 as _BLS_G1,
+    )
+    from py_ecc.bls12_381 import (
         Z1 as _G1_IDENTITY,
+    )
+    from py_ecc.bls12_381 import (
         add as _g1_add,
+    )
+    from py_ecc.bls12_381 import (
         curve_order as _BLS_ORDER,
+    )
+    from py_ecc.bls12_381 import (
         field_modulus as _FIELD_MODULUS,
+    )
+    from py_ecc.bls12_381 import (
         multiply as _g1_multiply,
+    )
+    from py_ecc.bls12_381 import (
         neg as _g1_neg,
     )
-    from py_ecc.bls12_381 import FQ as _FQ  # type: ignore[import-untyped]
 
     _py_ecc_available = True
 except ImportError:
@@ -46,17 +58,28 @@ except ImportError:
 # Required for G2_to_signature / signature_to_G2 compatibility
 _py_ecc_g2_available = False
 try:
-    from py_ecc.optimized_bls12_381 import (  # type: ignore[import-untyped]
-        G2 as _OPT_G2,
-        Z2 as _OPT_Z2,
-        multiply as _opt_multiply,
-        add as _opt_add,
-        curve_order as _OPT_CURVE_ORDER,
+    from py_ecc.bls.g2_primitives import (
+        G1_to_pubkey as _G1_to_pubkey,
     )
     from py_ecc.bls.g2_primitives import (  # type: ignore[import-untyped]
         G2_to_signature as _G2_to_signature,
-        G1_to_pubkey as _G1_to_pubkey,
     )
+    from py_ecc.optimized_bls12_381 import (  # type: ignore[import-untyped]
+        G2 as _OPT_G2,
+    )
+    from py_ecc.optimized_bls12_381 import (
+        Z2 as _OPT_Z2,
+    )
+    from py_ecc.optimized_bls12_381 import (
+        add as _opt_add,
+    )
+    from py_ecc.optimized_bls12_381 import (
+        curve_order as _OPT_CURVE_ORDER,
+    )
+    from py_ecc.optimized_bls12_381 import (
+        multiply as _opt_multiply,
+    )
+
     _py_ecc_g2_available = True
 except ImportError:
     _OPT_G2 = None
@@ -85,10 +108,7 @@ def bls12_381_available() -> bool:
 def _require_backend() -> None:
     """Raise if py_ecc is not available."""
     if not _py_ecc_available:
-        raise RuntimeError(
-            "BLS12-381 backend requires py_ecc. "
-            "Install with: pip install 'ltp[zk]'"
-        )
+        raise RuntimeError("BLS12-381 backend requires py_ecc. Install with: pip install 'ltp[zk]'")
 
 
 # ---------------------------------------------------------------------------
@@ -339,6 +359,7 @@ def g1_compress(point: G1Point) -> bytes:
     # py_ecc's G1_to_pubkey expects optimized (projective) format.
     # Convert affine (x, y) to projective (x, y, 1).
     from py_ecc.fields import optimized_bls12_381_FQ as OPT_FQ
+
     x_opt = OPT_FQ(int(point[0]))
     y_opt = OPT_FQ(int(point[1]))
     z_opt = OPT_FQ(1)

@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .types import Certificate
-from .validator_set import ValidatorSet
-
 from ..execution.committee.dkg.threshold_signing import (
     DOMAIN_ATTESTATION,
     PartialSignature,
@@ -15,6 +12,8 @@ from ..execution.committee.dkg.threshold_signing import (
     partial_sign,
     threshold_verify,
 )
+from .types import Certificate
+from .validator_set import ValidatorSet
 
 __all__ = [
     "DOMAIN_CONSENSUS_ACK",

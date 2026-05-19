@@ -10,10 +10,10 @@ import pytest
 from src.ltp.node.config import NodeConfig
 from src.ltp.node.main import ETPNode
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def base_config():
@@ -37,7 +37,6 @@ def base_config():
 
 
 class TestTLSWiring:
-
     def test_tls_config_stored_when_enabled(self, base_config):
         """When tls_enabled, _tls_config should be populated."""
         base_config.tls_enabled = True
@@ -70,7 +69,6 @@ class TestTLSWiring:
 
 
 class TestGossipNodeServicerWiring:
-
     def test_gossip_wired_to_servicer(self, base_config):
         """When gossip enabled, NodeServicer._gossip should be set."""
         base_config.gossip_enabled = True
@@ -103,7 +101,6 @@ class TestGossipNodeServicerWiring:
 
 
 class TestObservabilityGatewayWiring:
-
     def test_observability_on_gateway_app_state(self, base_config):
         """When both gateway and observability enabled, gateway has observability."""
         base_config.gateway_enabled = True

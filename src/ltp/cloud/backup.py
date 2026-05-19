@@ -25,21 +25,23 @@ __all__ = [
 @dataclass(frozen=True)
 class BackupMetadata:
     """Immutable metadata for a backup artifact."""
+
     backup_id: str
     service_id: str
     timestamp: float
     size_bytes: int
-    backup_type: str        # "snapshot", "incremental", "audit_trail"
+    backup_type: str  # "snapshot", "incremental", "audit_trail"
     storage_path: str
 
 
 @dataclass(frozen=True)
 class BackupSchedule:
     """Declarative backup schedule for a service."""
+
     service_id: str
-    interval_seconds: float     # 86400 = daily
+    interval_seconds: float  # 86400 = daily
     backup_type: str = "snapshot"
-    retention_count: int = 7    # Keep N most recent
+    retention_count: int = 7  # Keep N most recent
 
 
 class BackupManager(ABC):
@@ -51,7 +53,9 @@ class BackupManager(ABC):
 
     @abstractmethod
     def create_backup(
-        self, service_id: str, backup_type: str = "snapshot",
+        self,
+        service_id: str,
+        backup_type: str = "snapshot",
     ) -> BackupMetadata:
         """Create a backup for a service. Returns metadata."""
         ...
@@ -84,7 +88,9 @@ class InMemoryBackupManager(BackupManager):
         self._restore_history: list[str] = []
 
     def create_backup(
-        self, service_id: str, backup_type: str = "snapshot",
+        self,
+        service_id: str,
+        backup_type: str = "snapshot",
     ) -> BackupMetadata:
         backup_id = str(uuid.uuid4())[:12]
         meta = BackupMetadata(
@@ -127,7 +133,7 @@ class InMemoryBackupManager(BackupManager):
         if len(service_backups) <= retention_count:
             return 0
 
-        to_delete = service_backups[:len(service_backups) - retention_count]
+        to_delete = service_backups[: len(service_backups) - retention_count]
         for b in to_delete:
             del self._backups[b.backup_id]
         return len(to_delete)
@@ -181,11 +187,13 @@ class ETPBackupStrategy:
         results = []
         for schedule in self.schedules:
             meta = self.backup_manager.create_backup(
-                schedule.service_id, schedule.backup_type,
+                schedule.service_id,
+                schedule.backup_type,
             )
             results.append(meta)
             self.backup_manager.apply_retention(
-                schedule.service_id, schedule.retention_count,
+                schedule.service_id,
+                schedule.retention_count,
             )
         return results
 

@@ -18,16 +18,21 @@ VECTORS_DIR = Path(__file__).parent / "vectors"
 try:
     from pqcrypto.sign.ml_dsa_65 import (
         generate_keypair as mldsa65_keygen,
+    )
+    from pqcrypto.sign.ml_dsa_65 import (
         sign as mldsa65_sign,
+    )
+    from pqcrypto.sign.ml_dsa_65 import (
         verify as mldsa65_verify,
     )
+
     HAS_REAL_MLDSA = True
 except ImportError:
     HAS_REAL_MLDSA = False
 
 skip_no_backend = pytest.mark.skipif(
     not HAS_REAL_MLDSA,
-    reason="Real ML-DSA backend (pqcrypto) not installed — ACVP vectors require deterministic crypto"
+    reason="Real ML-DSA backend (pqcrypto) not installed — ACVP vectors require deterministic crypto",
 )
 
 
@@ -141,7 +146,9 @@ class TestMLDSA65SigVer:
                 else:
                     fail_count += 1
 
-        print(f"\nML-DSA-65 SigVer (pure mode): PASS={pass_count} FAIL={fail_count} SKIP={skip_count}")
+        print(
+            f"\nML-DSA-65 SigVer (pure mode): PASS={pass_count} FAIL={fail_count} SKIP={skip_count}"
+        )
         assert pass_count > 0, "No ML-DSA-65 pure-mode sigVer vectors found"
         # Some vectors with empty context ("") may fail because pqcrypto's basic
         # verify() uses no-context mode, while FIPS 204 distinguishes between
@@ -175,6 +182,7 @@ class TestMLDSA65Integration:
     def test_our_mldsa_key_sizes_match_fips204(self):
         """Verify key sizes match FIPS 204 Table 1 for ML-DSA-65."""
         from ltp.primitives import MLDSA
+
         vk, sk = MLDSA.keygen()
         assert len(vk) == 1952  # FIPS 204 Table 1
         assert len(sk) == 4032  # FIPS 204 Table 1

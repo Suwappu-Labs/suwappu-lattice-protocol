@@ -4,16 +4,15 @@ from __future__ import annotations
 
 import pytest
 
+from src.ltp.execution.committee.dkg.transport import (
+    DKGTransport,
+    FakeDKGTransport,
+)
 from src.ltp.execution.committee.dkg.types import (
     DKGCommitment,
     DKGComplaint,
     DKGShare,
 )
-from src.ltp.execution.committee.dkg.transport import (
-    DKGTransport,
-    FakeDKGTransport,
-)
-
 
 FP_A = b"\x01" * 32
 FP_B = b"\x02" * 32
@@ -21,7 +20,6 @@ FP_C = b"\x03" * 32
 
 
 class TestFakeDKGTransportCommitments:
-
     def test_broadcast_and_receive(self):
         t = FakeDKGTransport()
         c = DKGCommitment(
@@ -48,7 +46,6 @@ class TestFakeDKGTransportCommitments:
 
 
 class TestFakeDKGTransportShares:
-
     def test_send_and_receive_per_recipient(self):
         t = FakeDKGTransport()
         s_ab = DKGShare(dealer_fp=FP_A, recipient_fp=FP_B, share=10, blinding_share=20)
@@ -69,7 +66,6 @@ class TestFakeDKGTransportShares:
 
 
 class TestFakeDKGTransportComplaints:
-
     def test_broadcast_and_receive_complaints(self):
         t = FakeDKGTransport()
         complaint = DKGComplaint(
@@ -86,7 +82,6 @@ class TestFakeDKGTransportComplaints:
 
 
 class TestDKGTransportProtocol:
-
     def test_fake_implements_protocol(self):
         transport: DKGTransport = FakeDKGTransport()
         assert hasattr(transport, "broadcast_commitment")

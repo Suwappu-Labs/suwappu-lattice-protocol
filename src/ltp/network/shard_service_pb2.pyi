@@ -1,8 +1,12 @@
-from google.protobuf.internal import containers as _containers
+from collections.abc import Iterable as _Iterable
+from collections.abc import Mapping as _Mapping
+from typing import ClassVar as _ClassVar
+from typing import Optional as _Optional
+from typing import Union as _Union
+
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from collections.abc import Iterable as _Iterable, Mapping as _Mapping
-from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+from google.protobuf.internal import containers as _containers
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -14,7 +18,12 @@ class StoreShardRequest(_message.Message):
     entity_id: str
     shard_index: int
     encrypted_data: bytes
-    def __init__(self, entity_id: _Optional[str] = ..., shard_index: _Optional[int] = ..., encrypted_data: _Optional[bytes] = ...) -> None: ...
+    def __init__(
+        self,
+        entity_id: _Optional[str] = ...,
+        shard_index: _Optional[int] = ...,
+        encrypted_data: _Optional[bytes] = ...,
+    ) -> None: ...
 
 class StoreShardResponse(_message.Message):
     __slots__ = ("success", "error")
@@ -30,7 +39,9 @@ class FetchShardRequest(_message.Message):
     SHARD_INDEX_FIELD_NUMBER: _ClassVar[int]
     entity_id: str
     shard_index: int
-    def __init__(self, entity_id: _Optional[str] = ..., shard_index: _Optional[int] = ...) -> None: ...
+    def __init__(
+        self, entity_id: _Optional[str] = ..., shard_index: _Optional[int] = ...
+    ) -> None: ...
 
 class FetchShardResponse(_message.Message):
     __slots__ = ("found", "encrypted_data")
@@ -48,7 +59,12 @@ class AuditChallengeRequest(_message.Message):
     entity_id: str
     shard_index: int
     nonce: bytes
-    def __init__(self, entity_id: _Optional[str] = ..., shard_index: _Optional[int] = ..., nonce: _Optional[bytes] = ...) -> None: ...
+    def __init__(
+        self,
+        entity_id: _Optional[str] = ...,
+        shard_index: _Optional[int] = ...,
+        nonce: _Optional[bytes] = ...,
+    ) -> None: ...
 
 class AuditChallengeResponse(_message.Message):
     __slots__ = ("found", "proof_hash")
@@ -64,7 +80,9 @@ class RemoveShardRequest(_message.Message):
     SHARD_INDEX_FIELD_NUMBER: _ClassVar[int]
     entity_id: str
     shard_index: int
-    def __init__(self, entity_id: _Optional[str] = ..., shard_index: _Optional[int] = ...) -> None: ...
+    def __init__(
+        self, entity_id: _Optional[str] = ..., shard_index: _Optional[int] = ...
+    ) -> None: ...
 
 class RemoveShardResponse(_message.Message):
     __slots__ = ("removed",)
@@ -88,19 +106,30 @@ class NodeInfoResponse(_message.Message):
     shard_count: int
     evicted: bool
     reputation_score: float
-    def __init__(self, node_id: _Optional[str] = ..., region: _Optional[str] = ..., shard_count: _Optional[int] = ..., evicted: bool = ..., reputation_score: _Optional[float] = ...) -> None: ...
+    def __init__(
+        self,
+        node_id: _Optional[str] = ...,
+        region: _Optional[str] = ...,
+        shard_count: _Optional[int] = ...,
+        evicted: bool = ...,
+        reputation_score: _Optional[float] = ...,
+    ) -> None: ...
 
 class FetchShardsBatchRequest(_message.Message):
     __slots__ = ("requests",)
     REQUESTS_FIELD_NUMBER: _ClassVar[int]
     requests: _containers.RepeatedCompositeFieldContainer[FetchShardRequest]
-    def __init__(self, requests: _Optional[_Iterable[_Union[FetchShardRequest, _Mapping]]] = ...) -> None: ...
+    def __init__(
+        self, requests: _Optional[_Iterable[_Union[FetchShardRequest, _Mapping]]] = ...
+    ) -> None: ...
 
 class FetchShardsBatchResponse(_message.Message):
     __slots__ = ("responses",)
     RESPONSES_FIELD_NUMBER: _ClassVar[int]
     responses: _containers.RepeatedCompositeFieldContainer[FetchShardResponse]
-    def __init__(self, responses: _Optional[_Iterable[_Union[FetchShardResponse, _Mapping]]] = ...) -> None: ...
+    def __init__(
+        self, responses: _Optional[_Iterable[_Union[FetchShardResponse, _Mapping]]] = ...
+    ) -> None: ...
 
 class StoreShardsStreamResponse(_message.Message):
     __slots__ = ("stored_count", "failed_count")
@@ -108,4 +137,6 @@ class StoreShardsStreamResponse(_message.Message):
     FAILED_COUNT_FIELD_NUMBER: _ClassVar[int]
     stored_count: int
     failed_count: int
-    def __init__(self, stored_count: _Optional[int] = ..., failed_count: _Optional[int] = ...) -> None: ...
+    def __init__(
+        self, stored_count: _Optional[int] = ..., failed_count: _Optional[int] = ...
+    ) -> None: ...

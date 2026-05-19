@@ -15,23 +15,22 @@ import signal
 import time
 from typing import Optional
 
+from ..commitment import CommitmentNetwork, CommitmentNode
 from ..keypair import KeyPair, KeyRegistry
-from ..commitment import CommitmentNode, CommitmentNetwork
 from ..primitives import assert_real_crypto
-
+from .audit_scheduler import AuditScheduler
 from .config import NodeConfig
-from .peer_manager import PeerManager
 from .handshake import (
     PROTOCOL_VERSION,
     HandshakePayload,
     create_handshake_envelope,
-    verify_handshake_envelope,
-    serialize_envelope,
     deserialize_envelope,
+    serialize_envelope,
+    verify_handshake_envelope,
 )
 from .health import HealthServer
 from .network_bridge import NetworkBridge
-from .audit_scheduler import AuditScheduler
+from .peer_manager import PeerManager
 
 logger = logging.getLogger(__name__)
 
@@ -89,8 +88,7 @@ class ETPNode:
                 assert_real_crypto()
             except Exception:
                 logger.warning(
-                    "Real crypto not available; set require_real_crypto=false "
-                    "for PoC mode"
+                    "Real crypto not available; set require_real_crypto=false for PoC mode"
                 )
                 raise
 
@@ -99,6 +97,7 @@ class ETPNode:
         if self.config.kms_backend == "aws" and self.config.kms_key_arn:
             try:
                 from ..cloud.aws_kms import AWSKMSBackend
+
                 self._kms_backend = AWSKMSBackend(
                     key_arn=self.config.kms_key_arn,
                     region=self.config.kms_region,
@@ -109,6 +108,7 @@ class ETPNode:
                 logger.warning("AWS KMS initialization failed", exc_info=True)
         elif self.config.kms_backend == "memory":
             from ..cloud.kms import InMemoryKMSBackend
+
             self._kms_backend = InMemoryKMSBackend()
             logger.info("In-memory KMS initialized")
 
@@ -130,6 +130,7 @@ class ETPNode:
 
         # 3.5. CommitmentNetwork (thread-safe) with self as first node
         from ..network.safe_network import SafeCommitmentNetwork
+
         log_store = _create_log_store(self.config)
         inner_network = CommitmentNetwork(log_store=log_store)
         inner_network.add_existing_node(self.commitment_node)
@@ -137,6 +138,7 @@ class ETPNode:
 
         # 3.6. LTPProtocol
         from ..protocol import LTPProtocol
+
         key_registry = KeyRegistry()
         self.protocol = LTPProtocol(self.commitment_network, key_registry=key_registry)
 
@@ -145,6 +147,7 @@ class ETPNode:
 
         # 4. Create NodeServicer (with bridge callback)
         from ..network.node_servicer import NodeServicer
+
         node_servicer = NodeServicer(
             node_id=self.config.node_id,
             region=self.config.region,
@@ -157,12 +160,14 @@ class ETPNode:
 
         # 4.5. Create TransferServicer
         from ..network.transfer_servicer import TransferServicer
+
         transfer_servicer = TransferServicer(self.protocol, self.keypair)
 
         # 4.8. Build TLS config (if enabled)
         tls_config = None
         if self.config.tls_enabled:
             from ..observability.tls import TLSConfig
+
             tls_config = TLSConfig(
                 enabled=True,
                 cert_path=self.config.tls_cert_path,
@@ -170,13 +175,18 @@ class ETPNode:
                 ca_path=self.config.tls_ca_path,
                 require_client_cert=self.config.tls_require_client_cert,
             )
-            logger.info("TLS enabled (cert=%s, mTLS=%s)", self.config.tls_cert_path, self.config.tls_require_client_cert)
+            logger.info(
+                "TLS enabled (cert=%s, mTLS=%s)",
+                self.config.tls_cert_path,
+                self.config.tls_require_client_cert,
+            )
         self._tls_config = tls_config
 
         # 4.9. Initialize observability early (before gateway needs it)
         if self.config.observability_enabled:
             try:
                 from ..observability.endpoint import ETPObservability
+
                 self._observability = ETPObservability(
                     node_id=self.config.node_id,
                     region=self.config.region,
@@ -189,6 +199,7 @@ class ETPNode:
         try:
             # 5. Start gRPC server (ShardService + NodeService)
             from ..network.server import NodeServer
+
             self._grpc_server = NodeServer(
                 node=self.commitment_node,
                 port=self.config.listen_port,
@@ -249,16 +260,14 @@ class ETPNode:
 
         # 11. Start per-chain anchor pipelines (if on-chain anchoring is enabled)
         if self.config.anchor_enabled:
+            from ..anchor.chain_config import create_anchor_client
             from .anchor_scheduler import AnchorScheduler
             from .anchor_status import AnchorStatusTracker
             from .anchor_verifier import AnchorVerifier, reconcile_on_startup
-            from ..anchor.chain_config import create_anchor_client
 
             chain_configs = self.config.get_chain_configs()
             if not chain_configs:
-                raise ValueError(
-                    "anchor_enabled=True but no chain configuration found"
-                )
+                raise ValueError("anchor_enabled=True but no chain configuration found")
 
             logger.info(
                 "Initializing anchor pipelines for %d chain(s): %s",
@@ -275,17 +284,21 @@ class ETPNode:
                 reconciled_count = 0
                 try:
                     reconciled_count = reconcile_on_startup(
-                        self.commitment_network, anchor_client, tracker,
+                        self.commitment_network,
+                        anchor_client,
+                        tracker,
                     )
                     if reconciled_count:
                         logger.info(
                             "Reconciled %d anchors from chain %s",
-                            reconciled_count, label,
+                            reconciled_count,
+                            label,
                         )
                 except Exception:
                     logger.warning(
                         "Anchor reconciliation failed for chain %s — continuing",
-                        label, exc_info=True,
+                        label,
+                        exc_info=True,
                     )
 
                 scheduler = AnchorScheduler(
@@ -322,6 +335,7 @@ class ETPNode:
                     self._anchor_pipelines[0]
                 )
                 from .anchor_rest import AnchorStatusServer
+
                 self._anchor_rest_server = AnchorStatusServer(
                     tracker=primary_tracker,
                     scheduler=primary_scheduler,
@@ -340,6 +354,7 @@ class ETPNode:
         # 14. Start NodeDiagnosticsServer (consolidated operational REST)
         try:
             from .node_diagnostics import NodeDiagnosticsServer
+
             self._diagnostics_server = NodeDiagnosticsServer(
                 peer_manager=self.peer_manager,
                 commitment_network=self.commitment_network,
@@ -364,7 +379,8 @@ class ETPNode:
         # 15. Start gateway (unified REST) if enabled
         if self.config.gateway_enabled:
             try:
-                from ..gateway.app import GatewayServer, GatewayConfig
+                from ..gateway.app import GatewayConfig, GatewayServer
+
                 gw_config = GatewayConfig(
                     host=self.config.listen_host,
                     port=self.config.gateway_port,
@@ -402,7 +418,8 @@ class ETPNode:
         # 16. Start gossip peer discovery if enabled
         if self.config.gossip_enabled:
             try:
-                from .gossip import GossipProtocol, GossipConfig
+                from .gossip import GossipConfig, GossipProtocol
+
                 gossip_config = GossipConfig(
                     enabled=True,
                     interval_seconds=self.config.gossip_interval_seconds,
@@ -420,7 +437,10 @@ class ETPNode:
                 # Wire gossip into NodeServicer for incoming ExchangePeers RPCs
                 node_servicer._gossip = self._gossip_protocol
                 self._gossip_protocol.start()
-                logger.info("Gossip started (interval=%.1fs, gRPC wired)", self.config.gossip_interval_seconds)
+                logger.info(
+                    "Gossip started (interval=%.1fs, gRPC wired)",
+                    self.config.gossip_interval_seconds,
+                )
             except Exception:
                 logger.warning("Gossip failed to start", exc_info=True)
 
@@ -428,11 +448,16 @@ class ETPNode:
         if self.config.bridge_operator_enabled:
             try:
                 from ..bridge.operator import BridgeOperatorService
+
                 self._bridge_operator = BridgeOperatorService(
                     network=self.commitment_network,
                     live_bridge=None,  # Requires LiveBridge setup (see scripts/bridge_live.py)
-                    source_chain=self.config.bridge_operator_direction.split("_to_")[0] if "_to_" in self.config.bridge_operator_direction else "gsx_testnet",
-                    dest_chain=self.config.bridge_operator_direction.split("_to_")[1] if "_to_" in self.config.bridge_operator_direction else "base_sepolia",
+                    source_chain=self.config.bridge_operator_direction.split("_to_")[0]
+                    if "_to_" in self.config.bridge_operator_direction
+                    else "gsx_testnet",
+                    dest_chain=self.config.bridge_operator_direction.split("_to_")[1]
+                    if "_to_" in self.config.bridge_operator_direction
+                    else "base_sepolia",
                     interval_seconds=self.config.bridge_operator_interval_seconds,
                     max_retries=self.config.bridge_operator_max_retries,
                 )
@@ -449,8 +474,10 @@ class ETPNode:
     def _create_channel(self, address: str):
         """Create a gRPC channel, using mTLS if TLS is configured."""
         import grpc
+
         if self._tls_config is not None and getattr(self._tls_config, "enabled", False):
             from ..network.credentials import load_channel_credentials
+
             credentials = load_channel_credentials(self._tls_config)
             if credentials is not None:
                 return grpc.secure_channel(address, credentials)
@@ -459,6 +486,7 @@ class ETPNode:
     def _gossip_send_fn(self, address: str, msg_bytes: bytes, sig: bytes, sender_vk: bytes) -> None:
         """Send gossip peer exchange to a peer via gRPC ExchangePeers RPC (mTLS-aware)."""
         import grpc
+
         from ..network import node_service_pb2 as ns_pb2
         from ..network import node_service_pb2_grpc as ns_pb2_grpc
 
@@ -474,10 +502,13 @@ class ETPNode:
             response = stub.ExchangePeers(request, timeout=5.0)
             if response.accepted and response.signed_message:
                 from .gossip import PeerExchangeMessage
+
                 resp_msg = PeerExchangeMessage.from_bytes(response.signed_message)
                 if self._gossip_protocol:
                     self._gossip_protocol.handle_peer_exchange(
-                        resp_msg, response.sender_vk, response.signature,
+                        resp_msg,
+                        response.sender_vk,
+                        response.signature,
                     )
         except Exception as e:
             logger.debug("Gossip send to %s failed: %s", address, e)
@@ -487,6 +518,7 @@ class ETPNode:
     def _handshake_with_peer(self, address: str) -> None:
         """Perform ML-DSA-65 authenticated handshake with a peer."""
         import grpc
+
         from ..network import node_service_pb2 as ns_pb2
         from ..network import node_service_pb2_grpc as ns_pb2_grpc
 
@@ -621,17 +653,21 @@ def _create_shard_store(config: NodeConfig):
     backend = config.storage_backend.lower()
     if backend == "memory" or not backend:
         from ..storage import MemoryShardStore
+
         return MemoryShardStore()
     if backend == "sqlite":
         from ..storage import SQLiteShardStore
+
         path = config.storage_path or "shards.db"
         return SQLiteShardStore(db_path=path, node_id=config.node_id)
     if backend == "filesystem":
         from ..storage import FileShardStore
+
         path = config.storage_path or "shard_data"
         return FileShardStore(base_dir=path)
     if backend == "rocksdb":
         from ..storage import RocksDBShardStore
+
         path = config.storage_path or "rocksdb_shards"
         return RocksDBShardStore(path=path)
     raise ValueError(f"Unknown storage_backend: {config.storage_backend!r}")
@@ -648,14 +684,17 @@ def _create_log_store(config: NodeConfig):
     if backend == "memory" or not backend:
         return None
     from ..storage import CommitmentLogStore
+
     if backend == "sqlite":
         import os
+
         base = config.storage_path or "shards.db"
         root, ext = os.path.splitext(base)
         log_path = root + "_log" + (ext or ".db")
         return CommitmentLogStore(db_path=log_path)
     if backend == "filesystem":
         import os
+
         base = config.storage_path or "shard_data"
         log_path = os.path.join(base, "commitment_log.db")
         os.makedirs(base, exist_ok=True)
@@ -670,7 +709,8 @@ def main():
         description="ETP Node — post-quantum secure network node",
     )
     parser.add_argument(
-        "--config", "-c",
+        "--config",
+        "-c",
         help="Path to TOML configuration file",
         default=None,
     )

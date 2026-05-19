@@ -118,7 +118,9 @@ class PeerCircuitBreaker:
             if self._consecutive_failures >= self._failure_threshold:
                 logger.warning(
                     "PeerCircuitBreaker: tripped for %s (%d failures, cooldown=%.0fs)",
-                    self._peer_id, self._consecutive_failures, self._cooldown_seconds,
+                    self._peer_id,
+                    self._consecutive_failures,
+                    self._cooldown_seconds,
                 )
 
     @property
@@ -132,13 +134,14 @@ class ExponentialBackoff:
 
     delay = min(max_delay, base_delay * 2^attempt) + random_jitter
     """
+
     base_delay: float = 1.0
     max_delay: float = 60.0
     jitter: float = 0.5  # Max jitter in seconds
 
     def delay_for(self, attempt: int) -> float:
         """Calculate delay for the given attempt number (0-indexed)."""
-        delay = min(self.max_delay, self.base_delay * (2 ** attempt))
+        delay = min(self.max_delay, self.base_delay * (2**attempt))
         if self.jitter > 0:
             delay += _secure_random.uniform(0, self.jitter)
         return delay
@@ -200,7 +203,9 @@ class RetryPolicy:
             delay = self.backoff.delay_for(attempt)
             logger.info(
                 "RetryPolicy: attempt %d failed for %s, backoff %.1fs",
-                attempt + 1, self.breaker.peer_id, delay,
+                attempt + 1,
+                self.breaker.peer_id,
+                delay,
             )
             if sleep:
                 _time.sleep(delay)

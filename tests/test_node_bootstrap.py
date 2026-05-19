@@ -10,22 +10,22 @@ import time
 
 import pytest
 
-from src.ltp import KeyPair, CommitmentNode, DOMAIN_NODE_HANDSHAKE
+from src.ltp import DOMAIN_NODE_HANDSHAKE, CommitmentNode, KeyPair
 from src.ltp.node.config import NodeConfig
-from src.ltp.node.peer_manager import PeerManager, PeerState, PeerInfo
 from src.ltp.node.handshake import (
     PROTOCOL_VERSION,
     HandshakePayload,
     create_handshake_envelope,
-    verify_handshake_envelope,
-    serialize_envelope,
     deserialize_envelope,
+    serialize_envelope,
+    verify_handshake_envelope,
 )
-
+from src.ltp.node.peer_manager import PeerInfo, PeerManager, PeerState
 
 # ===================================================================
 # TestNodeConfig
 # ===================================================================
+
 
 class TestNodeConfig:
     """Test TOML/env configuration loading."""
@@ -140,6 +140,7 @@ listen_port = 50051
 # ===================================================================
 # TestHandshake
 # ===================================================================
+
 
 class TestHandshake:
     """Test handshake payload and envelope creation/verification."""
@@ -259,6 +260,7 @@ class TestHandshake:
 # TestPeerManager
 # ===================================================================
 
+
 class TestPeerManager:
     """Test peer tracking and state management."""
 
@@ -338,6 +340,7 @@ class TestPeerManager:
 # TestNodeHandshakeIntegration (EXIT CRITERION)
 # ===================================================================
 
+
 class TestNodeHandshakeIntegration:
     """Integration tests for two-node handshake over gRPC."""
 
@@ -345,10 +348,11 @@ class TestNodeHandshakeIntegration:
         """EXIT CRITERION: Two nodes start, discover each other, and complete
         ML-DSA-65 authenticated handshakes over gRPC."""
         import grpc
-        from src.ltp.network.server import NodeServer
-        from src.ltp.network.node_servicer import NodeServicer
+
         from src.ltp.network import node_service_pb2 as ns_pb2
         from src.ltp.network import node_service_pb2_grpc as ns_pb2_grpc
+        from src.ltp.network.node_servicer import NodeServicer
+        from src.ltp.network.server import NodeServer
 
         # Create two commitment nodes
         node_a = CommitmentNode("node-a", "US-East")
@@ -360,13 +364,17 @@ class TestNodeHandshakeIntegration:
 
         # Create NodeServicers
         servicer_a = NodeServicer(
-            node_id="node-a", region="US-East",
-            keypair=alice, peer_manager=pm_a,
+            node_id="node-a",
+            region="US-East",
+            keypair=alice,
+            peer_manager=pm_a,
             shard_count_fn=lambda: node_a.shard_count,
         )
         servicer_b = NodeServicer(
-            node_id="node-b", region="EU-West",
-            keypair=bob, peer_manager=pm_b,
+            node_id="node-b",
+            region="EU-West",
+            keypair=bob,
+            peer_manager=pm_b,
             shard_count_fn=lambda: node_b.shard_count,
         )
 
@@ -441,22 +449,26 @@ class TestNodeHandshakeIntegration:
 # TestHealthCheck
 # ===================================================================
 
+
 class TestHealthCheck:
     """Test gRPC health and ping RPCs."""
 
     def test_ping(self, alice):
         """Ping RPC returns node_id and timestamp."""
         import grpc
-        from src.ltp.network.server import NodeServer
-        from src.ltp.network.node_servicer import NodeServicer
+
         from src.ltp.network import node_service_pb2 as ns_pb2
         from src.ltp.network import node_service_pb2_grpc as ns_pb2_grpc
+        from src.ltp.network.node_servicer import NodeServicer
+        from src.ltp.network.server import NodeServer
 
         node = CommitmentNode("ping-node", "US-East")
         pm = PeerManager()
         servicer = NodeServicer(
-            node_id="ping-node", region="US-East",
-            keypair=alice, peer_manager=pm,
+            node_id="ping-node",
+            region="US-East",
+            keypair=alice,
+            peer_manager=pm,
         )
         server = NodeServer(node, port=0, host="127.0.0.1", node_servicer=servicer)
         server.start()
@@ -475,16 +487,19 @@ class TestHealthCheck:
     def test_grpc_health(self, alice):
         """HealthCheck RPC returns correct data."""
         import grpc
-        from src.ltp.network.server import NodeServer
-        from src.ltp.network.node_servicer import NodeServicer
+
         from src.ltp.network import node_service_pb2 as ns_pb2
         from src.ltp.network import node_service_pb2_grpc as ns_pb2_grpc
+        from src.ltp.network.node_servicer import NodeServicer
+        from src.ltp.network.server import NodeServer
 
         node = CommitmentNode("health-node", "EU-West")
         pm = PeerManager()
         servicer = NodeServicer(
-            node_id="health-node", region="EU-West",
-            keypair=alice, peer_manager=pm,
+            node_id="health-node",
+            region="EU-West",
+            keypair=alice,
+            peer_manager=pm,
         )
         server = NodeServer(node, port=0, host="127.0.0.1", node_servicer=servicer)
         server.start()
@@ -507,6 +522,7 @@ class TestHealthCheck:
         """REST /health endpoint returns JSON."""
         import json
         import urllib.request
+
         from src.ltp.node.health import HealthServer
 
         def health_fn():
@@ -529,6 +545,7 @@ class TestHealthCheck:
 # ===================================================================
 # TestDeserializationSafety
 # ===================================================================
+
 
 class TestDeserializationSafety:
     """Verify bounds checking rejects truncated/malformed wire data."""
@@ -588,22 +605,26 @@ class TestDeserializationSafety:
 # TestProtocolVersionValidation
 # ===================================================================
 
+
 class TestProtocolVersionValidation:
     """Verify protocol version mismatch is rejected at the gRPC layer."""
 
     def test_wrong_protocol_version_rejected(self, alice, bob):
         """Handshake with wrong protocol_version is rejected."""
         import grpc
-        from src.ltp.network.server import NodeServer
-        from src.ltp.network.node_servicer import NodeServicer
+
         from src.ltp.network import node_service_pb2 as ns_pb2
         from src.ltp.network import node_service_pb2_grpc as ns_pb2_grpc
+        from src.ltp.network.node_servicer import NodeServicer
+        from src.ltp.network.server import NodeServer
 
         node = CommitmentNode("ver-node", "US-East")
         pm = PeerManager()
         servicer = NodeServicer(
-            node_id="ver-node", region="US-East",
-            keypair=bob, peer_manager=pm,
+            node_id="ver-node",
+            region="US-East",
+            keypair=bob,
+            peer_manager=pm,
         )
         server = NodeServer(node, port=0, host="127.0.0.1", node_servicer=servicer)
         server.start()
@@ -639,16 +660,19 @@ class TestProtocolVersionValidation:
     def test_malformed_envelope_rejected(self, bob):
         """Garbage bytes in signed_envelope are rejected gracefully."""
         import grpc
-        from src.ltp.network.server import NodeServer
-        from src.ltp.network.node_servicer import NodeServicer
+
         from src.ltp.network import node_service_pb2 as ns_pb2
         from src.ltp.network import node_service_pb2_grpc as ns_pb2_grpc
+        from src.ltp.network.node_servicer import NodeServicer
+        from src.ltp.network.server import NodeServer
 
         node = CommitmentNode("mal-node", "US-East")
         pm = PeerManager()
         servicer = NodeServicer(
-            node_id="mal-node", region="US-East",
-            keypair=bob, peer_manager=pm,
+            node_id="mal-node",
+            region="US-East",
+            keypair=bob,
+            peer_manager=pm,
         )
         server = NodeServer(node, port=0, host="127.0.0.1", node_servicer=servicer)
         server.start()
@@ -675,6 +699,7 @@ class TestProtocolVersionValidation:
 # TestConfigErrors
 # ===================================================================
 
+
 class TestConfigErrors:
     """Test configuration error handling."""
 
@@ -695,16 +720,18 @@ class TestConfigErrors:
 # TestHealthAndCTSharedPort (Gap 7)
 # ===================================================================
 
+
 class TestHealthAndCTSharedPort:
     """Verify HealthServer + CT log share a single port without conflict."""
 
     def test_health_and_ct_share_port_no_conflict(self):
         """HealthServer with commitment_log serves both /health and /ct/v1/* on one port."""
         import json
-        import urllib.request
         import urllib.error
-        from src.ltp.node.health import HealthServer
+        import urllib.request
+
         from src.ltp.commitment import CommitmentNetwork
+        from src.ltp.node.health import HealthServer
 
         network = CommitmentNetwork()
         log = network.log
@@ -742,8 +769,9 @@ class TestHealthAndCTSharedPort:
     def test_health_without_commitment_log_no_ct_routes(self):
         """HealthServer without commitment_log does NOT serve /ct/v1/*."""
         import json
-        import urllib.request
         import urllib.error
+        import urllib.request
+
         from src.ltp.node.health import HealthServer
 
         def health_fn():
@@ -774,6 +802,7 @@ class TestHealthAndCTSharedPort:
 # TestMultiChainConfig
 # ===================================================================
 
+
 class TestMultiChainConfig:
     """Test multi-chain anchor configuration via [[anchor.chains]]."""
 
@@ -799,7 +828,8 @@ class TestMultiChainConfig:
 
     def test_anchor_chains_from_toml(self, tmp_path):
         """Parse [[anchor.chains]] sections from TOML."""
-        toml_content = """
+        toml_content = (
+            """
 [node]
 node_id = "multi-chain-node"
 
@@ -810,7 +840,9 @@ enabled = true
 chain_id = 103115120
 label = "gsx_testnet"
 rpc_url = "https://rpc.testnet.gsx.network"
-registry_address = "0x""" + "aB" * 20 + """"
+registry_address = "0x"""
+            + "aB" * 20
+            + """"
 operator_key = "0xgsxkey"
 confirmation_depth = 3
 finality_depth = 1
@@ -819,11 +851,14 @@ finality_depth = 1
 chain_id = 84532
 label = "base_sepolia"
 rpc_url = "https://sepolia.base.org"
-registry_address = "0x""" + "cD" * 20 + """"
+registry_address = "0x"""
+            + "cD" * 20
+            + """"
 operator_key = "0xbasekey"
 confirmation_depth = 6
 finality_depth = 2
 """
+        )
         toml_file = tmp_path / "multi.toml"
         toml_file.write_text(toml_content)
 
@@ -878,10 +913,12 @@ finality_depth = 2
         """Per-chain confirmation_depth wins over flat config."""
         config = NodeConfig(
             anchor_confirmation_depth=3,  # flat
-            anchor_chains=[{
-                **self._CHAIN_BASE,
-                "confirmation_depth": 12,  # per-chain override
-            }],
+            anchor_chains=[
+                {
+                    **self._CHAIN_BASE,
+                    "confirmation_depth": 12,  # per-chain override
+                }
+            ],
         )
         chains = config.get_chain_configs()
         assert chains[0].confirmation_depth == 12  # per-chain wins
@@ -901,7 +938,7 @@ finality_depth = 2
     def test_anchor_chains_json_not_a_list_overlay(self, tmp_path, monkeypatch):
         """JSON dict in overlay path also rejected."""
         toml_file = tmp_path / "base.toml"
-        toml_file.write_text("[node]\nnode_id = \"test\"\n")
+        toml_file.write_text('[node]\nnode_id = "test"\n')
         monkeypatch.setenv("ETP_ANCHOR_CHAINS_JSON", '"just a string"')
         with pytest.raises(ValueError, match="must be a JSON array"):
             NodeConfig.from_toml_with_env_overlay(str(toml_file))

@@ -19,10 +19,10 @@ Public API:
   MerkleLog      — high-level log: append, sign, prove, detect forks
 """
 
-from .tree import MerkleTree, verify_consistency
-from .sth import SignedTreeHead
-from .proof import InclusionProof
 from .log import MerkleLog
+from .proof import InclusionProof
+from .sth import SignedTreeHead
+from .tree import MerkleTree, verify_consistency
 
 __all__ = [
     "MerkleTree",

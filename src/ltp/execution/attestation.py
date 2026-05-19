@@ -7,15 +7,15 @@ from dataclasses import dataclass
 from typing import Optional
 
 from ..domain import (
-    DOMAIN_MULTI_VM_ATTEST,
     DOMAIN_BLS_ATTEST,
+    DOMAIN_MULTI_VM_ATTEST,
+    bls_aggregate_sigs,
+    bls_aggregate_verify,
+    bls_domain_sign,
+    bls_domain_verify,
     domain_hash_bytes,
     domain_sign,
     domain_verify,
-    bls_domain_sign,
-    bls_domain_verify,
-    bls_aggregate_sigs,
-    bls_aggregate_verify,
     signer_fingerprint,
 )
 from ..keypair import KeyPair
@@ -81,9 +81,7 @@ class MultiVMAttestation:
         """Verify BLS aggregate against committee public keys."""
         if self.bls_aggregate is None:
             return False
-        return bls_aggregate_verify(
-            DOMAIN_BLS_ATTEST, bls_pks, self.digest, self.bls_aggregate
-        )
+        return bls_aggregate_verify(DOMAIN_BLS_ATTEST, bls_pks, self.digest, self.bls_aggregate)
 
 
 class AttestationEngine:
@@ -143,7 +141,9 @@ class AttestationEngine:
     ) -> MultiVMAttestation:
         """Create a BLS-only signed attestation."""
         if self._bls_identity is None:
-            raise ValueError("No BLS identity configured — use bls_identity parameter in constructor")
+            raise ValueError(
+                "No BLS identity configured — use bls_identity parameter in constructor"
+            )
 
         att_unsigned = MultiVMAttestation(
             state_root=state_root,
@@ -184,7 +184,9 @@ class AttestationEngine:
     ) -> MultiVMAttestation:
         """Create a dual-signed attestation (ML-DSA + BLS)."""
         if self._bls_identity is None:
-            raise ValueError("No BLS identity configured — use bls_identity parameter in constructor")
+            raise ValueError(
+                "No BLS identity configured — use bls_identity parameter in constructor"
+            )
 
         payload = self._build_payload(state_root, consensus_round, epoch, active_vm_tags)
         mldsa_sig = domain_sign(DOMAIN_MULTI_VM_ATTEST, self._keypair, payload)

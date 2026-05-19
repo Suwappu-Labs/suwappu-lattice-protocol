@@ -83,9 +83,7 @@ class Relayer:
         # Check relay authorization via SignerPolicy if configured
         if self.policy is not None and self.relay_keypair is not None:
             epoch = int(time.time())
-            if not self.policy.is_signer_authorized(
-                self.relay_keypair.vk, "RELAY", epoch
-            ):
+            if not self.policy.is_signer_authorized(self.relay_keypair.vk, "RELAY", epoch):
                 raise PermissionError(
                     f"Relay operator '{self.relay_keypair.label}' is not authorized "
                     f"for RELAY action at epoch {epoch}"
@@ -125,7 +123,8 @@ class Relayer:
                 payload=sealed_key,
             )
             logger.info(
-                "[Relayer] Signed relay envelope: %s", relay_envelope.fingerprint()[:16],
+                "[Relayer] Signed relay envelope: %s",
+                relay_envelope.fingerprint()[:16],
             )
 
         packet = RelayPacket(
@@ -140,7 +139,9 @@ class Relayer:
 
         logger.info(
             "[Relayer] RelayPacket ready: %d bytes sealed key, block=%d, nonce=%d",
-            len(sealed_key), commitment.source_block, commitment.message.nonce,
+            len(sealed_key),
+            commitment.source_block,
+            commitment.message.nonce,
         )
 
         return packet

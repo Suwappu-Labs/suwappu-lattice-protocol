@@ -23,17 +23,18 @@ from src.ltp.execution.committee.dkg.session import DKGSession
 from src.ltp.execution.committee.dkg.types import DKGSessionConfig
 from src.ltp.zk.ec_backend import bls12_381_available
 
-
-pytestmark = pytest.mark.skipif(
-    not bls12_381_available(), reason="py_ecc / blst not installed"
-)
+pytestmark = pytest.mark.skipif(not bls12_381_available(), reason="py_ecc / blst not installed")
 
 
 def _make_sessions(n: int, threshold: int, epoch: int = 1):
     participants = [f"validator-{i}".encode() for i in range(n)]
     cfg = DKGSessionConfig(
-        vm_tag=1, epoch=epoch, threshold=threshold,
-        participants=participants, timeout_rounds=10, start_round=0,
+        vm_tag=1,
+        epoch=epoch,
+        threshold=threshold,
+        participants=participants,
+        timeout_rounds=10,
+        start_round=0,
     )
     return [DKGSession(cfg, fp, idx + 1) for idx, fp in enumerate(participants)]
 
@@ -119,8 +120,7 @@ def test_session_detects_share_inconsistent_with_commitment():
     victim = sessions[1]
     complaints = victim.end_sharing_phase()
     assert complaints, (
-        "Pedersen VSS verification missed a tampered share — "
-        "LTP-A-016 defense regressed"
+        "Pedersen VSS verification missed a tampered share — LTP-A-016 defense regressed"
     )
     assert any(c.dealer_fp == sessions[0].my_fp for c in complaints), (
         "complaint did not name the malicious dealer"

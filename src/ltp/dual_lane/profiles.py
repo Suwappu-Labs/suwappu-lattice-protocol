@@ -106,17 +106,18 @@ class SecurityProfile:
     @classmethod
     def cnsa2(cls):
         """CNSA 2.0 Suite: Level 5 + SHA-384 (NSA requirement by 2027)."""
-        return cls(level=5, canonical_hash=HashFunction.SHA_384,
-                   internal_hash=HashFunction.SHA_384)
+        return cls(level=5, canonical_hash=HashFunction.SHA_384, internal_hash=HashFunction.SHA_384)
 
     @classmethod
     def defi(cls):
         """DeFi profile: SHA3-256 canonical + BLAKE3-256 internal."""
-        return cls(level=3, canonical_hash=HashFunction.SHA3_256,
-                   internal_hash=HashFunction.BLAKE3_256)
+        return cls(
+            level=3, canonical_hash=HashFunction.SHA3_256, internal_hash=HashFunction.BLAKE3_256
+        )
 
     @classmethod
     def cefi(cls):
         """CeFi profile: SHA3-256 canonical + SHA3-256 internal (fully auditable)."""
-        return cls(level=3, canonical_hash=HashFunction.SHA3_256,
-                   internal_hash=HashFunction.SHA3_256)
+        return cls(
+            level=3, canonical_hash=HashFunction.SHA3_256, internal_hash=HashFunction.SHA3_256
+        )

@@ -69,7 +69,6 @@ from .did_stark import (
     DidRotationStatement,
     DidStarkError,
     DidStarkProof,
-    InvalidSignature as DidStarkInvalidSignature,
     OldDocHashMismatch,
     UnauthorizedMethod,
     UnknownMethod,
@@ -78,6 +77,10 @@ from .did_stark import (
     verify_rotation_proof,
     verify_rotation_proof_with_doc,
 )
+from .did_stark import (
+    InvalidSignature as DidStarkInvalidSignature,
+)
+from .digest import sha3_256_domain
 from .envelope import (
     BLS_G2_COMPRESSED_BYTES,
     ML_KEM_768_CT_BYTES,
@@ -86,7 +89,6 @@ from .envelope import (
     EnvelopeSizeError,
     OnChainCommitment,
 )
-from .digest import sha3_256_domain
 from .state_anchor import (
     GENESIS_PARENT,
     AuthScheme,

@@ -18,13 +18,9 @@ class DKGKeyRegistry:
 
     def store(self, result: DKGResult) -> None:
         if result.epoch in self._epochs:
-            raise ValueError(
-                f"epoch {result.epoch} already has a group key"
-            )
+            raise ValueError(f"epoch {result.epoch} already has a group key")
         if result.vm_tag != self.vm_tag:
-            raise ValueError(
-                f"vm_tag mismatch: {result.vm_tag} != {self.vm_tag}"
-            )
+            raise ValueError(f"vm_tag mismatch: {result.vm_tag} != {self.vm_tag}")
         self._epochs[result.epoch] = result
 
     def get(self, epoch: int) -> DKGResult:

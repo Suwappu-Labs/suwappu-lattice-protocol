@@ -10,19 +10,23 @@ from src.ltp.consensus.bls_certificates import (
 from src.ltp.consensus.types import Block, Certificate
 from src.ltp.consensus.validator_set import ValidatorInfo, ValidatorSet
 from src.ltp.execution.committee.dkg.session import DKGSession
-from src.ltp.execution.committee.dkg.types import DKGSessionConfig
 from src.ltp.execution.committee.dkg.threshold_signing import (
     DOMAIN_ATTESTATION,
     combine_partial_signatures,
 )
+from src.ltp.execution.committee.dkg.types import DKGSessionConfig
 
 
 def _run_dkg(n: int, threshold: int, epoch: int = 1):
     """Run a mini DKG ceremony. Returns (signing_keys, group_pk)."""
     participants = [f"validator-{i}".encode() for i in range(n)]
     cfg = DKGSessionConfig(
-        vm_tag=1, epoch=epoch, threshold=threshold,
-        participants=participants, timeout_rounds=10, start_round=0,
+        vm_tag=1,
+        epoch=epoch,
+        threshold=threshold,
+        participants=participants,
+        timeout_rounds=10,
+        start_round=0,
     )
     sessions = [DKGSession(cfg, fp, idx + 1) for idx, fp in enumerate(participants)]
 
@@ -80,7 +84,8 @@ def validator_set_4(dkg_keys_4):
 def sample_block():
     """A sample Block for signing tests."""
     return Block(
-        author=0, round=5,
+        author=0,
+        round=5,
         payload=(b"tx1", b"tx2"),
         parents=frozenset(),
         timestamp_ms=1000,
@@ -117,7 +122,10 @@ class TestAggregateAndVerify:
     """BLS aggregation and certificate verification tests."""
 
     def test_aggregate_ack_signatures_combines_partials(
-        self, dkg_keys_4, validator_set_4, sample_block,
+        self,
+        dkg_keys_4,
+        validator_set_4,
+        sample_block,
     ):
         keys, group_pk = dkg_keys_4
         mgr = BLSCertificateManager(group_pk=group_pk)
@@ -126,7 +134,10 @@ class TestAggregateAndVerify:
         assert len(agg) == 96
 
     def test_aggregated_signature_verifies(
-        self, dkg_keys_4, validator_set_4, sample_block,
+        self,
+        dkg_keys_4,
+        validator_set_4,
+        sample_block,
     ):
         keys, group_pk = dkg_keys_4
         mgr = BLSCertificateManager(group_pk=group_pk)
@@ -145,7 +156,10 @@ class TestAggregateAndVerify:
         assert mgr.verify_certificate_signature(signed) is True
 
     def test_verify_fails_with_wrong_group_key(
-        self, dkg_keys_4, validator_set_4, sample_block,
+        self,
+        dkg_keys_4,
+        validator_set_4,
+        sample_block,
     ):
         keys, group_pk = dkg_keys_4
         mgr = BLSCertificateManager(group_pk=group_pk)
@@ -165,7 +179,10 @@ class TestAggregateAndVerify:
         assert mgr_bad.verify_certificate_signature(signed) is False
 
     def test_verify_fails_with_tampered_digest(
-        self, dkg_keys_4, validator_set_4, sample_block,
+        self,
+        dkg_keys_4,
+        validator_set_4,
+        sample_block,
     ):
         keys, group_pk = dkg_keys_4
         mgr = BLSCertificateManager(group_pk=group_pk)
@@ -173,8 +190,11 @@ class TestAggregateAndVerify:
         agg = mgr.aggregate_ack_signatures(partials, sample_block.digest, validator_set_4)
 
         tampered_block = Block(
-            author=0, round=5, payload=(b"TAMPERED",),
-            parents=frozenset(), timestamp_ms=1000,
+            author=0,
+            round=5,
+            payload=(b"TAMPERED",),
+            parents=frozenset(),
+            timestamp_ms=1000,
         )
         cert = Certificate(
             block=tampered_block,
@@ -188,7 +208,10 @@ class TestAggregateAndVerify:
         assert mgr.verify_certificate_signature(signed) is False
 
     def test_insufficient_partials_raises(
-        self, dkg_keys_4, validator_set_4, sample_block,
+        self,
+        dkg_keys_4,
+        validator_set_4,
+        sample_block,
     ):
         keys, group_pk = dkg_keys_4
         mgr = BLSCertificateManager(group_pk=group_pk)
@@ -197,7 +220,10 @@ class TestAggregateAndVerify:
             mgr.aggregate_ack_signatures(partials, sample_block.digest, validator_set_4)
 
     def test_empty_partials_raises(
-        self, dkg_keys_4, validator_set_4, sample_block,
+        self,
+        dkg_keys_4,
+        validator_set_4,
+        sample_block,
     ):
         keys, group_pk = dkg_keys_4
         mgr = BLSCertificateManager(group_pk=group_pk)
@@ -222,7 +248,8 @@ class TestSignedCertificate:
     def test_frozen(self, sample_block):
         cert = Certificate(block=sample_block, signers=frozenset({0}))
         signed = SignedCertificate(
-            certificate=cert, aggregated_signature=b"\x00" * 96,
+            certificate=cert,
+            aggregated_signature=b"\x00" * 96,
             signer_keys=frozenset(),
         )
         with pytest.raises(AttributeError):
@@ -236,9 +263,7 @@ class TestBatchAttestation:
         keys, group_pk = dkg_keys_4
         mgr = BLSCertificateManager(group_pk=group_pk)
         batch_bytes = b"batch-round-5-epoch-1"
-        partials = [
-            mgr.sign_committed_batch(k, batch_bytes) for k in keys[:3]
-        ]
+        partials = [mgr.sign_committed_batch(k, batch_bytes) for k in keys[:3]]
         combined = combine_partial_signatures(partials, 3)
         assert mgr.verify_batch_attestation(combined, batch_bytes, group_pk) is True
 
@@ -246,9 +271,7 @@ class TestBatchAttestation:
         keys, group_pk = dkg_keys_4
         mgr = BLSCertificateManager(group_pk=group_pk)
         batch_bytes = b"correct-batch"
-        partials = [
-            mgr.sign_committed_batch(k, batch_bytes) for k in keys[:3]
-        ]
+        partials = [mgr.sign_committed_batch(k, batch_bytes) for k in keys[:3]]
         combined = combine_partial_signatures(partials, 3)
         assert mgr.verify_batch_attestation(combined, b"wrong-batch", group_pk) is False
 
@@ -264,7 +287,8 @@ class TestBatchAttestation:
         mgr = BLSCertificateManager()
         cert = Certificate(block=sample_block, signers=frozenset({0}))
         signed = SignedCertificate(
-            certificate=cert, aggregated_signature=b"\x00" * 96,
+            certificate=cert,
+            aggregated_signature=b"\x00" * 96,
             signer_keys=frozenset(),
         )
         assert mgr.verify_certificate_signature(signed) is False

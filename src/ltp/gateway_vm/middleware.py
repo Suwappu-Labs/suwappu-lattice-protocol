@@ -20,7 +20,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-
 __all__ = [
     "RateLimitMiddleware",
     "JWTAuthMiddleware",
@@ -110,8 +109,8 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app, secret: str | None = None, require_auth: bool | None = None) -> None:
         super().__init__(app)
-        self.secret = secret if secret is not None else os.environ.get(
-            "ETP_GATEWAY_VM_JWT_SECRET", ""
+        self.secret = (
+            secret if secret is not None else os.environ.get("ETP_GATEWAY_VM_JWT_SECRET", "")
         )
         env_require = os.environ.get("ETP_GATEWAY_VM_REQUIRE_AUTH", "").lower()
         if require_auth is None:
@@ -135,7 +134,7 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         auth = request.headers.get("authorization", "")
         if not auth.lower().startswith("bearer "):
             return JSONResponse({"error": "unauthorized"}, status_code=401)
-        token = auth[len("bearer "):].strip()
+        token = auth[len("bearer ") :].strip()
 
         if not _verify_hs256_jwt(token, self.secret):
             return JSONResponse({"error": "unauthorized"}, status_code=401)

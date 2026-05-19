@@ -5,10 +5,9 @@ import os
 import pytest
 
 from src.ltp.zk import field as F
-from src.ltp.zk.merkle import StarkMerkleTree, MerkleProof
-from src.ltp.zk.fri import fri_commit_and_prove, fri_verify, FRIParams
-from src.ltp.zk.stark_proof import stark_prove, stark_verify, DEFAULT_STARK_QUERIES
-
+from src.ltp.zk.fri import FRIParams, fri_commit_and_prove, fri_verify
+from src.ltp.zk.merkle import MerkleProof, StarkMerkleTree
+from src.ltp.zk.stark_proof import DEFAULT_STARK_QUERIES, stark_prove, stark_verify
 
 # ---------------------------------------------------------------------------
 # Goldilocks Field
@@ -113,6 +112,7 @@ class TestFRI:
 
         # Tamper with a query response leaf
         from src.ltp.zk.fri import FRILayerProof, FRIProof
+
         bad_proofs = list(proof.query_proofs)
         bad_layer = list(bad_proofs[0])
         orig = bad_layer[0]
@@ -168,6 +168,7 @@ class TestSTARKProof:
 
     def test_version_check(self):
         from src.ltp.zk.stark_proof import STARK_VERSION
+
         params = FRIParams(blowup_factor=4, num_queries=DEFAULT_STARK_QUERIES)
         proof = stark_prove("entity-ver", os.urandom(32), "commitment", params)
         assert proof.version == STARK_VERSION
@@ -183,7 +184,7 @@ class TestSTARKTransferIntegration:
     """Test STARK through the ZKTransferMode API."""
 
     def test_stark_create_and_verify(self):
-        from src.ltp.zk_transfer import ZKTransferMode, ZKConfig, ZKProofSystem
+        from src.ltp.zk_transfer import ZKConfig, ZKProofSystem, ZKTransferMode
 
         zk = ZKTransferMode(ZKConfig(proof_system=ZKProofSystem.STARK))
         c = zk.create_hiding_commitment("entity-stark-int")
@@ -193,7 +194,7 @@ class TestSTARKTransferIntegration:
         assert zk.verify_zk_proof(c, proof)
 
     def test_stark_open_commitment(self):
-        from src.ltp.zk_transfer import ZKTransferMode, ZKConfig, ZKProofSystem
+        from src.ltp.zk_transfer import ZKConfig, ZKProofSystem, ZKTransferMode
 
         zk = ZKTransferMode(ZKConfig(proof_system=ZKProofSystem.STARK))
         c = zk.create_hiding_commitment("entity-stark-open")
@@ -201,7 +202,7 @@ class TestSTARKTransferIntegration:
         assert not zk.open_commitment(c, "wrong", c.blinding_factor)
 
     def test_stark_tampered_proof_fails(self):
-        from src.ltp.zk_transfer import ZKTransferMode, ZKConfig, ZKProofSystem, ZKProof
+        from src.ltp.zk_transfer import ZKConfig, ZKProof, ZKProofSystem, ZKTransferMode
 
         zk = ZKTransferMode(ZKConfig(proof_system=ZKProofSystem.STARK))
         c = zk.create_hiding_commitment("entity-stark-tamp")

@@ -57,8 +57,8 @@ def operator():
 # 1. CRYPTO LAYER
 # =========================================================================
 
-class TestCryptoLayer:
 
+class TestCryptoLayer:
     def test_real_crypto_available(self):
         """ML-KEM-768, ML-DSA-65, and XChaCha20-Poly1305 are all present."""
         assert_real_crypto()
@@ -74,8 +74,8 @@ class TestCryptoLayer:
 # 2. PROTOCOL LAYER
 # =========================================================================
 
-class TestProtocolLayer:
 
+class TestProtocolLayer:
     def test_commit_lattice_materialize_roundtrip(self, operator):
         """Full three-phase transfer lifecycle end-to-end."""
         kr = KeyRegistry()
@@ -104,11 +104,15 @@ class TestProtocolLayer:
         """RFC 6962 log produces valid STH and inclusion proofs."""
         log = CommitmentLog()
         record = CommitmentRecord(
-            entity_id="gate-entity", sender_id="sender",
-            content_hash="hash", shard_map_root="root",
+            entity_id="gate-entity",
+            sender_id="sender",
+            content_hash="hash",
+            shard_map_root="root",
             encoding_params={"n": 5, "k": 3},
-            shape="test", shape_hash="shash",
-            timestamp=time.time(), signature=b"\x00" * 64,
+            shape="test",
+            shape_hash="shash",
+            timestamp=time.time(),
+            signature=b"\x00" * 64,
         )
         log.append(record)
         sth = log.latest_sth
@@ -123,18 +127,27 @@ class TestProtocolLayer:
 # 3. BRIDGE LAYER
 # =========================================================================
 
-class TestBridgeLayer:
 
+class TestBridgeLayer:
     def _make_sth(self, kp):
         from src.ltp.merkle_log.sth import SignedTreeHead
+
         sth = SignedTreeHead(
-            sequence=1, tree_size=1, timestamp=time.time(),
-            root_hash=b"\xaa" * 32, operator_vk=kp.vk, signature=b"",
+            sequence=1,
+            tree_size=1,
+            timestamp=time.time(),
+            root_hash=b"\xaa" * 32,
+            operator_vk=kp.vk,
+            signature=b"",
         )
         sig = MLDSA.sign(kp.sk, sth.signable_payload())
         return SignedTreeHead(
-            sequence=1, tree_size=1, timestamp=sth.timestamp,
-            root_hash=sth.root_hash, operator_vk=kp.vk, signature=sig,
+            sequence=1,
+            tree_size=1,
+            timestamp=sth.timestamp,
+            root_hash=sth.root_hash,
+            operator_vk=kp.vk,
+            signature=sig,
         )
 
     def test_sp1_proof_valid(self, operator):
@@ -171,7 +184,8 @@ class TestBridgeLayer:
             cn.register_node(f"op-node-{i}", "test", stake=1000.0)
 
         op = BridgeOperatorService(
-            network=cn, live_bridge=None,  # No live bridge — tests tick() mechanics
+            network=cn,
+            live_bridge=None,  # No live bridge — tests tick() mechanics
             operator_keypair=operator,
             interval_seconds=1.0,
         )
@@ -184,8 +198,8 @@ class TestBridgeLayer:
 # 4. GATEWAY LAYER
 # =========================================================================
 
-class TestGatewayLayer:
 
+class TestGatewayLayer:
     def test_health_endpoint(self):
         """GET /health returns 200."""
         app = create_app(GatewayConfig(jwt_enabled=False))
@@ -211,6 +225,7 @@ class TestGatewayLayer:
         """Protected endpoints require valid ML-DSA-65 JWT."""
         kp = KeyPair.generate("gate-jwt")
         from src.ltp.domain import signer_fingerprint
+
         app = create_app(GatewayConfig(jwt_enabled=True))
         app.state.health_fn = lambda: {"status": "ok"}
         app.state.known_vks = {signer_fingerprint(kp.vk).hex(): kp.vk}
@@ -221,11 +236,16 @@ class TestGatewayLayer:
 
         # With valid token → 200
         token = create_jwt(kp, "gate-node")
-        assert client.get("/node/audit", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+        assert (
+            client.get("/node/audit", headers={"Authorization": f"Bearer {token}"}).status_code
+            == 200
+        )
 
     def test_rate_limiting(self):
         """Exceeding rate limit → 429."""
-        app = create_app(GatewayConfig(jwt_enabled=False, rate_limit_enabled=True, rate_limit_per_minute=2))
+        app = create_app(
+            GatewayConfig(jwt_enabled=False, rate_limit_enabled=True, rate_limit_per_minute=2)
+        )
         app.state.health_fn = lambda: {"status": "ok"}
         client = TestClient(app)
         statuses = [client.get("/health").status_code for _ in range(5)]
@@ -236,8 +256,8 @@ class TestGatewayLayer:
 # 5. NETWORK LAYER
 # =========================================================================
 
-class TestNetworkLayer:
 
+class TestNetworkLayer:
     def test_gossip_exchange_roundtrip(self, operator):
         """Gossip peer exchange: build → sign → handle → discover."""
         alice_kp = operator
@@ -281,16 +301,20 @@ class TestNetworkLayer:
 # 6. NODE INTEGRATION
 # =========================================================================
 
-class TestNodeIntegration:
 
+class TestNodeIntegration:
     def test_etpnode_full_startup_shutdown(self):
         """ETPNode starts with gateway + gossip + observability, stops cleanly."""
         config = NodeConfig(
-            node_id="gate-final", region="test",
-            listen_port=0, rest_port=0, diagnostics_port=0,
+            node_id="gate-final",
+            region="test",
+            listen_port=0,
+            rest_port=0,
+            diagnostics_port=0,
             require_real_crypto=False,
             storage_backend="memory",
-            gateway_enabled=True, gateway_port=0,
+            gateway_enabled=True,
+            gateway_port=0,
             gossip_enabled=True,
             observability_enabled=True,
         )
@@ -308,9 +332,7 @@ class TestNodeIntegration:
 
     def test_mainnet_config_parses(self):
         """config/mainnet.toml loads with all production flags."""
-        mainnet_toml = os.path.join(
-            os.path.dirname(__file__), "..", "config", "mainnet.toml"
-        )
+        mainnet_toml = os.path.join(os.path.dirname(__file__), "..", "config", "mainnet.toml")
         config = NodeConfig.from_toml(mainnet_toml)
         assert config.require_real_crypto is True
         assert config.gateway_jwt_enabled is True

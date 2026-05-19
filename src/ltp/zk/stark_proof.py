@@ -43,6 +43,7 @@ _STARK_DOMAIN = b"GSX-LTP:zk-stark:v1\x00"
 @dataclass(frozen=True)
 class StarkProof:
     """A STARK proof of knowledge of a hash preimage."""
+
     version: int
     fri_proof: FRIProof
     blinding_commitment: bytes  # SHA3-256 of blinding polynomial coefficients
@@ -54,14 +55,16 @@ class StarkProof:
         """Serialize the STARK proof to bytes."""
         parts = []
         # Header: version(1B) + poly_degree(2B) + witness_len(2B) + num_fri_layers(1B) + num_queries(1B)
-        parts.append(struct.pack(
-            ">BHHBB",
-            self.version,
-            self.poly_degree,
-            self.witness_len,
-            len(self.fri_proof.layer_roots),
-            len(self.fri_proof.query_proofs),
-        ))
+        parts.append(
+            struct.pack(
+                ">BHHBB",
+                self.version,
+                self.poly_degree,
+                self.witness_len,
+                len(self.fri_proof.layer_roots),
+                len(self.fri_proof.query_proofs),
+            )
+        )
         # Blinding commitment + witness hash
         parts.append(self.blinding_commitment)
         parts.append(self.witness_hash)
@@ -105,9 +108,7 @@ class StarkProof:
 
 def _compute_witness_hash(entity_id: str, blinding_factor: bytes) -> bytes:
     """Compute the binding hash H(DOMAIN || entity_id || blinding_factor)."""
-    return hashlib.sha3_256(
-        _STARK_DOMAIN + entity_id.encode() + blinding_factor
-    ).digest()
+    return hashlib.sha3_256(_STARK_DOMAIN + entity_id.encode() + blinding_factor).digest()
 
 
 def stark_prove(
@@ -141,8 +142,7 @@ def stark_prove(
     # Blinding adds zero-knowledge: blinded = witness + Z_H * rand
     # For simplicity, we add a random polynomial of the same degree
     blinding_coeffs = [
-        int.from_bytes(os.urandom(7), "big") % F.P
-        for _ in range(len(witness_elems))
+        int.from_bytes(os.urandom(7), "big") % F.P for _ in range(len(witness_elems))
     ]
 
     # Combine: interleave witness and blinding for larger degree
@@ -159,9 +159,7 @@ def stark_prove(
 
     # Step 5: Compute binding commitments
     blinding_commitment = hashlib.sha3_256(
-        _STARK_DOMAIN + b"blinding" + b"".join(
-            c.to_bytes(8, "big") for c in blinding_coeffs
-        )
+        _STARK_DOMAIN + b"blinding" + b"".join(c.to_bytes(8, "big") for c in blinding_coeffs)
     ).digest()
 
     witness_hash = _compute_witness_hash(entity_id, blinding_factor)

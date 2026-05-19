@@ -74,10 +74,14 @@ def _fiat_shamir_challenge(
     transcript = (
         DOMAIN_ZK_TRANSFER
         + b"sigma"
-        + struct.pack(">I", len(g_bytes)) + g_bytes
-        + struct.pack(">I", len(h_bytes)) + h_bytes
-        + struct.pack(">I", len(commitment_bytes)) + commitment_bytes
-        + struct.pack(">I", len(t_bytes)) + t_bytes
+        + struct.pack(">I", len(g_bytes))
+        + g_bytes
+        + struct.pack(">I", len(h_bytes))
+        + h_bytes
+        + struct.pack(">I", len(commitment_bytes))
+        + commitment_bytes
+        + struct.pack(">I", len(t_bytes))
+        + t_bytes
     )
     digest = hashlib.sha3_256(transcript).digest()
     return int.from_bytes(digest, "big") % curve_order()
@@ -99,9 +103,7 @@ class SigmaProof:
     def from_bytes(cls, data: bytes) -> SigmaProof:
         """Deserialize from 160 bytes."""
         if len(data) != SIGMA_PROOF_SIZE:
-            raise ValueError(
-                f"Sigma proof must be {SIGMA_PROOF_SIZE} bytes, got {len(data)}"
-            )
+            raise ValueError(f"Sigma proof must be {SIGMA_PROOF_SIZE} bytes, got {len(data)}")
         return cls(
             t_point=data[:96],
             s_m=data[96:128],

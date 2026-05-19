@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import time
 
-from .types import Block, Certificate, CommitDecision, EquivocationProof, RoundState
+from .commit_rule import collect_causal_history, evaluate_direct_commit, evaluate_indirect_commit
 from .dag_store import DAGStore
-from .commit_rule import evaluate_direct_commit, evaluate_indirect_commit, collect_causal_history
+from .types import Block, Certificate, CommitDecision, EquivocationProof, RoundState
 
 
 class MysticetiProtocol:
@@ -129,7 +129,10 @@ class MysticetiProtocol:
                 leader = self.leader_for_round(target_round)
                 if not self.is_equivocator(leader):
                     decision = evaluate_direct_commit(
-                        self._dag, target_round, leader, self._quorum,
+                        self._dag,
+                        target_round,
+                        leader,
+                        self._quorum,
                     )
                     if decision is not None:
                         self._committed_rounds.add(target_round)
@@ -152,7 +155,10 @@ class MysticetiProtocol:
                 self._committed_digests.add(b.digest)
             return decision
         decision = evaluate_indirect_commit(
-            self._dag, round, leader, self._committed_rounds,
+            self._dag,
+            round,
+            leader,
+            self._committed_rounds,
         )
         if decision is not None:
             self._committed_rounds.add(round)

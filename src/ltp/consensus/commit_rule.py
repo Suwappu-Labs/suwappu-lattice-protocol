@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from collections import deque
 
-from .types import Block, Certificate, CommitDecision
 from .dag_store import DAGStore
+from .types import Block, Certificate, CommitDecision
 
 
 def collect_causal_history(

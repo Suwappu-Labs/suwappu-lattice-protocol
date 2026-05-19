@@ -246,8 +246,9 @@ def test_legacy_schema_with_sk_not_null_rebuilds(tmp_db):
     # Construction of CommitmentLogStore must rebuild the schema.
     store = CommitmentLogStore(tmp_db)
     # Confirm sk column is now nullable.
-    cols = {row[1]: row for row in store._conn.execute(
-        "PRAGMA table_info(log_operator)").fetchall()}
+    cols = {
+        row[1]: row for row in store._conn.execute("PRAGMA table_info(log_operator)").fetchall()
+    }
     assert cols["sk"][3] == 0  # notnull flag is 0
     # And the legacy row survived the rebuild.
     got = store.load_operator_keypair()
@@ -269,9 +270,7 @@ def test_store_replaces_existing_row_under_legacy_not_null(tmp_db):
     store.store_operator_keypair(vk_new, sk_new)
     assert store.load_operator_keypair() == (vk_new, sk_new)
     # Underlying sk column is NULL on the new row.
-    raw_sk = store._conn.execute(
-        "SELECT sk FROM log_operator WHERE id=1"
-    ).fetchone()[0]
+    raw_sk = store._conn.execute("SELECT sk FROM log_operator WHERE id=1").fetchone()[0]
     assert raw_sk is None
     store.close()
 
@@ -281,6 +280,7 @@ def test_migration_aborts_if_underlying_sk_changes(tmp_db, caplog):
     between the migration's read and its wrap, the migration must NOT
     overwrite with stale wrapped bytes."""
     import logging
+
     sk_a = os.urandom(4032)
     sk_b = os.urandom(4032)
     _write_legacy_row(tmp_db, b"vk", sk_a)
@@ -295,9 +295,7 @@ def test_migration_aborts_if_underlying_sk_changes(tmp_db, caplog):
         store._migrate_row_inplace(sk_a)  # stale value
     assert any("legacy sk changed" in rec.message for rec in caplog.records)
     # The underlying row was NOT overwritten with the stale wrap.
-    raw = store._conn.execute(
-        "SELECT sk, sk_wrapped FROM log_operator WHERE id=1"
-    ).fetchone()
+    raw = store._conn.execute("SELECT sk, sk_wrapped FROM log_operator WHERE id=1").fetchone()
     assert raw[0] == sk_b  # plaintext sk remains the newer value
     assert raw[1] is None  # no wrapped blob was written
     store.close()
@@ -306,7 +304,8 @@ def test_migration_aborts_if_underlying_sk_changes(tmp_db, caplog):
 def test_cli_rejects_missing_db_path(tmp_path):
     """Regression for Codex P2: typoed paths must error, not silently
     create a new SQLite file and report a no-op."""
-    from ltp.tools.migrate_keyvault import migrate_one, MigrationError
+    from ltp.tools.migrate_keyvault import MigrationError, migrate_one
+
     nonexistent = str(tmp_path / "does-not-exist.db")
     with pytest.raises(MigrationError, match="does not exist"):
         migrate_one(nonexistent)
@@ -339,9 +338,7 @@ def test_phase4c_dk_is_wrapped_on_disk(tmp_db):
     dk = os.urandom(2400)
     store = CommitmentLogStore(tmp_db)
     store.store_operator_keypair(b"vk", sk, ek=b"ek", dk=dk)
-    raw_dk = store._conn.execute(
-        "SELECT dk_wrapped FROM log_operator WHERE id=1"
-    ).fetchone()[0]
+    raw_dk = store._conn.execute("SELECT dk_wrapped FROM log_operator WHERE id=1").fetchone()[0]
     store.close()
     assert raw_dk is not None
     assert raw_dk != dk
@@ -354,9 +351,7 @@ def test_phase4c_dk_aad_domain_separation(tmp_db):
     dk = os.urandom(2400)
     store = CommitmentLogStore(tmp_db)
     store.store_operator_keypair(b"vk", sk, ek=b"ek", dk=dk)
-    raw_dk = store._conn.execute(
-        "SELECT dk_wrapped FROM log_operator WHERE id=1"
-    ).fetchone()[0]
+    raw_dk = store._conn.execute("SELECT dk_wrapped FROM log_operator WHERE id=1").fetchone()[0]
     store.close()
 
     vault = KeyVault.from_environment()
@@ -403,9 +398,9 @@ def test_aad_domain_separation(tmp_db):
     sk = os.urandom(4032)
     store = CommitmentLogStore(tmp_db)
     store.store_operator_keypair(b"vk", sk)
-    raw_wrapped = store._conn.execute(
-        "SELECT sk_wrapped FROM log_operator WHERE id=1"
-    ).fetchone()[0]
+    raw_wrapped = store._conn.execute("SELECT sk_wrapped FROM log_operator WHERE id=1").fetchone()[
+        0
+    ]
     store.close()
 
     vault = KeyVault.from_environment()

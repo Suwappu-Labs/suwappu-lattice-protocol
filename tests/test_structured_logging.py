@@ -18,7 +18,6 @@ from src.ltp.observability.logging import (
     StructuredLogger,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -49,7 +48,6 @@ def _make_logger(name: str = "test") -> tuple[StructuredLogger, _CaptureHandler]
 
 
 class TestJSONFormatter:
-
     def test_output_is_valid_json(self):
         slog, handler = _make_logger("json-test")
         slog.info("Hello world")
@@ -81,7 +79,6 @@ class TestJSONFormatter:
 
 
 class TestCorrelationContext:
-
     def setup_method(self):
         CorrelationContext.clear()
 
@@ -109,7 +106,6 @@ class TestCorrelationContext:
 
 
 class TestStructuredLogger:
-
     def setup_method(self):
         CorrelationContext.clear()
 

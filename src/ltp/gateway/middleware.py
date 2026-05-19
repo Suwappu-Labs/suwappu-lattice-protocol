@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class _TokenBucket:
     """Simple token bucket for per-caller rate limiting."""
+
     tokens: float
     max_tokens: float
     refill_rate: float  # tokens per second

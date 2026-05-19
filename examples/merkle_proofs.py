@@ -12,7 +12,10 @@ Usage:
 """
 
 from src.ltp import (
-    KeyPair, Entity, CommitmentNetwork, LTPProtocol,
+    CommitmentNetwork,
+    Entity,
+    KeyPair,
+    LTPProtocol,
     reset_poc_state,
 )
 
@@ -29,10 +32,10 @@ protocol = LTPProtocol(network)
 print("▸ Committing 5 entities to build Merkle log...")
 entity_ids = []
 for i in range(5):
-    entity = Entity(content=f"Document #{i+1}".encode(), shape="text/plain")
+    entity = Entity(content=f"Document #{i + 1}".encode(), shape="text/plain")
     eid, record, cek = protocol.commit(entity, alice)
     entity_ids.append(eid)
-    print(f"  #{i+1}: {eid[:48]}...")
+    print(f"  #{i + 1}: {eid[:48]}...")
 
 # ── Merkle Log Properties ────────────────────────────────────────────────
 log = network.log

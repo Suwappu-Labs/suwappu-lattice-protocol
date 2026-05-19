@@ -28,6 +28,7 @@ __all__ = ["BridgeOperatorService", "BridgeOperatorTickResult"]
 @dataclass
 class BridgeOperatorTickResult:
     """Result of a single operator tick."""
+
     epoch: int = 0
     records_polled: int = 0
     records_bridged: int = 0
@@ -66,9 +67,7 @@ class BridgeOperatorService:
         operator_id: str = "bridge-operator-0",
     ) -> None:
         if operator_keypair is None:
-            raise TypeError(
-                "operator_keypair is required — bridge operations must be signed"
-            )
+            raise TypeError("operator_keypair is required — bridge operations must be signed")
         self._operator_keypair = operator_keypair
         self._network = network
         self._bridge = live_bridge
@@ -122,7 +121,9 @@ class BridgeOperatorService:
         self._thread.start()
         logger.info(
             "BridgeOperatorService[%s] started (%s→%s, interval=%.1fs)",
-            self._operator_id, self._source_chain, self._dest_chain,
+            self._operator_id,
+            self._source_chain,
+            self._dest_chain,
             self._interval,
         )
 
@@ -135,7 +136,9 @@ class BridgeOperatorService:
             self._thread = None
         logger.info(
             "BridgeOperatorService[%s] stopped (epoch=%d, bridged=%d)",
-            self._operator_id, self._epoch, len(self._bridged_entities),
+            self._operator_id,
+            self._epoch,
+            len(self._bridged_entities),
         )
 
     def tick(self) -> BridgeOperatorTickResult:
@@ -158,7 +161,8 @@ class BridgeOperatorService:
                 if attempts >= self._max_retries:
                     logger.warning(
                         "BridgeOperator: entity %s exceeded max retries (%d), dropping",
-                        entity_id[:16], self._max_retries,
+                        entity_id[:16],
+                        self._max_retries,
                     )
                     result.records_failed += 1
                     continue
@@ -170,7 +174,7 @@ class BridgeOperatorService:
 
             # --- 2. Poll new records ---
             try:
-                log = getattr(self._network, 'log', self._network)
+                log = getattr(self._network, "log", self._network)
                 new_records = log.records_since(self._last_seen_index)
             except Exception as exc:
                 logger.error("BridgeOperator: poll failed: %s", exc)
@@ -239,7 +243,9 @@ class BridgeOperatorService:
     def _try_bridge(self, entity_id: str, record, result: BridgeOperatorTickResult) -> bool:
         """Attempt to bridge a single entity. Returns True on success."""
         if self._bridge is None:
-            logger.error("BridgeOperator: live_bridge not configured, cannot bridge %s", entity_id[:16])
+            logger.error(
+                "BridgeOperator: live_bridge not configured, cannot bridge %s", entity_id[:16]
+            )
             result.records_failed += 1
             return False
 
@@ -251,7 +257,8 @@ class BridgeOperatorService:
         except Exception as exc:
             logger.warning(
                 "BridgeOperator: transfer failed for %s: %s",
-                entity_id[:16], exc,
+                entity_id[:16],
+                exc,
             )
             result.records_failed += 1
             return False

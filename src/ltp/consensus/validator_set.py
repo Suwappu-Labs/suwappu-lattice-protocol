@@ -32,15 +32,9 @@ class ValidatorSet:
         f = (n - 1) // 3 if n > 0 else 0
         self._quorum_threshold = 2 * f + 1
         self._evicted: set[bytes] = set()
-        self._fp_to_index: dict[bytes, int] = {
-            m.writer_fp: m.validator_index for m in members
-        }
-        self._index_to_fp: dict[int, bytes] = {
-            m.validator_index: m.writer_fp for m in members
-        }
-        self._index_to_bls: dict[int, bytes] = {
-            m.validator_index: m.bls_pk for m in members
-        }
+        self._fp_to_index: dict[bytes, int] = {m.writer_fp: m.validator_index for m in members}
+        self._index_to_fp: dict[int, bytes] = {m.validator_index: m.writer_fp for m in members}
+        self._index_to_bls: dict[int, bytes] = {m.validator_index: m.bls_pk for m in members}
 
     @classmethod
     def from_roster(cls, roster: CommitteeRoster) -> ValidatorSet:

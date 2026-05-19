@@ -25,13 +25,13 @@ class BridgeMessage:
     hashing across implementations.
     """
 
-    msg_type: str        # "token_lock", "state_update", "governance"
-    source_chain: str    # "ethereum", "optimism", "arbitrum", etc.
+    msg_type: str  # "token_lock", "state_update", "governance"
+    source_chain: str  # "ethereum", "optimism", "arbitrum", etc.
     dest_chain: str
-    sender: str          # L1 address (hex string)
-    recipient: str       # L2 address (hex string)
-    payload: dict        # {token, amount, ...} — type-specific data
-    nonce: int           # Per-sender monotonic counter (replay protection)
+    sender: str  # L1 address (hex string)
+    recipient: str  # L2 address (hex string)
+    payload: dict  # {token, amount, ...} — type-specific data
+    nonce: int  # Per-sender monotonic counter (replay protection)
     timestamp: float = field(default_factory=time.time)
 
     def to_canonical_bytes(self) -> bytes:
@@ -68,8 +68,8 @@ class BridgeCommitment:
     message: BridgeMessage
     entity_id: str
     commitment_ref: str
-    merkle_proof: dict        # InclusionProof data from CommitmentLog
-    source_block: int         # L1 block number (finality tracking)
+    merkle_proof: dict  # InclusionProof data from CommitmentLog
+    source_block: int  # L1 block number (finality tracking)
 
 
 @dataclass
@@ -95,5 +95,5 @@ class RelayPacket:
     dest_chain: str
     nonce: int
     source_block: int
-    entity_id: str            # Public — allows L2 to pre-fetch commitment
+    entity_id: str  # Public — allows L2 to pre-fetch commitment
     relay_envelope: Optional[object] = None  # SignedEnvelope from relay operator

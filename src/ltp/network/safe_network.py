@@ -69,13 +69,9 @@ class SafeCommitmentNetwork:
         self, entity_id: str, encrypted_shards: list[bytes], replicas: int = 2
     ) -> str:
         with self._lock:
-            return self._inner.distribute_encrypted_shards(
-                entity_id, encrypted_shards, replicas
-            )
+            return self._inner.distribute_encrypted_shards(entity_id, encrypted_shards, replicas)
 
-    def fetch_encrypted_shards(
-        self, entity_id: str, n: int, max_shards: int
-    ) -> dict[int, bytes]:
+    def fetch_encrypted_shards(self, entity_id: str, n: int, max_shards: int) -> dict[int, bytes]:
         with self._lock:
             return self._inner.fetch_encrypted_shards(entity_id, n, max_shards)
 
@@ -121,17 +117,23 @@ class SafeCommitmentNetwork:
     # --- Fallthrough for read-only / config attributes ---
 
     # Whitelist of attributes safe to access without locking
-    _SAFE_ATTRS = frozenset({
-        "endowment", "_eviction_registry", "_audit_epoch", "_audit_seed",
-        "_enforcement_pipeline", "_geo_fence_policy", "_audit_logger",
-    })
+    _SAFE_ATTRS = frozenset(
+        {
+            "endowment",
+            "_eviction_registry",
+            "_audit_epoch",
+            "_audit_seed",
+            "_enforcement_pipeline",
+            "_geo_fence_policy",
+            "_audit_logger",
+        }
+    )
 
     def __getattr__(self, name: str):
         # Block access to mutable collections that require locking
         if name in ("_node_shard_index", "_placement_cache", "nodes"):
             raise AttributeError(
-                f"Direct access to {name!r} is not thread-safe; "
-                "use a locked method instead"
+                f"Direct access to {name!r} is not thread-safe; use a locked method instead"
             )
         if name in self._SAFE_ATTRS:
             return getattr(self._inner, name)

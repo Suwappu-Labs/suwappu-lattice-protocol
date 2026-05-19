@@ -2,15 +2,15 @@
 
 import pytest
 
-from src.ltp.zk_transfer import (
-    ZKProofSystem,
-    ZKConfig,
-    ZKCommitment,
-    ZKProof,
-    ZKTransferMode,
-    ContentPropertyProof,
-)
 from src.ltp.zk.ec_backend import bls12_381_available
+from src.ltp.zk_transfer import (
+    ContentPropertyProof,
+    ZKCommitment,
+    ZKConfig,
+    ZKProof,
+    ZKProofSystem,
+    ZKTransferMode,
+)
 
 _has_py_ecc = bls12_381_available()
 
@@ -18,6 +18,7 @@ _has_py_ecc = bls12_381_available()
 # ---------------------------------------------------------------------------
 # ZKConfig
 # ---------------------------------------------------------------------------
+
 
 class TestZKConfig:
     def test_defaults(self):
@@ -36,6 +37,7 @@ class TestZKConfig:
 # ---------------------------------------------------------------------------
 # ZKCommitment
 # ---------------------------------------------------------------------------
+
 
 class TestZKCommitment:
     def test_is_hiding_with_nonzero_blinding(self):
@@ -67,6 +69,7 @@ class TestZKCommitment:
 # ZKProof
 # ---------------------------------------------------------------------------
 
+
 class TestZKProof:
     def test_proof_size(self):
         p = ZKProof(
@@ -79,6 +82,7 @@ class TestZKProof:
 # ---------------------------------------------------------------------------
 # ZKTransferMode — Simulated
 # ---------------------------------------------------------------------------
+
 
 class TestZKTransferModeSimulated:
     def setup_method(self):
@@ -145,6 +149,7 @@ class TestZKTransferModeSimulated:
 # ZKTransferMode — Groth16
 # ---------------------------------------------------------------------------
 
+
 class TestZKTransferModeGroth16:
     def setup_method(self):
         self.zk = ZKTransferMode(ZKConfig(proof_system=ZKProofSystem.GROTH16))
@@ -198,6 +203,7 @@ class TestZKTransferModeGroth16:
 # ZKTransferMode — STARK
 # ---------------------------------------------------------------------------
 
+
 class TestZKTransferModeSTARK:
     def setup_method(self):
         self.zk = ZKTransferMode(ZKConfig(proof_system=ZKProofSystem.STARK))
@@ -212,6 +218,7 @@ class TestZKTransferModeSTARK:
 # ---------------------------------------------------------------------------
 # ContentPropertyProof
 # ---------------------------------------------------------------------------
+
 
 class TestContentPropertyProof:
     def test_is_verifiable(self):
@@ -248,6 +255,7 @@ class TestContentPropertyProof:
 # ---------------------------------------------------------------------------
 # Default config (disabled)
 # ---------------------------------------------------------------------------
+
 
 class TestZKTransferModeDefault:
     def test_default_config(self):

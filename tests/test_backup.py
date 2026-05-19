@@ -15,18 +15,20 @@ from src.ltp.cloud.backup import (
     InMemoryBackupManager,
 )
 
-
 # ---------------------------------------------------------------------------
 # BackupMetadata + BackupSchedule
 # ---------------------------------------------------------------------------
 
 
 class TestBackupDataStructures:
-
     def test_metadata_is_frozen(self):
         meta = BackupMetadata(
-            backup_id="b1", service_id="svc", timestamp=1.0,
-            size_bytes=1024, backup_type="snapshot", storage_path="s3://x",
+            backup_id="b1",
+            service_id="svc",
+            timestamp=1.0,
+            size_bytes=1024,
+            backup_type="snapshot",
+            storage_path="s3://x",
         )
         with pytest.raises(AttributeError):
             meta.backup_id = "changed"
@@ -48,7 +50,6 @@ class TestBackupDataStructures:
 
 
 class TestInMemoryBackupManager:
-
     def test_create_backup(self):
         mgr = InMemoryBackupManager()
         meta = mgr.create_backup("log-service")
@@ -98,7 +99,6 @@ class TestInMemoryBackupManager:
 
 
 class TestRetentionPolicy:
-
     def test_apply_retention_deletes_oldest(self):
         mgr = InMemoryBackupManager()
         for _ in range(5):

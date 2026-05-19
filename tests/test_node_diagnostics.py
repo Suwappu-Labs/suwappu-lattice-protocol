@@ -4,21 +4,21 @@ from __future__ import annotations
 
 import json
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 
 import pytest
 
+from ltp.commitment import CommitmentNetwork, CommitmentNode, StorageEndowment
+from ltp.network.safe_network import SafeCommitmentNetwork
 from ltp.node.node_diagnostics import NodeDiagnosticsServer
 from ltp.node.peer_manager import PeerManager, PeerState
-from ltp.commitment import CommitmentNode, CommitmentNetwork, StorageEndowment
-from ltp.protocol import LTPProtocol, TransferState, TransferSession, ProtocolConfig
-from ltp.network.safe_network import SafeCommitmentNetwork
-
+from ltp.protocol import LTPProtocol, ProtocolConfig, TransferSession, TransferState
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _get(server: NodeDiagnosticsServer, path: str) -> tuple[int, dict]:
     """Issue a GET request and return (status_code, json_body)."""
@@ -49,6 +49,7 @@ class _MockAuditScheduler:
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def peer_manager() -> PeerManager:
@@ -106,6 +107,7 @@ def server(peer_manager, commitment_network, protocol):
 # Peers
 # ---------------------------------------------------------------------------
 
+
 class TestPeersEndpoint:
     def test_peers_list(self, server):
         code, body = _get(server, "/node/peers")
@@ -140,6 +142,7 @@ class TestPeersEndpoint:
 # ---------------------------------------------------------------------------
 # Transfers
 # ---------------------------------------------------------------------------
+
 
 class TestTransfersEndpoint:
     def test_transfers_empty(self, server):
@@ -216,6 +219,7 @@ class TestTransfersEndpoint:
 # Audit
 # ---------------------------------------------------------------------------
 
+
 class TestAuditEndpoint:
     def test_audit_status(self, server):
         code, body = _get(server, "/node/audit")
@@ -236,6 +240,7 @@ class TestAuditEndpoint:
 # ---------------------------------------------------------------------------
 # Network
 # ---------------------------------------------------------------------------
+
 
 class TestNetworkEndpoint:
     def test_network_list(self, server):
@@ -288,6 +293,7 @@ class TestNetworkEndpoint:
 # Endowment
 # ---------------------------------------------------------------------------
 
+
 class TestEndowmentEndpoint:
     def test_endowment(self, server):
         code, body = _get(server, "/node/network/endowment")
@@ -301,6 +307,7 @@ class TestEndowmentEndpoint:
 # ---------------------------------------------------------------------------
 # Storage
 # ---------------------------------------------------------------------------
+
 
 class TestStorageEndpoint:
     def test_storage(self, server):
@@ -323,6 +330,7 @@ class TestStorageEndpoint:
 # Log
 # ---------------------------------------------------------------------------
 
+
 class TestLogEndpoint:
     def test_log_empty(self, server):
         code, body = _get(server, "/node/log")
@@ -334,6 +342,7 @@ class TestLogEndpoint:
 # ---------------------------------------------------------------------------
 # Server lifecycle
 # ---------------------------------------------------------------------------
+
 
 class TestServerLifecycle:
     def test_start_stop(self):
@@ -359,10 +368,12 @@ class TestServerLifecycle:
     def test_500_on_dynamic_route_does_not_leak(self, server):
         """Internal error on /node/peers/<id> returns generic message."""
         original = server._server.peer_manager
+
         # Replace with object whose get_peer_by_id raises
         class _BrokenPM:
             def get_peer_by_id(self, node_id):
                 raise RuntimeError("boom")
+
         server._server.peer_manager = _BrokenPM()
         try:
             code, body = _get(server, "/node/peers/node-a")
@@ -376,6 +387,7 @@ class TestServerLifecycle:
 # ---------------------------------------------------------------------------
 # Empty path parameter validation
 # ---------------------------------------------------------------------------
+
 
 class TestEmptyPathParams:
     def test_peers_empty_id(self, server):
@@ -397,6 +409,7 @@ class TestEmptyPathParams:
 # ---------------------------------------------------------------------------
 # Security: sensitive fields never leaked
 # ---------------------------------------------------------------------------
+
 
 class TestSensitiveFieldExclusion:
     """Verify cryptographic material (cek, sealed_key, sk, dk) is never exposed."""
@@ -428,6 +441,7 @@ class TestSensitiveFieldExclusion:
 # Gap 2: /node/log includes sth_age_seconds
 # ---------------------------------------------------------------------------
 
+
 class TestLogSthAge:
     def test_log_endpoint_includes_sth_age(self, server, commitment_network):
         """sth_age_seconds appears in /node/log response (Gap 2)."""
@@ -440,6 +454,7 @@ class TestLogSthAge:
     def test_log_sth_age_after_commit(self, server, commitment_network):
         """After a commit, sth_age_seconds reflects STH timestamp."""
         from ltp.commitment import CommitmentRecord
+
         record = CommitmentRecord(
             entity_id="age-test",
             sender_id="sender-1",
@@ -462,6 +477,7 @@ class TestLogSthAge:
 # ---------------------------------------------------------------------------
 # Gap 3: /node/network/endowment burn_history capped
 # ---------------------------------------------------------------------------
+
 
 class TestEndowmentBurnHistoryCap:
     def test_endowment_burn_history_capped(self, server, commitment_network):
@@ -515,6 +531,7 @@ class TestEndowmentBurnHistoryCap:
 # Gap 4: /node/transfers state filter case-insensitive + valid_states
 # ---------------------------------------------------------------------------
 
+
 class TestTransfersFilterEnhancements:
     def test_transfers_filter_case_insensitive(self, server, protocol):
         """?state=idle (lowercase) works the same as ?state=IDLE (Gap 4)."""
@@ -543,9 +560,13 @@ class TestTransfersFilterEnhancements:
 # Gap 8: public_mode redacts sensitive fields
 # ---------------------------------------------------------------------------
 
+
 class TestPublicModeRedaction:
     def test_public_mode_redacts_sensitive_fields(
-        self, peer_manager, commitment_network, protocol,
+        self,
+        peer_manager,
+        commitment_network,
+        protocol,
     ):
         """public_mode=True omits address from peers & earnings/stake from nodes."""
         cnode = commitment_network.nodes[0]
@@ -585,7 +606,10 @@ class TestPublicModeRedaction:
             srv.stop()
 
     def test_public_mode_network_summary_excludes_sensitive(
-        self, peer_manager, commitment_network, protocol,
+        self,
+        peer_manager,
+        commitment_network,
+        protocol,
     ):
         """Network summary nodes also respect public_mode (no stake/earnings)."""
         cnode = commitment_network.nodes[0]

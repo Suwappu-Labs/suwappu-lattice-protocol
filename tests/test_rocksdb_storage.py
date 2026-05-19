@@ -26,7 +26,6 @@ def store():
 
 
 class TestCRUD:
-
     def test_set_and_get(self, store):
         store[("entity-1", 0)] = b"shard-data"
         assert store[("entity-1", 0)] == b"shard-data"
@@ -78,7 +77,6 @@ class TestCRUD:
 
 
 class TestPersistence:
-
     def test_data_survives_close_reopen(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "persist.lsm")
@@ -101,7 +99,6 @@ class TestPersistence:
 
 
 class TestPop:
-
     def test_pop_existing(self, store):
         store[("a", 0)] = b"val"
         assert store.pop(("a", 0)) == b"val"

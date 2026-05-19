@@ -7,9 +7,9 @@ fetching, and auth integration.
 
 from __future__ import annotations
 
-import pytest
-
 import struct
+
+import pytest
 
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol
 from src.ltp.entity import Entity
@@ -85,7 +85,6 @@ def auth(nir_a, agreement):
 
 
 class TestResolveEntityWithTransport:
-
     def test_remote_resolution_finds_entity(self, kp_a, kp_b, nir_a, nir_b, network_b, auth):
         """With transport, remote entity resolution works."""
         # Commit on network B
@@ -151,7 +150,6 @@ class TestResolveEntityWithTransport:
 
 
 class TestCrossNetworkFetcher:
-
     def test_fetch_from_federated_network(self, kp_a, kp_b, nir_a, nir_b, network_b, agreement):
         """Fetch shards from a federated network."""
         protocol = LTPProtocol(network_b)
@@ -167,7 +165,10 @@ class TestCrossNetworkFetcher:
         transport.register_network("https://b.net", network_b)
 
         fetcher = CrossNetworkFetcher(
-            reg, transport, nir_a, {nir_b.network_id: agreement},
+            reg,
+            transport,
+            nir_a,
+            {nir_b.network_id: agreement},
         )
         shards = fetcher.fetch_entity_shards(entity_id, [0, 1, 2])
         assert shards is not None
@@ -183,7 +184,10 @@ class TestCrossNetworkFetcher:
         transport.register_network("https://b.net", network_b)
 
         fetcher = CrossNetworkFetcher(
-            reg, transport, nir_a, {nir_b.network_id: agreement},
+            reg,
+            transport,
+            nir_a,
+            {nir_b.network_id: agreement},
         )
         result = fetcher.fetch_entity_shards("nonexistent-entity", [0, 1])
         assert result is None

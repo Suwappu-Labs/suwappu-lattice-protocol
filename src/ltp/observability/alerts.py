@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
-from .metrics import MetricsRegistry, Counter, Gauge, Histogram
+from .metrics import Counter, Gauge, Histogram, MetricsRegistry
 
 __all__ = [
     "AlertSeverity",
@@ -39,6 +39,7 @@ class AlertCondition(Enum):
 @dataclass(frozen=True)
 class AlertRule:
     """Declarative alert rule definition."""
+
     name: str
     metric_name: str
     condition: AlertCondition
@@ -51,6 +52,7 @@ class AlertRule:
 @dataclass
 class AlertResult:
     """Result of evaluating a single alert rule."""
+
     rule_name: str
     firing: bool
     severity: str
@@ -116,7 +118,10 @@ class AlertEvaluator:
         return 0.0
 
     def _check_condition(
-        self, condition: AlertCondition, value: float, threshold: float,
+        self,
+        condition: AlertCondition,
+        value: float,
+        threshold: float,
     ) -> bool:
         """Evaluate a condition against a value."""
         if condition == AlertCondition.GREATER_THAN:

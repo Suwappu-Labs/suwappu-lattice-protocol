@@ -27,9 +27,11 @@ import pytest
 # Skip entire module if web3 is not installed or anvil not running
 try:
     from web3 import Web3
+
     HAS_WEB3 = True
 except ImportError:
     HAS_WEB3 = False
+
 
 # Check if anvil is running
 def _anvil_running() -> bool:
@@ -40,6 +42,7 @@ def _anvil_running() -> bool:
         return w3.is_connected()
     except Exception:
         return False
+
 
 pytestmark = pytest.mark.skipif(
     not HAS_WEB3 or not _anvil_running(),
@@ -57,6 +60,7 @@ ANVIL_CHAIN_ID = 31337
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def w3():
     """Web3 connection to local anvil."""
@@ -70,7 +74,10 @@ def contract_address(w3):
 
     # Read implementation artifact
     impl_path = os.path.join(
-        contracts_dir, "out", "LTPAnchorRegistry.sol", "LTPAnchorRegistry.json",
+        contracts_dir,
+        "out",
+        "LTPAnchorRegistry.sol",
+        "LTPAnchorRegistry.json",
     )
     if not os.path.exists(impl_path):
         subprocess.run(["forge", "build"], cwd=contracts_dir, check=True)
@@ -80,7 +87,10 @@ def contract_address(w3):
 
     # Read proxy artifact
     proxy_path = os.path.join(
-        contracts_dir, "out", "ERC1967Proxy.sol", "ERC1967Proxy.json",
+        contracts_dir,
+        "out",
+        "ERC1967Proxy.sol",
+        "ERC1967Proxy.json",
     )
     with open(proxy_path) as f:
         proxy_artifact = json.load(f)
@@ -89,15 +99,18 @@ def contract_address(w3):
 
     # 1. Deploy implementation (constructor disables initializers, no args)
     impl_contract = w3.eth.contract(
-        abi=impl_artifact["abi"], bytecode=impl_artifact["bytecode"]["object"],
+        abi=impl_artifact["abi"],
+        bytecode=impl_artifact["bytecode"]["object"],
     )
-    tx = impl_contract.constructor().build_transaction({
-        "from": account.address,
-        "nonce": w3.eth.get_transaction_count(account.address),
-        "chainId": ANVIL_CHAIN_ID,
-        "gas": 5_000_000,
-        "gasPrice": w3.eth.gas_price,
-    })
+    tx = impl_contract.constructor().build_transaction(
+        {
+            "from": account.address,
+            "nonce": w3.eth.get_transaction_count(account.address),
+            "chainId": ANVIL_CHAIN_ID,
+            "gas": 5_000_000,
+            "gasPrice": w3.eth.gas_price,
+        }
+    )
     signed = account.sign_transaction(tx)
     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
     receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
@@ -110,15 +123,18 @@ def contract_address(w3):
 
     # 3. Deploy ERC1967Proxy(implementation, initData)
     proxy_contract = w3.eth.contract(
-        abi=proxy_artifact["abi"], bytecode=proxy_artifact["bytecode"]["object"],
+        abi=proxy_artifact["abi"],
+        bytecode=proxy_artifact["bytecode"]["object"],
     )
-    tx = proxy_contract.constructor(impl_address, bytes.fromhex(init_data[2:])).build_transaction({
-        "from": account.address,
-        "nonce": w3.eth.get_transaction_count(account.address),
-        "chainId": ANVIL_CHAIN_ID,
-        "gas": 1_000_000,
-        "gasPrice": w3.eth.gas_price,
-    })
+    tx = proxy_contract.constructor(impl_address, bytes.fromhex(init_data[2:])).build_transaction(
+        {
+            "from": account.address,
+            "nonce": w3.eth.get_transaction_count(account.address),
+            "chainId": ANVIL_CHAIN_ID,
+            "gas": 1_000_000,
+            "gasPrice": w3.eth.gas_price,
+        }
+    )
     signed = account.sign_transaction(tx)
     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
     receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
@@ -130,8 +146,12 @@ def contract_address(w3):
 def registry(w3, contract_address):
     """Contract instance (proxy cast to implementation ABI)."""
     artifact_path = os.path.join(
-        os.path.dirname(__file__), "..", "contracts", "out",
-        "LTPAnchorRegistry.sol", "LTPAnchorRegistry.json",
+        os.path.dirname(__file__),
+        "..",
+        "contracts",
+        "out",
+        "LTPAnchorRegistry.sol",
+        "LTPAnchorRegistry.json",
     )
     with open(artifact_path) as f:
         artifact = json.load(f)
@@ -148,6 +168,7 @@ def account(w3):
 def anchor_client(contract_address):
     """AnchorClient instance for testing."""
     from src.ltp.anchor.client import AnchorClient
+
     return AnchorClient(
         rpc_url=ANVIL_RPC,
         contract_address=contract_address,
@@ -158,13 +179,15 @@ def anchor_client(contract_address):
 
 def _send_tx(w3, account, fn, gas=500_000):
     """Helper to send a transaction. Returns receipt."""
-    tx = fn.build_transaction({
-        "from": account.address,
-        "nonce": w3.eth.get_transaction_count(account.address),
-        "chainId": ANVIL_CHAIN_ID,
-        "gas": gas,
-        "gasPrice": w3.eth.gas_price,
-    })
+    tx = fn.build_transaction(
+        {
+            "from": account.address,
+            "nonce": w3.eth.get_transaction_count(account.address),
+            "chainId": ANVIL_CHAIN_ID,
+            "gas": gas,
+            "gasPrice": w3.eth.gas_price,
+        }
+    )
     signed = account.sign_transaction(tx)
     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
     return w3.eth.wait_for_transaction_receipt(tx_hash)
@@ -173,6 +196,7 @@ def _send_tx(w3, account, fn, gas=500_000):
 # ---------------------------------------------------------------------------
 # 1. Round-trip: anchor → isAnchored with entityIdHash
 # ---------------------------------------------------------------------------
+
 
 class TestRoundTrip:
     def test_anchor_and_verify(self, w3, registry, account):
@@ -187,10 +211,17 @@ class TestRoundTrip:
         valid_until = int(time.time()) + 3600
 
         receipt = _send_tx(
-            w3, account,
+            w3,
+            account,
             registry.functions.anchor(
-                anchor_digest, entity_id, merkle_root, policy_hash,
-                signer_vk_hash, 1, valid_until, 0,
+                anchor_digest,
+                entity_id,
+                merkle_root,
+                policy_hash,
+                signer_vk_hash,
+                1,
+                valid_until,
+                0,
             ),
         )
         assert receipt["status"] == 1
@@ -203,6 +234,7 @@ class TestRoundTrip:
 # ---------------------------------------------------------------------------
 # 2. State machine parity: Python validate_transition vs on-chain
 # ---------------------------------------------------------------------------
+
 
 class TestStateMachineParity:
     def test_valid_transitions_match(self, registry):
@@ -228,6 +260,7 @@ class TestStateMachineParity:
 # 3. Sequence parity: SequenceTracker vs on-chain
 # ---------------------------------------------------------------------------
 
+
 class TestSequenceParity:
     def test_sequence_hwm_matches(self, w3, registry, account):
         """On-chain and Python sequence HWM track identically."""
@@ -247,16 +280,26 @@ class TestSequenceParity:
             root = Web3.keccak(text=f"seq-root-{seq}")
             policy = Web3.keccak(text=f"seq-policy-{seq}")
             receipt = _send_tx(
-                w3, account,
+                w3,
+                account,
                 registry.functions.anchor(
-                    digest, entity_id, root, policy,
-                    signer_vk_hash, seq, valid_until, 0,
+                    digest,
+                    entity_id,
+                    root,
+                    policy,
+                    signer_vk_hash,
+                    seq,
+                    valid_until,
+                    0,
                 ),
             )
             assert receipt["status"] == 1
 
             ok, _ = tracker.validate_and_advance(
-                fake_vk, seq, "test", time.time() + 3600,
+                fake_vk,
+                seq,
+                "test",
+                time.time() + 3600,
             )
             assert ok
 
@@ -269,6 +312,7 @@ class TestSequenceParity:
 # ---------------------------------------------------------------------------
 # 4. Batch anchoring
 # ---------------------------------------------------------------------------
+
 
 class TestBatchAnchoring:
     def test_batch_10_items(self, w3, registry, account):
@@ -289,10 +333,17 @@ class TestBatchAnchoring:
         types = [0] * count
 
         receipt = _send_tx(
-            w3, account,
+            w3,
+            account,
             registry.functions.batchAnchor(
-                digests, entity_ids, roots, policies,
-                signers, seqs, expiries, types,
+                digests,
+                entity_ids,
+                roots,
+                policies,
+                signers,
+                seqs,
+                expiries,
+                types,
             ),
             gas=3_000_000,
         )
@@ -309,6 +360,7 @@ class TestBatchAnchoring:
 # 5. Rejection parity
 # ---------------------------------------------------------------------------
 
+
 class TestRejectionParity:
     def test_expired_rejected(self, w3, registry, account):
         """Expired timestamps rejected on-chain."""
@@ -320,10 +372,17 @@ class TestRejectionParity:
         valid_until = 1  # clearly expired
 
         receipt = _send_tx(
-            w3, account,
+            w3,
+            account,
             registry.functions.anchor(
-                digest, entity_id, Web3.keccak(text="r"), Web3.keccak(text="p"),
-                signer_vk_hash, 1, valid_until, 0,
+                digest,
+                entity_id,
+                Web3.keccak(text="r"),
+                Web3.keccak(text="p"),
+                signer_vk_hash,
+                1,
+                valid_until,
+                0,
             ),
         )
         assert receipt["status"] == 0, "Expired anchor should revert"
@@ -336,10 +395,17 @@ class TestRejectionParity:
         valid_until = int(time.time()) + 3600
 
         receipt = _send_tx(
-            w3, account,
+            w3,
+            account,
             registry.functions.anchor(
-                digest, entity_id, Web3.keccak(text="r"), Web3.keccak(text="p"),
-                unknown_signer, 1, valid_until, 0,
+                digest,
+                entity_id,
+                Web3.keccak(text="r"),
+                Web3.keccak(text="p"),
+                unknown_signer,
+                1,
+                valid_until,
+                0,
             ),
         )
         assert receipt["status"] == 0, "Unauthorized signer should revert"
@@ -354,19 +420,33 @@ class TestRejectionParity:
         valid_until = int(time.time()) + 3600
 
         receipt = _send_tx(
-            w3, account,
+            w3,
+            account,
             registry.functions.anchor(
-                digest, entity_id, Web3.keccak(text="r"), Web3.keccak(text="p"),
-                signer_vk_hash, 1, valid_until, 0,
+                digest,
+                entity_id,
+                Web3.keccak(text="r"),
+                Web3.keccak(text="p"),
+                signer_vk_hash,
+                1,
+                valid_until,
+                0,
             ),
         )
         assert receipt["status"] == 1
 
         receipt2 = _send_tx(
-            w3, account,
+            w3,
+            account,
             registry.functions.anchor(
-                digest, Web3.keccak(text="other-entity"), Web3.keccak(text="r"), Web3.keccak(text="p"),
-                signer_vk_hash, 2, valid_until, 0,
+                digest,
+                Web3.keccak(text="other-entity"),
+                Web3.keccak(text="r"),
+                Web3.keccak(text="p"),
+                signer_vk_hash,
+                2,
+                valid_until,
+                0,
             ),
         )
         assert receipt2["status"] == 0, "Replay should revert"
@@ -375,6 +455,7 @@ class TestRejectionParity:
 # ---------------------------------------------------------------------------
 # 6. transitionState integration
 # ---------------------------------------------------------------------------
+
 
 class TestTransitionState:
     def test_full_lifecycle(self, w3, registry, account):
@@ -387,18 +468,25 @@ class TestTransitionState:
 
         # Anchor (UNKNOWN → ANCHORED)
         _send_tx(
-            w3, account,
+            w3,
+            account,
             registry.functions.anchor(
-                Web3.keccak(text="lifecycle-digest"), entity_id,
-                Web3.keccak(text="r"), Web3.keccak(text="p"),
-                signer_vk_hash, 1, valid_until, 0,
+                Web3.keccak(text="lifecycle-digest"),
+                entity_id,
+                Web3.keccak(text="r"),
+                Web3.keccak(text="p"),
+                signer_vk_hash,
+                1,
+                valid_until,
+                0,
             ),
         )
         assert registry.functions.getEntityState(entity_id).call() == 2  # ANCHORED
 
         # ANCHORED → MATERIALIZED
         receipt = _send_tx(
-            w3, account,
+            w3,
+            account,
             registry.functions.transitionState(entity_id, 3, signer_vk_hash, 2, valid_until),
         )
         assert receipt["status"] == 1
@@ -406,7 +494,8 @@ class TestTransitionState:
 
         # MATERIALIZED → DISPUTED
         receipt = _send_tx(
-            w3, account,
+            w3,
+            account,
             registry.functions.transitionState(entity_id, 4, signer_vk_hash, 3, valid_until),
         )
         assert receipt["status"] == 1
@@ -414,7 +503,8 @@ class TestTransitionState:
 
         # DISPUTED → DELETED
         receipt = _send_tx(
-            w3, account,
+            w3,
+            account,
             registry.functions.transitionState(entity_id, 5, signer_vk_hash, 4, valid_until),
         )
         assert receipt["status"] == 1
@@ -424,6 +514,7 @@ class TestTransitionState:
 # ---------------------------------------------------------------------------
 # 7. Batch queries integration
 # ---------------------------------------------------------------------------
+
 
 class TestBatchQueries:
     def test_batch_entity_states(self, w3, registry, account):
@@ -436,18 +527,46 @@ class TestBatchQueries:
         e2 = Web3.keccak(text="batchq-entity-2")
         e3 = Web3.keccak(text="batchq-entity-3")  # never touched
 
-        _send_tx(w3, account, registry.functions.anchor(
-            Web3.keccak(text="batchq-d1"), e1, Web3.keccak(text="r"), Web3.keccak(text="p"),
-            signer_vk_hash, 1, valid_until, 0,
-        ))
-        _send_tx(w3, account, registry.functions.anchor(
-            Web3.keccak(text="batchq-d2"), e2, Web3.keccak(text="r2"), Web3.keccak(text="p2"),
-            signer_vk_hash, 2, valid_until, 0,
-        ))
+        _send_tx(
+            w3,
+            account,
+            registry.functions.anchor(
+                Web3.keccak(text="batchq-d1"),
+                e1,
+                Web3.keccak(text="r"),
+                Web3.keccak(text="p"),
+                signer_vk_hash,
+                1,
+                valid_until,
+                0,
+            ),
+        )
+        _send_tx(
+            w3,
+            account,
+            registry.functions.anchor(
+                Web3.keccak(text="batchq-d2"),
+                e2,
+                Web3.keccak(text="r2"),
+                Web3.keccak(text="p2"),
+                signer_vk_hash,
+                2,
+                valid_until,
+                0,
+            ),
+        )
         # Transition e2 → MATERIALIZED
-        _send_tx(w3, account, registry.functions.transitionState(
-            e2, 3, signer_vk_hash, 3, valid_until,
-        ))
+        _send_tx(
+            w3,
+            account,
+            registry.functions.transitionState(
+                e2,
+                3,
+                signer_vk_hash,
+                3,
+                valid_until,
+            ),
+        )
 
         states = registry.functions.getEntityStates([e1, e2, e3]).call()
         assert states[0] == 2  # ANCHORED
@@ -458,6 +577,7 @@ class TestBatchQueries:
 # ---------------------------------------------------------------------------
 # 8. AnchorClient integration
 # ---------------------------------------------------------------------------
+
 
 class TestAnchorClient:
     def test_client_anchor_and_query(self, w3, registry, account, anchor_client):
@@ -497,14 +617,19 @@ class TestAnchorClient:
 # 9. ABI validation: Python ABI matches Solidity contract ABI
 # ---------------------------------------------------------------------------
 
+
 class TestABIValidation:
     def test_python_abi_matches_contract(self, w3, contract_address):
         """Verify every function in Python _REGISTRY_ABI exists in the compiled contract ABI."""
         from src.ltp.anchor.client import _REGISTRY_ABI
 
         artifact_path = os.path.join(
-            os.path.dirname(__file__), "..", "contracts", "out",
-            "LTPAnchorRegistry.sol", "LTPAnchorRegistry.json",
+            os.path.dirname(__file__),
+            "..",
+            "contracts",
+            "out",
+            "LTPAnchorRegistry.sol",
+            "LTPAnchorRegistry.json",
         )
         with open(artifact_path) as f:
             artifact = json.load(f)
@@ -527,14 +652,14 @@ class TestABIValidation:
             py_types = [p["type"] for p in py_item["inputs"]]
             sol_types = [p["type"] for p in sol_item["inputs"]]
             assert py_types == sol_types, (
-                f"ABI mismatch for {name}: "
-                f"Python types={py_types}, Solidity types={sol_types}"
+                f"ABI mismatch for {name}: Python types={py_types}, Solidity types={sol_types}"
             )
 
 
 # ---------------------------------------------------------------------------
 # 10. transitionState integration
 # ---------------------------------------------------------------------------
+
 
 class TestTransitionStateIntegration:
     def test_transition_lifecycle_via_client(self, w3, registry, account, anchor_client):
@@ -549,17 +674,27 @@ class TestTransitionStateIntegration:
 
         # Anchor first
         _send_tx(
-            w3, account,
+            w3,
+            account,
             registry.functions.anchor(
-                Web3.keccak(text="transition-client-digest"), entity_id,
-                Web3.keccak(text="r"), Web3.keccak(text="p"),
-                signer_vk_hash, 1, valid_until, 0,
+                Web3.keccak(text="transition-client-digest"),
+                entity_id,
+                Web3.keccak(text="r"),
+                Web3.keccak(text="p"),
+                signer_vk_hash,
+                1,
+                valid_until,
+                0,
             ),
         )
 
         # ANCHORED → MATERIALIZED via client
         tx_hash = anchor_client.transition_state(
-            entity_id, 3, signer_vk_hash, 2, valid_until,
+            entity_id,
+            3,
+            signer_vk_hash,
+            2,
+            valid_until,
         )
         assert len(tx_hash) > 0
         state = anchor_client.entity_state(entity_id)
@@ -567,7 +702,11 @@ class TestTransitionStateIntegration:
 
         # MATERIALIZED → DELETED via client
         tx_hash = anchor_client.transition_state(
-            entity_id, 5, signer_vk_hash, 3, valid_until,
+            entity_id,
+            5,
+            signer_vk_hash,
+            3,
+            valid_until,
         )
         state = anchor_client.entity_state(entity_id)
         assert state == EntityState.DELETED
@@ -576,6 +715,7 @@ class TestTransitionStateIntegration:
 # ---------------------------------------------------------------------------
 # 11. UUPS upgrade integration
 # ---------------------------------------------------------------------------
+
 
 class TestUUPSUpgradeIntegration:
     def test_upgrade_preserves_state(self, w3, registry, account, contract_address):
@@ -588,10 +728,17 @@ class TestUUPSUpgradeIntegration:
         valid_until = int(time.time()) + 3600
 
         _send_tx(
-            w3, account,
+            w3,
+            account,
             registry.functions.anchor(
-                digest, entity_id, Web3.keccak(text="r"), Web3.keccak(text="p"),
-                signer_vk_hash, 1, valid_until, 0,
+                digest,
+                entity_id,
+                Web3.keccak(text="r"),
+                Web3.keccak(text="p"),
+                signer_vk_hash,
+                1,
+                valid_until,
+                0,
             ),
         )
         assert registry.functions.isAnchored(digest).call() is True
@@ -599,21 +746,27 @@ class TestUUPSUpgradeIntegration:
         # Deploy new implementation
         contracts_dir = os.path.join(os.path.dirname(__file__), "..", "contracts")
         impl_path = os.path.join(
-            contracts_dir, "out", "LTPAnchorRegistry.sol", "LTPAnchorRegistry.json",
+            contracts_dir,
+            "out",
+            "LTPAnchorRegistry.sol",
+            "LTPAnchorRegistry.json",
         )
         with open(impl_path) as f:
             impl_artifact = json.load(f)
 
         impl_contract = w3.eth.contract(
-            abi=impl_artifact["abi"], bytecode=impl_artifact["bytecode"]["object"],
+            abi=impl_artifact["abi"],
+            bytecode=impl_artifact["bytecode"]["object"],
         )
-        tx = impl_contract.constructor().build_transaction({
-            "from": account.address,
-            "nonce": w3.eth.get_transaction_count(account.address),
-            "chainId": ANVIL_CHAIN_ID,
-            "gas": 5_000_000,
-            "gasPrice": w3.eth.gas_price,
-        })
+        tx = impl_contract.constructor().build_transaction(
+            {
+                "from": account.address,
+                "nonce": w3.eth.get_transaction_count(account.address),
+                "chainId": ANVIL_CHAIN_ID,
+                "gas": 5_000_000,
+                "gasPrice": w3.eth.gas_price,
+            }
+        )
         signed = account.sign_transaction(tx)
         tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
         receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
@@ -633,6 +786,7 @@ class TestUUPSUpgradeIntegration:
 # ---------------------------------------------------------------------------
 # 7. LiveBridge: end-to-end bridge transfer with on-chain anchoring
 # ---------------------------------------------------------------------------
+
 
 class TestLiveBridge:
     """Prove the bridge works with real on-chain state (via anvil)."""
@@ -655,9 +809,12 @@ class TestLiveBridge:
         # Set up commitment network
         net = CommitmentNetwork()
         for nid, region in [
-            ("live-1", "US-East"), ("live-2", "US-West"),
-            ("live-3", "EU-West"), ("live-4", "EU-East"),
-            ("live-5", "AP-East"), ("live-6", "AP-South"),
+            ("live-1", "US-East"),
+            ("live-2", "US-West"),
+            ("live-3", "EU-West"),
+            ("live-4", "EU-East"),
+            ("live-5", "AP-East"),
+            ("live-6", "AP-South"),
         ]:
             net.add_node(nid, region)
 

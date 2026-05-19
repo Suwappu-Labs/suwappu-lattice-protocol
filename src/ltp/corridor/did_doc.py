@@ -30,6 +30,7 @@ from typing import Optional
 
 try:  # pragma: no cover — optional dependency
     import blake3 as _blake3
+
     _blake3_available = True
 except ImportError:
     _blake3 = None
@@ -75,10 +76,10 @@ class CrossDidController(DidError):
 
 
 class DanglingRelationship(DidError):
-    def __init__(self, relationship: VerificationRelationship, method: VerificationMethodId) -> None:
-        super().__init__(
-            f"relationship {relationship.name} references unknown method {method}"
-        )
+    def __init__(
+        self, relationship: VerificationRelationship, method: VerificationMethodId
+    ) -> None:
+        super().__init__(f"relationship {relationship.name} references unknown method {method}")
         self.relationship = relationship
         self.method = method
 
@@ -124,9 +125,7 @@ class DidDocument:
     def canonical_hash(self) -> bytes:
         """BLAKE3 canonical hash matching `gsx-precompiles::DidDocument::canonical_hash`."""
         if not _blake3_available:
-            raise RuntimeError(
-                "blake3 library not installed; install with `pip install blake3`"
-            )
+            raise RuntimeError("blake3 library not installed; install with `pip install blake3`")
         h = _blake3.blake3()
         h.update(b"GSX-DID-DOC-V1")
         h.update(self.id)

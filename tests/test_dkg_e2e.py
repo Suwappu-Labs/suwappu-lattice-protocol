@@ -4,21 +4,18 @@ from __future__ import annotations
 
 import pytest
 
-from src.ltp.zk.ec_backend import bls12_381_available
 from src.ltp.execution.committee.dkg.types import (
     DKGPhase,
     DKGSessionConfig,
     DKGState,
 )
+from src.ltp.zk.ec_backend import bls12_381_available
 
-pytestmark = pytest.mark.skipif(
-    not bls12_381_available(), reason="py_ecc not installed"
-)
+pytestmark = pytest.mark.skipif(not bls12_381_available(), reason="py_ecc not installed")
 
+from src.ltp.execution.committee.dkg.registry import DKGKeyRegistry  # noqa: E402
 from src.ltp.execution.committee.dkg.session import DKGSession  # noqa: E402
 from src.ltp.execution.committee.dkg.transport import FakeDKGTransport  # noqa: E402
-from src.ltp.execution.committee.dkg.registry import DKGKeyRegistry  # noqa: E402
-
 
 PARTICIPANTS = [bytes([i]) * 32 for i in range(1, 6)]  # 5 participants
 
@@ -34,13 +31,14 @@ def _run_ceremony(
     """
     n = len(participants)
     cfg = DKGSessionConfig(
-        vm_tag=0x01, epoch=1, threshold=threshold,
-        participants=list(participants), timeout_rounds=20, start_round=0,
+        vm_tag=0x01,
+        epoch=1,
+        threshold=threshold,
+        participants=list(participants),
+        timeout_rounds=20,
+        start_round=0,
     )
-    sessions = [
-        DKGSession(cfg, fp, idx + 1)
-        for idx, fp in enumerate(participants)
-    ]
+    sessions = [DKGSession(cfg, fp, idx + 1) for idx, fp in enumerate(participants)]
     transport = FakeDKGTransport()
 
     # Phase 1: begin
@@ -52,6 +50,7 @@ def _run_ceremony(
             if tamper_dealer == s.my_fp:
                 # Corrupt the share
                 from src.ltp.execution.committee.dkg.types import DKGShare
+
                 share = DKGShare(
                     dealer_fp=share.dealer_fp,
                     recipient_fp=share.recipient_fp,
@@ -93,7 +92,6 @@ def _run_ceremony(
 
 
 class TestHappyPathCeremony:
-
     def test_3_of_3(self):
         results = _run_ceremony(PARTICIPANTS[:3], threshold=3)
         group_pks = {r.group_pk for r in results}
@@ -115,7 +113,6 @@ class TestHappyPathCeremony:
 
 
 class TestComplaintResolution:
-
     def test_dishonest_dealer_excluded_from_qual(self):
         """One dealer sends bad shares -> excluded from QUAL, ceremony succeeds."""
         tamper_fp = PARTICIPANTS[0]
@@ -131,7 +128,6 @@ class TestComplaintResolution:
 
 
 class TestRegistryIntegration:
-
     def test_store_ceremony_result(self):
         results = _run_ceremony(PARTICIPANTS[:3], threshold=2)
         reg = DKGKeyRegistry(0x01)
@@ -143,14 +139,14 @@ class TestRegistryIntegration:
         reg = DKGKeyRegistry(0x01)
         for epoch in range(1, 4):
             cfg = DKGSessionConfig(
-                vm_tag=0x01, epoch=epoch, threshold=2,
+                vm_tag=0x01,
+                epoch=epoch,
+                threshold=2,
                 participants=list(PARTICIPANTS[:3]),
-                timeout_rounds=20, start_round=0,
+                timeout_rounds=20,
+                start_round=0,
             )
-            sessions = [
-                DKGSession(cfg, fp, idx + 1)
-                for idx, fp in enumerate(PARTICIPANTS[:3])
-            ]
+            sessions = [DKGSession(cfg, fp, idx + 1) for idx, fp in enumerate(PARTICIPANTS[:3])]
             # Quick ceremony
             commitments = []
             all_shares = []

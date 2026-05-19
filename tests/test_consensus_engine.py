@@ -63,10 +63,12 @@ class TestSynchronousMode:
 
     def test_deterministic_same_result(self):
         """Same initial state + same operations = same result."""
+
         def run():
             engine = LocalMysticetiEngine(num_validators=4)
             engine.submit_transactions([b"tx1"])
             return engine.run_rounds(5)
+
         d1 = run()
         d2 = run()
         assert len(d1) == len(d2)

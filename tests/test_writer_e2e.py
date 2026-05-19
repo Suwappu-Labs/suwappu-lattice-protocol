@@ -12,26 +12,27 @@ from __future__ import annotations
 
 import pytest
 
-from src.ltp.execution.writer import WriterIdentity, WriterState, IdentityTier
+from src.ltp.bls_keys import BLSKeyPair
+from src.ltp.execution.registry import VMRegistry
+from src.ltp.execution.router import TransactionRouter
+from src.ltp.execution.types import OrderedBatch, StateResult, TxResult
+from src.ltp.execution.writer import IdentityTier, WriterIdentity, WriterState
 from src.ltp.execution.writer_config import RegistryConfig
-from src.ltp.execution.writer_registry import WriterRegistry
-from src.ltp.execution.writer_policy import VMWriterPolicy
-from src.ltp.execution.writer_recovery import EmergencyState
 from src.ltp.execution.writer_epoch import EpochTracker, promote_due_probations
 from src.ltp.execution.writer_gate import WriterGate
-from src.ltp.execution.router import TransactionRouter
-from src.ltp.execution.registry import VMRegistry
-from src.ltp.execution.types import OrderedBatch, TxResult, StateResult
+from src.ltp.execution.writer_policy import VMWriterPolicy
+from src.ltp.execution.writer_recovery import EmergencyState
+from src.ltp.execution.writer_registry import WriterRegistry
 from src.ltp.keypair import KeyPair
-from src.ltp.bls_keys import BLSKeyPair
-
 
 # ---------------------------------------------------------------------------
 # FakeEVM helper
 # ---------------------------------------------------------------------------
 
+
 class FakeEVM:
     """Minimal VM executor for E2E test."""
+
     vm_tag = 0x01
     vm_name = "fake-evm"
     family = "account"
@@ -52,6 +53,7 @@ class FakeEVM:
 # ---------------------------------------------------------------------------
 # TestWriterLifecycleE2E
 # ---------------------------------------------------------------------------
+
 
 class TestWriterLifecycleE2E:
     """End-to-end integration tests exercising the full writer lifecycle."""
@@ -128,14 +130,16 @@ class TestWriterLifecycleE2E:
         assert registry.lookup(fp).state == WriterState.EXPIRED
 
         # Transaction should now fail (writer not in transactable state)
-        result2 = router.execute_batch(OrderedBatch(
-            round=2,
-            epoch=0,
-            transactions=[tx],
-            leader_authority=0,
-            timestamp_ms=2000,
-            consensus_type="bft",
-        ))
+        result2 = router.execute_batch(
+            OrderedBatch(
+                round=2,
+                epoch=0,
+                transactions=[tx],
+                leader_authority=0,
+                timestamp_ms=2000,
+                consensus_type="bft",
+            )
+        )
         assert not result2.tx_results[0].success
 
         # --- Renew the writer ---
@@ -143,21 +147,22 @@ class TestWriterLifecycleE2E:
         assert registry.lookup(fp).state == WriterState.ACTIVE
 
         # --- Transact again after renewal ---
-        result3 = router.execute_batch(OrderedBatch(
-            round=3,
-            epoch=0,
-            transactions=[tx],
-            leader_authority=0,
-            timestamp_ms=3000,
-            consensus_type="bft",
-        ))
+        result3 = router.execute_batch(
+            OrderedBatch(
+                round=3,
+                epoch=0,
+                transactions=[tx],
+                leader_authority=0,
+                timestamp_ms=3000,
+                consensus_type="bft",
+            )
+        )
         assert result3.tx_results[0].success, result3.tx_results[0].error
 
         # --- Audit trail: at least 4 entries ---
         log = registry.lookup(fp).transition_log
-        assert len(log) >= 4, (
-            f"Expected at least 4 audit entries, got {len(log)}: "
-            + str([(e.from_state, e.to_state) for e in log])
+        assert len(log) >= 4, f"Expected at least 4 audit entries, got {len(log)}: " + str(
+            [(e.from_state, e.to_state) for e in log]
         )
 
     def test_three_identity_tiers_all_enroll(self):

@@ -12,10 +12,10 @@ from src.ltp.node.anchor_status import AnchorStatus, AnchorStatusTracker
 from src.ltp.node.anchor_verifier import AnchorVerifier, AnchorVerifyResult
 from src.ltp.node.config import NodeConfig
 
-
 # ---------------------------------------------------------------------------
 # Mock chain provider
 # ---------------------------------------------------------------------------
+
 
 class MockChainProvider:
     """Duck-typed mock for AnchorClient receipt/block methods."""
@@ -75,6 +75,7 @@ def _setup_submitted(tracker: AnchorStatusTracker, entity_id: str, tx_hash: str)
 # Phase 1: SUBMITTED → CONFIRMED
 # ===================================================================
 
+
 class TestVerifierPhase1:
     def test_tick_no_submitted(self):
         """Empty SUBMITTED set → all counts zero."""
@@ -114,9 +115,11 @@ class TestVerifierPhase1:
         tracker = AnchorStatusTracker()
         _setup_submitted(tracker, "ent-1", "0xabc")
 
-        provider = MockChainProvider(receipts={
-            "0xabc": {"status": 1, "blockNumber": 42, "gasUsed": 65_000},
-        })
+        provider = MockChainProvider(
+            receipts={
+                "0xabc": {"status": 1, "blockNumber": 42, "gasUsed": 65_000},
+            }
+        )
         verifier = AnchorVerifier(provider, tracker, _make_config())
         verifier.tick(1)
 
@@ -143,9 +146,11 @@ class TestVerifierPhase1:
         tracker = AnchorStatusTracker()
         _setup_submitted(tracker, "ent-1", "0xreverted")
 
-        provider = MockChainProvider(receipts={
-            "0xreverted": {"status": 0, "blockNumber": 50, "gasUsed": 21_000},
-        })
+        provider = MockChainProvider(
+            receipts={
+                "0xreverted": {"status": 0, "blockNumber": 50, "gasUsed": 21_000},
+            }
+        )
         verifier = AnchorVerifier(provider, tracker, _make_config())
 
         result = verifier.tick(1)
@@ -198,6 +203,7 @@ class TestVerifierPhase1:
 # ===================================================================
 # Phase 2: CONFIRMED → FINALIZED
 # ===================================================================
+
 
 class TestVerifierPhase2:
     def test_finalized_at_depth(self):
@@ -276,6 +282,7 @@ class TestVerifierPhase2:
 # Finality depth vs confirmation depth (Gap 1)
 # ===================================================================
 
+
 class TestFinalityDepthConfig:
     def test_finality_depth_from_config(self):
         """CONFIRMED→FINALIZED fires at anchor_finality_depth, not anchor_confirmation_depth."""
@@ -304,6 +311,7 @@ class TestFinalityDepthConfig:
 # Same-tick confirm + finalize
 # ===================================================================
 
+
 class TestVerifierSameTick:
     def test_confirm_and_finalize_same_tick(self):
         """Receipt found + already deep enough → CONFIRMED then FINALIZED in one tick."""
@@ -327,6 +335,7 @@ class TestVerifierSameTick:
 # Multi-batch dedup
 # ===================================================================
 
+
 class TestVerifierMultiBatch:
     def test_different_tx_hashes_queried_independently(self):
         """Two batches with different tx_hashes → 2 receipt calls."""
@@ -335,10 +344,12 @@ class TestVerifierMultiBatch:
         _setup_submitted(tracker, "ent-b", "0xtx1")
         _setup_submitted(tracker, "ent-c", "0xtx2")
 
-        provider = MockChainProvider(receipts={
-            "0xtx1": {"status": 1, "blockNumber": 80, "gasUsed": 50_000},
-            "0xtx2": {"status": 1, "blockNumber": 82, "gasUsed": 60_000},
-        })
+        provider = MockChainProvider(
+            receipts={
+                "0xtx1": {"status": 1, "blockNumber": 80, "gasUsed": 50_000},
+                "0xtx2": {"status": 1, "blockNumber": 82, "gasUsed": 60_000},
+            }
+        )
         verifier = AnchorVerifier(provider, tracker, _make_config())
 
         result = verifier.tick(1)
@@ -352,6 +363,7 @@ class TestVerifierMultiBatch:
 # ===================================================================
 # Multi-tick progression (typical production path)
 # ===================================================================
+
 
 class TestVerifierMultiTick:
     def test_tick1_confirms_tick2_finalizes(self):
@@ -411,6 +423,7 @@ class TestVerifierMultiTick:
 # Mixed receipt results in one tick
 # ===================================================================
 
+
 class TestVerifierMixedResults:
     def test_mixed_success_revert_pending(self):
         """Three tx_hashes: one succeeds, one reverts, one pending — all in one tick."""
@@ -442,6 +455,7 @@ class TestVerifierMixedResults:
 # Result dataclass
 # ===================================================================
 
+
 class TestAnchorVerifyResult:
     def test_defaults(self):
         r = AnchorVerifyResult(epoch=1)
@@ -459,6 +473,7 @@ class TestAnchorVerifyResult:
 # ===================================================================
 # Daemon thread
 # ===================================================================
+
 
 class TestVerifierThread:
     def test_start_stop(self):
@@ -502,10 +517,10 @@ class TestVerifierThread:
 # Gap 2: reconcile_on_startup
 # ===================================================================
 
-from src.ltp.node.anchor_verifier import reconcile_on_startup
 from src.ltp.commitment import CommitmentLog, CommitmentNetwork, CommitmentRecord
-from src.ltp.network.safe_network import SafeCommitmentNetwork
 from src.ltp.domain import DOMAIN_ANCHOR_DIGEST, domain_hash_bytes
+from src.ltp.network.safe_network import SafeCommitmentNetwork
+from src.ltp.node.anchor_verifier import reconcile_on_startup
 
 
 def _make_anchoring_record_for_verifier(entity_id: str, alice) -> CommitmentRecord:
@@ -554,9 +569,7 @@ class TestReconcileOnStartup:
         anchored_digests = set()
         for entity_id, record in records:
             if entity_id in ("ent-0", "ent-2"):
-                anchored_digests.add(
-                    domain_hash_bytes(DOMAIN_ANCHOR_DIGEST, record.to_bytes())
-                )
+                anchored_digests.add(domain_hash_bytes(DOMAIN_ANCHOR_DIGEST, record.to_bytes()))
 
         client = MockReconcileClient(anchored_digests)
         tracker = AnchorStatusTracker()
@@ -599,6 +612,7 @@ class TestReconcileOnStartup:
 # Gap 3: tx_not_mined timeout
 # ===================================================================
 
+
 class TestVerifierTxTimeout:
     def test_timeout_uses_submitted_at_not_tick_time(self):
         """Entity pending > max_wait → FAILED with 'tx_not_mined'."""
@@ -640,6 +654,7 @@ class TestVerifierTxTimeout:
 # Gap 4: RPC retry exhaustion
 # ===================================================================
 
+
 class TestVerifierRpcRetries:
     def test_rpc_failure_increments_retry(self):
         """Each RPC error increments retry_count; stays SUBMITTED below threshold."""
@@ -680,6 +695,7 @@ class TestVerifierRpcRetries:
 # Gap 6: reconcile failure must not block startup
 # ===================================================================
 
+
 class TestReconcileStartupGuard:
     """Verify that reconcile_on_startup failures are non-fatal.
 
@@ -690,8 +706,10 @@ class TestReconcileStartupGuard:
 
     def test_reconcile_failure_does_not_block_startup(self, alice):
         """Network error during reconcile is caught by main.py guard."""
+
         class BrokenNetwork:
             """Simulates a disk or network failure in records_since()."""
+
             def records_since(self, index):
                 raise IOError("disk failure during reconciliation")
 
@@ -706,7 +724,9 @@ class TestReconcileStartupGuard:
         reconciled_count = 0
         try:
             reconciled_count = reconcile_on_startup(
-                BrokenNetwork(), client, tracker,
+                BrokenNetwork(),
+                client,
+                tracker,
             )
         except Exception:
             pass  # main.py: logger.warning("Anchor reconciliation failed — continuing")
@@ -758,7 +778,10 @@ class TestMultiChainVerifier:
         config = _make_config()
 
         verifier = AnchorVerifier(
-            provider, tracker, config, chain_label="base_sepolia",
+            provider,
+            tracker,
+            config,
+            chain_label="base_sepolia",
         )
         verifier.start()
         try:
@@ -783,7 +806,10 @@ class TestMultiChainVerifier:
         )
         config_gsx = _make_config(confirmation_depth=3)
         verifier_gsx = AnchorVerifier(
-            provider_gsx, tracker_gsx, config_gsx, chain_label="gsx_testnet",
+            provider_gsx,
+            tracker_gsx,
+            config_gsx,
+            chain_label="gsx_testnet",
         )
 
         # --- Base Sepolia chain verifier ---
@@ -798,7 +824,10 @@ class TestMultiChainVerifier:
         )
         config_base = _make_config(confirmation_depth=5)
         verifier_base = AnchorVerifier(
-            provider_base, tracker_base, config_base, chain_label="base_sepolia",
+            provider_base,
+            tracker_base,
+            config_base,
+            chain_label="base_sepolia",
         )
 
         # --- Tick both independently ---

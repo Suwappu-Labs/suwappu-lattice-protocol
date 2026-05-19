@@ -15,9 +15,7 @@ import pytest
 
 from src.ltp.node.config import NodeConfig
 
-MAINNET_TOML = os.path.join(
-    os.path.dirname(__file__), "..", "config", "mainnet.toml"
-)
+MAINNET_TOML = os.path.join(os.path.dirname(__file__), "..", "config", "mainnet.toml")
 
 
 @pytest.fixture
@@ -32,7 +30,6 @@ def mainnet_config():
 
 
 class TestMainnetConfigParsing:
-
     def test_toml_parses_without_error(self, mainnet_config):
         """mainnet.toml is valid TOML and produces a NodeConfig."""
         assert isinstance(mainnet_config, NodeConfig)
@@ -54,7 +51,6 @@ class TestMainnetConfigParsing:
 
 
 class TestSecurityHardening:
-
     def test_require_real_crypto(self, mainnet_config):
         """PoC simulation fallback must be blocked."""
         assert mainnet_config.require_real_crypto is True
@@ -115,7 +111,6 @@ class TestSecurityHardening:
 
 
 class TestOperationalParams:
-
     def test_confirmation_depth_production(self, mainnet_config):
         """Anchor confirmation depth should be >= 6 for mainnet."""
         assert mainnet_config.anchor_confirmation_depth >= 6

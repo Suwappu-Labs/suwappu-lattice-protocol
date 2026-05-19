@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import json
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Optional
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
 from .commitment import CommitmentLog, CommitmentRecord
 from .merkle_log.sth import SignedTreeHead
@@ -27,6 +27,7 @@ __all__ = ["CommitmentLogRestServer"]
 # ---------------------------------------------------------------------------
 # JSON Serialization Helpers
 # ---------------------------------------------------------------------------
+
 
 def sth_to_dict(sth: SignedTreeHead) -> dict:
     """Serialize SignedTreeHead to JSON-safe dict (binary → hex)."""
@@ -45,10 +46,10 @@ def record_to_dict(record: CommitmentRecord) -> dict:
 
     Uses the record's own to_dict() if available, otherwise builds manually.
     """
-    if hasattr(record, 'to_dict'):
+    if hasattr(record, "to_dict"):
         d = record.to_dict()
         # Ensure binary fields are hex-encoded for JSON
-        for key in ('signature', 'shard_map_root', 'content_hash'):
+        for key in ("signature", "shard_map_root", "content_hash"):
             val = d.get(key)
             if isinstance(val, bytes):
                 d[key] = val.hex()
@@ -60,9 +61,11 @@ def record_to_dict(record: CommitmentRecord) -> dict:
         "content_hash": record.content_hash,
         "shard_map_root": record.shard_map_root,
         "timestamp": record.timestamp,
-        "shape": getattr(record, 'shape', ''),
-        "signature": record.signature.hex() if isinstance(record.signature, bytes) else str(record.signature),
-        "predecessor": getattr(record, 'predecessor', ''),
+        "shape": getattr(record, "shape", ""),
+        "signature": record.signature.hex()
+        if isinstance(record.signature, bytes)
+        else str(record.signature),
+        "predecessor": getattr(record, "predecessor", ""),
     }
 
 
@@ -82,10 +85,10 @@ def proof_to_dict(proof: dict) -> dict:
     if inc_proof:
         result["audit_path"] = [
             h.hex() if isinstance(h, bytes) else str(h)
-            for h in getattr(inc_proof, 'audit_path', [])
+            for h in getattr(inc_proof, "audit_path", [])
         ]
-        result["leaf_index"] = getattr(inc_proof, 'leaf_index', -1)
-        result["tree_size"] = getattr(inc_proof, 'tree_size', 0)
+        result["leaf_index"] = getattr(inc_proof, "leaf_index", -1)
+        result["tree_size"] = getattr(inc_proof, "tree_size", 0)
     return result
 
 
@@ -98,6 +101,7 @@ def error_response(code: int, message: str) -> dict:
 # HTTP Request Handler
 # ---------------------------------------------------------------------------
 
+
 class _CTRequestHandler(BaseHTTPRequestHandler):
     """Handle RFC 6962 CT log API requests."""
 
@@ -106,7 +110,7 @@ class _CTRequestHandler(BaseHTTPRequestHandler):
         return self.server.commitment_log
 
     def _send_json(self, data: dict, status: int = 200) -> None:
-        body = json.dumps(data, indent=2).encode('utf-8')
+        body = json.dumps(data, indent=2).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
@@ -136,6 +140,7 @@ class _CTRequestHandler(BaseHTTPRequestHandler):
                 handler()
             except Exception:
                 import logging
+
                 logging.getLogger(__name__).exception("CT handler error: %s", path)
                 self._send_json(error_response(500, "internal error"), 500)
         else:
@@ -150,6 +155,7 @@ class _CTRequestHandler(BaseHTTPRequestHandler):
                 self._handle_add_entry()
             except Exception:
                 import logging
+
                 logging.getLogger(__name__).exception("CT handler error: %s", path)
                 self._send_json(error_response(500, "internal error"), 500)
         else:
@@ -161,12 +167,14 @@ class _CTRequestHandler(BaseHTTPRequestHandler):
         """GET /ct/v1/get-sth — Latest Signed Tree Head."""
         sth = self._log.latest_sth
         if sth is None:
-            self._send_json({
-                "tree_size": 0,
-                "timestamp": 0,
-                "root_hash": "",
-                "sequence": 0,
-            })
+            self._send_json(
+                {
+                    "tree_size": 0,
+                    "timestamp": 0,
+                    "root_hash": "",
+                    "sequence": 0,
+                }
+            )
         else:
             self._send_json(sth_to_dict(sth))
 
@@ -217,11 +225,13 @@ class _CTRequestHandler(BaseHTTPRequestHandler):
         merkle_log = self._log._merkle_log
         proof_hashes = merkle_log._tree.consistency_proof(first)
 
-        self._send_json({
-            "first": first,
-            "second": second,
-            "consistency": [h.hex() if isinstance(h, bytes) else str(h) for h in proof_hashes],
-        })
+        self._send_json(
+            {
+                "first": first,
+                "second": second,
+                "consistency": [h.hex() if isinstance(h, bytes) else str(h) for h in proof_hashes],
+            }
+        )
 
     def _handle_get_entry_and_proof(self) -> None:
         """GET /ct/v1/get-entry-and-proof?entity_id=X — Record + inclusion proof."""
@@ -238,10 +248,12 @@ class _CTRequestHandler(BaseHTTPRequestHandler):
             return
 
         proof = self._log.get_inclusion_proof(entity_id)
-        self._send_json({
-            "entry": record_to_dict(record),
-            "proof": proof_to_dict(proof) if proof else None,
-        })
+        self._send_json(
+            {
+                "entry": record_to_dict(record),
+                "proof": proof_to_dict(proof) if proof else None,
+            }
+        )
 
     def _handle_add_entry(self) -> None:
         """POST /ct/v1/add-entry — Append a commitment record.
@@ -264,12 +276,15 @@ class _CTRequestHandler(BaseHTTPRequestHandler):
 
         # For now, return the current log state (full add-entry requires
         # a valid CommitmentRecord which is protocol-constructed)
-        self._send_json({
-            "status": "received",
-            "tree_size": self._log.length,
-            "note": "Direct entry addition requires a valid CommitmentRecord. "
-                    "Use LTPProtocol.commit() for standard entry creation.",
-        }, 200)
+        self._send_json(
+            {
+                "status": "received",
+                "tree_size": self._log.length,
+                "note": "Direct entry addition requires a valid CommitmentRecord. "
+                "Use LTPProtocol.commit() for standard entry creation.",
+            },
+            200,
+        )
 
     def log_message(self, format, *args):
         """Suppress default request logging."""
@@ -279,6 +294,7 @@ class _CTRequestHandler(BaseHTTPRequestHandler):
 # ---------------------------------------------------------------------------
 # Server
 # ---------------------------------------------------------------------------
+
 
 class CommitmentLogRestServer:
     """

@@ -1,11 +1,12 @@
 """Tests for BLS attestation integration (Spec C1 §5)."""
 
 import pytest
+
 from src.ltp.bls import BLS
 from src.ltp.bls_keys import BLSKeyPair
-from src.ltp.keypair import KeyPair
 from src.ltp.execution.attestation import AttestationEngine, MultiVMAttestation
 from src.ltp.execution.state_root import MultiVMStateRoot
+from src.ltp.keypair import KeyPair
 
 
 @pytest.fixture
@@ -92,8 +93,8 @@ class TestAttestationAggregator:
     """Test AttestationAggregator for multi-operator aggregate (Spec C1 §5.4)."""
 
     def test_aggregator_collects_and_finalizes(self, state_root):
-        from src.ltp.execution.attestation import AttestationAggregator
         from src.ltp.domain import DOMAIN_BLS_ATTEST, bls_domain_sign
+        from src.ltp.execution.attestation import AttestationAggregator
 
         keys = [BLSKeyPair.generate(f"op-{i}") for i in range(5)]
         engine = AttestationEngine(KeyPair.generate("dummy"), chain_id=1)
@@ -112,8 +113,8 @@ class TestAttestationAggregator:
         assert len(agg_sig) == 96
 
     def test_aggregator_produces_verifiable_aggregate(self, state_root):
+        from src.ltp.domain import DOMAIN_BLS_ATTEST, bls_aggregate_verify, bls_domain_sign
         from src.ltp.execution.attestation import AttestationAggregator
-        from src.ltp.domain import DOMAIN_BLS_ATTEST, bls_domain_sign, bls_aggregate_verify
 
         keys = [BLSKeyPair.generate(f"vop-{i}") for i in range(3)]
         engine = AttestationEngine(KeyPair.generate("dummy"), chain_id=1)
@@ -131,6 +132,7 @@ class TestAttestationAggregator:
 
     def test_aggregator_empty_raises(self):
         from src.ltp.execution.attestation import AttestationAggregator
+
         agg = AttestationAggregator()
         with pytest.raises(ValueError, match="No signatures"):
             agg.finalize()

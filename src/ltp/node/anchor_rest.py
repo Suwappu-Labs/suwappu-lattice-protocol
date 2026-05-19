@@ -11,9 +11,9 @@ from __future__ import annotations
 import json
 import logging
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import TYPE_CHECKING, Optional
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
 if TYPE_CHECKING:
     from .anchor_scheduler import AnchorScheduler
@@ -49,7 +49,7 @@ class _AnchorHandler(BaseHTTPRequestHandler):
 
         # Dynamic route: /anchor/status/<entity_id>
         if path.startswith("/anchor/status/") or path == "/anchor/status":
-            entity_id = path[len("/anchor/status/"):] if path.startswith("/anchor/status/") else ""
+            entity_id = path[len("/anchor/status/") :] if path.startswith("/anchor/status/") else ""
             if not entity_id:
                 self._send_json({"error": "missing entity_id"}, 400)
                 return
@@ -86,16 +86,18 @@ class _AnchorHandler(BaseHTTPRequestHandler):
         if rec is None:
             self._send_json({"error": "not found"}, 404)
             return
-        self._send_json({
-            "entity_id": rec.entity_id,
-            "status": rec.status.name,
-            "tx_hash": rec.tx_hash,
-            "block_number": rec.block_number,
-            "gas_used": rec.gas_used,
-            "submitted_at": rec.submitted_at,
-            "retry_count": rec.retry_count,
-            "error": rec.error,
-        })
+        self._send_json(
+            {
+                "entity_id": rec.entity_id,
+                "status": rec.status.name,
+                "tx_hash": rec.tx_hash,
+                "block_number": rec.block_number,
+                "gas_used": rec.gas_used,
+                "submitted_at": rec.submitted_at,
+                "retry_count": rec.retry_count,
+                "error": rec.error,
+            }
+        )
 
     def _handle_stats(self) -> None:
         """GET /anchor/stats — aggregate counts + component metadata."""
@@ -155,11 +157,13 @@ class _AnchorHandler(BaseHTTPRequestHandler):
             }
             for r in records
         ]
-        self._send_json({
-            "status": status.name,
-            "count": len(entities),
-            "entities": entities,
-        })
+        self._send_json(
+            {
+                "status": status.name,
+                "count": len(entities),
+                "entities": entities,
+            }
+        )
 
     def _handle_health(self) -> None:
         """GET /anchor/health — subsystem health check.
@@ -173,12 +177,14 @@ class _AnchorHandler(BaseHTTPRequestHandler):
         total = sum(counts.values())
         scheduler = self.server.scheduler
         verifier = self.server.verifier
-        self._send_json({
-            "status": "ok",
-            "tracker_total": total,
-            "scheduler_running": scheduler.running if scheduler is not None else None,
-            "verifier_running": verifier.running if verifier is not None else None,
-        })
+        self._send_json(
+            {
+                "status": "ok",
+                "tracker_total": total,
+                "scheduler_running": scheduler.running if scheduler is not None else None,
+                "verifier_running": verifier.running if verifier is not None else None,
+            }
+        )
 
     def log_message(self, format, *args):
         """Suppress default request logging."""

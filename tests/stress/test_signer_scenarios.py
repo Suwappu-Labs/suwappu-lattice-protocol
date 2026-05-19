@@ -1,7 +1,9 @@
 """Stress scenario 4: Signer revocation mid-operation."""
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from tests.stress.conftest import make_raw_log
 
 

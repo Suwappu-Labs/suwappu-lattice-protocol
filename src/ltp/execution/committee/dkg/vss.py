@@ -23,10 +23,12 @@ __all__ = ["PedersenVSS", "G_POINT", "H_POINT"]
 def _derive_h_generator():
     """Derive H via hash-to-curve with DKG-specific domain separation."""
     from py_ecc.bls12_381 import (
+        FQ,
         field_modulus,
+    )
+    from py_ecc.bls12_381 import (
         multiply as _g1_multiply,
     )
-    from py_ecc.bls12_381 import FQ
 
     cofactor = 0x396C8C005555E1568C00AAAB0000AAAB
     seed = b"ETP-PEDERSEN-DKG-H"
@@ -35,9 +37,9 @@ def _derive_h_generator():
         h = hashlib.sha3_256(seed + attempt.to_bytes(2, "big")).digest()
         x = int.from_bytes(h, "big") % field_modulus
         x_fq = FQ(x)
-        y_squared = x_fq ** 3 + FQ(4)
+        y_squared = x_fq**3 + FQ(4)
         y_candidate = y_squared ** ((field_modulus + 1) // 4)
-        if y_candidate ** 2 == y_squared:
+        if y_candidate**2 == y_squared:
             y = y_candidate
             if int(y) % 2 != 0:
                 y = FQ(field_modulus - int(y))

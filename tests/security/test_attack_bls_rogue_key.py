@@ -32,10 +32,7 @@ from src.ltp.execution.committee.dkg.threshold_signing import (
 )
 from src.ltp.zk.ec_backend import bls12_381_available
 
-
-pytestmark = pytest.mark.skipif(
-    not bls12_381_available(), reason="py_ecc / blst not installed"
-)
+pytestmark = pytest.mark.skipif(not bls12_381_available(), reason="py_ecc / blst not installed")
 
 
 def test_threshold_verifier_accepts_legitimate_aggregate(dkg_4_of_3):
@@ -90,9 +87,7 @@ def test_threshold_verifier_rejects_wrong_group_pk(dkg_4_of_3):
         verified = threshold_verify(bad_pk, msg, sig, DOMAIN_ATTESTATION)
     except Exception:
         return  # raised on malformed PK — defense in place
-    assert not verified, (
-        "BLS verifier silently accepted a tampered group PK — security regression"
-    )
+    assert not verified, "BLS verifier silently accepted a tampered group PK — security regression"
 
 
 def test_threshold_verifier_rejects_wrong_domain(dkg_4_of_3):

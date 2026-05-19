@@ -26,6 +26,7 @@ import os
 
 import pytest
 
+from src.ltp import KeyPair
 from src.ltp.merkle_log import InclusionProof, MerkleLog, MerkleTree, SignedTreeHead
 from src.ltp.merkle_log.tree import (
     _audit_path,
@@ -35,13 +36,12 @@ from src.ltp.merkle_log.tree import (
     _leaf_hash,
     _verify_inclusion,
 )
-from src.ltp import KeyPair
 from src.ltp.primitives import canonical_hash_bytes
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def operator_kp() -> KeyPair:
@@ -62,12 +62,12 @@ def log(operator_kp: KeyPair) -> MerkleLog:
 # TestMerkleTree — low-level tree properties
 # ---------------------------------------------------------------------------
 
-class TestMerkleTree:
 
+class TestMerkleTree:
     def test_empty_tree_root_is_canonical(self):
         t = MerkleTree()
         assert t.size == 0
-        assert t.root() == canonical_hash_bytes(b'')
+        assert t.root() == canonical_hash_bytes(b"")
 
     def test_single_leaf_root_equals_leaf_hash(self):
         t = MerkleTree()
@@ -115,6 +115,7 @@ class TestMerkleTree:
     def test_audit_path_length_is_log_n(self):
         """Path length must be at most ceil(log2(n)) for all n."""
         import math
+
         t = MerkleTree()
         for i in range(1, 33):
             t.append(f"r{i}".encode())
@@ -148,8 +149,8 @@ class TestMerkleTree:
 # TestInclusionProof — proof generation and verification
 # ---------------------------------------------------------------------------
 
-class TestInclusionProof:
 
+class TestInclusionProof:
     def test_valid_proof_verifies(self):
         t = MerkleTree()
         records = [f"rec-{i}".encode() for i in range(10)]
@@ -169,18 +170,14 @@ class TestInclusionProof:
         t = MerkleTree()
         t.append(b"original")
         root = t.root()
-        proof = InclusionProof(
-            leaf_index=0, tree_size=1, audit_path=[], root_hash=root
-        )
+        proof = InclusionProof(leaf_index=0, tree_size=1, audit_path=[], root_hash=root)
         assert not proof.verify(b"tampered", root)
 
     def test_wrong_root_fails(self):
         t = MerkleTree()
         t.append(b"record")
         root = t.root()
-        proof = InclusionProof(
-            leaf_index=0, tree_size=1, audit_path=[], root_hash=root
-        )
+        proof = InclusionProof(leaf_index=0, tree_size=1, audit_path=[], root_hash=root)
         wrong_root = canonical_hash_bytes(b"not-the-root")
         assert not proof.verify(b"record", wrong_root)
 
@@ -228,8 +225,8 @@ class TestInclusionProof:
 # TestSignedTreeHead — STH signing and tamper detection
 # ---------------------------------------------------------------------------
 
-class TestSignedTreeHead:
 
+class TestSignedTreeHead:
     def test_sign_and_verify(self, operator_kp):
         root = canonical_hash_bytes(b"some-root")
         sth = SignedTreeHead.sign(
@@ -244,43 +241,61 @@ class TestSignedTreeHead:
     def test_tampered_root_fails(self, operator_kp):
         root = canonical_hash_bytes(b"real-root")
         sth = SignedTreeHead.sign(
-            sequence=0, tree_size=10, root_hash=root,
-            operator_vk=operator_kp.vk, operator_sk=operator_kp.sk,
+            sequence=0,
+            tree_size=10,
+            root_hash=root,
+            operator_vk=operator_kp.vk,
+            operator_sk=operator_kp.sk,
         )
         # Flip root hash
         import dataclasses
+
         tampered = dataclasses.replace(sth, root_hash=canonical_hash_bytes(b"fake-root"))
         assert not tampered.verify()
 
     def test_tampered_tree_size_fails(self, operator_kp):
         root = canonical_hash_bytes(b"root")
         sth = SignedTreeHead.sign(
-            sequence=0, tree_size=5, root_hash=root,
-            operator_vk=operator_kp.vk, operator_sk=operator_kp.sk,
+            sequence=0,
+            tree_size=5,
+            root_hash=root,
+            operator_vk=operator_kp.vk,
+            operator_sk=operator_kp.sk,
         )
         import dataclasses
+
         tampered = dataclasses.replace(sth, tree_size=999)
         assert not tampered.verify()
 
     def test_tampered_sequence_fails(self, operator_kp):
         root = canonical_hash_bytes(b"root")
         sth = SignedTreeHead.sign(
-            sequence=3, tree_size=5, root_hash=root,
-            operator_vk=operator_kp.vk, operator_sk=operator_kp.sk,
+            sequence=3,
+            tree_size=5,
+            root_hash=root,
+            operator_vk=operator_kp.vk,
+            operator_sk=operator_kp.sk,
         )
         import dataclasses
+
         tampered = dataclasses.replace(sth, sequence=99)
         assert not tampered.verify()
 
     def test_different_operators_produce_different_sths(self, operator_kp, operator_b_kp):
         root = canonical_hash_bytes(b"same-root")
         sth_a = SignedTreeHead.sign(
-            sequence=0, tree_size=1, root_hash=root,
-            operator_vk=operator_kp.vk, operator_sk=operator_kp.sk,
+            sequence=0,
+            tree_size=1,
+            root_hash=root,
+            operator_vk=operator_kp.vk,
+            operator_sk=operator_kp.sk,
         )
         sth_b = SignedTreeHead.sign(
-            sequence=0, tree_size=1, root_hash=root,
-            operator_vk=operator_b_kp.vk, operator_sk=operator_b_kp.sk,
+            sequence=0,
+            tree_size=1,
+            root_hash=root,
+            operator_vk=operator_b_kp.vk,
+            operator_sk=operator_b_kp.sk,
         )
         assert sth_a.verify()
         assert sth_b.verify()
@@ -291,8 +306,8 @@ class TestSignedTreeHead:
 # TestMerkleLog — full log lifecycle
 # ---------------------------------------------------------------------------
 
-class TestMerkleLog:
 
+class TestMerkleLog:
     def test_empty_log(self, log):
         assert log.size == 0
         assert log.latest_sth is None
@@ -359,8 +374,8 @@ class TestMerkleLog:
 # TestEquivocation — fork / equivocation detection
 # ---------------------------------------------------------------------------
 
-class TestEquivocation:
 
+class TestEquivocation:
     def test_equivocation_detected(self, operator_kp):
         """
         Two valid STHs at the same sequence with different roots constitute a
@@ -370,12 +385,18 @@ class TestEquivocation:
         root_b = canonical_hash_bytes(b"forked-root")
 
         sth_a = SignedTreeHead.sign(
-            sequence=5, tree_size=10, root_hash=root_a,
-            operator_vk=operator_kp.vk, operator_sk=operator_kp.sk,
+            sequence=5,
+            tree_size=10,
+            root_hash=root_a,
+            operator_vk=operator_kp.vk,
+            operator_sk=operator_kp.sk,
         )
         sth_b = SignedTreeHead.sign(
-            sequence=5, tree_size=10, root_hash=root_b,
-            operator_vk=operator_kp.vk, operator_sk=operator_kp.sk,
+            sequence=5,
+            tree_size=10,
+            root_hash=root_b,
+            operator_vk=operator_kp.vk,
+            operator_sk=operator_kp.sk,
         )
         # Both signatures are valid — the operator signed both roots
         assert sth_a.verify()
@@ -387,12 +408,18 @@ class TestEquivocation:
         """Different sequence numbers → not equivocation (just progress)."""
         root = canonical_hash_bytes(b"root")
         sth_0 = SignedTreeHead.sign(
-            sequence=0, tree_size=5, root_hash=root,
-            operator_vk=operator_kp.vk, operator_sk=operator_kp.sk,
+            sequence=0,
+            tree_size=5,
+            root_hash=root,
+            operator_vk=operator_kp.vk,
+            operator_sk=operator_kp.sk,
         )
         sth_1 = SignedTreeHead.sign(
-            sequence=1, tree_size=6, root_hash=canonical_hash_bytes(b"new-root"),
-            operator_vk=operator_kp.vk, operator_sk=operator_kp.sk,
+            sequence=1,
+            tree_size=6,
+            root_hash=canonical_hash_bytes(b"new-root"),
+            operator_vk=operator_kp.vk,
+            operator_sk=operator_kp.sk,
         )
         assert not MerkleLog.detect_equivocation(sth_0, sth_1)
 
@@ -400,22 +427,32 @@ class TestEquivocation:
         """Same root at same sequence is redundant but not a fork."""
         root = canonical_hash_bytes(b"root")
         sth1 = SignedTreeHead.sign(
-            sequence=3, tree_size=7, root_hash=root,
-            operator_vk=operator_kp.vk, operator_sk=operator_kp.sk,
+            sequence=3,
+            tree_size=7,
+            root_hash=root,
+            operator_vk=operator_kp.vk,
+            operator_sk=operator_kp.sk,
         )
         sth2 = SignedTreeHead.sign(
-            sequence=3, tree_size=7, root_hash=root,
-            operator_vk=operator_kp.vk, operator_sk=operator_kp.sk,
+            sequence=3,
+            tree_size=7,
+            root_hash=root,
+            operator_vk=operator_kp.vk,
+            operator_sk=operator_kp.sk,
         )
         assert not MerkleLog.detect_equivocation(sth1, sth2)
 
     def test_invalid_sth_not_equivocation(self, operator_kp, operator_b_kp):
         """A forged / tampered STH that fails verify() cannot prove equivocation."""
         import dataclasses
+
         real_root = canonical_hash_bytes(b"real")
         sth_real = SignedTreeHead.sign(
-            sequence=2, tree_size=4, root_hash=real_root,
-            operator_vk=operator_kp.vk, operator_sk=operator_kp.sk,
+            sequence=2,
+            tree_size=4,
+            root_hash=real_root,
+            operator_vk=operator_kp.vk,
+            operator_sk=operator_kp.sk,
         )
         # Tamper with the root — signature no longer valid
         sth_tampered = dataclasses.replace(sth_real, root_hash=canonical_hash_bytes(b"fake"))
@@ -427,8 +464,8 @@ class TestEquivocation:
 # TestAppendOnly — consistency between older and newer STHs
 # ---------------------------------------------------------------------------
 
-class TestAppendOnly:
 
+class TestAppendOnly:
     def test_newer_extends_older(self, log):
         for r in [b"a", b"b", b"c"]:
             log.append(r)
@@ -455,6 +492,7 @@ class TestAppendOnly:
 # TestLTPIntegration — CommitmentRecord bytes → MerkleLog
 # ---------------------------------------------------------------------------
 
+
 class TestLTPIntegration:
     """
     Shows that LTP commitment records can be committed to the Merkle log and
@@ -465,16 +503,24 @@ class TestLTPIntegration:
 
     def test_commitment_record_inclusion_proof(self, operator_kp):
         from src.ltp import (
-            CommitmentNetwork, Entity, LTPProtocol, KeyPair as LTPKeyPair,
+            CommitmentNetwork,
+            Entity,
+            LTPProtocol,
+        )
+        from src.ltp import (
+            KeyPair as LTPKeyPair,
         )
 
         # Set up a minimal LTP network
         alice = LTPKeyPair.generate("alice-integration")
         net = CommitmentNetwork()
         for nid, region in [
-            ("node-1", "US-East"), ("node-2", "EU-West"),
-            ("node-3", "AP-East"), ("node-4", "US-West"),
-            ("node-5", "EU-East"), ("node-6", "AP-South"),
+            ("node-1", "US-East"),
+            ("node-2", "EU-West"),
+            ("node-3", "AP-East"),
+            ("node-4", "US-West"),
+            ("node-5", "EU-East"),
+            ("node-6", "AP-South"),
         ]:
             net.add_node(nid, region)
         protocol = LTPProtocol(net)
@@ -484,13 +530,16 @@ class TestLTPIntegration:
         entity_id, record, _ = protocol.commit(entity, alice, n=6, k=3)
 
         # Serialize the commitment record to bytes (what goes into the log)
-        record_bytes = json.dumps({
-            "entity_id": record.entity_id,
-            "sender_id": record.sender_id,
-            "shard_map_root": record.shard_map_root,
-            "shape_hash": record.shape_hash,
-            "timestamp": record.timestamp,
-        }, sort_keys=True).encode()
+        record_bytes = json.dumps(
+            {
+                "entity_id": record.entity_id,
+                "sender_id": record.sender_id,
+                "shard_map_root": record.shard_map_root,
+                "shape_hash": record.shape_hash,
+                "timestamp": record.timestamp,
+            },
+            sort_keys=True,
+        ).encode()
 
         # Append to Merkle log and publish STH
         log = MerkleLog(operator_kp.vk, operator_kp.sk)

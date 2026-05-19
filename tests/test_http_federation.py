@@ -17,10 +17,10 @@ from src.ltp.federation_http import HTTPFederationTransport
 from src.ltp.gateway.app import GatewayConfig, create_app
 from src.ltp.keypair import KeyPair
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def keypair():
@@ -68,7 +68,6 @@ def fed_headers():
 
 
 class TestFederationEndpoints:
-
     def test_query_entity_not_found(self, client, fed_headers):
         resp = client.get("/federation/v1/entity/nonexistent", headers=fed_headers)
         assert resp.status_code == 404
@@ -141,7 +140,6 @@ class TestFederationEndpoints:
 
 
 class TestHTTPFederationTransport:
-
     def test_constructor_defaults(self):
         transport = HTTPFederationTransport()
         assert transport._timeout == 30.0
@@ -149,8 +147,10 @@ class TestHTTPFederationTransport:
 
     def test_constructor_custom(self):
         transport = HTTPFederationTransport(
-            timeout_seconds=10.0, max_retries=5,
-            backoff_base=0.5, backoff_max=5.0,
+            timeout_seconds=10.0,
+            max_retries=5,
+            backoff_base=0.5,
+            backoff_max=5.0,
         )
         assert transport._timeout == 10.0
         assert transport._max_retries == 5

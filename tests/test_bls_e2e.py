@@ -5,20 +5,22 @@ Full flow: fake consensus -> router -> state root -> N operators sign BLS
 """
 
 import pytest
+
 from src.ltp.bls import BLS
 from src.ltp.bls_keys import BLSKeyPair
-from src.ltp.keypair import KeyPair
-from src.ltp.execution.attestation import AttestationEngine, AttestationAggregator
-from src.ltp.execution.state_root import MultiVMStateRoot
+from src.ltp.domain import DOMAIN_BLS_ATTEST, bls_aggregate_verify, bls_domain_sign
+from src.ltp.execution.attestation import AttestationAggregator, AttestationEngine
+from src.ltp.execution.consensus import FakeConsensusAdapter
 from src.ltp.execution.registry import VMRegistry
 from src.ltp.execution.router import TransactionRouter
-from src.ltp.execution.consensus import FakeConsensusAdapter
+from src.ltp.execution.state_root import MultiVMStateRoot
 from src.ltp.execution.types import OrderedBatch, TxResult
-from src.ltp.domain import DOMAIN_BLS_ATTEST, bls_domain_sign, bls_aggregate_verify
+from src.ltp.keypair import KeyPair
 
 
 class FakeEVM:
     """Minimal VM executor for E2E test."""
+
     vm_tag = 0x01
     vm_name = "fake-evm"
     family = "account"
@@ -28,6 +30,7 @@ class FakeEVM:
 
     def state_root(self) -> bytes:
         from src.ltp.primitives import canonical_hash_bytes
+
         return canonical_hash_bytes(b"evm-state-e2e")
 
     def validate_tx(self, tx_bytes: bytes) -> bool:
@@ -35,6 +38,7 @@ class FakeEVM:
 
     def query_state(self, query):
         from src.ltp.execution.types import StateResult
+
         return StateResult.not_found()
 
     def health_check(self) -> bool:

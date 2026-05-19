@@ -7,9 +7,9 @@ and CrossNetworkFetcher integration.
 
 from __future__ import annotations
 
-import pytest
-
 import struct
+
+import pytest
 
 from src.ltp import CommitmentNetwork, KeyPair, LTPProtocol
 from src.ltp.entity import Entity
@@ -55,7 +55,6 @@ def kp_b() -> KeyPair:
 
 
 class TestFederationRateLimiter:
-
     def test_allow_within_quota(self):
         rl = FederationRateLimiter(max_requests_per_window=5, window_seconds=60.0)
         for _ in range(5):
@@ -102,14 +101,15 @@ class TestFederationRateLimiter:
 
 
 class TestRateLimiterWindowExpiry:
-
     def test_window_expiry_resets_quota(self):
         """Quota resets after window elapses."""
         current_time = 1000.0
         clock = lambda: current_time
 
         rl = FederationRateLimiter(
-            max_requests_per_window=2, window_seconds=10.0, clock=clock,
+            max_requests_per_window=2,
+            window_seconds=10.0,
+            clock=clock,
         )
 
         assert rl.allow("net-1") is True
@@ -126,7 +126,9 @@ class TestRateLimiterWindowExpiry:
         clock = lambda: current_time
 
         rl = FederationRateLimiter(
-            max_requests_per_window=5, window_seconds=10.0, clock=clock,
+            max_requests_per_window=5,
+            window_seconds=10.0,
+            clock=clock,
         )
         rl.allow("net-1")
         rl.allow("net-1")
@@ -142,7 +144,6 @@ class TestRateLimiterWindowExpiry:
 
 
 class TestFetcherWithRateLimiter:
-
     def _setup_federated_fetcher(self, kp_a, kp_b, rate_limiter=None):
         """Set up a complete federated fetch scenario."""
         net_a = CommitmentNetwork()
@@ -169,7 +170,10 @@ class TestFetcherWithRateLimiter:
         transport.register_network("https://a.net", net_a)
 
         fetcher = CrossNetworkFetcher(
-            reg_b, transport, nir_b, {nir_a.network_id: agreement},
+            reg_b,
+            transport,
+            nir_b,
+            {nir_a.network_id: agreement},
             rate_limiter=rate_limiter,
         )
         return fetcher, entity_id, nir_a.network_id
@@ -203,7 +207,6 @@ class TestFetcherWithRateLimiter:
 
 
 class TestAuditFixes:
-
     def test_zero_window_rejected(self):
         """window_seconds=0 is rejected (would make limiter always reset)."""
         with pytest.raises(ValueError, match="window_seconds must be > 0"):

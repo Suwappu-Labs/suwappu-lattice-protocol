@@ -13,8 +13,10 @@ Covers:
 
 import json
 import os
+
 import pytest
 
+from src.ltp.commitment import CommitmentNetwork
 from src.ltp.compliance import (
     AuditEvent,
     AuditEventType,
@@ -38,31 +40,32 @@ from src.ltp.compliance import (
     RBACPolicy,
     SIEMExporter,
     SIEMFormat,
+)
+from src.ltp.compliance import (
     SoftwareHSM as ComplianceSoftwareHSM,
 )
-from src.ltp.commitment import CommitmentNetwork
+from src.ltp.entity import Entity
+from src.ltp.hsm import HSMBackend, SoftwareHSM
+from src.ltp.keypair import KeyPair, SealedBox
 from src.ltp.primitives import (
+    AEAD,
+    MLDSA,
+    MLKEM,
+    HashFunction,
+    SecurityProfile,
     canonical_hash,
     canonical_hash_bytes,
-    AEAD,
-    MLKEM,
-    MLDSA,
-    SecurityProfile,
-    HashFunction,
-    get_security_profile,
-    set_security_profile,
-    set_crypto_provider,
     get_crypto_provider,
+    get_security_profile,
+    set_crypto_provider,
+    set_security_profile,
 )
-from src.ltp.keypair import KeyPair, SealedBox
-from src.ltp.hsm import HSMBackend, SoftwareHSM
-from src.ltp.entity import Entity
 from src.ltp.protocol import LTPProtocol
-
 
 # ---------------------------------------------------------------------------
 # Helpers: save/restore profile to avoid cross-test contamination
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def restore_default_profile():
@@ -76,6 +79,7 @@ def restore_default_profile():
 # ============================================================================
 # FIPS Crypto Provider
 # ============================================================================
+
 
 class TestFIPSCryptoProvider:
     """Tests for the FIPS 140-3 crypto provider."""
@@ -118,6 +122,7 @@ class TestFIPSCryptoProvider:
         assert len(raw) == 32
         # Verify it's SHA3, not BLAKE2b
         import hashlib
+
         expected = hashlib.sha3_256(b"test").digest()
         assert raw == expected
 
@@ -155,6 +160,7 @@ class TestFIPSCryptoProvider:
 # ============================================================================
 # RBAC
 # ============================================================================
+
 
 class TestRBAC:
     """Tests for Role-Based Access Control."""
@@ -254,6 +260,7 @@ class TestRBAC:
 # Geo-Fencing
 # ============================================================================
 
+
 class TestGeoFencing:
     """Tests for jurisdiction-constrained shard placement."""
 
@@ -264,18 +271,14 @@ class TestGeoFencing:
         assert policy.is_region_allowed("ap-southeast-1")
 
     def test_us_only_policy(self):
-        policy = GeoFencePolicy(
-            allowed_jurisdictions={Jurisdiction.US}
-        )
+        policy = GeoFencePolicy(allowed_jurisdictions={Jurisdiction.US})
         assert policy.is_region_allowed("us-east-1")
         assert policy.is_region_allowed("us-west-2")
         assert not policy.is_region_allowed("eu-west-1")
         assert not policy.is_region_allowed("ap-southeast-1")
 
     def test_eu_only_policy(self):
-        policy = GeoFencePolicy(
-            allowed_jurisdictions={Jurisdiction.EU}
-        )
+        policy = GeoFencePolicy(allowed_jurisdictions={Jurisdiction.EU})
         assert not policy.is_region_allowed("us-east-1")
         assert policy.is_region_allowed("eu-west-1")
         assert policy.is_region_allowed("europe-west1")
@@ -289,16 +292,12 @@ class TestGeoFencing:
         assert not policy.is_region_allowed("eu-west-1")
 
     def test_govcloud_mapping(self):
-        policy = GeoFencePolicy(
-            allowed_jurisdictions={Jurisdiction.US_GOVCLOUD}
-        )
+        policy = GeoFencePolicy(allowed_jurisdictions={Jurisdiction.US_GOVCLOUD})
         assert policy.is_region_allowed("us_gov-east-1")
         assert not policy.is_region_allowed("us-east-1")
 
     def test_filter_nodes(self):
-        policy = GeoFencePolicy(
-            allowed_jurisdictions={Jurisdiction.US}
-        )
+        policy = GeoFencePolicy(allowed_jurisdictions={Jurisdiction.US})
         network = CommitmentNetwork()
         n1 = network.add_node("n1", "us-east-1")
         n2 = network.add_node("n2", "eu-west-1")
@@ -310,9 +309,7 @@ class TestGeoFencing:
         assert n2 not in filtered
 
     def test_validate_placement(self):
-        policy = GeoFencePolicy(
-            allowed_jurisdictions={Jurisdiction.US}
-        )
+        policy = GeoFencePolicy(allowed_jurisdictions={Jurisdiction.US})
         network = CommitmentNetwork()
         n1 = network.add_node("n1", "us-east-1")
         n2 = network.add_node("n2", "eu-west-1")
@@ -338,9 +335,7 @@ class TestGeoFencing:
     def test_geo_fence_on_commitment_network(self):
         """Geo-fence policy integrated with CommitmentNetwork._placement."""
         network = CommitmentNetwork()
-        policy = GeoFencePolicy(
-            allowed_jurisdictions={Jurisdiction.US}
-        )
+        policy = GeoFencePolicy(allowed_jurisdictions={Jurisdiction.US})
         network.set_geo_fence_policy(policy)
         network.add_node("us1", "us-east-1")
         network.add_node("us2", "us-west-2")
@@ -355,20 +350,17 @@ class TestGeoFencing:
 
     def test_geo_fence_raises_when_no_eligible_nodes(self):
         network = CommitmentNetwork()
-        policy = GeoFencePolicy(
-            allowed_jurisdictions={Jurisdiction.JP}
-        )
+        policy = GeoFencePolicy(allowed_jurisdictions={Jurisdiction.JP})
         network.set_geo_fence_policy(policy)
         network.add_node("us1", "us-east-1")
         with pytest.raises(ValueError, match="allowed jurisdictions"):
-            network.distribute_encrypted_shards(
-                "test", [os.urandom(32)]
-            )
+            network.distribute_encrypted_shards("test", [os.urandom(32)])
 
 
 # ============================================================================
 # Audit Logger
 # ============================================================================
+
 
 class TestComplianceAuditLogger:
     """Tests for the immutable audit log."""
@@ -388,12 +380,14 @@ class TestComplianceAuditLogger:
     def test_chain_integrity_valid(self):
         logger = ComplianceAuditLogger()
         for i in range(10):
-            logger.log(AuditEvent(
-                event_type=AuditEventType.NODE_AUDITED,
-                actor_id="system",
-                action=f"audit-{i}",
-                epoch=i,
-            ))
+            logger.log(
+                AuditEvent(
+                    event_type=AuditEventType.NODE_AUDITED,
+                    actor_id="system",
+                    action=f"audit-{i}",
+                    epoch=i,
+                )
+            )
         valid, idx = logger.verify_chain_integrity()
         assert valid
         assert idx == 10
@@ -401,12 +395,14 @@ class TestComplianceAuditLogger:
     def test_chain_integrity_detects_tampering(self):
         logger = ComplianceAuditLogger()
         for i in range(5):
-            logger.log(AuditEvent(
-                event_type=AuditEventType.NODE_AUDITED,
-                actor_id="system",
-                action=f"audit-{i}",
-                epoch=i,
-            ))
+            logger.log(
+                AuditEvent(
+                    event_type=AuditEventType.NODE_AUDITED,
+                    actor_id="system",
+                    action=f"audit-{i}",
+                    epoch=i,
+                )
+            )
         # Tamper with chain hash
         logger._chain_hashes[2] = "sha3-256:tampered"
         valid, idx = logger.verify_chain_integrity()
@@ -415,31 +411,51 @@ class TestComplianceAuditLogger:
 
     def test_query_by_event_type(self):
         logger = ComplianceAuditLogger()
-        logger.log(AuditEvent(
-            event_type=AuditEventType.NODE_REGISTERED,
-            actor_id="n1", action="reg", epoch=1,
-        ))
-        logger.log(AuditEvent(
-            event_type=AuditEventType.ACCESS_DENIED,
-            actor_id="eve", action="denied", epoch=2,
-        ))
-        logger.log(AuditEvent(
-            event_type=AuditEventType.NODE_REGISTERED,
-            actor_id="n2", action="reg", epoch=3,
-        ))
+        logger.log(
+            AuditEvent(
+                event_type=AuditEventType.NODE_REGISTERED,
+                actor_id="n1",
+                action="reg",
+                epoch=1,
+            )
+        )
+        logger.log(
+            AuditEvent(
+                event_type=AuditEventType.ACCESS_DENIED,
+                actor_id="eve",
+                action="denied",
+                epoch=2,
+            )
+        )
+        logger.log(
+            AuditEvent(
+                event_type=AuditEventType.NODE_REGISTERED,
+                actor_id="n2",
+                action="reg",
+                epoch=3,
+            )
+        )
         results = logger.query(event_type=AuditEventType.NODE_REGISTERED)
         assert len(results) == 2
 
     def test_query_by_actor(self):
         logger = ComplianceAuditLogger()
-        logger.log(AuditEvent(
-            event_type=AuditEventType.ENTITY_COMMITTED,
-            actor_id="alice", action="commit", epoch=1,
-        ))
-        logger.log(AuditEvent(
-            event_type=AuditEventType.ENTITY_COMMITTED,
-            actor_id="bob", action="commit", epoch=2,
-        ))
+        logger.log(
+            AuditEvent(
+                event_type=AuditEventType.ENTITY_COMMITTED,
+                actor_id="alice",
+                action="commit",
+                epoch=1,
+            )
+        )
+        logger.log(
+            AuditEvent(
+                event_type=AuditEventType.ENTITY_COMMITTED,
+                actor_id="bob",
+                action="commit",
+                epoch=2,
+            )
+        )
         results = logger.query(actor_id="alice")
         assert len(results) == 1
         assert results[0].actor_id == "alice"
@@ -447,19 +463,27 @@ class TestComplianceAuditLogger:
     def test_query_with_limit(self):
         logger = ComplianceAuditLogger()
         for i in range(20):
-            logger.log(AuditEvent(
-                event_type=AuditEventType.SHARD_STORED,
-                actor_id="system", action=f"store-{i}", epoch=i,
-            ))
+            logger.log(
+                AuditEvent(
+                    event_type=AuditEventType.SHARD_STORED,
+                    actor_id="system",
+                    action=f"store-{i}",
+                    epoch=i,
+                )
+            )
         results = logger.query(limit=5)
         assert len(results) == 5
 
     def test_export_json(self):
         logger = ComplianceAuditLogger()
-        logger.log(AuditEvent(
-            event_type=AuditEventType.ENTITY_COMMITTED,
-            actor_id="alice", action="commit", epoch=5,
-        ))
+        logger.log(
+            AuditEvent(
+                event_type=AuditEventType.ENTITY_COMMITTED,
+                actor_id="alice",
+                action="commit",
+                epoch=5,
+            )
+        )
         exported = logger.export_json(since_epoch=0)
         assert len(exported) == 1
         assert exported[0]["actor_id"] == "alice"
@@ -467,10 +491,14 @@ class TestComplianceAuditLogger:
     def test_evict_expired(self):
         logger = ComplianceAuditLogger(retention_epochs=100)
         for i in range(10):
-            logger.log(AuditEvent(
-                event_type=AuditEventType.SHARD_STORED,
-                actor_id="system", action=f"store-{i}", epoch=i,
-            ))
+            logger.log(
+                AuditEvent(
+                    event_type=AuditEventType.SHARD_STORED,
+                    actor_id="system",
+                    action=f"store-{i}",
+                    epoch=i,
+                )
+            )
         removed = logger.evict_expired(current_epoch=105)
         assert removed == 5  # epochs 0-4 should be evicted
         assert logger.length == 5
@@ -478,10 +506,14 @@ class TestComplianceAuditLogger:
     def test_head_hash_changes(self):
         logger = ComplianceAuditLogger()
         h0 = logger.head_hash
-        logger.log(AuditEvent(
-            event_type=AuditEventType.NODE_REGISTERED,
-            actor_id="n1", action="reg", epoch=1,
-        ))
+        logger.log(
+            AuditEvent(
+                event_type=AuditEventType.NODE_REGISTERED,
+                actor_id="n1",
+                action="reg",
+                epoch=1,
+            )
+        )
         h1 = logger.head_hash
         assert h0 != h1
 
@@ -499,6 +531,7 @@ class TestComplianceAuditLogger:
 # ============================================================================
 # SIEM Export
 # ============================================================================
+
 
 class TestSIEMExporter:
     """Tests for SIEM-compatible audit event export."""
@@ -546,7 +579,9 @@ class TestSIEMExporter:
         events = [
             AuditEvent(
                 event_type=AuditEventType.SHARD_STORED,
-                actor_id="n1", action=f"store-{i}", epoch=i,
+                actor_id="n1",
+                action=f"store-{i}",
+                epoch=i,
             )
             for i in range(3)
         ]
@@ -558,7 +593,9 @@ class TestSIEMExporter:
         # Security violation should be high severity
         event = AuditEvent(
             event_type=AuditEventType.SECURITY_VIOLATION,
-            actor_id="attacker", action="exploit", epoch=1,
+            actor_id="attacker",
+            action="exploit",
+            epoch=1,
         )
         output = SIEMExporter.export_event(event, SIEMFormat.CEF)
         # Severity 9 for security violations
@@ -568,6 +605,7 @@ class TestSIEMExporter:
 # ============================================================================
 # Key Rotation
 # ============================================================================
+
 
 class TestKeyRotation:
     """Tests for key rotation policy and manager."""
@@ -587,9 +625,7 @@ class TestKeyRotation:
         assert active.key_fingerprint == "fp-v2"
 
     def test_rotation_needed_at_expiry(self):
-        mgr = KeyRotationManager(
-            policy=KeyRotationPolicy(max_key_age_epochs=1000)
-        )
+        mgr = KeyRotationManager(policy=KeyRotationPolicy(max_key_age_epochs=1000))
         mgr.register_key("bob", "fp-v1", epoch=0)
         needs, reason = mgr.check_rotation_needed("bob", current_epoch=1000)
         assert needs
@@ -634,9 +670,7 @@ class TestKeyRotation:
         assert kv.revoked_epoch == 100
 
     def test_max_versions_retained(self):
-        mgr = KeyRotationManager(
-            policy=KeyRotationPolicy(max_versions_retained=3)
-        )
+        mgr = KeyRotationManager(policy=KeyRotationPolicy(max_versions_retained=3))
         for i in range(5):
             mgr.register_key("bob", f"fp-v{i}", epoch=i * 100)
         history = mgr.get_key_history("bob")
@@ -661,6 +695,7 @@ class TestKeyRotation:
 # ============================================================================
 # GDPR Deletion
 # ============================================================================
+
 
 class TestGDPRDeletion:
     """Tests for GDPR right-to-erasure with deletion proofs."""
@@ -749,9 +784,7 @@ class TestGDPRDeletion:
         req = gdpr.submit_request("entity-to-delete", "subject-1", epoch=100)
         gdpr.execute_deletion(req.request_id, nodes, epoch=101)
 
-        deletion_events = logger.query(
-            event_type=AuditEventType.GDPR_DELETION_COMPLETE
-        )
+        deletion_events = logger.query(event_type=AuditEventType.GDPR_DELETION_COMPLETE)
         assert len(deletion_events) == 1
 
     def test_deletion_nonexistent_request(self):
@@ -763,6 +796,7 @@ class TestGDPRDeletion:
 # ============================================================================
 # HSM Interface (Compliance Module)
 # ============================================================================
+
 
 class TestComplianceSoftwareHSM:
     """Tests for the compliance module's software HSM implementation."""
@@ -827,6 +861,7 @@ class TestComplianceSoftwareHSM:
 # ============================================================================
 # Compliance Configuration
 # ============================================================================
+
 
 class TestComplianceConfig:
     """Tests for unified compliance configuration validation."""
@@ -966,6 +1001,7 @@ class TestComplianceConfig:
 # Integration: Audit Logger + Commitment Network
 # ============================================================================
 
+
 class TestComplianceIntegration:
     """Integration tests for compliance features with the commitment network."""
 
@@ -1002,9 +1038,7 @@ class TestComplianceIntegration:
         logger = ComplianceAuditLogger()
         network = CommitmentNetwork()
         network.set_audit_logger(logger)
-        network.set_geo_fence_policy(
-            GeoFencePolicy(allowed_jurisdictions={Jurisdiction.US})
-        )
+        network.set_geo_fence_policy(GeoFencePolicy(allowed_jurisdictions={Jurisdiction.US}))
 
         network.add_node("us1", "us-east-1")
         network.add_node("eu1", "eu-west-1")
@@ -1053,6 +1087,7 @@ class TestComplianceIntegration:
 # ===========================================================================
 # 1. SECURITY PROFILE (§7.2)
 # ===========================================================================
+
 
 class TestSecurityProfileConstruction:
     def test_level3_defaults(self):
@@ -1206,6 +1241,7 @@ class TestLevel5SealedBox:
 # 2. HASH FUNCTION (§7.1)
 # ===========================================================================
 
+
 class TestHashFunction:
     def test_sha3_256_prefix(self):
         h = canonical_hash(b"test")
@@ -1294,6 +1330,7 @@ class TestHashFunctionEnum:
 # ===========================================================================
 # 3. HSM INTERFACE (§7.3)
 # ===========================================================================
+
 
 class TestSoftwareHSMKEM:
     def test_generate_kem_keypair(self):
@@ -1424,6 +1461,7 @@ class TestSoftwareHSMLevel5:
 # 4. END-TO-END: Full protocol under Level 5 + SHA-384
 # ===========================================================================
 
+
 class TestEndToEndLevel5:
     def test_full_protocol_level5_sha384(self):
         """Complete COMMIT -> LATTICE -> MATERIALIZE under Level 5 / SHA-384."""
@@ -1432,9 +1470,12 @@ class TestEndToEndLevel5:
         # Setup
         net = CommitmentNetwork()
         for nid, reg in [
-            ("n1", "US-East"), ("n2", "US-West"),
-            ("n3", "EU-West"), ("n4", "EU-East"),
-            ("n5", "AP-East"), ("n6", "AP-South"),
+            ("n1", "US-East"),
+            ("n2", "US-West"),
+            ("n3", "EU-West"),
+            ("n4", "EU-East"),
+            ("n5", "AP-East"),
+            ("n6", "AP-South"),
         ]:
             net.add_node(nid, reg)
 

@@ -163,9 +163,7 @@ def verify_deployment(
         result["impl_address"] = impl_address
         if expected_impl and impl_address.lower() != expected_impl.lower():
             failed += 1
-            errors.append(
-                f"EIP-1967 impl = {impl_address} (expected {expected_impl})"
-            )
+            errors.append(f"EIP-1967 impl = {impl_address} (expected {expected_impl})")
         else:
             passed += 1
     except Exception as e:
@@ -192,9 +190,7 @@ def verify_deployment(
             result["threshold"] = threshold
             if expected_threshold is not None and threshold != expected_threshold:
                 failed += 1
-                errors.append(
-                    f"threshold = {threshold} (expected {expected_threshold})"
-                )
+                errors.append(f"threshold = {threshold} (expected {expected_threshold})")
             elif threshold >= 2:
                 passed += 1
             else:
@@ -215,9 +211,7 @@ def verify_deployment(
             result["min_delay"] = min_delay
             if expected_min_delay is not None and min_delay != expected_min_delay:
                 failed += 1
-                errors.append(
-                    f"minDelay = {min_delay}s (expected {expected_min_delay}s)"
-                )
+                errors.append(f"minDelay = {min_delay}s (expected {expected_min_delay}s)")
             elif min_delay >= 60:
                 passed += 1
             else:
@@ -243,13 +237,20 @@ def main() -> None:
     parser.add_argument("--expected-admin", default=None, help="Expected admin address")
     parser.add_argument("--expected-impl", default=None, help="Expected implementation address")
     parser.add_argument("--multisig", default=None, help="MultiSig contract address")
-    parser.add_argument("--expected-threshold", type=int, default=None, help="Expected MultiSig threshold")
+    parser.add_argument(
+        "--expected-threshold", type=int, default=None, help="Expected MultiSig threshold"
+    )
     parser.add_argument("--timelock", default=None, help="Timelock contract address")
-    parser.add_argument("--expected-min-delay", type=int, default=None, help="Expected Timelock minDelay (seconds)")
+    parser.add_argument(
+        "--expected-min-delay", type=int, default=None, help="Expected Timelock minDelay (seconds)"
+    )
     args = parser.parse_args()
 
     result = verify_deployment(
-        args.rpc_url, args.proxy, args.expected_admin, args.expected_impl,
+        args.rpc_url,
+        args.proxy,
+        args.expected_admin,
+        args.expected_impl,
         multisig_address=args.multisig,
         expected_threshold=args.expected_threshold,
         timelock_address=args.timelock,

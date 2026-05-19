@@ -21,7 +21,7 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional
 
-from .primitives import canonical_hash, canonical_hash_bytes, internal_hash_bytes, MLDSA
+from .primitives import MLDSA, canonical_hash, canonical_hash_bytes, internal_hash_bytes
 from .storage import MemoryShardStore
 
 if TYPE_CHECKING:
@@ -44,22 +44,22 @@ __all__ = [
 # Staking constants (Mainnet security — §6.2)
 # ---------------------------------------------------------------------------
 
-MIN_STAKE_LTP = 1_000           # Minimum stake to register (sybil resistance)
-STAKE_LOCKUP_SECONDS = 90 * 24 * 3600   # 90-day lockup period
+MIN_STAKE_LTP = 1_000  # Minimum stake to register (sybil resistance)
+STAKE_LOCKUP_SECONDS = 90 * 24 * 3600  # 90-day lockup period
 EVICTION_COOLDOWN_SECONDS = 30 * 24 * 3600  # 30-day cooldown after eviction
 CORRELATION_PENALTY_MAX = 10.0  # Max correlation penalty multiplier
 CORRELATION_PENALTY_SCALE = 5.0  # Scaling factor: min(10.0, 1 + 5 × ratio)
-REPUTATION_DECAY_RATE = 0.95    # Per-epoch decay — offenses never fully decay
-REPUTATION_DECAY_FLOOR = 0.01   # Minimum retained offense weight
-STRIKE_THRESHOLD = 3            # Audit failures before auto-eviction
+REPUTATION_DECAY_RATE = 0.95  # Per-epoch decay — offenses never fully decay
+REPUTATION_DECAY_FLOOR = 0.01  # Minimum retained offense weight
+STRIKE_THRESHOLD = 3  # Audit failures before auto-eviction
 
 # Graduated withholding schedule (Storj-inspired §6.3)
 # New nodes have earnings withheld to prevent extract-and-exit.
 # Withheld amounts are released on the schedule below.
 WITHHOLDING_SCHEDULE = [
-    (90 * 24 * 3600, 0.75),    # Months 1-3:  75% withheld
-    (180 * 24 * 3600, 0.50),   # Months 4-6:  50% withheld
-    (270 * 24 * 3600, 0.25),   # Months 7-9:  25% withheld
+    (90 * 24 * 3600, 0.75),  # Months 1-3:  75% withheld
+    (180 * 24 * 3600, 0.50),  # Months 4-6:  50% withheld
+    (270 * 24 * 3600, 0.25),  # Months 7-9:  25% withheld
 ]
 # After month 9: 0% withheld (full payout)
 
@@ -68,9 +68,11 @@ WITHHOLDING_SCHEDULE = [
 # AuditResult: typed return value for node audit operations
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AuditResult:
     """Result of a storage-proof audit on a single commitment node."""
+
     node_id: str
     challenged: int
     passed: int
@@ -79,7 +81,7 @@ class AuditResult:
     suspicious_latency: int
     burst_size: int
     avg_response_us: float
-    result: str        # "PASS" or "FAIL"
+    result: str  # "PASS" or "FAIL"
     strikes: int
     corrupt_shards: list = field(default_factory=list)  # [(entity_id, shard_index)]
 
@@ -87,6 +89,7 @@ class AuditResult:
 # ---------------------------------------------------------------------------
 # StakeEscrow: pending slash escrow (prevents withdrawal race condition)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class StakeEscrow:
@@ -97,16 +100,18 @@ class StakeEscrow:
     is locked in escrow and cannot be withdrawn until the slash is finalized
     or released.
     """
+
     node_id: str
-    amount: float             # LTP amount escrowed
-    reason: str               # e.g. "audit_failure", "corruption"
-    created_at: float         # time.time() when escrow was created
-    finalized: bool = False   # True once slash has been applied or released
+    amount: float  # LTP amount escrowed
+    reason: str  # e.g. "audit_failure", "corruption"
+    created_at: float  # time.time() when escrow was created
+    finalized: bool = False  # True once slash has been applied or released
 
 
 # ---------------------------------------------------------------------------
 # CommitmentNode
 # ---------------------------------------------------------------------------
+
 
 class CommitmentNode:
     """
@@ -136,22 +141,22 @@ class CommitmentNode:
         self._shard_ttl: dict[tuple[str, int], tuple[int, Optional[int]]] = {}
 
         # --- Staking (Mainnet §6.2) ---
-        self.stake: float = 0.0                   # LTP staked
-        self.stake_locked_until: float = 0.0      # Earliest withdrawal time
+        self.stake: float = 0.0  # LTP staked
+        self.stake_locked_until: float = 0.0  # Earliest withdrawal time
         self.pending_slashes: list[StakeEscrow] = []  # Escrow for pending slashes
 
         # --- Reputation (permanent, decay-resistant) ---
-        self.offense_history: list[dict] = []     # [{type, timestamp, weight}]
-        self.reputation_score: float = 1.0        # 1.0 = perfect, decays toward 0
+        self.offense_history: list[dict] = []  # [{type, timestamp, weight}]
+        self.reputation_score: float = 1.0  # 1.0 = perfect, decays toward 0
 
         # --- Sybil resistance ---
-        self.registered_at: float = 0.0           # Registration timestamp
-        self.evicted_at: float = 0.0              # Eviction timestamp (0 = never)
-        self.eviction_count: int = 0              # Lifetime eviction count
+        self.registered_at: float = 0.0  # Registration timestamp
+        self.evicted_at: float = 0.0  # Eviction timestamp (0 = never)
+        self.eviction_count: int = 0  # Lifetime eviction count
 
         # --- Graduated withholding (Storj-inspired §6.3) ---
-        self.withheld_earnings: float = 0.0       # Accumulated withheld LTP
-        self.total_earnings: float = 0.0          # Lifetime earnings for tracking
+        self.withheld_earnings: float = 0.0  # Accumulated withheld LTP
+        self.total_earnings: float = 0.0  # Lifetime earnings for tracking
 
     def deposit_stake(self, amount: float, now: Optional[float] = None) -> bool:
         """Deposit stake with lockup period. Returns False if below minimum."""
@@ -164,9 +169,7 @@ class CommitmentNode:
 
     def available_stake(self) -> float:
         """Stake available for withdrawal (total minus escrowed amounts)."""
-        escrowed = sum(
-            e.amount for e in self.pending_slashes if not e.finalized
-        )
+        escrowed = sum(e.amount for e in self.pending_slashes if not e.finalized)
         return max(0.0, self.stake - escrowed)
 
     def can_withdraw(self, now: Optional[float] = None) -> bool:
@@ -227,16 +230,17 @@ class CommitmentNode:
         return total_slashed
 
     def record_offense(
-        self, offense_type: str, weight: float = 1.0,
-        now: Optional[float] = None
+        self, offense_type: str, weight: float = 1.0, now: Optional[float] = None
     ) -> None:
         """Record an offense in permanent history. Offenses never fully decay."""
         now = now or time.time()
-        self.offense_history.append({
-            "type": offense_type,
-            "timestamp": now,
-            "weight": weight,
-        })
+        self.offense_history.append(
+            {
+                "type": offense_type,
+                "timestamp": now,
+                "weight": weight,
+            }
+        )
         self._update_reputation()
 
     def _update_reputation(self) -> None:
@@ -271,9 +275,7 @@ class CommitmentNode:
                 return rate
         return 0.0
 
-    def accrue_earnings(
-        self, gross_amount: float, now: Optional[float] = None
-    ) -> float:
+    def accrue_earnings(self, gross_amount: float, now: Optional[float] = None) -> float:
         """
         Accrue earnings with graduated withholding.
 
@@ -328,9 +330,7 @@ class CommitmentNode:
         self._shard_ttl[key] = (stored_at_epoch, ttl_epochs)
         return True
 
-    def is_shard_expired(
-        self, entity_id: str, shard_index: int, current_epoch: int
-    ) -> bool:
+    def is_shard_expired(self, entity_id: str, shard_index: int, current_epoch: int) -> bool:
         """Check if a shard has expired based on its TTL."""
         key = (entity_id, shard_index)
         ttl_info = self._shard_ttl.get(key)
@@ -341,9 +341,7 @@ class CommitmentNode:
             return False  # Explicit None TTL = permanent
         return current_epoch >= stored_at + ttl
 
-    def renew_shard_ttl(
-        self, entity_id: str, shard_index: int, additional_epochs: int
-    ) -> bool:
+    def renew_shard_ttl(self, entity_id: str, shard_index: int, additional_epochs: int) -> bool:
         """Extend the TTL of a shard. Returns False if shard not found."""
         key = (entity_id, shard_index)
         ttl_info = self._shard_ttl.get(key)
@@ -358,7 +356,8 @@ class CommitmentNode:
     def evict_expired_shards(self, current_epoch: int) -> int:
         """Remove all expired shards. Returns count removed."""
         expired_keys = [
-            key for key in list(self._shard_ttl.keys())
+            key
+            for key in list(self._shard_ttl.keys())
             if self.is_shard_expired(key[0], key[1], current_epoch)
         ]
         for key in expired_keys:
@@ -372,9 +371,7 @@ class CommitmentNode:
             return None
         return self.shards.get((entity_id, shard_index))
 
-    def respond_to_audit(
-        self, entity_id: str, shard_index: int, nonce: bytes
-    ) -> Optional[str]:
+    def respond_to_audit(self, entity_id: str, shard_index: int, nonce: bytes) -> Optional[str]:
         """
         Respond to a storage proof challenge.
 
@@ -405,6 +402,7 @@ class CommitmentNode:
 # CommitmentRecord
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CommitmentRecord:
     """
@@ -415,18 +413,19 @@ class CommitmentRecord:
       - Only a Merkle root of encrypted shard hashes is stored
       - Signed with ML-DSA-65 (quantum-resistant digital signature)
     """
+
     entity_id: str
     sender_id: str
-    shard_map_root: str       # H(H(enc_shard_0) || ... || H(enc_shard_n))
-    content_hash: str         # H(content) — secondary integrity check
-    encoding_params: dict     # {"n", "k", "algorithm", "gf_poly", "eval"}
-    shape: str                # canonicalized media type
-    shape_hash: str           # H(shape) — legacy lookup compatibility
+    shard_map_root: str  # H(H(enc_shard_0) || ... || H(enc_shard_n))
+    content_hash: str  # H(content) — secondary integrity check
+    encoding_params: dict  # {"n", "k", "algorithm", "gf_poly", "eval"}
+    shape: str  # canonicalized media type
+    shape_hash: str  # H(shape) — legacy lookup compatibility
     timestamp: float
     ttl_epochs: Optional[int] = None  # §5.4.4: epochs until shard eviction (None = permanent)
     predecessor: Optional[str] = None
-    signature: bytes = b""    # ML-DSA-65 signature (3309 bytes)
-    sender_vk: bytes = b""   # ML-DSA-65 verification key (for cross-node materialize)
+    signature: bytes = b""  # ML-DSA-65 signature (3309 bytes)
+    sender_vk: bytes = b""  # ML-DSA-65 verification key (for cross-node materialize)
 
     def signable_payload(self) -> bytes:
         """Deterministic binary encoding of the fields that get signed/verified.
@@ -443,19 +442,25 @@ class CommitmentRecord:
         content; the log's Merkle tree separately authenticates ordering.
         """
         parts: list[bytes] = []
-        for s in (self.entity_id, self.sender_id, self.shard_map_root,
-                  self.content_hash, self.shape, self.shape_hash):
+        for s in (
+            self.entity_id,
+            self.sender_id,
+            self.shard_map_root,
+            self.content_hash,
+            self.shape,
+            self.shape_hash,
+        ):
             raw = s.encode()
-            parts.append(struct.pack('>I', len(raw)) + raw)
+            parts.append(struct.pack(">I", len(raw)) + raw)
         # Timestamp as fixed-width IEEE 754 double (deterministic across languages)
-        parts.append(struct.pack('>d', self.timestamp))
+        parts.append(struct.pack(">d", self.timestamp))
         # Encoding params: sorted key-value pairs, each length-prefixed
         ep = self.encoding_params
         for k in sorted(ep.keys()):
             kb = k.encode()
             vb = str(ep[k]).encode()
-            parts.append(struct.pack('>I', len(kb)) + kb)
-            parts.append(struct.pack('>I', len(vb)) + vb)
+            parts.append(struct.pack(">I", len(kb)) + kb)
+            parts.append(struct.pack(">I", len(vb)) + vb)
         return b"LTP-COMMIT-v1\x00" + b"".join(parts)
 
     def sign(self, sender) -> None:
@@ -466,6 +471,7 @@ class CommitmentRecord:
         backed kps never expose plaintext sk.
         """
         from .keypair import KeyPair as _KeyPair
+
         payload = self.signable_payload()
         if isinstance(sender, _KeyPair):
             self.signature = sender.sign(payload)
@@ -488,11 +494,11 @@ class CommitmentRecord:
         parts: list[bytes] = [self.signable_payload()]
         # Predecessor (may be None before log appends it)
         pred = (self.predecessor or "").encode()
-        parts.append(struct.pack('>I', len(pred)) + pred)
+        parts.append(struct.pack(">I", len(pred)) + pred)
         # Signature
-        parts.append(struct.pack('>I', len(self.signature)) + self.signature)
+        parts.append(struct.pack(">I", len(self.signature)) + self.signature)
         # Sender verification key (for cross-node materialize)
-        parts.append(struct.pack('>I', len(self.sender_vk)) + self.sender_vk)
+        parts.append(struct.pack(">I", len(self.sender_vk)) + self.sender_vk)
         return b"LTP-RECORD-v1\x00" + b"".join(parts)
 
     def canonical_bytes(self) -> bytes:
@@ -502,8 +508,9 @@ class CommitmentRecord:
         encoding path — new code (envelopes, receipts) should use this.
         The legacy signable_payload() is preserved for backward compatibility.
         """
-        from .encoding import CanonicalEncoder
         from .domain import DOMAIN_COMMIT_RECORD
+        from .encoding import CanonicalEncoder
+
         enc = (
             CanonicalEncoder(DOMAIN_COMMIT_RECORD)
             .string(self.entity_id)
@@ -524,8 +531,9 @@ class CommitmentRecord:
         Uses canonical_bytes() as the payload. The existing sign()/verify_signature()
         methods are UNCHANGED — this is an additive capability.
         """
-        from .envelope import SignedEnvelope
         from .domain import DOMAIN_COMMIT_RECORD
+        from .envelope import SignedEnvelope
+
         return SignedEnvelope.create(
             domain=DOMAIN_COMMIT_RECORD,
             signer_vk=sender_vk,
@@ -540,8 +548,9 @@ class CommitmentRecord:
 
         Analogous to to_bytes() but using the new canonical encoding path.
         """
-        from .encoding import CanonicalEncoder
         from .domain import DOMAIN_COMMIT_RECORD
+        from .encoding import CanonicalEncoder
+
         enc = (
             CanonicalEncoder(DOMAIN_COMMIT_RECORD)
             .string(self.entity_id)
@@ -576,6 +585,7 @@ class CommitmentRecord:
 # ---------------------------------------------------------------------------
 # CommitmentLog
 # ---------------------------------------------------------------------------
+
 
 class CommitmentLog:
     """
@@ -613,7 +623,9 @@ class CommitmentLog:
         # Legacy v1 rows have only (vk, sk); on first reload we
         # regenerate (ek, dk) and persist the full set as a v2 row.
         if store is not None:
-            from .primitives import MLKEM as _MLKEM, MLDSA as _MLDSA
+            from .primitives import MLDSA as _MLDSA
+            from .primitives import MLKEM as _MLKEM
+
             kp_data = store.load_operator_keypair_full()
             if kp_data is None:
                 # Fresh log: generate all four, persist as v2.
@@ -629,7 +641,11 @@ class CommitmentLog:
                     ek, dk = _MLKEM.keygen()
                     store.store_operator_keypair(vk, sk, ek=ek, dk=dk)
             self._operator_kp = KeyPair.from_persisted(
-                ek=ek, dk=dk, vk=vk, sk=sk, label="log-operator",
+                ek=ek,
+                dk=dk,
+                vk=vk,
+                sk=sk,
+                label="log-operator",
             )
         else:
             self._operator_kp = KeyPair.generate("log-operator")
@@ -638,7 +654,8 @@ class CommitmentLog:
         # signer routes through KeyPair.sign — HSM-backed kps stay
         # sentinel-only and software kps behave identically.
         self._merkle_log = MerkleLog(
-            self._operator_kp.vk, self._operator_kp,
+            self._operator_kp.vk,
+            self._operator_kp,
         )
         self._records: dict[str, CommitmentRecord] = {}
         self._chain: list[str] = []  # ordered entity_ids (used by audit)
@@ -749,6 +766,7 @@ class CommitmentLog:
         Returns: (is_valid, last_valid_index)
         """
         from .merkle_log.tree import _leaf_hash
+
         if not self._chain:
             return True, -1
         for i, entity_id in enumerate(self._chain):
@@ -817,12 +835,15 @@ class CommitmentLog:
         if entity_id not in self._records:
             return None
         from .merkle_log.portable_proof import PortableMerkleProof, TreeType
+
         idx = self._record_indices[entity_id]
         record = self._records[entity_id]
         record_bytes = record.to_bytes()
         inc_proof = self._merkle_log.inclusion_proof(idx)
         return PortableMerkleProof.from_inclusion_proof(
-            inc_proof, TreeType.COMMITMENT_LOG, record_bytes,
+            inc_proof,
+            TreeType.COMMITMENT_LOG,
+            record_bytes,
         )
 
     @property
@@ -838,6 +859,7 @@ class CommitmentLog:
 # ---------------------------------------------------------------------------
 # StorageEndowment: slash-and-burn fund (Sia-inspired §6.4)
 # ---------------------------------------------------------------------------
+
 
 class StorageEndowment:
     """
@@ -857,19 +879,20 @@ class StorageEndowment:
         self.burn_history: list[dict] = []  # [{amount, reason, timestamp, node_id}]
 
     def burn(
-        self, amount: float, reason: str,
-        node_id: str = "", now: Optional[float] = None
+        self, amount: float, reason: str, node_id: str = "", now: Optional[float] = None
     ) -> None:
         """Burn slashed stake into the endowment. Irreversible."""
         now = now or time.time()
         self.balance += amount
         self.total_burned += amount
-        self.burn_history.append({
-            "amount": amount,
-            "reason": reason,
-            "node_id": node_id,
-            "timestamp": now,
-        })
+        self.burn_history.append(
+            {
+                "amount": amount,
+                "reason": reason,
+                "node_id": node_id,
+                "timestamp": now,
+            }
+        )
 
     def spend(self, amount: float, purpose: str) -> float:
         """
@@ -915,8 +938,8 @@ class CommitmentNetwork:
         # Optional enforcement pipeline (set via set_enforcement_pipeline)
         self._enforcement_pipeline = None
         # Compliance: geo-fence policy and audit logger (optional)
-        self._geo_fence_policy = None   # GeoFencePolicy | None
-        self._audit_logger = None       # ComplianceAuditLogger | None
+        self._geo_fence_policy = None  # GeoFencePolicy | None
+        self._audit_logger = None  # ComplianceAuditLogger | None
         # Security hardening: eviction registry, audit epochs, endowment
         self._eviction_registry: dict[str, dict] = {}  # node_id → eviction info
         self._audit_epoch: int = 0  # Monotonic audit epoch counter
@@ -958,17 +981,23 @@ class CommitmentNetwork:
         # Compliance: log node registration
         if self._audit_logger is not None:
             from .compliance import AuditEvent, AuditEventType
-            self._audit_logger.log(AuditEvent(
-                event_type=AuditEventType.NODE_REGISTERED,
-                actor_id=node_id,
-                action="node_registered",
-                details={"region": region},
-            ))
+
+            self._audit_logger.log(
+                AuditEvent(
+                    event_type=AuditEventType.NODE_REGISTERED,
+                    actor_id=node_id,
+                    action="node_registered",
+                    details={"region": region},
+                )
+            )
 
         return node
 
     def register_node(
-        self, node_id: str, region: str, stake: float,
+        self,
+        node_id: str,
+        region: str,
+        stake: float,
         now: Optional[float] = None,
         admission_manager=None,
     ) -> CommitmentNode:
@@ -986,11 +1015,10 @@ class CommitmentNetwork:
         # --- Admission gate (optional) ---
         if admission_manager is not None:
             from .node.admission import AdmissionState
+
             rec = admission_manager.get(node_id)
             if rec is None:
-                raise ValueError(
-                    f"Node {node_id} has no admission record"
-                )
+                raise ValueError(f"Node {node_id} has no admission record")
             if rec.state not in (AdmissionState.ADMITTED, AdmissionState.ACTIVE):
                 raise ValueError(
                     f"Node {node_id} admission status is {rec.state.value}, "
@@ -1005,15 +1033,12 @@ class CommitmentNetwork:
             if now < cooldown_expires:
                 remaining = cooldown_expires - now
                 raise ValueError(
-                    f"Node {node_id} is in eviction cooldown "
-                    f"({remaining:.0f}s remaining)"
+                    f"Node {node_id} is in eviction cooldown ({remaining:.0f}s remaining)"
                 )
 
         # --- Stake bonding ---
         if stake < MIN_STAKE_LTP:
-            raise ValueError(
-                f"Stake {stake} LTP below minimum {MIN_STAKE_LTP} LTP"
-            )
+            raise ValueError(f"Stake {stake} LTP below minimum {MIN_STAKE_LTP} LTP")
 
         node = CommitmentNode(node_id, region)
         node.registered_at = now
@@ -1026,9 +1051,7 @@ class CommitmentNetwork:
             node._update_reputation()
 
         if not node.deposit_stake(stake, now):
-            raise ValueError(
-                f"Stake deposit failed (amount={stake}, min={MIN_STAKE_LTP})"
-            )
+            raise ValueError(f"Stake deposit failed (amount={stake}, min={MIN_STAKE_LTP})")
 
         self.nodes.append(node)
         return node
@@ -1063,9 +1086,7 @@ class CommitmentNetwork:
         if self._geo_fence_policy is not None:
             eligible_nodes = self._geo_fence_policy.filter_nodes(self.nodes)
             if not eligible_nodes:
-                raise ValueError(
-                    "No commitment nodes available in allowed jurisdictions"
-                )
+                raise ValueError("No commitment nodes available in allowed jurisdictions")
 
         active = sorted([n for n in eligible_nodes if not n.evicted], key=lambda n: n.node_id)
         if not active:
@@ -1110,39 +1131,38 @@ class CommitmentNetwork:
 
         shard_tree = MerkleTree()
         for i, enc_shard in enumerate(encrypted_shards):
-            shard_data = enc_shard + entity_id.encode() + struct.pack('>I', i)
+            shard_data = enc_shard + entity_id.encode() + struct.pack(">I", i)
             shard_tree.append(shard_data)
 
             target_nodes = self._placement(entity_id, i, replicas)
             for node in target_nodes:
                 node.store_shard(entity_id, i, enc_shard)
                 # Update reverse index for O(S) audit
-                self._node_shard_index.setdefault(node.node_id, set()).add(
-                    (entity_id, i)
-                )
+                self._node_shard_index.setdefault(node.node_id, set()).add((entity_id, i))
 
         merkle_root = canonical_hash(shard_tree.root())
 
         # Compliance: log shard distribution event
         if self._audit_logger is not None:
             from .compliance import AuditEvent, AuditEventType
-            self._audit_logger.log(AuditEvent(
-                event_type=AuditEventType.ENTITY_COMMITTED,
-                actor_id="system",
-                target_id=entity_id,
-                action="shards_distributed",
-                details={
-                    "shard_count": len(encrypted_shards),
-                    "replicas": replicas,
-                    "merkle_root": merkle_root,
-                },
-            ))
+
+            self._audit_logger.log(
+                AuditEvent(
+                    event_type=AuditEventType.ENTITY_COMMITTED,
+                    actor_id="system",
+                    target_id=entity_id,
+                    action="shards_distributed",
+                    details={
+                        "shard_count": len(encrypted_shards),
+                        "replicas": replicas,
+                        "merkle_root": merkle_root,
+                    },
+                )
+            )
 
         return merkle_root
 
-    def fetch_encrypted_shards(
-        self, entity_id: str, n: int, max_shards: int
-    ) -> dict[int, bytes]:
+    def fetch_encrypted_shards(self, entity_id: str, n: int, max_shards: int) -> dict[int, bytes]:
         """
         Fetch up to *max_shards* encrypted shards by deriving locations from entity_id.
 
@@ -1187,11 +1207,7 @@ class CommitmentNetwork:
         Returns a pseudo-random delay factor in [0, 1) derived from the
         audit seed, epoch, and node_id — preventing timing prediction.
         """
-        schedule_input = (
-            self._audit_seed
-            + struct.pack(">Q", epoch)
-            + node.node_id.encode()
-        )
+        schedule_input = self._audit_seed + struct.pack(">Q", epoch) + node.node_id.encode()
         schedule_hash = internal_hash_bytes(schedule_input)
         # Use first 8 bytes as a uniform [0, 1) float
         raw = int.from_bytes(schedule_hash[:8], "big")
@@ -1207,10 +1223,13 @@ class CommitmentNetwork:
         where ratio = (recent_failures / total_active_nodes).
         """
         active = max(1, self.active_node_count)
-        recent_offenses = len([
-            o for o in node.offense_history
-            if o.get("type") in ("audit_failure", "corruption", "missing_shard")
-        ])
+        recent_offenses = len(
+            [
+                o
+                for o in node.offense_history
+                if o.get("type") in ("audit_failure", "corruption", "missing_shard")
+            ]
+        )
         ratio = recent_offenses / active
         return min(
             CORRELATION_PENALTY_MAX,
@@ -1218,7 +1237,9 @@ class CommitmentNetwork:
         )
 
     def audit_node(
-        self, node: CommitmentNode, burst: int = 1,
+        self,
+        node: CommitmentNode,
+        burst: int = 1,
         max_response_seconds: float = 0.001,
     ) -> AuditResult:
         """
@@ -1335,8 +1356,7 @@ class CommitmentNetwork:
         )
 
     def _get_known_good_hash(
-        self, entity_id: str, shard_index: int, nonce: bytes,
-        exclude_node: CommitmentNode
+        self, entity_id: str, shard_index: int, nonce: bytes, exclude_node: CommitmentNode
     ) -> Optional[str]:
         """Fetch a known-good audit hash from another healthy replica."""
         for other_node in self.nodes:
@@ -1356,7 +1376,10 @@ class CommitmentNetwork:
         return results
 
     def audit_node_pdp(
-        self, node: CommitmentNode, epoch: int, sample_size: int = 4,
+        self,
+        node: CommitmentNode,
+        epoch: int,
+        sample_size: int = 4,
         vdf_verifier=None,
     ) -> dict:
         """
@@ -1369,7 +1392,9 @@ class CommitmentNetwork:
                   "result", "proof_size_bytes"}
         """
         from .enforcement import (
-            PDPChallenge, PDPVerifier, StorageProofStrategy,
+            PDPChallenge,
+            PDPVerifier,
+            StorageProofStrategy,
         )
 
         verifier = PDPVerifier()
@@ -1400,6 +1425,7 @@ class CommitmentNetwork:
                 data = node.fetch_shard(entity_id, idx)
                 if data is not None:
                     from .primitives import canonical_hash as hash_fn
+
                     shard_hashes[idx] = hash_fn(data)
 
             if not shard_hashes:
@@ -1480,9 +1506,7 @@ class CommitmentNetwork:
         if vdf_verifier is not None and entities:
             first_entity = next(iter(entities))
             first_idx = entities[first_entity][0]
-            challenge = vdf_verifier.generate_challenge(
-                first_entity, first_idx, epoch
-            )
+            challenge = vdf_verifier.generate_challenge(first_entity, first_idx, epoch)
             vdf_eval = vdf_verifier.evaluate(challenge)
             vdf_ok = vdf_verifier.verify(challenge, vdf_eval)
             vdf_result_data = {
@@ -1508,9 +1532,7 @@ class CommitmentNetwork:
 
         return audit_output
 
-    def evict_node(
-        self, node: CommitmentNode, now: Optional[float] = None
-    ) -> dict:
+    def evict_node(self, node: CommitmentNode, now: Optional[float] = None) -> dict:
         """
         Evict a misbehaving node and trigger shard repair.
 
@@ -1537,8 +1559,10 @@ class CommitmentNetwork:
         # Burn slashed stake to endowment (Sia-inspired: no redistribution)
         if stake_slashed > 0:
             self.endowment.burn(
-                stake_slashed, "eviction_slash",
-                node_id=node.node_id, now=now,
+                stake_slashed,
+                "eviction_slash",
+                node_id=node.node_id,
+                now=now,
             )
 
         # Forfeit withheld earnings to endowment (extract-and-exit prevention)
@@ -1546,8 +1570,10 @@ class CommitmentNetwork:
         if node.withheld_earnings > 0:
             forfeited_earnings = node.withheld_earnings
             self.endowment.burn(
-                forfeited_earnings, "withheld_earnings_forfeiture",
-                node_id=node.node_id, now=now,
+                forfeited_earnings,
+                "withheld_earnings_forfeiture",
+                node_id=node.node_id,
+                now=now,
             )
             node.withheld_earnings = 0.0
 
@@ -1579,8 +1605,11 @@ class CommitmentNetwork:
                 replica = other_node.fetch_shard(entity_id, shard_index)
                 if replica is not None:
                     for target in self.nodes:
-                        if (target is not node and not target.evicted
-                                and target.fetch_shard(entity_id, shard_index) is None):
+                        if (
+                            target is not node
+                            and not target.evicted
+                            and target.fetch_shard(entity_id, shard_index) is None
+                        ):
                             target.store_shard(entity_id, shard_index, replica)
                             # Update reverse index so future audits find the repaired shard
                             self._node_shard_index.setdefault(target.node_id, set()).add(
@@ -1611,13 +1640,16 @@ class CommitmentNetwork:
         # Compliance: log node eviction
         if self._audit_logger is not None:
             from .compliance import AuditEvent, AuditEventType
-            self._audit_logger.log(AuditEvent(
-                event_type=AuditEventType.NODE_EVICTED,
-                actor_id="system",
-                target_id=node.node_id,
-                action="node_evicted",
-                details=eviction_result,
-            ))
+
+            self._audit_logger.log(
+                AuditEvent(
+                    event_type=AuditEventType.NODE_EVICTED,
+                    actor_id="system",
+                    target_id=node.node_id,
+                    action="node_evicted",
+                    details=eviction_result,
+                )
+            )
 
         return eviction_result
 
@@ -1702,19 +1734,15 @@ class CommitmentNetwork:
         shard_hashes = []
 
         for i, enc_shard in enumerate(encrypted_shards):
-            shard_hash = canonical_hash(enc_shard + entity_id.encode() + struct.pack('>I', i))
+            shard_hash = canonical_hash(enc_shard + entity_id.encode() + struct.pack(">I", i))
             shard_hashes.append(shard_hash)
 
             target_nodes = self._placement(entity_id, i, replicas)
             for node in target_nodes:
-                node.store_shard_with_ttl(
-                    entity_id, i, enc_shard, epoch, ttl_epochs
-                )
-                self._node_shard_index.setdefault(node.node_id, set()).add(
-                    (entity_id, i)
-                )
+                node.store_shard_with_ttl(entity_id, i, enc_shard, epoch, ttl_epochs)
+                self._node_shard_index.setdefault(node.node_id, set()).add((entity_id, i))
 
-        return canonical_hash(b''.join(h.encode() for h in shard_hashes))
+        return canonical_hash(b"".join(h.encode() for h in shard_hashes))
 
     # --- Correlated Failure Analysis (Whitepaper §5.4.1.1) ---
 
@@ -1736,9 +1764,7 @@ class CommitmentNetwork:
                 restored.append(node)
         return restored
 
-    def check_cross_region_placement(
-        self, entity_id: str, n: int, replicas: int = 2
-    ) -> dict:
+    def check_cross_region_placement(self, entity_id: str, n: int, replicas: int = 2) -> dict:
         """
         Verify that shard replicas span multiple failure domains (regions).
 
@@ -1780,10 +1806,7 @@ class CommitmentNetwork:
         lost = 0
         for shard_index in range(n):
             targets = self._placement(entity_id, shard_index)
-            has_survivor = any(
-                t.region != failed_region and not t.evicted
-                for t in targets
-            )
+            has_survivor = any(t.region != failed_region and not t.evicted for t in targets)
             if has_survivor:
                 surviving += 1
             else:

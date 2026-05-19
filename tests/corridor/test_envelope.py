@@ -6,12 +6,12 @@ import pytest
 
 from ltp.corridor import (
     BLS_G2_COMPRESSED_BYTES,
-    Cid,
-    EnvelopeSizeError,
     ML_KEM_768_CT_BYTES,
     ML_KEM_1024_CT_BYTES,
-    OnChainCommitment,
     SHA3_256_BYTES,
+    Cid,
+    EnvelopeSizeError,
+    OnChainCommitment,
 )
 
 

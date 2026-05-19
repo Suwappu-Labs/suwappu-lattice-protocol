@@ -141,9 +141,7 @@ class CommitmentLogStore:
             # Rebuild the table with a relaxed schema. SQLite does not
             # support ALTER COLUMN to drop NOT NULL, so we go through a
             # rename-create-copy-drop dance inside a transaction.
-            self._conn.execute(
-                "ALTER TABLE log_operator RENAME TO log_operator_legacy"
-            )
+            self._conn.execute("ALTER TABLE log_operator RENAME TO log_operator_legacy")
             self._conn.execute("""
                 CREATE TABLE log_operator (
                     id            INTEGER PRIMARY KEY CHECK (id = 1),
@@ -157,30 +155,21 @@ class CommitmentLogStore:
             """)
             # Carry forward the single legacy row, if any.
             self._conn.execute(
-                "INSERT INTO log_operator (id, vk, sk) "
-                "SELECT id, vk, sk FROM log_operator_legacy"
+                "INSERT INTO log_operator (id, vk, sk) SELECT id, vk, sk FROM log_operator_legacy"
             )
             self._conn.execute("DROP TABLE log_operator_legacy")
             return
 
         # Schema already has nullable `sk`; just add columns if missing.
         if "sk_wrapped" not in cols:
-            self._conn.execute(
-                "ALTER TABLE log_operator ADD COLUMN sk_wrapped BLOB"
-            )
+            self._conn.execute("ALTER TABLE log_operator ADD COLUMN sk_wrapped BLOB")
         if "wrap_version" not in cols:
-            self._conn.execute(
-                "ALTER TABLE log_operator ADD COLUMN wrap_version INTEGER"
-            )
+            self._conn.execute("ALTER TABLE log_operator ADD COLUMN wrap_version INTEGER")
         # Phase 4c additions (Q4 — persist all four).
         if "ek" not in cols:
-            self._conn.execute(
-                "ALTER TABLE log_operator ADD COLUMN ek BLOB"
-            )
+            self._conn.execute("ALTER TABLE log_operator ADD COLUMN ek BLOB")
         if "dk_wrapped" not in cols:
-            self._conn.execute(
-                "ALTER TABLE log_operator ADD COLUMN dk_wrapped BLOB"
-            )
+            self._conn.execute("ALTER TABLE log_operator ADD COLUMN dk_wrapped BLOB")
 
     # ------------------------------------------------------------------
     # Operator keypair API
@@ -313,9 +302,7 @@ class CommitmentLogStore:
                 )
                 return
             self._conn.execute(
-                "UPDATE log_operator "
-                "SET sk = NULL, sk_wrapped = ?, wrap_version = ? "
-                "WHERE id = 1",
+                "UPDATE log_operator SET sk = NULL, sk_wrapped = ?, wrap_version = ? WHERE id = 1",
                 (sk_wrapped, _WRAP_VERSION_PHASE2),
             )
             self._conn.commit()
@@ -368,8 +355,7 @@ class CommitmentLogStore:
         """
         with self._lock:
             rows = self._conn.execute(
-                "SELECT entity_id, leaf_index, record_json "
-                "FROM log_records ORDER BY chain_index"
+                "SELECT entity_id, leaf_index, record_json FROM log_records ORDER BY chain_index"
             ).fetchall()
         return [(r[0], r[1], json.loads(r[2])) for r in rows]
 

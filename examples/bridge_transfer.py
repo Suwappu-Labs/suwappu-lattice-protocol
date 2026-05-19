@@ -10,11 +10,14 @@ Usage:
 """
 
 import time
+
 from src.ltp import (
-    KeyPair, CommitmentNetwork, LTPProtocol,
+    CommitmentNetwork,
+    KeyPair,
+    LTPProtocol,
     reset_poc_state,
 )
-from src.ltp.bridge import BridgeMessage, L1Anchor, Relayer, L2Materializer
+from src.ltp.bridge import BridgeMessage, L1Anchor, L2Materializer, Relayer
 
 reset_poc_state()
 

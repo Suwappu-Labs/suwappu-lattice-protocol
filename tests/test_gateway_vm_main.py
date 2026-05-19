@@ -1,8 +1,10 @@
 """Tests for GatewayVM entry point — lifecycle, signal handling, teardown."""
 
 import signal
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from src.ltp.keypair import KeyPair
 
 
@@ -13,8 +15,8 @@ def gateway_kp():
 
 class TestGatewayVMLifecycle:
     def test_start_and_stop(self, gateway_kp):
-        from src.ltp.gateway_vm.main import GatewayVM
         from src.ltp.gateway_vm.config import GatewayVMConfig
+        from src.ltp.gateway_vm.main import GatewayVM
 
         config = GatewayVMConfig(
             enabled=True,
@@ -38,8 +40,8 @@ class TestGatewayVMLifecycle:
         assert vm.running is False
 
     def test_stop_is_idempotent(self, gateway_kp):
-        from src.ltp.gateway_vm.main import GatewayVM
         from src.ltp.gateway_vm.config import GatewayVMConfig
+        from src.ltp.gateway_vm.main import GatewayVM
 
         config = GatewayVMConfig(
             enabled=True,
@@ -60,8 +62,8 @@ class TestGatewayVMLifecycle:
         assert vm.running is False
 
     def test_teardown_order_is_reverse_startup(self, gateway_kp):
-        from src.ltp.gateway_vm.main import GatewayVM
         from src.ltp.gateway_vm.config import GatewayVMConfig
+        from src.ltp.gateway_vm.main import GatewayVM
 
         config = GatewayVMConfig(
             enabled=True,
@@ -100,8 +102,8 @@ class TestGatewayVMLifecycle:
         assert teardown_order == ["service", "replay_db"]
 
     def test_signal_handler_triggers_stop(self, gateway_kp):
-        from src.ltp.gateway_vm.main import GatewayVM
         from src.ltp.gateway_vm.config import GatewayVMConfig
+        from src.ltp.gateway_vm.main import GatewayVM
 
         config = GatewayVMConfig(
             enabled=True,

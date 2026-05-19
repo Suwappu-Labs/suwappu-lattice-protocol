@@ -24,10 +24,10 @@ from src.ltp.keypair import KeyPair, KeyRegistry
 from src.ltp.primitives import MLDSA
 from src.ltp.protocol import LTPProtocol
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def operator():
@@ -36,22 +36,36 @@ def operator():
 
 def _make_sth(keypair, sequence=1):
     from src.ltp.merkle_log.sth import SignedTreeHead
+
     sth = SignedTreeHead(
-        sequence=sequence, tree_size=sequence, timestamp=time.time(),
-        root_hash=b"\xaa" * 32, operator_vk=keypair.vk, signature=b"",
+        sequence=sequence,
+        tree_size=sequence,
+        timestamp=time.time(),
+        root_hash=b"\xaa" * 32,
+        operator_vk=keypair.vk,
+        signature=b"",
     )
     sig = MLDSA.sign(keypair.sk, sth.signable_payload())
     return SignedTreeHead(
-        sequence=sth.sequence, tree_size=sth.tree_size, timestamp=sth.timestamp,
-        root_hash=sth.root_hash, operator_vk=sth.operator_vk, signature=sig,
+        sequence=sth.sequence,
+        tree_size=sth.tree_size,
+        timestamp=sth.timestamp,
+        root_hash=sth.root_hash,
+        operator_vk=sth.operator_vk,
+        signature=sig,
     )
 
 
 def _make_bad_sth(keypair):
     from src.ltp.merkle_log.sth import SignedTreeHead
+
     return SignedTreeHead(
-        sequence=1, tree_size=1, timestamp=time.time(),
-        root_hash=b"\x00" * 32, operator_vk=keypair.vk, signature=b"\x00" * 3309,
+        sequence=1,
+        tree_size=1,
+        timestamp=time.time(),
+        root_hash=b"\x00" * 32,
+        operator_vk=keypair.vk,
+        signature=b"\x00" * 3309,
     )
 
 
@@ -61,7 +75,6 @@ def _make_bad_sth(keypair):
 
 
 class TestSP1Pipeline:
-
     def test_sp1_prove_verify(self, operator):
         """SP1 mock proof verifies off-chain."""
         sth = _make_sth(operator)
@@ -88,7 +101,6 @@ class TestSP1Pipeline:
 
 
 class TestSTARKPipeline:
-
     def test_stark_prove_verify(self, operator):
         """Enhanced STARK proof verifies off-chain."""
         sth = _make_sth(operator)
@@ -114,7 +126,6 @@ class TestSTARKPipeline:
 
 
 class TestBackendComparison:
-
     def test_proof_sizes(self, operator):
         """All three backends produce different proof sizes."""
         sth = _make_sth(operator)
@@ -123,9 +134,9 @@ class TestBackendComparison:
         sp1_proof = SP1ZKBridgeProver(prove_mode="mock").prove_sth_signature(sth)
         stark_proof = STARKBridgeProver().prove_sth_signature(sth)
 
-        assert sim_proof.proof_size_bytes > 100    # Simulated now uses real STARK
-        assert sp1_proof.proof_size_bytes > 100    # SP1 mock now uses real STARK
-        assert stark_proof.proof_size_bytes > 100   # Real FRI-based STARK
+        assert sim_proof.proof_size_bytes > 100  # Simulated now uses real STARK
+        assert sp1_proof.proof_size_bytes > 100  # SP1 mock now uses real STARK
+        assert stark_proof.proof_size_bytes > 100  # Real FRI-based STARK
 
     def test_backend_switching(self, operator):
         """Same STH, different backends → different proofs, all verify."""
@@ -168,7 +179,6 @@ class TestBackendComparison:
 
 
 class TestLiveBridgeZK:
-
     def _make_protocol(self, keypair):
         kr = KeyRegistry()
         kr.register(keypair)
@@ -179,9 +189,10 @@ class TestLiveBridgeZK:
 
     def test_livebridge_with_sp1_prover(self, operator):
         """LiveBridge completes 7-phase transfer with SP1 prover."""
+        from unittest.mock import MagicMock
+
         from src.ltp.bridge.live import LiveBridge
         from src.ltp.bridge.message import BridgeMessage
-        from unittest.mock import MagicMock
 
         protocol = self._make_protocol(operator)
 
@@ -209,8 +220,13 @@ class TestLiveBridgeZK:
         )
 
         msg = BridgeMessage(
-            msg_type="test", source_chain="test-l1", dest_chain="test-l2",
-            sender="0xabc", recipient="0xdef", payload={"test": True}, nonce=1,
+            msg_type="test",
+            source_chain="test-l1",
+            dest_chain="test-l2",
+            sender="0xabc",
+            recipient="0xdef",
+            payload={"test": True},
+            nonce=1,
         )
         result = bridge.transfer(msg)
         assert result is not None
@@ -219,9 +235,10 @@ class TestLiveBridgeZK:
 
     def test_livebridge_with_stark_prover(self, operator):
         """LiveBridge completes 7-phase transfer with STARK prover."""
+        from unittest.mock import MagicMock
+
         from src.ltp.bridge.live import LiveBridge
         from src.ltp.bridge.message import BridgeMessage
-        from unittest.mock import MagicMock
 
         protocol = self._make_protocol(operator)
 
@@ -248,8 +265,13 @@ class TestLiveBridgeZK:
         )
 
         msg = BridgeMessage(
-            msg_type="test", source_chain="test-l1", dest_chain="test-l2",
-            sender="0xabc", recipient="0xdef", payload={"stark": True}, nonce=1,
+            msg_type="test",
+            source_chain="test-l1",
+            dest_chain="test-l2",
+            sender="0xabc",
+            recipient="0xdef",
+            payload={"stark": True},
+            nonce=1,
         )
         result = bridge.transfer(msg)
         assert result is not None
@@ -262,7 +284,6 @@ class TestLiveBridgeZK:
 
 
 class TestProofDedup:
-
     def test_same_proof_cannot_resolve_twice(self, operator):
         """Same proof_id cannot finalize two different challenge windows."""
         sth = _make_sth(operator)

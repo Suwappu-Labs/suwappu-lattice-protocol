@@ -5,14 +5,14 @@ from __future__ import annotations
 import pytest
 
 from src.ltp.execution.committee.manager import CommitteeManager
-from src.ltp.execution.committee.types import EpochTrigger, EvictionReason
 from src.ltp.execution.committee.policy import (
     CommitteePolicy,
     EpochStrategy,
-    FloorMode,
     EvictionMode,
+    FloorMode,
     StandbyStrategy,
 )
+from src.ltp.execution.committee.types import EpochTrigger, EvictionReason
 from src.ltp.execution.writer import IdentityTier, WriterIdentity, WriterState
 from src.ltp.execution.writer_recovery import EmergencyState
 from src.ltp.execution.writer_registry import WriterRegistry
@@ -23,7 +23,9 @@ ADMIN_FP = b"\xff" * 32
 def _enroll_active(reg, fp_byte, tier=IdentityTier.BLS):
     fp = bytes([fp_byte]) * 32
     bls_pk = bytes([fp_byte]) * 48 if tier in (IdentityTier.BLS, IdentityTier.COMPOSITE) else None
-    mldsa_vk = bytes([fp_byte]) * 32 if tier in (IdentityTier.MLDSA, IdentityTier.COMPOSITE) else None
+    mldsa_vk = (
+        bytes([fp_byte]) * 32 if tier in (IdentityTier.MLDSA, IdentityTier.COMPOSITE) else None
+    )
     identity = WriterIdentity(tier=tier, fingerprint=fp, mldsa_vk=mldsa_vk, bls_pk=bls_pk)
     reg.enroll(identity, timestamp=1000 + fp_byte)
     reg.approve(fp, admin_fp=ADMIN_FP, timestamp=2000 + fp_byte)
@@ -118,8 +120,10 @@ class TestHardFloorWithRecovery:
         _enroll_active(reg, 2)
         emergency = EmergencyState()
         policy = CommitteePolicy(
-            vm_tag=0x01, epoch_length=10,
-            min_committee_size=2, floor_mode=FloorMode.HARD,
+            vm_tag=0x01,
+            epoch_length=10,
+            min_committee_size=2,
+            floor_mode=FloorMode.HARD,
         )
         mgr = CommitteeManager(0x01, policy, reg, emergency)
         mgr.tick(10, 1000)

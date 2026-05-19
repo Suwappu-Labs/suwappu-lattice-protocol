@@ -7,22 +7,21 @@ import pytest
 from src.ltp.consensus.adapter import MysticetiAdapter
 from src.ltp.consensus.events import ConsensusEvent, ConsensusEventType
 from src.ltp.consensus.validator_set import ValidatorSet
-from src.ltp.execution.consensus import ConsensusAdapter
-from src.ltp.execution.types import OrderedBatch
+from src.ltp.execution.committee.dkg.session import DKGSession
+from src.ltp.execution.committee.dkg.types import DKGSessionConfig
 from src.ltp.execution.committee.types import (
     CommitteeMember,
     CommitteeRole,
     CommitteeRoster,
 )
+from src.ltp.execution.consensus import ConsensusAdapter
+from src.ltp.execution.types import OrderedBatch
 from src.ltp.execution.writer import IdentityTier
-
-from src.ltp.execution.committee.dkg.session import DKGSession
-from src.ltp.execution.committee.dkg.types import DKGSessionConfig
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_roster(n: int, epoch: int = 1) -> CommitteeRoster:
     members = [
@@ -36,16 +35,24 @@ def _make_roster(n: int, epoch: int = 1) -> CommitteeRoster:
         for i in range(n)
     ]
     return CommitteeRoster(
-        vm_tag=1, epoch=epoch, active_members=members,
-        standby_members=[], formed_at=0, formation_round=0,
+        vm_tag=1,
+        epoch=epoch,
+        active_members=members,
+        standby_members=[],
+        formed_at=0,
+        formation_round=0,
     )
 
 
 def _run_dkg(n: int, threshold: int, epoch: int = 1):
     participants = [f"validator-{i}".encode() for i in range(n)]
     cfg = DKGSessionConfig(
-        vm_tag=1, epoch=epoch, threshold=threshold,
-        participants=participants, timeout_rounds=10, start_round=0,
+        vm_tag=1,
+        epoch=epoch,
+        threshold=threshold,
+        participants=participants,
+        timeout_rounds=10,
+        start_round=0,
     )
     sessions = [DKGSession(cfg, fp, idx + 1) for idx, fp in enumerate(participants)]
 
@@ -115,14 +122,14 @@ class FakeCommitteeManager:
         if self._roster is None:
             return
         self._roster.active_members = [
-            m for m in self._roster.active_members
-            if m.writer_fp != writer_fp
+            m for m in self._roster.active_members if m.writer_fp != writer_fp
         ]
 
 
 # ---------------------------------------------------------------------------
 # Module-scoped DKG fixture
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def dkg_4():
@@ -133,8 +140,8 @@ def dkg_4():
 # Protocol compliance
 # ---------------------------------------------------------------------------
 
-class TestProtocolCompliance:
 
+class TestProtocolCompliance:
     def test_satisfies_consensus_adapter_protocol(self):
         cm = FakeCommitteeManager(roster=_make_roster(4))
         adapter = MysticetiAdapter(cm)
@@ -152,8 +159,8 @@ class TestProtocolCompliance:
 # Lifecycle
 # ---------------------------------------------------------------------------
 
-class TestLifecycle:
 
+class TestLifecycle:
     def test_start_stop(self):
         cm = FakeCommitteeManager(roster=_make_roster(4))
         adapter = MysticetiAdapter(cm)
@@ -191,8 +198,8 @@ class TestLifecycle:
 # Batch production
 # ---------------------------------------------------------------------------
 
-class TestBatchProduction:
 
+class TestBatchProduction:
     def test_drive_rounds_yields_ordered_batches(self):
         cm = FakeCommitteeManager(roster=_make_roster(4))
         adapter = MysticetiAdapter(cm)
@@ -251,8 +258,8 @@ class TestBatchProduction:
 # BLS integration
 # ---------------------------------------------------------------------------
 
-class TestBLSIntegration:
 
+class TestBLSIntegration:
     def test_batches_with_bls_signing(self, dkg_4):
         keys, group_pk = dkg_4
         cm = FakeCommitteeManager(
@@ -265,8 +272,7 @@ class TestBLSIntegration:
         batches = adapter.drive_rounds(5)
         assert len(batches) > 0
         attested = [
-            e for e in adapter.events()
-            if e.event_type == ConsensusEventType.COMMIT_ATTESTED
+            e for e in adapter.events() if e.event_type == ConsensusEventType.COMMIT_ATTESTED
         ]
         assert len(attested) > 0
         adapter.stop()
@@ -285,8 +291,8 @@ class TestBLSIntegration:
 # Epoch and eviction via tick
 # ---------------------------------------------------------------------------
 
-class TestEpochAndEviction:
 
+class TestEpochAndEviction:
     def test_tick_detects_epoch_advance(self):
         roster_e1 = _make_roster(4, epoch=1)
         cm = FakeCommitteeManager(roster=roster_e1, epoch=1)
@@ -297,10 +303,7 @@ class TestEpochAndEviction:
         cm.advance_epoch(2, roster_e2)
 
         events = adapter.tick(100, 50000)
-        epoch_events = [
-            e for e in events
-            if e.event_type == ConsensusEventType.EPOCH_TRANSITION
-        ]
+        epoch_events = [e for e in events if e.event_type == ConsensusEventType.EPOCH_TRANSITION]
         assert len(epoch_events) == 1
         assert epoch_events[0].payload["old_epoch"] == 1
         assert epoch_events[0].payload["new_epoch"] == 2
@@ -315,10 +318,7 @@ class TestEpochAndEviction:
         cm.evict_member(b"validator-1")
 
         events = adapter.tick(50, 25000)
-        evicted = [
-            e for e in events
-            if e.event_type == ConsensusEventType.VALIDATOR_EVICTED
-        ]
+        evicted = [e for e in events if e.event_type == ConsensusEventType.VALIDATOR_EVICTED]
         assert len(evicted) == 1
         assert evicted[0].payload["writer_fp"] == b"validator-1"
         assert evicted[0].payload["validator_index"] == 1

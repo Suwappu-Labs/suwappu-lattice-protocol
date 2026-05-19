@@ -10,16 +10,16 @@ import time
 
 import pytest
 
-from src.ltp.commitment import CommitmentNode, CommitmentNetwork
-from src.ltp.network.server import NodeServer
+from src.ltp.commitment import CommitmentNetwork, CommitmentNode
 from src.ltp.network.client import NodeClient
 from src.ltp.network.remote import RemoteNode
+from src.ltp.network.server import NodeServer
 from src.ltp.primitives import canonical_hash
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def node():
@@ -48,6 +48,7 @@ def server_and_client(node):
 # ---------------------------------------------------------------------------
 # Client-Server round-trip tests
 # ---------------------------------------------------------------------------
+
 
 class TestClientServer:
     def test_store_and_fetch(self, server_and_client):
@@ -106,9 +107,14 @@ class TestClientServer:
         client.store_shard("batch", 1, b"one")
         client.store_shard("batch", 2, b"two")
 
-        results = client.fetch_shards_batch([
-            ("batch", 0), ("batch", 1), ("batch", 2), ("batch", 99),
-        ])
+        results = client.fetch_shards_batch(
+            [
+                ("batch", 0),
+                ("batch", 1),
+                ("batch", 2),
+                ("batch", 99),
+            ]
+        )
         assert results[0] == b"zero"
         assert results[1] == b"one"
         assert results[2] == b"two"
@@ -135,6 +141,7 @@ class TestClientServer:
 # ---------------------------------------------------------------------------
 # RemoteNode integration
 # ---------------------------------------------------------------------------
+
 
 class TestRemoteNode:
     def test_remote_node_store_fetch(self, server_and_client):

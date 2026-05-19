@@ -16,26 +16,26 @@ import time
 import pytest
 
 from src.ltp.commitment import (
+    CORRELATION_PENALTY_MAX,
+    CORRELATION_PENALTY_SCALE,
+    EVICTION_COOLDOWN_SECONDS,
+    MIN_STAKE_LTP,
+    REPUTATION_DECAY_FLOOR,
+    REPUTATION_DECAY_RATE,
+    STAKE_LOCKUP_SECONDS,
     AuditResult,
     CommitmentNetwork,
     CommitmentNode,
     StakeEscrow,
-    MIN_STAKE_LTP,
-    STAKE_LOCKUP_SECONDS,
-    EVICTION_COOLDOWN_SECONDS,
-    CORRELATION_PENALTY_MAX,
-    CORRELATION_PENALTY_SCALE,
-    REPUTATION_DECAY_RATE,
-    REPUTATION_DECAY_FLOOR,
 )
 from src.ltp.entity import Entity
 from src.ltp.keypair import KeyPair
 from src.ltp.protocol import LTPProtocol
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def alice() -> KeyPair:
@@ -61,6 +61,7 @@ def network() -> CommitmentNetwork:
 # ---------------------------------------------------------------------------
 # Staking: min-stake enforcement
 # ---------------------------------------------------------------------------
+
 
 class TestStakeMinimum:
     def test_deposit_below_minimum_rejected(self):
@@ -93,6 +94,7 @@ class TestStakeMinimum:
 # ---------------------------------------------------------------------------
 # Staking: lockup period
 # ---------------------------------------------------------------------------
+
 
 class TestStakeLockup:
     def test_lockup_prevents_early_withdrawal(self):
@@ -132,6 +134,7 @@ class TestStakeLockup:
 # ---------------------------------------------------------------------------
 # Escrow: withdrawal race condition fix (CONFIRMED vulnerability)
 # ---------------------------------------------------------------------------
+
 
 class TestWithdrawalRaceCondition:
     """
@@ -208,6 +211,7 @@ class TestWithdrawalRaceCondition:
 # Sybil resistance: re-registration after eviction (CONFIRMED vulnerability)
 # ---------------------------------------------------------------------------
 
+
 class TestSybilResistance:
     """
     Validates fix for: 'register_node() has no cooldown, no rate-limiting,
@@ -237,9 +241,7 @@ class TestSybilResistance:
 
         # After cooldown, re-registration should succeed
         after_cooldown = now + 100 + EVICTION_COOLDOWN_SECONDS + 1
-        new_node = net.register_node(
-            "attacker", "US-East", stake=5_000, now=after_cooldown
-        )
+        new_node = net.register_node("attacker", "US-East", stake=5_000, now=after_cooldown)
         assert new_node.stake == 5_000
 
     def test_eviction_history_persists(self):
@@ -253,9 +255,7 @@ class TestSybilResistance:
 
         # Re-register after cooldown
         after_cooldown = now + 100 + EVICTION_COOLDOWN_SECONDS + 1
-        new_node = net.register_node(
-            "repeat-offender", "US-East", stake=5_000, now=after_cooldown
-        )
+        new_node = net.register_node("repeat-offender", "US-East", stake=5_000, now=after_cooldown)
         # History should carry forward
         assert new_node.eviction_count == 1
         assert len(new_node.offense_history) >= 1
@@ -288,6 +288,7 @@ class TestSybilResistance:
 # ---------------------------------------------------------------------------
 # VDF-randomized audit scheduling (CONFIRMED vulnerability: timing attack)
 # ---------------------------------------------------------------------------
+
 
 class TestVDFAuditScheduling:
     """
@@ -346,6 +347,7 @@ class TestVDFAuditScheduling:
 # ---------------------------------------------------------------------------
 # Correlation penalty escalation
 # ---------------------------------------------------------------------------
+
 
 class TestCorrelationPenalty:
     def test_first_offense_base_penalty(self):
@@ -406,6 +408,7 @@ class TestCorrelationPenalty:
 # Permanent reputation tracking
 # ---------------------------------------------------------------------------
 
+
 class TestReputationTracking:
     def test_clean_node_perfect_reputation(self):
         node = CommitmentNode("clean", "US-East")
@@ -462,6 +465,7 @@ class TestReputationTracking:
 # DA attack profitability check
 # ---------------------------------------------------------------------------
 
+
 class TestDAAttackMitigation:
     """
     Validates that the economic model makes the DA attack unprofitable
@@ -490,9 +494,7 @@ class TestDAAttackMitigation:
         # Multiple audit rounds
         for _ in range(3):
             # Re-populate shards so audit has something to check
-            entity2 = Entity(
-                content=os.urandom(64), shape="x-ltp/test"
-            )
+            entity2 = Entity(content=os.urandom(64), shape="x-ltp/test")
             protocol.commit(entity2, alice, n=8, k=4)
             for key in list(target.shards.keys()):
                 target.remove_shard(key[0], key[1])
@@ -506,6 +508,7 @@ class TestDAAttackMitigation:
 # ---------------------------------------------------------------------------
 # Eviction finalizes slashes
 # ---------------------------------------------------------------------------
+
 
 class TestEvictionSlashFinalization:
     def test_eviction_finalizes_pending_slashes(self):
@@ -536,6 +539,7 @@ class TestEvictionSlashFinalization:
 # Integration: full lifecycle
 # ---------------------------------------------------------------------------
 
+
 class TestSecurityLifecycle:
     def test_full_node_lifecycle(self, alice):
         """
@@ -546,9 +550,13 @@ class TestSecurityLifecycle:
         now = 1_000_000.0
 
         # 1. Register with adequate stake
-        for nid, reg in [("healthy-1", "US-East"), ("healthy-2", "US-West"),
-                         ("healthy-3", "EU-West"), ("healthy-4", "EU-East"),
-                         ("healthy-5", "AP-East")]:
+        for nid, reg in [
+            ("healthy-1", "US-East"),
+            ("healthy-2", "US-West"),
+            ("healthy-3", "EU-West"),
+            ("healthy-4", "EU-East"),
+            ("healthy-5", "AP-East"),
+        ]:
             net.register_node(nid, reg, stake=5_000, now=now)
 
         attacker = net.register_node("attacker", "AP-South", stake=5_000, now=now)
@@ -587,8 +595,6 @@ class TestSecurityLifecycle:
 
         # 8. Re-register after cooldown — history persists
         after_cooldown = now + 200 + EVICTION_COOLDOWN_SECONDS + 1
-        new_node = net.register_node(
-            "attacker", "AP-South", stake=5_000, now=after_cooldown
-        )
+        new_node = net.register_node("attacker", "AP-South", stake=5_000, now=after_cooldown)
         assert new_node.eviction_count == 1
         assert new_node.reputation_score < 1.0

@@ -56,11 +56,13 @@ async def fetch_shards(request: Request) -> JSONResponse:
     shards = {}
 
     for idx in shard_indices:
-        for node_id, node in (nodes.items() if isinstance(nodes, dict) else []):
+        for node_id, node in nodes.items() if isinstance(nodes, dict) else []:
             try:
                 shard_data = node.shards.get(f"{entity_id}:{idx}")
                 if shard_data is not None:
-                    shards[str(idx)] = shard_data.hex() if isinstance(shard_data, bytes) else str(shard_data)
+                    shards[str(idx)] = (
+                        shard_data.hex() if isinstance(shard_data, bytes) else str(shard_data)
+                    )
                     break
             except Exception:
                 continue
@@ -87,10 +89,12 @@ async def query_entity(request: Request, entity_id: str) -> JSONResponse:
     if record is None:
         return JSONResponse(error_response(404, f"Entity {entity_id[:32]}... not found"), 404)
 
-    return JSONResponse({
-        "entity_id": entity_id,
-        "found": True,
-        "sender_id": getattr(record, "sender_id", ""),
-        "shape": getattr(record, "shape", ""),
-        "timestamp": getattr(record, "timestamp", 0),
-    })
+    return JSONResponse(
+        {
+            "entity_id": entity_id,
+            "found": True,
+            "sender_id": getattr(record, "sender_id", ""),
+            "shape": getattr(record, "shape", ""),
+            "timestamp": getattr(record, "timestamp", 0),
+        }
+    )

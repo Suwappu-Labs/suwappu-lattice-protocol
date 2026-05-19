@@ -67,8 +67,10 @@ WEI_PER_LTP = 10**18  # 1 LTP token = 10^18 wei (same convention as ETH)
 # Network phase
 # ---------------------------------------------------------------------------
 
+
 class NetworkPhase(Enum):
     """Which economic phase the network is in, based on current epoch."""
+
     BOOTSTRAP = "bootstrap"
     GROWTH = "growth"
     MATURITY = "maturity"
@@ -78,18 +80,20 @@ class NetworkPhase(Enum):
 # Slashing tiers
 # ---------------------------------------------------------------------------
 
+
 class SlashingTier(Enum):
     """Progressive slashing severity."""
-    WARNING = "warning"         # First offense: 1% slash
-    MINOR = "minor"             # 2nd–3rd offense: 5% slash
-    MAJOR = "major"             # 4th–5th offense: 15% slash
-    CRITICAL = "critical"       # 6+ offenses: 30% slash + eviction
+
+    WARNING = "warning"  # First offense: 1% slash
+    MINOR = "minor"  # 2nd–3rd offense: 5% slash
+    MAJOR = "major"  # 4th–5th offense: 15% slash
+    CRITICAL = "critical"  # 6+ offenses: 30% slash + eviction
 
 
 SLASHING_RATES = {
-    SlashingTier.WARNING: 100,    # basis points (1%)
-    SlashingTier.MINOR: 500,      # 5%
-    SlashingTier.MAJOR: 1500,     # 15%
+    SlashingTier.WARNING: 100,  # basis points (1%)
+    SlashingTier.MINOR: 500,  # 5%
+    SlashingTier.MAJOR: 1500,  # 15%
     SlashingTier.CRITICAL: 3000,  # 30%
 }
 
@@ -114,13 +118,15 @@ def tier_for_offense_count(count: int) -> SlashingTier:
 # Vesting entry
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class VestingEntry:
     """A vesting schedule entry for deferred rewards."""
-    amount: int           # total amount to vest
-    start_epoch: int      # epoch when vesting begins
+
+    amount: int  # total amount to vest
+    start_epoch: int  # epoch when vesting begins
     duration_epochs: int  # number of epochs over which to vest
-    claimed: int = 0      # amount already released
+    claimed: int = 0  # amount already released
 
     @property
     def remaining(self) -> int:
@@ -141,14 +147,16 @@ class VestingEntry:
 # Pending slash (grace period)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PendingSlash:
     """A slash held in escrow during the grace period."""
+
     node_id: str
     amount: int
     tier: SlashingTier
     epoch_created: int
-    grace_epochs: int     # epochs before slash is finalized
+    grace_epochs: int  # epochs before slash is finalized
     reversed: bool = False
 
     @property
@@ -163,75 +171,76 @@ class PendingSlash:
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class EconomicsConfig:
     """Tunable parameters for L1 economics."""
 
     # --- Phase boundaries (epoch numbers) ---
-    bootstrap_end_epoch: int = 4_320     # ~180 days at 1-hour epochs (extended)
-    growth_end_epoch: int = 17_520       # ~2 years at 1-hour epochs
-    epoch_seconds: int = 3_600           # 1 hour per epoch
+    bootstrap_end_epoch: int = 4_320  # ~180 days at 1-hour epochs (extended)
+    growth_end_epoch: int = 17_520  # ~2 years at 1-hour epochs
+    epoch_seconds: int = 3_600  # 1 hour per epoch
 
     # --- Bootstrap subsidy ---
     bootstrap_subsidy_per_epoch: int = 500 * WEI_PER_LTP  # 500 LTP/epoch
-    bootstrap_multiplier_start: float = 3.0                # 3x rewards at genesis
-    bootstrap_multiplier_end: float = 1.0                  # tapers to 1x
+    bootstrap_multiplier_start: float = 3.0  # 3x rewards at genesis
+    bootstrap_multiplier_end: float = 1.0  # tapers to 1x
 
     # --- Growth-phase subsidy (declining, Filecoin-inspired) ---
     growth_subsidy_multiplier_start: float = 1.5  # 1.5x at start of Growth
-    growth_subsidy_multiplier_end: float = 1.0    # tapers to 1x
-    growth_subsidy_duration_epochs: int = 8_760   # first year of Growth
+    growth_subsidy_multiplier_end: float = 1.0  # tapers to 1x
+    growth_subsidy_duration_epochs: int = 8_760  # first year of Growth
 
     # --- Base rewards per epoch ---
-    base_storage_reward_per_shard: int = 10**14   # 0.0001 LTP per shard/epoch
-    base_availability_reward: int = 10**15        # 0.001 LTP per epoch if 100% uptime
-    audit_bonus_multiplier: float = 1.5           # 1.5x for perfect audit score
+    base_storage_reward_per_shard: int = 10**14  # 0.0001 LTP per shard/epoch
+    base_availability_reward: int = 10**15  # 0.001 LTP per epoch if 100% uptime
+    audit_bonus_multiplier: float = 1.5  # 1.5x for perfect audit score
 
     # --- Staking ---
-    min_stake_bootstrap: int = 100 * WEI_PER_LTP     # 100 LTP during bootstrap
-    min_stake_growth: int = 1_000 * WEI_PER_LTP      # 1,000 LTP during growth
-    min_stake_maturity: int = 10_000 * WEI_PER_LTP   # 10,000 LTP at maturity
-    max_stake_cap: int = 1_000_000 * WEI_PER_LTP     # cap to prevent centralization
+    min_stake_bootstrap: int = 100 * WEI_PER_LTP  # 100 LTP during bootstrap
+    min_stake_growth: int = 1_000 * WEI_PER_LTP  # 1,000 LTP during growth
+    min_stake_maturity: int = 10_000 * WEI_PER_LTP  # 10,000 LTP at maturity
+    max_stake_cap: int = 1_000_000 * WEI_PER_LTP  # cap to prevent centralization
 
     # --- Fee model ---
-    base_commit_fee: int = 10**15          # 0.001 LTP per commitment
-    fee_utilization_target: float = 0.5    # target 50% network utilization
-    fee_elasticity: float = 2.0            # fee doubles per 2x over target
-    max_fee_multiplier: float = 10.0       # fee can't exceed 10x base
-    min_fee_multiplier: float = 0.1        # fee floor at 0.1x base
+    base_commit_fee: int = 10**15  # 0.001 LTP per commitment
+    fee_utilization_target: float = 0.5  # target 50% network utilization
+    fee_elasticity: float = 2.0  # fee doubles per 2x over target
+    max_fee_multiplier: float = 10.0  # fee can't exceed 10x base
+    min_fee_multiplier: float = 0.1  # fee floor at 0.1x base
 
     # --- Fee split (basis points, must sum to 10000) ---
-    fee_operator_share_bps: int = 6000     # 60% to node operators
-    fee_burn_share_bps: int = 1500         # 15% burned (deflationary)
-    fee_endowment_share_bps: int = 1000    # 10% to storage endowment (Arweave/Sui-inspired)
-    fee_insurance_share_bps: int = 1500    # 15% to insurance fund
+    fee_operator_share_bps: int = 6000  # 60% to node operators
+    fee_burn_share_bps: int = 1500  # 15% burned (deflationary)
+    fee_endowment_share_bps: int = 1000  # 10% to storage endowment (Arweave/Sui-inspired)
+    fee_insurance_share_bps: int = 1500  # 15% to insurance fund
 
     # --- Reward vesting (Filecoin-inspired) ---
-    vesting_immediate_pct: int = 50        # 50% of rewards paid immediately
-    vesting_duration_epochs: int = 720     # remaining 50% vests over 30 days
+    vesting_immediate_pct: int = 50  # 50% of rewards paid immediately
+    vesting_duration_epochs: int = 720  # remaining 50% vests over 30 days
 
     # --- Slashing ---
-    eviction_offense_threshold: int = 6    # offenses before forced eviction
+    eviction_offense_threshold: int = 6  # offenses before forced eviction
     cooldown_epochs_per_offense: int = 24  # 24 epochs (1 day) penalty cooldown
 
     # --- Correlation penalty (Ethereum-inspired) ---
     # slash_multiplier = min(max_correlation_multiplier,
     #                        1 + correlation_scaling * (concurrent_slashed / total_staked))
-    correlation_scaling: float = 2.0       # how aggressively to scale with correlation
+    correlation_scaling: float = 2.0  # how aggressively to scale with correlation
     max_correlation_multiplier: float = 3.0  # cap at 3x (Ethereum uses 3x)
 
     # --- Offense decay ---
     offense_decay_clean_epochs: int = 720  # 30 days of clean behavior → -1 offense
 
     # --- Slashing grace period ---
-    slash_grace_epochs: int = 168          # 7 days before slash is finalized
+    slash_grace_epochs: int = 168  # 7 days before slash is finalized
 
     # --- Programmable slashing (stake allocation change delay) ---
     allocation_change_delay_epochs: int = 336  # 14 days before allocation changes apply
 
     # --- Capacity scaling ---
-    target_shards_per_node: int = 10_000   # ideal shard density
-    overload_threshold: float = 1.5        # 1.5x target → discourage more shards
+    target_shards_per_node: int = 10_000  # ideal shard density
+    overload_threshold: float = 1.5  # 1.5x target → discourage more shards
 
     def __post_init__(self) -> None:
         total_bps = (
@@ -241,31 +250,31 @@ class EconomicsConfig:
             + self.fee_insurance_share_bps
         )
         if total_bps != 10_000:
-            raise ValueError(
-                f"Fee split must sum to 10000 bps, got {total_bps}"
-            )
+            raise ValueError(f"Fee split must sum to 10000 bps, got {total_bps}")
 
 
 # ---------------------------------------------------------------------------
 # Per-node economic state
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class NodeEconomics:
     """Tracks a node's economic state across epochs."""
+
     node_id: str
     stake: int = 0
     total_rewards_earned: int = 0
     total_fees_earned: int = 0
     total_slashed: int = 0
     shards_stored: int = 0
-    audit_score: int = 100          # 0–100
+    audit_score: int = 100  # 0–100
     offense_count: int = 0
     epochs_active: int = 0
     last_reward_epoch: int = -1
-    cooldown_until_epoch: int = 0   # can't earn rewards until this epoch
+    cooldown_until_epoch: int = 0  # can't earn rewards until this epoch
     evicted: bool = False
-    last_offense_epoch: int = -1    # epoch of most recent offense
+    last_offense_epoch: int = -1  # epoch of most recent offense
     clean_epochs_since_offense: int = 0  # consecutive clean epochs
 
     # Vesting schedule
@@ -305,9 +314,11 @@ class NodeEconomics:
 # Reward breakdown (for transparency / dashboards)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RewardBreakdown:
     """Itemized reward for a single node in a single epoch."""
+
     node_id: str
     epoch: int
     storage_reward: int = 0
@@ -326,9 +337,11 @@ class RewardBreakdown:
 # Epoch snapshot
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class EpochSnapshot:
     """Network-wide economic state at end of an epoch."""
+
     epoch: int
     phase: NetworkPhase
     active_nodes: int
@@ -348,6 +361,7 @@ class EpochSnapshot:
 # ---------------------------------------------------------------------------
 # Economics engine
 # ---------------------------------------------------------------------------
+
 
 class EconomicsEngine:
     """
@@ -806,9 +820,7 @@ class EconomicsEngine:
         for n in active_nodes:
             total_shards += n.shards_stored
             total_staked += n.stake
-            reward = self.compute_node_reward(
-                n, epoch, fee_shares.get(n.node_id, 0)
-            )
+            reward = self.compute_node_reward(n, epoch, fee_shares.get(n.node_id, 0))
             rewards.append(reward)
             total_distributed += reward.total
 
@@ -848,9 +860,7 @@ class EconomicsEngine:
 
     def is_node_overloaded(self, node: NodeEconomics) -> bool:
         """Whether a node has too many shards relative to target density."""
-        threshold = int(
-            self.config.target_shards_per_node * self.config.overload_threshold
-        )
+        threshold = int(self.config.target_shards_per_node * self.config.overload_threshold)
         return node.shards_stored > threshold
 
     def recommended_node_count(self, total_shards: int) -> int:

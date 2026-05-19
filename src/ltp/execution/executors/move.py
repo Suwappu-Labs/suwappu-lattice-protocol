@@ -8,7 +8,7 @@ PyO3MoveBackend implements the same interface without gRPC.
 
 from __future__ import annotations
 
-from typing import Protocol, Optional
+from typing import Optional, Protocol
 
 from ..model import VM_TAG_MOVE
 from ..types import StateQuery, StateResult, TxResult
@@ -16,6 +16,7 @@ from ..types import StateQuery, StateResult, TxResult
 
 class MoveBackend(Protocol):
     """Abstract backend for Move execution — gRPC or FFI."""
+
     def execute_transaction(self, tx_bytes: bytes) -> tuple[bool, bytes]: ...
     def query_state(self, key: bytes) -> Optional[bytes]: ...
     def get_state_root(self) -> bytes: ...

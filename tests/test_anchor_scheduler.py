@@ -13,13 +13,13 @@ import pytest
 
 from src.ltp.commitment import CommitmentLog, CommitmentNetwork, CommitmentRecord
 from src.ltp.network.safe_network import SafeCommitmentNetwork
-from src.ltp.node.config import NodeConfig
 from src.ltp.node.anchor_status import AnchorStatus, AnchorStatusTracker
-
+from src.ltp.node.config import NodeConfig
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_record(entity_id: str, alice) -> CommitmentRecord:
     """Create a minimal signed CommitmentRecord."""
@@ -42,6 +42,7 @@ def _make_record(entity_id: str, alice) -> CommitmentRecord:
 # ===================================================================
 # CommitmentLog.records_since()
 # ===================================================================
+
 
 class TestRecordsSince:
     def test_records_since_empty_log(self):
@@ -98,6 +99,7 @@ class TestRecordsSince:
 # ===================================================================
 # NodeConfig anchor fields
 # ===================================================================
+
 
 class TestAnchorConfig:
     def test_anchor_config_defaults(self):
@@ -195,6 +197,7 @@ batch_size = 10
 # ===================================================================
 # AnchorStatusTracker
 # ===================================================================
+
 
 class TestAnchorStatusTracker:
     def test_status_lifecycle(self):
@@ -374,8 +377,8 @@ class TestAnchorStatusTracker:
 
 import time as _time
 
-from src.ltp.node.anchor_scheduler import AnchorScheduler, AnchorTickResult
 from src.ltp.domain import signer_fingerprint
+from src.ltp.node.anchor_scheduler import AnchorScheduler, AnchorTickResult
 from src.ltp.primitives import canonical_hash_bytes
 
 
@@ -450,6 +453,7 @@ def _make_scheduler(alice, *, batch_size=50, max_wait=60.0, client=None, n_recor
 # Polling tests
 # -------------------------------------------------------------------
 
+
 class TestAnchorSchedulerPolling:
     def test_tick_empty_log(self, alice):
         scheduler, *_ = _make_scheduler(alice)
@@ -486,9 +490,7 @@ class TestAnchorSchedulerPolling:
 
     def test_multi_tick_batch_accumulation(self, alice):
         """Batch buffer persists across ticks until threshold is reached."""
-        scheduler, safe, tracker, mock_client, inner = _make_scheduler(
-            alice, batch_size=3
-        )
+        scheduler, safe, tracker, mock_client, inner = _make_scheduler(alice, batch_size=3)
         # Tick 1: add 2 records — below batch_size, no submission
         inner.log.append(_make_anchoring_record("acc-0", alice))
         inner.log.append(_make_anchoring_record("acc-1", alice))
@@ -548,11 +550,10 @@ class TestAnchorSchedulerPolling:
 # Batch submission tests
 # -------------------------------------------------------------------
 
+
 class TestAnchorSchedulerSubmission:
     def test_submit_on_batch_size(self, alice):
-        scheduler, safe, tracker, mock_client, _ = _make_scheduler(
-            alice, batch_size=3, n_records=3
-        )
+        scheduler, safe, tracker, mock_client, _ = _make_scheduler(alice, batch_size=3, n_records=3)
         result = scheduler.tick(1)
         assert result.batch_submitted is True
         assert result.batch_size == 3
@@ -570,9 +571,7 @@ class TestAnchorSchedulerSubmission:
         assert result.batch_size == 1
 
     def test_all_marked_submitted(self, alice):
-        scheduler, safe, tracker, mock_client, _ = _make_scheduler(
-            alice, batch_size=3, n_records=3
-        )
+        scheduler, safe, tracker, mock_client, _ = _make_scheduler(alice, batch_size=3, n_records=3)
         scheduler.tick(1)
         for i in range(3):
             rec = tracker.get(f"ent-{i}")
@@ -608,6 +607,7 @@ class TestAnchorSchedulerSubmission:
 # Failure tests
 # -------------------------------------------------------------------
 
+
 class TestAnchorSchedulerFailure:
     def test_failure_marks_all_failed(self, alice):
         client = MockAnchorClient(fail_on_call=1)
@@ -636,9 +636,7 @@ class TestAnchorSchedulerFailure:
 
     def test_failure_clears_batch(self, alice):
         client = MockAnchorClient(fail_on_call=1)
-        scheduler, *_ = _make_scheduler(
-            alice, batch_size=3, n_records=3, client=client
-        )
+        scheduler, *_ = _make_scheduler(alice, batch_size=3, n_records=3, client=client)
         scheduler.tick(1)
         assert scheduler.pending_batch_size == 0
 
@@ -647,28 +645,23 @@ class TestAnchorSchedulerFailure:
 # Submission building tests
 # -------------------------------------------------------------------
 
+
 class TestAnchorSubmissionBuilding:
     def test_anchor_digest_is_32_bytes(self, alice):
-        scheduler, safe, tracker, mock_client, _ = _make_scheduler(
-            alice, batch_size=1, n_records=1
-        )
+        scheduler, safe, tracker, mock_client, _ = _make_scheduler(alice, batch_size=1, n_records=1)
         scheduler.tick(1)
         sub = mock_client.submissions[0]
         assert len(sub.anchor_digest) == 32
 
     def test_entity_id_hash_is_canonical(self, alice):
-        scheduler, safe, tracker, mock_client, _ = _make_scheduler(
-            alice, batch_size=1, n_records=1
-        )
+        scheduler, safe, tracker, mock_client, _ = _make_scheduler(alice, batch_size=1, n_records=1)
         scheduler.tick(1)
         sub = mock_client.submissions[0]
         expected = canonical_hash_bytes(b"ent-0")
         assert sub.entity_id_hash == expected
 
     def test_signer_vk_hash_from_record(self, alice):
-        scheduler, safe, tracker, mock_client, _ = _make_scheduler(
-            alice, batch_size=1, n_records=1
-        )
+        scheduler, safe, tracker, mock_client, _ = _make_scheduler(alice, batch_size=1, n_records=1)
         scheduler.tick(1)
         sub = mock_client.submissions[0]
         expected = signer_fingerprint(alice.vk)
@@ -717,9 +710,7 @@ class TestAnchorSubmissionBuilding:
 
     def test_merkle_root_extracted_correctly(self, alice):
         """merkle_root is the raw 32 bytes from the sha3-256:hex shard_map_root."""
-        scheduler, safe, tracker, mock_client, _ = _make_scheduler(
-            alice, batch_size=1, n_records=1
-        )
+        scheduler, safe, tracker, mock_client, _ = _make_scheduler(alice, batch_size=1, n_records=1)
         scheduler.tick(1)
         sub = mock_client.submissions[0]
         # _make_anchoring_record uses "sha3-256:" + "ab" * 32
@@ -728,36 +719,28 @@ class TestAnchorSubmissionBuilding:
 
     def test_policy_hash_is_zero_sentinel(self, alice):
         """policy_hash must be 32 zero bytes (no SignerPolicy in commit path)."""
-        scheduler, safe, tracker, mock_client, _ = _make_scheduler(
-            alice, batch_size=1, n_records=1
-        )
+        scheduler, safe, tracker, mock_client, _ = _make_scheduler(alice, batch_size=1, n_records=1)
         scheduler.tick(1)
         sub = mock_client.submissions[0]
         assert sub.policy_hash == b"\x00" * 32
 
     def test_target_chain_id_from_config(self, alice):
         """target_chain_id must match config.anchor_chain_id."""
-        scheduler, safe, tracker, mock_client, _ = _make_scheduler(
-            alice, batch_size=1, n_records=1
-        )
+        scheduler, safe, tracker, mock_client, _ = _make_scheduler(alice, batch_size=1, n_records=1)
         scheduler.tick(1)
         sub = mock_client.submissions[0]
         assert sub.target_chain_id == 103115120
 
     def test_receipt_type_is_commit(self, alice):
         """receipt_type must be 'COMMIT' for commitment-path anchoring."""
-        scheduler, safe, tracker, mock_client, _ = _make_scheduler(
-            alice, batch_size=1, n_records=1
-        )
+        scheduler, safe, tracker, mock_client, _ = _make_scheduler(alice, batch_size=1, n_records=1)
         scheduler.tick(1)
         sub = mock_client.submissions[0]
         assert sub.receipt_type == "COMMIT"
 
     def test_valid_until_is_future(self, alice):
         """valid_until must be approximately now + 3600."""
-        scheduler, safe, tracker, mock_client, _ = _make_scheduler(
-            alice, batch_size=1, n_records=1
-        )
+        scheduler, safe, tracker, mock_client, _ = _make_scheduler(alice, batch_size=1, n_records=1)
         before = int(_time.time())
         scheduler.tick(1)
         after = int(_time.time())
@@ -766,9 +749,7 @@ class TestAnchorSubmissionBuilding:
 
     def test_submission_to_calldata_succeeds(self, alice):
         """All generated submissions must produce valid ABI-encoded calldata."""
-        scheduler, safe, tracker, mock_client, _ = _make_scheduler(
-            alice, batch_size=3, n_records=3
-        )
+        scheduler, safe, tracker, mock_client, _ = _make_scheduler(alice, batch_size=3, n_records=3)
         scheduler.tick(1)
         for sub in mock_client.submissions:
             cd = sub.to_calldata()
@@ -779,6 +760,7 @@ class TestAnchorSubmissionBuilding:
 # -------------------------------------------------------------------
 # Daemon thread tests
 # -------------------------------------------------------------------
+
 
 class TestAnchorSchedulerThread:
     def test_start_stop(self, alice):
@@ -811,6 +793,7 @@ class TestAnchorSchedulerThread:
 # -------------------------------------------------------------------
 # AnchorTickResult dataclass
 # -------------------------------------------------------------------
+
 
 class TestAnchorTickResult:
     def test_defaults(self):

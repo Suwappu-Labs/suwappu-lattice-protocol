@@ -10,18 +10,17 @@ from __future__ import annotations
 import pytest
 
 from src.ltp import KeyPair
+from src.ltp.enforcement import (
+    DecentralizationMetrics,
+    GovernanceTransition,
+)
 from src.ltp.governance import (
     TransitionVote,
     TransitionVoteManager,
     create_transition_vote,
     verify_transition_vote,
 )
-from src.ltp.enforcement import (
-    DecentralizationMetrics,
-    GovernanceTransition,
-)
 from src.ltp.primitives import canonical_hash
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -59,7 +58,6 @@ def op_e() -> KeyPair:
 
 
 class TestTransitionVote:
-
     def test_create_vote(self, op_a):
         vote = create_transition_vote(op_a, "bootstrap", "growth")
         assert vote.from_phase == "bootstrap"
@@ -93,7 +91,6 @@ class TestTransitionVote:
 
 
 class TestTransitionVoteManager:
-
     def test_register_and_cast(self, op_a):
         mgr = TransitionVoteManager()
         mgr.register_operator("op-a", canonical_hash(op_a.vk))
@@ -109,7 +106,9 @@ class TestTransitionVoteManager:
         mgr.register_operator("op-b", canonical_hash(op_b.vk))
 
         mgr.cast_vote("bootstrap->growth", create_transition_vote(op_a, "bootstrap", "growth"))
-        tally = mgr.cast_vote("bootstrap->growth", create_transition_vote(op_b, "bootstrap", "growth"))
+        tally = mgr.cast_vote(
+            "bootstrap->growth", create_transition_vote(op_b, "bootstrap", "growth")
+        )
 
         assert tally["votes"] == 2
         assert tally["total_operators"] == 2
@@ -151,7 +150,6 @@ class TestTransitionVoteManager:
 
 
 class TestSupermajority:
-
     def test_2_of_3_passes(self, op_a, op_b, op_c):
         """2/3 = 66.7% — meets >=2/3 threshold."""
         mgr = TransitionVoteManager(required_ratio=2 / 3)
@@ -204,7 +202,6 @@ class TestSupermajority:
 
 
 class TestExecuteIfReady:
-
     def _make_metrics(self, operators: int = 10, hhi: float = 1000.0, gini: float = 0.3):
         return DecentralizationMetrics(
             active_operators=operators,
@@ -273,7 +270,6 @@ class TestExecuteIfReady:
 
 
 class TestAuditFixes:
-
     def test_execute_distinguishes_no_supermajority_from_metrics_fail(self, op_a, op_b, op_c):
         """None = no supermajority, False = metrics fail, True = executed."""
         mgr = TransitionVoteManager(required_ratio=2 / 3)
@@ -283,8 +279,11 @@ class TestAuditFixes:
 
         gt = GovernanceTransition()
         metrics = DecentralizationMetrics(
-            active_operators=10, hhi=1000.0, gini_coefficient=0.3,
-            governance_participation=0.2, foundation_veto_active=True,
+            active_operators=10,
+            hhi=1000.0,
+            gini_coefficient=0.3,
+            governance_participation=0.2,
+            foundation_veto_active=True,
         )
 
         # No votes yet → None
@@ -315,8 +314,11 @@ class TestAuditFixes:
 
         gt = GovernanceTransition()
         metrics = DecentralizationMetrics(
-            active_operators=10, hhi=1000.0, gini_coefficient=0.3,
-            governance_participation=0.2, foundation_veto_active=True,
+            active_operators=10,
+            hhi=1000.0,
+            gini_coefficient=0.3,
+            governance_participation=0.2,
+            foundation_veto_active=True,
         )
         with pytest.raises(ValueError, match="Invalid transition_key format"):
             mgr.execute_if_ready("bad_key", gt, metrics)

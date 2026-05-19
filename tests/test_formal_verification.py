@@ -16,13 +16,12 @@ Cross-implementation parity:
 import time
 
 import pytest
-from hypothesis import given, settings, assume
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
-from src.ltp.anchor.state import EntityState, VALID_TRANSITIONS, validate_transition
-from src.ltp.sequencing import SequenceTracker
+from src.ltp.anchor.state import VALID_TRANSITIONS, EntityState, validate_transition
 from src.ltp.keypair import KeyPair
-
+from src.ltp.sequencing import SequenceTracker
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -83,10 +82,7 @@ class TestExhaustiveStateMachine:
     @pytest.mark.parametrize(
         "from_state,to_state",
         [(f, t) for f in ALL_STATES for t in ALL_STATES],
-        ids=[
-            f"{f.name}({f.value})->{t.name}({t.value})"
-            for f in ALL_STATES for t in ALL_STATES
-        ],
+        ids=[f"{f.name}({f.value})->{t.name}({t.value})" for f in ALL_STATES for t in ALL_STATES],
     )
     def test_all_36_pairs(self, from_state, to_state):
         """Every pair produces the correct accept/reject decision."""
@@ -130,10 +126,7 @@ class TestStateMachineSafety:
     def test_terminal_states_have_no_outgoing(self):
         """DELETED has no valid outgoing transitions."""
         for terminal in TERMINAL_STATES:
-            outgoing = [
-                t for t in ALL_STATES
-                if (terminal, t) in VALID_TRANSITIONS
-            ]
+            outgoing = [t for t in ALL_STATES if (terminal, t) in VALID_TRANSITIONS]
             assert outgoing == [], (
                 f"Terminal state {terminal.name} has outgoing transitions to: "
                 f"{[t.name for t in outgoing]}"
@@ -143,10 +136,7 @@ class TestStateMachineSafety:
         """UNKNOWN is the only state with no incoming valid transitions."""
         states_with_no_incoming = []
         for state in ALL_STATES:
-            incoming = [
-                f for f in ALL_STATES
-                if (f, state) in VALID_TRANSITIONS
-            ]
+            incoming = [f for f in ALL_STATES if (f, state) in VALID_TRANSITIONS]
             if not incoming:
                 states_with_no_incoming.append(state)
         assert states_with_no_incoming == [ENTRY_STATE]
@@ -163,9 +153,7 @@ class TestStateMachineSafety:
                     reachable.add(target)
                     frontier.add(target)
 
-        assert reachable == set(ALL_STATES), (
-            f"Unreachable states: {set(ALL_STATES) - reachable}"
-        )
+        assert reachable == set(ALL_STATES), f"Unreachable states: {set(ALL_STATES) - reachable}"
 
     def test_happy_path_reaches_materialized(self):
         """UNKNOWN → COMMITTED → ANCHORED → MATERIALIZED is valid."""
@@ -177,7 +165,7 @@ class TestStateMachineSafety:
         ]
         for i in range(len(path) - 1):
             ok, reason = validate_transition(path[i], path[i + 1])
-            assert ok, f"Step {path[i].name} → {path[i+1].name} failed: {reason}"
+            assert ok, f"Step {path[i].name} → {path[i + 1].name} failed: {reason}"
 
     def test_no_backward_on_happy_path(self):
         """Cannot go backward: MATERIALIZED ↛ ANCHORED ↛ COMMITTED ↛ UNKNOWN."""
@@ -248,9 +236,7 @@ class TestCrossImplementationParity:
 
     def test_only_one_divergence(self):
         """Python and Solidity differ on exactly ONE transition: UNKNOWN → ANCHORED."""
-        divergences = [
-            (f, t) for f, t, py, sol in self.PARITY_TABLE if py != sol
-        ]
+        divergences = [(f, t) for f, t, py, sol in self.PARITY_TABLE if py != sol]
         assert len(divergences) == 1
         assert divergences[0] == (EntityState.UNKNOWN, EntityState.ANCHORED)
 
@@ -302,8 +288,10 @@ sequence_strategy = st.integers(min_value=0, max_value=2**63)
 
 # Strategy: generate timestamps
 timestamp_strategy = st.floats(
-    min_value=0.0, max_value=time.time() + 86400 * 365 * 10,
-    allow_nan=False, allow_infinity=False,
+    min_value=0.0,
+    max_value=time.time() + 86400 * 365 * 10,
+    allow_nan=False,
+    allow_infinity=False,
 )
 
 
@@ -373,16 +361,14 @@ class TestSequenceTrackerProperties:
         accepted = []
         for seq in sequences:
             valid_until = time.time() + 3600
-            ok, _ = tracker.validate_and_advance(
-                kp.vk, seq, "test-chain", valid_until
-            )
+            ok, _ = tracker.validate_and_advance(kp.vk, seq, "test-chain", valid_until)
             if ok:
                 accepted.append(seq)
 
         # Accepted sequences must be strictly increasing
         for i in range(1, len(accepted)):
             assert accepted[i] > accepted[i - 1], (
-                f"Monotonicity violated: {accepted[i]} <= {accepted[i-1]}"
+                f"Monotonicity violated: {accepted[i]} <= {accepted[i - 1]}"
             )
 
     @given(
@@ -416,8 +402,10 @@ class TestSequenceTrackerProperties:
 
     @given(
         offset=st.floats(
-            min_value=1.0, max_value=86400.0,
-            allow_nan=False, allow_infinity=False,
+            min_value=1.0,
+            max_value=86400.0,
+            allow_nan=False,
+            allow_infinity=False,
         ),
     )
     def test_temporal_expiry(self, offset):
@@ -475,9 +463,7 @@ class TestSequenceTrackerProperties:
         tracker_seq = SequenceTracker(chain_id="chain-a")
         seq_results = []
         for seq, chain in items:
-            seq_results.append(
-                tracker_seq.validate_and_advance(kp.vk, seq, chain, valid_until)
-            )
+            seq_results.append(tracker_seq.validate_and_advance(kp.vk, seq, chain, valid_until))
 
         # Batch
         tracker_batch = SequenceTracker(chain_id="chain-a")
@@ -501,10 +487,7 @@ class TestPathEnumeration:
             visited = set()
 
         visited = visited | {start}
-        outgoing = [
-            t for t in ALL_STATES
-            if (start, t) in VALID_TRANSITIONS and t not in visited
-        ]
+        outgoing = [t for t in ALL_STATES if (start, t) in VALID_TRANSITIONS and t not in visited]
 
         if not outgoing:
             return [[start]]
@@ -528,8 +511,7 @@ class TestPathEnumeration:
         for path in paths:
             end = path[-1]
             remaining = [
-                t for t in ALL_STATES
-                if (end, t) in VALID_TRANSITIONS and t not in set(path)
+                t for t in ALL_STATES if (end, t) in VALID_TRANSITIONS and t not in set(path)
             ]
             assert remaining == [] or end == EntityState.DELETED
 
@@ -537,10 +519,7 @@ class TestPathEnumeration:
         """Shortest valid path to MATERIALIZED is exactly 3 steps."""
         paths = self._find_all_paths(EntityState.UNKNOWN)
         mat_paths = [p for p in paths if EntityState.MATERIALIZED in p]
-        shortest = min(
-            len(p[:p.index(EntityState.MATERIALIZED) + 1])
-            for p in mat_paths
-        )
+        shortest = min(len(p[: p.index(EntityState.MATERIALIZED) + 1]) for p in mat_paths)
         assert shortest == 4  # UNKNOWN, COMMITTED, ANCHORED, MATERIALIZED
 
     def test_all_terminal_paths_end_at_deleted(self):
@@ -564,10 +543,7 @@ class TestPathEnumeration:
         """Dispute can be reached in 2-4 steps from UNKNOWN."""
         paths = self._find_all_paths(EntityState.UNKNOWN)
         dispute_paths = [p for p in paths if EntityState.DISPUTED in p]
-        dispute_lengths = set(
-            len(p[:p.index(EntityState.DISPUTED) + 1])
-            for p in dispute_paths
-        )
+        dispute_lengths = set(len(p[: p.index(EntityState.DISPUTED) + 1]) for p in dispute_paths)
         # UNKNOWN→COMMITTED→DISPUTED = 3
         # UNKNOWN→COMMITTED→ANCHORED→DISPUTED = 4
         # UNKNOWN→COMMITTED→ANCHORED→MATERIALIZED→DISPUTED = 5

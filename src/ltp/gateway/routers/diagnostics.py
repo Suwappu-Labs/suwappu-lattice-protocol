@@ -23,6 +23,7 @@ router = APIRouter(prefix="/node", tags=["diagnostics"])
 # Peers
 # ---------------------------------------------------------------------------
 
+
 @router.get("/peers")
 async def list_peers(request: Request) -> JSONResponse:
     pm = request.app.state.peer_manager
@@ -31,10 +32,12 @@ async def list_peers(request: Request) -> JSONResponse:
 
     public = request.app.state.public_mode
     connected = pm.get_connected_peers()
-    return JSONResponse({
-        "count": len(connected),
-        "peers": [peer_to_dict(p, public) for p in connected],
-    })
+    return JSONResponse(
+        {
+            "count": len(connected),
+            "peers": [peer_to_dict(p, public) for p in connected],
+        }
+    )
 
 
 @router.get("/peers/{node_id}")
@@ -54,6 +57,7 @@ async def get_peer(request: Request, node_id: str) -> JSONResponse:
 # Transfers
 # ---------------------------------------------------------------------------
 
+
 @router.get("/transfers")
 async def list_transfers(
     request: Request,
@@ -65,21 +69,22 @@ async def list_transfers(
 
     if state:
         from src.ltp.protocol import TransferState
+
         try:
             filter_state = TransferState[state.upper()]
         except KeyError:
             valid = [s.name for s in TransferState]
-            return JSONResponse(
-                error_response(400, f"Invalid state: {state}. Valid: {valid}"), 400
-            )
+            return JSONResponse(error_response(400, f"Invalid state: {state}. Valid: {valid}"), 400)
         sessions = protocol.list_sessions(state=filter_state)
     else:
         sessions = protocol.list_sessions()
 
-    return JSONResponse({
-        "count": len(sessions),
-        "sessions": [session_to_dict(s) for s in sessions],
-    })
+    return JSONResponse(
+        {
+            "count": len(sessions),
+            "sessions": [session_to_dict(s) for s in sessions],
+        }
+    )
 
 
 @router.get("/transfers/{entity_id}")
@@ -99,21 +104,25 @@ async def get_transfer(request: Request, entity_id: str) -> JSONResponse:
 # Audit
 # ---------------------------------------------------------------------------
 
+
 @router.get("/audit")
 async def audit_status(request: Request) -> JSONResponse:
     scheduler = request.app.state.audit_scheduler
     if scheduler is None:
         return JSONResponse({"running": False, "epoch": 0})
 
-    return JSONResponse({
-        "running": getattr(scheduler, "running", False),
-        "epoch": getattr(scheduler, "epoch", 0),
-    })
+    return JSONResponse(
+        {
+            "running": getattr(scheduler, "running", False),
+            "epoch": getattr(scheduler, "epoch", 0),
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
 # Network
 # ---------------------------------------------------------------------------
+
 
 @router.get("/network")
 async def network_summary(request: Request) -> JSONResponse:
@@ -122,10 +131,12 @@ async def network_summary(request: Request) -> JSONResponse:
         return JSONResponse(error_response(503, "commitment network not available"), 503)
 
     nodes = cn.nodes if hasattr(cn, "nodes") else {}
-    return JSONResponse({
-        "node_count": len(nodes),
-        "nodes": list(nodes.keys()) if isinstance(nodes, dict) else [str(n) for n in nodes],
-    })
+    return JSONResponse(
+        {
+            "node_count": len(nodes),
+            "nodes": list(nodes.keys()) if isinstance(nodes, dict) else [str(n) for n in nodes],
+        }
+    )
 
 
 @router.get("/network/nodes/{node_id}")
@@ -167,24 +178,27 @@ async def get_endowment(
     balance = getattr(inner, "_endowment_balance", 0.0)
     history = getattr(inner, "_burn_history", [])
 
-    return JSONResponse({
-        "balance": balance,
-        "burn_count": len(history),
-        "burns": [
-            {
-                "timestamp": b.get("timestamp", 0),
-                "amount": b.get("amount", 0),
-                "entity_id": b.get("entity_id", ""),
-                "reason": b.get("reason", ""),
-            }
-            for b in history[-limit:]
-        ],
-    })
+    return JSONResponse(
+        {
+            "balance": balance,
+            "burn_count": len(history),
+            "burns": [
+                {
+                    "timestamp": b.get("timestamp", 0),
+                    "amount": b.get("amount", 0),
+                    "entity_id": b.get("entity_id", ""),
+                    "reason": b.get("reason", ""),
+                }
+                for b in history[-limit:]
+            ],
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
 # Storage
 # ---------------------------------------------------------------------------
+
 
 @router.get("/storage")
 async def storage_metrics(request: Request) -> JSONResponse:
@@ -205,6 +219,7 @@ async def storage_metrics(request: Request) -> JSONResponse:
 # Log
 # ---------------------------------------------------------------------------
 
+
 @router.get("/log")
 async def log_summary(request: Request) -> JSONResponse:
     log = request.app.state.commitment_log
@@ -216,8 +231,10 @@ async def log_summary(request: Request) -> JSONResponse:
     if sth and sth.timestamp:
         sth_age = round(_time.time() - sth.timestamp, 3)
 
-    return JSONResponse({
-        "length": log.length,
-        "sth_age_seconds": sth_age,
-        "has_sth": sth is not None,
-    })
+    return JSONResponse(
+        {
+            "length": log.length,
+            "sth_age_seconds": sth_age,
+            "has_sth": sth is not None,
+        }
+    )

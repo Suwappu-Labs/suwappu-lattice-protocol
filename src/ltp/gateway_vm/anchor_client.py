@@ -72,9 +72,7 @@ class CircuitBreaker:
         """Check if the call is allowed. Raises CircuitOpenError if not."""
         state = self.state
         if state == self.OPEN:
-            raise CircuitOpenError(
-                f"circuit open, cooldown {self._cooldown}s"
-            )
+            raise CircuitOpenError(f"circuit open, cooldown {self._cooldown}s")
 
     def record_success(self) -> None:
         with self._lock:
@@ -214,9 +212,7 @@ class DevnetAnchorClient:
         return self.submit_attestation
 
 
-def _attestation_to_submission(
-    attestation: GatewayAttestation, sequence: int
-) -> AnchorSubmission:
+def _attestation_to_submission(attestation: GatewayAttestation, sequence: int) -> AnchorSubmission:
     """Map gateway attestation fields to AnchorSubmission fields."""
     digest = attestation.digest
     # Ensure exactly 32 bytes — truncate or pad

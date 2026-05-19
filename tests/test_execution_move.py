@@ -1,11 +1,13 @@
 """Tests for MoveExecutor — gRPC client to Mysticeti sidecar."""
 
 import pytest
-from src.ltp.execution.types import TxResult, StateQuery, StateResult
+
+from src.ltp.execution.types import StateQuery, StateResult, TxResult
 
 
 class FakeMoveBackend:
     """Simulates the Mysticeti sidecar's gRPC responses."""
+
     def __init__(self):
         self._state = {}
         self._state_root = b"\x00" * 32
@@ -14,6 +16,7 @@ class FakeMoveBackend:
     def execute_transaction(self, tx_bytes: bytes) -> tuple[bool, bytes]:
         """Returns (success, new_state_root)."""
         from src.ltp.primitives import canonical_hash_bytes
+
         self._tx_count += 1
         self._state_root = canonical_hash_bytes(
             self._state_root + tx_bytes + self._tx_count.to_bytes(8, "big")
@@ -30,7 +33,7 @@ class FakeMoveBackend:
 class TestMoveExecutor:
     def test_satisfies_execution_model(self):
         from src.ltp.execution.executors.move import MoveExecutor
-        from src.ltp.execution.model import ExecutionModel, VM_TAG_MOVE
+        from src.ltp.execution.model import VM_TAG_MOVE, ExecutionModel
 
         backend = FakeMoveBackend()
         executor = MoveExecutor(backend=backend)
@@ -41,6 +44,7 @@ class TestMoveExecutor:
 
     def test_execute_updates_state_root(self):
         from src.ltp.execution.executors.move import MoveExecutor
+
         backend = FakeMoveBackend()
         executor = MoveExecutor(backend=backend)
 
@@ -53,26 +57,33 @@ class TestMoveExecutor:
 
     def test_state_root_32_bytes(self):
         from src.ltp.execution.executors.move import MoveExecutor
+
         backend = FakeMoveBackend()
         executor = MoveExecutor(backend=backend)
         assert len(executor.state_root()) == 32
 
     def test_query_state_found(self):
         from src.ltp.execution.executors.move import MoveExecutor
+
         backend = FakeMoveBackend()
         backend._state[b"\x01" * 32] = b"object_data"
         executor = MoveExecutor(backend=backend)
 
-        result = executor.query_state(StateQuery(target_vm=0x10, query_type="object", key=b"\x01" * 32))
+        result = executor.query_state(
+            StateQuery(target_vm=0x10, query_type="object", key=b"\x01" * 32)
+        )
         assert result.found is True
         assert result.data == b"object_data"
 
     def test_query_state_not_found(self):
         from src.ltp.execution.executors.move import MoveExecutor
+
         backend = FakeMoveBackend()
         executor = MoveExecutor(backend=backend)
 
-        result = executor.query_state(StateQuery(target_vm=0x10, query_type="object", key=b"\x02" * 32))
+        result = executor.query_state(
+            StateQuery(target_vm=0x10, query_type="object", key=b"\x02" * 32)
+        )
         assert result.found is False
 
     def test_backend_failure_returns_failed_result(self):
@@ -81,8 +92,10 @@ class TestMoveExecutor:
         class FailingBackend:
             def execute_transaction(self, tx_bytes):
                 raise ConnectionError("sidecar down")
+
             def query_state(self, key):
                 return None
+
             def get_state_root(self):
                 raise ConnectionError("sidecar down")
 

@@ -9,7 +9,7 @@ against the configured policy.
 from __future__ import annotations
 
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import grpc
 
@@ -51,7 +51,8 @@ class NetworkPolicyInterceptor(grpc.ServerInterceptor):
         if not self._registry.check_access(self._service_id, caller_id):
             logger.warning(
                 "NetworkPolicy: denied %r access to %s",
-                caller_id, self._service_id,
+                caller_id,
+                self._service_id,
             )
             # Return a handler that aborts the RPC
             return _make_denied_handler()
@@ -76,5 +77,7 @@ def _make_denied_handler():
     denial, we return a handler wrapper that the framework can call.
     """
     return grpc.unary_unary_rpc_method_handler(
-        lambda req, ctx: ctx.abort(grpc.StatusCode.PERMISSION_DENIED, "Access denied by network policy")
+        lambda req, ctx: ctx.abort(
+            grpc.StatusCode.PERMISSION_DENIED, "Access denied by network policy"
+        )
     )

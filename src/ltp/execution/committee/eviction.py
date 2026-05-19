@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Optional
 
+from ..writer import WriterState
+from .policy import CommitteePolicy, EvictionMode, FloorMode
+from .standby import StandbySelector
 from .types import (
     CommitteeEvent,
     CommitteeMember,
@@ -12,9 +15,6 @@ from .types import (
     EvictionEvent,
     EvictionReason,
 )
-from .policy import CommitteePolicy, EvictionMode, FloorMode
-from .standby import StandbySelector
-from ..writer import WriterState
 
 __all__ = ["EvictionHandler"]
 
@@ -22,9 +22,9 @@ _SECURITY_STATES = frozenset({WriterState.REVOKED})
 _OPERATIONAL_STATES = frozenset({WriterState.SUSPENDED, WriterState.EXPIRED})
 
 _STATE_TO_REASON: dict[WriterState, EvictionReason] = {
-    WriterState.REVOKED:   EvictionReason.REVOKED,
+    WriterState.REVOKED: EvictionReason.REVOKED,
     WriterState.SUSPENDED: EvictionReason.SUSPENDED,
-    WriterState.EXPIRED:   EvictionReason.EXPIRED,
+    WriterState.EXPIRED: EvictionReason.EXPIRED,
 }
 
 

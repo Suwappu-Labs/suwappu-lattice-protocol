@@ -37,12 +37,18 @@ def test_attestation_digest_changes_when_target_chain_mutates():
 def test_attestation_digest_changes_when_source_chain_mutates():
     """source_chain is also bound — defense in depth."""
     a = AttestationPayload(
-        source_chain=1, target_chain=2, source_height=100,
-        state_root=b"\x22" * 32, timestamp_round=50,
+        source_chain=1,
+        target_chain=2,
+        source_height=100,
+        state_root=b"\x22" * 32,
+        timestamp_round=50,
     )
     b = AttestationPayload(
-        source_chain=99, target_chain=2, source_height=100,
-        state_root=b"\x22" * 32, timestamp_round=50,
+        source_chain=99,
+        target_chain=2,
+        source_height=100,
+        state_root=b"\x22" * 32,
+        timestamp_round=50,
     )
     assert a.canonical_digest() != b.canonical_digest()
 
@@ -80,7 +86,11 @@ def test_state_anchor_height_bound():
     against the same root at different heights)."""
     a = _state_anchor(chain_id=84532)
     b = StateAnchor(
-        chain_id=84532, height=501, state_root=b"\x33" * 32,
-        parent=b"\x00" * 32, mac=b"\xaa" * 32, auth_scheme=AuthScheme.BLAKE3_MAC,
+        chain_id=84532,
+        height=501,
+        state_root=b"\x33" * 32,
+        parent=b"\x00" * 32,
+        mac=b"\xaa" * 32,
+        auth_scheme=AuthScheme.BLAKE3_MAC,
     )
     assert a != b

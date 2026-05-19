@@ -4,23 +4,20 @@ from __future__ import annotations
 
 import pytest
 
-from src.ltp.zk.ec_backend import bls12_381_available
 from src.ltp.execution.committee.dkg.types import DKGSessionConfig
+from src.ltp.zk.ec_backend import bls12_381_available
 
-pytestmark = pytest.mark.skipif(
-    not bls12_381_available(), reason="py_ecc not installed"
-)
+pytestmark = pytest.mark.skipif(not bls12_381_available(), reason="py_ecc not installed")
 
 from src.ltp.execution.committee.dkg.session import DKGSession  # noqa: E402
 from src.ltp.execution.committee.dkg.threshold_signing import (  # noqa: E402
-    ThresholdSigningKey,
-    partial_sign,
-    combine_partial_signatures,
-    threshold_verify,
     DOMAIN_ATTESTATION,
     DOMAIN_STATE_ROOT,
+    ThresholdSigningKey,
+    combine_partial_signatures,
+    partial_sign,
+    threshold_verify,
 )
-
 
 PARTICIPANTS = [bytes([i]) * 32 for i in range(1, 6)]
 
@@ -32,13 +29,14 @@ def _full_ceremony(
 ) -> tuple[bytes, list[ThresholdSigningKey]]:
     """Run full DKG and return (group_pk, signing_keys)."""
     cfg = DKGSessionConfig(
-        vm_tag=0x01, epoch=epoch, threshold=threshold,
-        participants=list(participants), timeout_rounds=20, start_round=0,
+        vm_tag=0x01,
+        epoch=epoch,
+        threshold=threshold,
+        participants=list(participants),
+        timeout_rounds=20,
+        start_round=0,
     )
-    sessions = [
-        DKGSession(cfg, fp, idx + 1)
-        for idx, fp in enumerate(participants)
-    ]
+    sessions = [DKGSession(cfg, fp, idx + 1) for idx, fp in enumerate(participants)]
 
     commitments = []
     all_shares = []
@@ -72,7 +70,6 @@ def _full_ceremony(
 
 
 class TestFullCeremonyToSignature:
-
     def test_2_of_3_sign_and_verify(self):
         group_pk, keys = _full_ceremony(PARTICIPANTS[:3], threshold=2)
         msg = b"attestation payload"
@@ -96,12 +93,12 @@ class TestFullCeremonyToSignature:
 
 
 class TestSubsetIndependence:
-
     def test_any_2_of_4_produces_same_signature(self):
         """All t-subsets produce the same combined signature."""
         group_pk, keys = _full_ceremony(PARTICIPANTS[:4], threshold=2)
         msg = b"subset test"
         from itertools import combinations
+
         sigs = set()
         for subset in combinations(range(4), 2):
             partials = [partial_sign(keys[i], msg, DOMAIN_ATTESTATION) for i in subset]
@@ -114,6 +111,7 @@ class TestSubsetIndependence:
         group_pk, keys = _full_ceremony(PARTICIPANTS, threshold=3)
         msg = b"larger subset test"
         from itertools import combinations
+
         sigs = set()
         for subset in combinations(range(5), 3):
             partials = [partial_sign(keys[i], msg, DOMAIN_ATTESTATION) for i in subset]
@@ -123,7 +121,6 @@ class TestSubsetIndependence:
 
 
 class TestSecurityProperties:
-
     def test_t_minus_1_partials_fail(self):
         """t-1 partials cannot produce a valid signature."""
         group_pk, keys = _full_ceremony(PARTICIPANTS[:3], threshold=2)
@@ -146,7 +143,6 @@ class TestSecurityProperties:
 
 
 class TestMultipleEpochs:
-
     def test_different_epochs_different_keys_both_verify(self):
         group_pk_1, keys_1 = _full_ceremony(PARTICIPANTS[:3], threshold=2, epoch=1)
         group_pk_2, keys_2 = _full_ceremony(PARTICIPANTS[:3], threshold=2, epoch=2)

@@ -18,10 +18,9 @@ import os
 
 import pytest
 
-from ltp.keypair import KeyPair
 from ltp.hsm import SoftwareHSM
+from ltp.keypair import KeyPair
 from ltp.primitives import MLDSA, MLKEM
-
 
 _SENTINEL = b"\xfe" * 32
 

@@ -18,9 +18,7 @@ class VMRegistry:
         tag = executor.vm_tag
         if tag in self._executors:
             existing = self._executors[tag]
-            raise ValueError(
-                f"VM tag 0x{tag:02X} already registered to '{existing.vm_name}'"
-            )
+            raise ValueError(f"VM tag 0x{tag:02X} already registered to '{existing.vm_name}'")
         self._executors[tag] = executor
 
     def get(self, vm_tag: int) -> Optional[ExecutionModel]:

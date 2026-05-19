@@ -10,18 +10,18 @@ import pytest
 from src.ltp.execution.writer import IdentityTier
 from src.ltp.execution.writer_roles import (
     RegistryAction,
-    ScopedPermission,
     RegistryRole,
     RoleAssignment,
-    builtin_owner,
+    ScopedPermission,
     builtin_admin,
+    builtin_owner,
     builtin_sponsor,
 )
-
 
 # ---------------------------------------------------------------------------
 # TestRegistryAction
 # ---------------------------------------------------------------------------
+
 
 class TestRegistryAction:
     """RegistryAction enum — nine distinct operations."""
@@ -60,6 +60,7 @@ class TestRegistryAction:
 # ---------------------------------------------------------------------------
 # TestScopedPermission
 # ---------------------------------------------------------------------------
+
 
 class TestScopedPermission:
     """ScopedPermission construction and matches() logic."""
@@ -140,6 +141,7 @@ class TestScopedPermission:
 # TestRegistryRole
 # ---------------------------------------------------------------------------
 
+
 class TestRegistryRole:
     """RegistryRole construction and has_permission delegation."""
 
@@ -168,21 +170,21 @@ class TestRegistryRole:
 
     def test_has_permission_positive_scoped(self):
         role = self._custom_role()
-        assert role.has_permission(
-            RegistryAction.APPROVE, tier=IdentityTier.COMPOSITE, vm_tag=7
-        ) is True
+        assert (
+            role.has_permission(RegistryAction.APPROVE, tier=IdentityTier.COMPOSITE, vm_tag=7)
+            is True
+        )
 
     def test_has_permission_negative_wrong_tier(self):
         role = self._custom_role()
-        assert role.has_permission(
-            RegistryAction.APPROVE, tier=IdentityTier.BLS, vm_tag=7
-        ) is False
+        assert role.has_permission(RegistryAction.APPROVE, tier=IdentityTier.BLS, vm_tag=7) is False
 
     def test_has_permission_negative_wrong_vm(self):
         role = self._custom_role()
-        assert role.has_permission(
-            RegistryAction.APPROVE, tier=IdentityTier.COMPOSITE, vm_tag=99
-        ) is False
+        assert (
+            role.has_permission(RegistryAction.APPROVE, tier=IdentityTier.COMPOSITE, vm_tag=99)
+            is False
+        )
 
     def test_has_permission_unrestricted_reject(self):
         role = self._custom_role()
@@ -201,6 +203,7 @@ class TestRegistryRole:
 # ---------------------------------------------------------------------------
 # TestBuiltinRoles
 # ---------------------------------------------------------------------------
+
 
 class TestBuiltinRoles:
     """Built-in role factories produce correct permission sets."""
@@ -262,6 +265,7 @@ class TestBuiltinRoles:
 # ---------------------------------------------------------------------------
 # TestRoleAssignment
 # ---------------------------------------------------------------------------
+
 
 class TestRoleAssignment:
     """RoleAssignment lifecycle and expiry logic."""
