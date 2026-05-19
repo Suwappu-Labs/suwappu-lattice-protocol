@@ -75,6 +75,21 @@ contracts-secaudit:
 docs:
     make docs-api
 
+# --- Infrastructure (infra/terraform/) ------------------------------------
+
+# Format every .tf file in infra/terraform/
+tf-fmt:
+    terraform -chdir=infra/terraform fmt -recursive
+
+# Check formatting without writing — what CI runs
+tf-fmt-check:
+    terraform -chdir=infra/terraform fmt -check -recursive -diff
+
+# Validate one env's composition (no AWS credentials needed)
+tf-validate env="prod":
+    terraform -chdir=infra/terraform/envs/{{env}} init -backend=false
+    terraform -chdir=infra/terraform/envs/{{env}} validate
+
 # --- Housekeeping ---------------------------------------------------------
 
 # Remove generated artifacts (delegates to make clean)

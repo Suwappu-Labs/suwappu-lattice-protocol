@@ -1,0 +1,29 @@
+# Copy to `terraform.tfvars` (gitignored) and fill in real values before
+# `terraform plan` / `terraform apply`. None of these have safe defaults
+# for prod — every line is a governance decision.
+
+# Replace with the production AWS region for LTP. us-east-1 mirrors the
+# suwappubot account convention; us-east-2 is the FedRAMP-High recommended
+# alternative if cross-region isolation is a requirement.
+aws_region = "us-east-1"
+
+name = "ltp-prod"
+
+vpc_cidr = "10.20.0.0/16"
+azs      = ["us-east-1a", "us-east-1b"]
+
+kubernetes_version = "1.31"
+
+# REQUIRED. At least one break-glass IAM role ARN. Without this, the
+# KMS key is administered only by the AWS account root, which means a
+# rotation/recovery requires root credentials.
+kms_admin_principal_arns = [
+  # "arn:aws:iam::<account-id>:role/break-glass-admin",
+]
+
+tags = {
+  "ltp:owner"       = "platform"
+  "ltp:cost-center" = "ltp-prod"
+  "ltp:repo"        = "gsx-lattice-protocol"
+  "ltp:env"         = "prod"
+}

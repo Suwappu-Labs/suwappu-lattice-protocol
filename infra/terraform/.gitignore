@@ -1,0 +1,18 @@
+# Local state must never be committed. Production state lives in the
+# S3 backend; only the bootstrap step ever touches local state.
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Plan binaries — these contain resolved secrets after `terraform plan`.
+*.tfplan
+*.tfplan.*
+plan.bin
+
+# Per-env values — operator-specific, never the same across machines.
+terraform.tfvars
+*.auto.tfvars
+
+# Terraform's local cache (NOT the lock file — that gets committed per
+# HashiCorp's dependency-lock-file guidance).
+.terraform/
