@@ -1,0 +1,143 @@
+name: Container Build
+
+# Builds + pushes the etp-node and etp-gateway container images to ECR
+# on every annotated v*.*.* tag, plus a manual trigger for off-release
+# rebuilds (e.g. base-image security patches).
+#
+# Authentication: OIDC into the prod AWS account. The IAM role's trust
+# policy must scope `sub` to this repo + tag refs; the role itself
+# needs `ecr:GetAuthorizationToken`, `ecr:BatchCheckLayerAvailability`,
+# `ecr:InitiateLayerUpload`, `ecr:UploadLayerPart`, `ecr:CompleteLayerUpload`,
+# `ecr:PutImage` on the two repos created by infra/terraform/modules/ecr.
+#
+# Output per service:
+#   - Image:   <account>.dkr.ecr.<region>.amazonaws.com/etp-{node,gateway}:<tag>
+#              (also tagged with the commit SHA, immutable per ECR config)
+#   - SLSA build provenance attestation (actions/attest-build-provenance)
+#   - cosign keyless signature (Sigstore Fulcio OIDC)
+#
+# Gated on: infra/terraform/envs/prod applied, AWS_ECR_ROLE_ARN secret
+# set in the repo, ECR_REGISTRY env var set in the repo or org.
+#
+# This workflow's first real run will be the v3.0.1 tag push *after*
+# the AWS account is set up. Until then, the workflow lints in CI but
+# never broadcasts.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build (branch / tag / SHA). Default: tag from push trigger."
+        required: false
+        default: ""
+      push_image:
+        description: "Actually push to ECR? Set false for dry-run."
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+permissions:
+  contents: read
+  id-token: write   # for OIDC into AWS + Sigstore
+  attestations: write
+  packages: write   # not strictly needed for ECR but harmless
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  build:
+    name: build + push (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: etp-node
+            dockerfile: deploy/Dockerfile.node
+          - service: etp-gateway
+            dockerfile: deploy/Dockerfile.gateway
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Resolve image tags
+        id: tags
+        # On a tag push, derive the semver from $GITHUB_REF_NAME.
+        # On a manual run, fall back to the SHA short hash.
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="dev-$(git rev-parse --short HEAD)"
+          fi
+          SHA_SHORT="$(git rev-parse --short=12 HEAD)"
+          echo "version=${VERSION}"     >> "$GITHUB_OUTPUT"
+          echo "sha_short=${SHA_SHORT}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials (OIDC)
+        if: vars.AWS_ECR_ROLE_ARN != ''
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885  # v6.1.1
+        with:
+          role-to-assume: ${{ vars.AWS_ECR_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to ECR
+        if: vars.AWS_ECR_ROLE_ARN != ''
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@4625ce35226a7557230889aae2f52eb50ec3dcda  # v2.0.1
+
+      - name: Set up QEMU (multi-arch)
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a  # v4.0.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4.0.0
+
+      - name: Build (and optionally push)
+        id: build
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7.1.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ vars.AWS_ECR_ROLE_ARN != '' && (github.event.inputs.push_image != 'false') }}
+          tags: |
+            ${{ steps.ecr-login.outputs.registry || 'dryrun' }}/${{ matrix.service }}:${{ steps.tags.outputs.version }}
+            ${{ steps.ecr-login.outputs.registry || 'dryrun' }}/${{ matrix.service }}:sha-${{ steps.tags.outputs.sha_short }}
+          provenance: true
+          sbom: true
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      # SLSA build provenance — only emit on real pushes (the attestation
+      # references the image digest, which only exists after push).
+      - name: Generate SLSA build provenance attestation
+        if: vars.AWS_ECR_ROLE_ARN != '' && steps.build.outputs.digest != ''
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4.1.0
+        with:
+          subject-name: ${{ steps.ecr-login.outputs.registry }}/${{ matrix.service }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      # cosign keyless signing — separate from SLSA; some verifiers only
+      # accept Sigstore signatures, others only accept attestations. We
+      # ship both.
+      - name: Install cosign
+        if: vars.AWS_ECR_ROLE_ARN != '' && steps.build.outputs.digest != ''
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
+
+      - name: cosign sign (keyless OIDC)
+        if: vars.AWS_ECR_ROLE_ARN != '' && steps.build.outputs.digest != ''
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign sign --yes \
+            "${{ steps.ecr-login.outputs.registry }}/${{ matrix.service }}@${{ steps.build.outputs.digest }}"

@@ -94,6 +94,58 @@ release ships with a critical defect:
 3. Open an incident in `docs/security/campaigns/` if the defect has a
    security impact.
 
+## Container images
+
+Every `v*.*.*` tag push also fires
+[`.github/workflows/container-build.yml`](../.github/workflows/container-build.yml),
+which builds and pushes the two LTP service images to ECR:
+
+| Image | Dockerfile | What's inside |
+|---|---|---|
+| `etp-node`    | [`deploy/Dockerfile.node`](../deploy/Dockerfile.node)       | Python 3.12 + `pyproject.toml`'s `[production]` extra (pqcrypto, pynacl, zfec, blake3, py_ecc). Entrypoint: `python -m src.ltp.node.main` |
+| `etp-gateway` | [`deploy/Dockerfile.gateway`](../deploy/Dockerfile.gateway) | Same baseline + `[gateway,chain]` extras (fastapi, uvicorn, httpx, web3) |
+
+Both are:
+
+- Multi-arch (`linux/amd64` + `linux/arm64`)
+- Tagged `:X.Y.Z` and `:sha-<12-char>`
+- **Tag-immutable** (per `infra/terraform/modules/ecr` —
+  `image_tag_mutability = "IMMUTABLE"`)
+- Attested via [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance)
+  (SLSA Level 3 build provenance attestation, pushed to the registry)
+- Signed via [`cosign`](https://docs.sigstore.dev/cosign/) keyless OIDC
+  (Sigstore Fulcio + Rekor transparency log)
+
+### Pulling and verifying
+
+```bash
+# Pull (after AWS_ECR_ROLE_ARN is set and the operator has docker login'd to ECR)
+docker pull "${ECR_REGISTRY}/etp-node:${VERSION}"
+
+# Verify the SLSA attestation
+gh attestation verify \
+    "oci://${ECR_REGISTRY}/etp-node@${DIGEST}" \
+    --owner GlobalSettlementNetwork
+
+# Verify the cosign signature
+cosign verify \
+    --certificate-identity-regexp "https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/.+" \
+    --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+    "${ECR_REGISTRY}/etp-node@${DIGEST}"
+```
+
+### Repo-level config the workflow needs
+
+| Setting | Where | Why |
+|---|---|---|
+| `vars.AWS_ECR_ROLE_ARN` | repo or org Variables | Role the OIDC token assumes. Must trust `repo:GlobalSettlementNetwork/gsx-lattice-protocol:ref:refs/tags/v*.*.*` |
+| ECR repos `etp-node` and `etp-gateway` | `infra/terraform/modules/ecr` | Created with `image_tag_mutability = IMMUTABLE`. Apply before the first tag push |
+
+Until `vars.AWS_ECR_ROLE_ARN` is set, the workflow runs as a **build-only
+dry-run** — it validates the Dockerfiles compile but never pushes. This
+matches the same posture as the rest of the AWS-side work: code lands;
+broadcasts wait for governance.
+
 ## Cross-references
 
 - [`CHANGELOG.md`](../CHANGELOG.md) — the canonical version history.
@@ -105,5 +157,7 @@ release ships with a critical defect:
   — the workflow itself.
 - [`.github/workflows/release-dry-run.yml`](../.github/workflows/release-dry-run.yml)
   — the PR validator.
+- [`.github/workflows/container-build.yml`](../.github/workflows/container-build.yml)
+  — the container image builder.
 - [`scripts/extract_changelog.py`](../scripts/extract_changelog.py)
   — the changelog parser the workflow uses.
