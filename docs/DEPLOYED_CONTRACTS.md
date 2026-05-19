@@ -18,6 +18,15 @@ The deployer wallet deployed all contracts on both chains. After deployment, adm
 
 ## GSX Testnet — Chain ID `103115120`
 
+### Registry (v7, pending deploy — ceremony per docs/runbooks/v7-upgrade-testnet.md)
+
+| Contract | Address |
+|---|---|
+| LTPAnchorRegistry (v7 Implementation) | _backfilled post-ceremony_ |
+| ERC1967Proxy | `0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4` (unchanged across upgrades) |
+| LTPMultiSig (2-of-2) | `0x0106A79e9236009a05742B3fB1e3B7a52F44373D` (unchanged) |
+| TimelockController (60s delay) | `0x7C2665F7e68FE635ee8F10aa0130AEBC603a9Db8` (unchanged) |
+
 ### Registry (v5, deployed block 687,609)
 
 | Contract | Address |
@@ -49,6 +58,15 @@ The deployer wallet deployed all contracts on both chains. After deployment, adm
 ---
 
 ## Base Sepolia — Chain ID `84532`
+
+### Registry (v7, pending deploy — ceremony per docs/runbooks/v7-upgrade-testnet.md)
+
+| Contract | Address |
+|---|---|
+| LTPAnchorRegistry (v7 Implementation) | _backfilled post-ceremony_ |
+| ERC1967Proxy | `0x79eF1B7914f98C5C1404617449AB1f377c475996` (unchanged across upgrades) |
+| LTPMultiSig (2-of-2) | `0x4c324c3c3475f58b67d3c879880D6c94eDC82E49` (unchanged) |
+| TimelockController (60s delay) | `0xc915740e35E38569E47f611eA5772Ff5278bc5Ae` (unchanged) |
 
 ### Registry (v6, deployed block 39,835,640)
 
