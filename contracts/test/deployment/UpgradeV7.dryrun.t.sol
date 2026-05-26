@@ -195,6 +195,11 @@ contract UpgradeV7DryRunTest is Test {
     /// multisig txs (schedule then execute) bracketing the timelock
     /// delay. Assumes a 2-of-N multisig where the first two owners
     /// are both able to sign — true for the 2-of-2 testnet deployments.
+    ///
+    /// Salt is derived per-call so consecutive rehearsals (and forks
+    /// where the same op was already executed in a prior drill) get
+    /// distinct Timelock operation ids — otherwise `schedule(...)`
+    /// reverts because the op id is no longer `Unset`.
     function _routeAdminCallThroughGovernance(
         LTPAnchorRegistry registry,
         TimelockController tl,
@@ -205,11 +210,14 @@ contract UpgradeV7DryRunTest is Test {
         require(owners.length >= 2, "test requires >= 2 multisig owners");
 
         uint256 delay = tl.getMinDelay();
+        bytes32 salt = keccak256(
+            abi.encode(block.timestamp, block.prevrandao, address(registry), adminCall)
+        );
 
         // STEP A-C: submit + confirm + execute the timelock.schedule(...)
         bytes memory scheduleCall = abi.encodeCall(
             TimelockController.schedule,
-            (address(registry), 0, adminCall, bytes32(0), bytes32(0), delay)
+            (address(registry), 0, adminCall, bytes32(0), salt, delay)
         );
         vm.prank(owners[0]);
         uint256 scheduleTxId = ms.submitTransaction(address(tl), 0, scheduleCall);
@@ -222,9 +230,11 @@ contract UpgradeV7DryRunTest is Test {
         vm.warp(block.timestamp + delay + 1);
 
         // STEP E-G: submit + confirm + execute the timelock.execute(...)
+        // The salt MUST match the schedule call so the Timelock
+        // resolves the same op id.
         bytes memory executeCall = abi.encodeCall(
             TimelockController.execute,
-            (address(registry), 0, adminCall, bytes32(0), bytes32(0))
+            (address(registry), 0, adminCall, bytes32(0), salt)
         );
         vm.prank(owners[0]);
         uint256 executeTxId = ms.submitTransaction(address(tl), 0, executeCall);

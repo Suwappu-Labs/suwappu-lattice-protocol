@@ -33,7 +33,13 @@
 #       --rpc-url   $LTP_RPC_URL \
 #       --multisig  0x... \
 #       --registry  0x... \
-#       --timelock  0x...
+#       [--timelock 0x...]   # optional; defaults to registry.admin()
+#
+# Backward compat: pre-timelock callers (docs/OPERATOR_RUNBOOK.md,
+# infra/helm/observability/README.md) that pass only --rpc-url /
+# --multisig / --registry still work — the script queries
+# `registry.admin()` to derive the timelock when --timelock is
+# omitted, and logs which path was taken.
 #
 # Exit codes:
 #   0 — calldata generated and printed; operator runs the next step
@@ -45,26 +51,36 @@ set -euo pipefail
 
 usage() {
     cat >&2 <<'EOF'
-Usage: propose_pause.sh --rpc-url <url> --multisig <addr> --registry <addr> --timelock <addr> [--from <addr>]
+Usage: propose_pause.sh --rpc-url <url> --multisig <addr> --registry <addr> [--timelock <addr>] [--from <addr>]
 
   --rpc-url   JSON-RPC endpoint for the target chain
   --multisig  LTPMultiSig contract address (the propose target)
   --registry  LTPAnchorRegistry address (final call target — receives pause())
-  --timelock  TimelockController address (the registry's admin)
+  --timelock  TimelockController address. Optional — defaults to
+              the address returned by `registry.admin()`. The script
+              logs which path was used.
   --from      Optional: the proposer address. Defaults to first
               account from cast's default signer.
 
 The script:
   1. Verifies cast is in PATH
   2. Calls registry.paused() to check current state (no point pausing if already paused)
-  3. Queries the timelock's min delay
-  4. ABI-encodes the pause() calldata (selector 0x8456cb59)
-  5. Wraps it in timelock.schedule(...) and timelock.execute(...) calldata
-  6. Prints the two `cast send` lines (schedule submit + execute submit)
+  3. Resolves the timelock address (from --timelock or registry.admin())
+  4. Queries the timelock's min delay
+  5. Generates a unique-per-run salt so the Timelock operation id
+     doesn't collide with a prior pause cycle (re-running the drill
+     after one successful pause would otherwise revert at schedule
+     time because the op id is `Done`, not `Unset`).
+  6. ABI-encodes the pause() calldata (selector 0x8456cb59)
+  7. Wraps it in timelock.schedule(...) and timelock.execute(...) calldata
+     with the unique salt reused on both calls so the op ids match.
+  8. Prints the two `cast send` lines (schedule submit + execute submit)
      and the cosigner/execute steps in between.
 
 Operator env vars the printed commands use:
   LTP_PROPOSER_PRIVATE_KEY  — proposer key for the multisig.submit* calls
+  LTP_COSIGNER_PRIVATE_KEY  — cosigner key for confirmTransaction
+  LTP_OWNER_PRIVATE_KEY     — any owner's key for executeTransaction
 EOF
     exit 1
 }
@@ -87,7 +103,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -z "$RPC_URL" || -z "$MULTISIG" || -z "$REGISTRY" || -z "$TIMELOCK" ]] && usage
+[[ -z "$RPC_URL" || -z "$MULTISIG" || -z "$REGISTRY" ]] && usage
 
 command -v cast >/dev/null 2>&1 || {
     echo "ERROR: 'cast' not found. Install via foundryup." >&2
@@ -102,6 +118,23 @@ if [[ "$PAUSED" == "true" ]]; then
     exit 3
 fi
 
+# Resolve timelock address. The registry admin is the source of truth.
+if [[ -z "$TIMELOCK" ]]; then
+    echo "▶ --timelock not supplied; deriving from registry.admin()"
+    TIMELOCK=$(cast call "$REGISTRY" 'admin()(address)' --rpc-url "$RPC_URL")
+    TIMELOCK="${TIMELOCK%% *}"
+    echo "  registry.admin() == $TIMELOCK"
+else
+    echo "▶ Using --timelock $TIMELOCK"
+    ADMIN=$(cast call "$REGISTRY" 'admin()(address)' --rpc-url "$RPC_URL")
+    ADMIN="${ADMIN%% *}"
+    # Compare case-insensitively (cast outputs lowercase; flag args may be EIP-55).
+    if [[ "${ADMIN,,}" != "${TIMELOCK,,}" ]]; then
+        echo "WARN: --timelock $TIMELOCK does NOT match registry.admin() $ADMIN" >&2
+        echo "      Continuing with --timelock; verify your governance topology." >&2
+    fi
+fi
+
 echo "▶ Querying timelock min delay on $TIMELOCK"
 TIMELOCK_DELAY=$(cast call "$TIMELOCK" 'getMinDelay()(uint256)' --rpc-url "$RPC_URL")
 # cast prints decimals with possible scientific notation; normalize.
@@ -111,21 +144,32 @@ echo "  timelock.getMinDelay() == $TIMELOCK_DELAY seconds"
 # pause() selector is bytes4(keccak256("pause()")) = 0x8456cb59
 PAUSE_CALLDATA="0x8456cb59"
 
+# Unique-per-run salt — re-running the drill or handling a later
+# incident with the same (target,value,data,predecessor,salt) would
+# otherwise hit a `Done`/non-`Unset` Timelock op id and revert at
+# schedule time. Generated from nanosecond timestamp + $RANDOM so
+# concurrent operators on the same chain still get distinct salts.
+SALT_SEED="$(date -u +%s%N)-${RANDOM}-pause-$REGISTRY"
+SALT=$(cast keccak "$SALT_SEED")
+echo "▶ Per-run salt:"
+echo "  seed:   $SALT_SEED"
+echo "  salt:   $SALT"
+echo "  (the same salt is used by schedule AND execute so the op ids match)"
+
+PREDECESSOR=0x0000000000000000000000000000000000000000000000000000000000000000
+
 # Build timelock.schedule(target, value, payload, predecessor, salt, delay)
 # and timelock.execute(target, value, payload, predecessor, salt).
-# predecessor = bytes32(0), salt = bytes32(0) per UpgradeV7.s.sol convention.
 SCHEDULE_CALLDATA=$(cast calldata \
     'schedule(address,uint256,bytes,bytes32,bytes32,uint256)' \
     "$REGISTRY" 0 "$PAUSE_CALLDATA" \
-    0x0000000000000000000000000000000000000000000000000000000000000000 \
-    0x0000000000000000000000000000000000000000000000000000000000000000 \
+    "$PREDECESSOR" "$SALT" \
     "$TIMELOCK_DELAY")
 
 EXECUTE_CALLDATA=$(cast calldata \
     'execute(address,uint256,bytes,bytes32,bytes32)' \
     "$REGISTRY" 0 "$PAUSE_CALLDATA" \
-    0x0000000000000000000000000000000000000000000000000000000000000000 \
-    0x0000000000000000000000000000000000000000000000000000000000000000)
+    "$PREDECESSOR" "$SALT")
 
 echo
 echo "▶ Generated calldata for registry.pause() (via timelock):"
