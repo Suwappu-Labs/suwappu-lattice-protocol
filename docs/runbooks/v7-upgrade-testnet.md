@@ -112,19 +112,27 @@ forge script script/UpgradeV7.s.sol --sig "step4(uint256)" <executeTxId> \
     --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_DEPLOYER_KEY
 ```
 
-The script's tail prints the new implementation address. Backfill it
-into [`docs/DEPLOYED_CONTRACTS.md`](../DEPLOYED_CONTRACTS.md) under the
-"v7, pending deploy" row in the same PR you open immediately after the
-ceremony.
+step4 logs `Registry version:` and `Proxy:` as a sanity check; it does
+**not** re-print the implementation address. The new impl address was
+logged by **step1** earlier in the ceremony as
+`New v7 implementation: 0x…` — backfill that value into
+[`docs/DEPLOYED_CONTRACTS.md`](../DEPLOYED_CONTRACTS.md) under the
+"v7, pending deploy" row in the same PR you open immediately after
+the ceremony.
 
 ### Post-flight — storage-layout verification (live state)
 
 ```bash
+# The GSX testnet LTPAnchorRegistry proxy address (source-of-truth:
+# DEPLOYED_CONTRACTS.md). Same value as the $REGISTRY variable
+# exported in the pause-rehearsal section below.
+export PROXY=0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4
+
 forge inspect LTPAnchorRegistry storage-layout > /tmp/v7-layout.json
 # Compare against the post-upgrade slot reads:
-cast call $PROXY "admin()(address)"  --rpc-url $GSX_RPC_URL
-cast call $PROXY "paused()(bool)"    --rpc-url $GSX_RPC_URL
-cast call $PROXY "version()(uint256)"--rpc-url $GSX_RPC_URL
+cast call $PROXY "admin()(address)"   --rpc-url $GSX_RPC_URL
+cast call $PROXY "paused()(bool)"     --rpc-url $GSX_RPC_URL
+cast call $PROXY "version()(uint256)" --rpc-url $GSX_RPC_URL
 ```
 
 The dry-run test asserted these; the live-state read confirms the
@@ -134,12 +142,24 @@ broadcast tx didn't deviate from the simulated path.
 
 ## Then: Base Sepolia
 
-Same script, swap RPC + addresses:
+Same script, swap RPC + addresses. **Critical:** unset the GSX env
+vars first so the step1-4 commands cannot accidentally re-target the
+chain you just finished — a chain-targeting mistake at this point
+overwrites the wrong proxy.
 
 ```bash
-export BASE_SEPOLIA_RPC_URL=...
-export BASE_SEPOLIA_DEPLOYER_KEY=...
-export BASE_SEPOLIA_OPERATOR_KEY=...
+# Prevent accidental re-targeting of GSX. Required.
+unset GSX_RPC_URL GSX_DEPLOYER_KEY GSX_OPERATOR_KEY PROXY
+
+# Re-export the four GSX_-named vars from the step1-4 commands to
+# their Base Sepolia equivalents. The step1-4 command bodies are
+# unchanged — only the values behind these variable names differ.
+export GSX_RPC_URL=$BASE_SEPOLIA_RPC_URL
+export GSX_DEPLOYER_KEY=$BASE_SEPOLIA_DEPLOYER_KEY
+export GSX_OPERATOR_KEY=$BASE_SEPOLIA_OPERATOR_KEY
+
+# Base Sepolia proxy for the post-flight verification block.
+export PROXY=0x79eF1B7914f98C5C1404617449AB1f377c475996
 
 # Edit contracts/script/UpgradeV7.s.sol — replace the GSX constants
 # with the Base Sepolia ones from DEPLOYED_CONTRACTS.md, OR copy the
@@ -148,7 +168,21 @@ export BASE_SEPOLIA_OPERATOR_KEY=...
 # a CHAIN env var.)
 ```
 
-Repeat steps 1-4 with `BASE_SEPOLIA_*` env vars.
+Source-of-truth for the Base Sepolia values:
+
+```bash
+# from DEPLOYED_CONTRACTS.md — Base Sepolia chain 84532:
+#   Proxy:    0x79eF1B7914f98C5C1404617449AB1f377c475996
+#   Multisig: 0x4c324c3c3475f58b67d3c879880D6c94eDC82E49
+#   Timelock: 0xc915740e35E38569E47f611eA5772Ff5278bc5Ae
+export BASE_SEPOLIA_RPC_URL=...
+export BASE_SEPOLIA_DEPLOYER_KEY=...
+export BASE_SEPOLIA_OPERATOR_KEY=...
+```
+
+Now repeat steps 1-4 above; every `$GSX_*` reference resolves to its
+Base Sepolia counterpart through the re-export. The post-flight
+verification re-uses `$PROXY` (now the Base Sepolia proxy).
 
 ---
 
@@ -160,11 +194,14 @@ deployed in Phase B will trigger in anger if a CRITICAL alert fires.
 
 **Goal:** sub-5-minute response, alert → `paused == true`.
 
-Before starting the drill, export the addresses every step below
-references. Source-of-truth for these is
+Before starting the drill, return to the repo root (the ceremony's
+step 1 left you in `contracts/`; `scripts/propose_pause.sh` is at the
+repo root) and export the addresses every step below references.
+Source-of-truth for these is
 [`docs/DEPLOYED_CONTRACTS.md`](../DEPLOYED_CONTRACTS.md):
 
 ```bash
+cd "$(git rev-parse --show-toplevel)"
 export MULTISIG=0x0106A79e9236009a05742B3fB1e3B7a52F44373D
 export REGISTRY=0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4
 ```
