@@ -116,7 +116,10 @@ dev = [
     "moto[kms]>=4.0.0,<6.0",
     "py_ecc>=7.0.0,<9.0",
     "dnspython>=2.4.0,<3.0",
-    "pip-audit>=2.7.0,<3.0",
+    # pip-audit 2.7.x crashed on `KeyError: 'ranges'` in
+    # pip_audit/_service/osv.py when OSV returned advisory entries
+    # without a `ranges` key (observed 2026-05-26). 2.8.x guards it.
+    "pip-audit>=2.8.0,<3.0",
     "pdoc>=14.0,<16.0",
     # Track 2 — lint / type / pre-commit toolchain
     "ruff>=0.15,<0.16",
