@@ -40,7 +40,10 @@ The script:
   1. Verifies cast / forge are in PATH
   2. Calls registry.paused() to check current state (no point pausing if already paused)
   3. ABI-encodes the pause() call (selector 0x8456cb59)
-  4. Prints the exact `cast send` line for the multisig.proposeTransaction
+  4. Prints the exact `cast send` line for the multisig.submitTransaction
+     entry point (matches LTPMultiSig.sol — the submitter is auto-confirmed,
+     so a 2-of-2 only needs the cosigner to confirmTransaction once before
+     executeTransaction clears).
 EOF
     exit 1
 }
@@ -86,7 +89,7 @@ echo "▶ Next step — propose the pause via the multisig."
 echo "   Review the line below, then RUN IT to broadcast the proposal:"
 echo
 echo "  cast send $MULTISIG \\"
-echo "      'proposeTransaction(address,uint256,bytes)' \\"
+echo "      'submitTransaction(address,uint256,bytes)' \\"
 echo "      $REGISTRY 0 $PAUSE_CALLDATA \\"
 echo "      --rpc-url $RPC_URL \\"
 ${FROM:+echo "      --from $FROM \\"}
