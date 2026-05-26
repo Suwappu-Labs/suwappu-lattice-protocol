@@ -61,12 +61,15 @@ contract UpgradeV7 is Script {
     address payable constant MULTISIG = payable(0x0106A79e9236009a05742B3fB1e3B7a52F44373D);
     address constant TIMELOCK = 0x7C2665F7e68FE635ee8F10aa0130AEBC603a9Db8;
 
-    // Testnet timelock delay (60 s). v7 keeps this — the 24-hour floor is
-    // mainnet-only, enforced by DeployMainnet.s.sol.
-    uint256 constant TIMELOCK_DELAY = 60;
-
     /// @notice Step 1: Deploy v7 impl, submit schedule + execute txs via deployer
     function step1() external {
+        // Read the live timelock min-delay rather than hard-coding a literal.
+        // The testnet was deployed with 60s but `TimelockController.getMinDelay()`
+        // is governance-updatable; a stale literal here would revert at
+        // schedule time if delay was raised. Mainnet enforces a 24h floor via
+        // DeployMainnet.s.sol; testnet leaves the value as-deployed.
+        uint256 timelockDelay = TimelockController(payable(TIMELOCK)).getMinDelay();
+
         vm.startBroadcast();
 
         // 1. Deploy new implementation
@@ -77,9 +80,9 @@ contract UpgradeV7 is Script {
         //    registry.upgradeToAndCall(newImpl, "")
         bytes memory upgradeCall = abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (address(newImpl), ""));
 
-        //    timelock.schedule(registry, 0, upgradeCall, 0, 0, 60)
+        //    timelock.schedule(registry, 0, upgradeCall, 0, 0, timelockDelay)
         bytes memory scheduleCall =
-            abi.encodeCall(TimelockController.schedule, (PROXY, 0, upgradeCall, bytes32(0), bytes32(0), TIMELOCK_DELAY));
+            abi.encodeCall(TimelockController.schedule, (PROXY, 0, upgradeCall, bytes32(0), bytes32(0), timelockDelay));
 
         // 3. Submit schedule call to multisig (auto-confirms for deployer)
         LTPMultiSig multisig = LTPMultiSig(MULTISIG);
@@ -97,6 +100,9 @@ contract UpgradeV7 is Script {
         console.log("");
         console.log("=== Step 1 Complete ===");
         console.log("Next: Run step2 with OPERATOR key to confirm both txIds");
+        console.log("After step3 fires the timelock.schedule, wait at least");
+        console.log("the timelock delay (seconds):");
+        console.log("  delay:", timelockDelay);
     }
 
     /// @notice Step 2: Operator confirms a multisig transaction
@@ -107,20 +113,23 @@ contract UpgradeV7 is Script {
         console.log("Confirmed txId:", txId);
     }
 
-    /// @notice Step 3: Execute the schedule call through multisig → timelock
+    /// @notice Step 3: Execute the schedule call through multisig -> timelock
     function step3(uint256 scheduleTxId) external {
+        uint256 timelockDelay = TimelockController(payable(TIMELOCK)).getMinDelay();
+
         vm.startBroadcast();
 
         LTPMultiSig multisig = LTPMultiSig(MULTISIG);
         multisig.executeTransaction(scheduleTxId);
         console.log("Schedule executed (txId:", scheduleTxId, ")");
-        console.log("Timelock delay started. Wait 60 seconds...");
+        console.log("Timelock delay started. Wait at least (seconds):");
+        console.log("  delay:", timelockDelay);
 
         vm.stopBroadcast();
 
         console.log("");
         console.log("=== Step 3 Complete ===");
-        console.log("After 60s, run step4 to execute the upgrade");
+        console.log("After the timelock delay elapses, run step4 to execute the upgrade");
     }
 
     /// @notice Step 4: Execute the upgrade after timelock delay
