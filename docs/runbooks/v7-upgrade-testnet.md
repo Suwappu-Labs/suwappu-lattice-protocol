@@ -103,9 +103,12 @@ forge script script/UpgradeV7.s.sol --sig "step3(uint256)" <scheduleTxId> \
     --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_DEPLOYER_KEY
 ```
 
-The timelock countdown starts now. **Wait 60 seconds.**
+The timelock countdown starts now. Wait at least the delay step3
+printed as `delay: N` (currently 60s on testnet — governance can raise
+this without redeploying), then broadcast step4. step4 reverts with
+`TimelockController: operation is not ready` if broadcast too early.
 
-### Step 4 — Execute the upgrade (deployer, ≥ 60s after step 3)
+### Step 4 — Execute the upgrade (deployer, after step3's printed delay)
 
 ```bash
 forge script script/UpgradeV7.s.sol --sig "step4(uint256)" <executeTxId> \
@@ -259,11 +262,11 @@ export LTP_OWNER_PRIVATE_KEY=<any multisig owner — fires executeTransaction>
 5. **Run STEP C** (any owner executes `<scheduleTxId>`) — this fires
    `timelock.schedule(...)` and starts the timelock delay countdown.
 
-6. **Run STEP D** — the helper's banner shows the exact wait derived
-   from `timelock.getMinDelay()` (typically 60s on testnet):
-   `sleep "$TIMELOCK_DELAY"`. Do NOT use a literal 60s — the delay
-   is governance-updatable and would mismatch on chains where it has
-   been raised.
+6. **Run STEP D** — the helper printed an exact `sleep N` command in
+   its STEP D banner, with N derived from `timelock.getMinDelay()` at
+   script-start (currently 60s on testnet). Copy that line verbatim.
+   The helper's per-run derivation means a governance-raised delay
+   flows through automatically.
 
 7. **Run STEP E** (proposer submits the timelock-execute tx). Capture
    `<executeTxId>`.
@@ -351,7 +354,7 @@ governance committee uses this row in the Phase D mainnet sign-off.
 |---|---|---|
 | `step1` reverts with `"NotOwner"` | Wrong key for `$GSX_DEPLOYER_KEY` | Confirm wallet — see DEPLOYED_CONTRACTS.md `Deployer` row |
 | `step3` reverts with `"NotEnoughConfirmations"` | Operator hasn't confirmed the schedule txId | Run `step2(<scheduleTxId>)` first |
-| `step4` reverts with `"TimelockController: operation is not ready"` | Less than 60 seconds since step 3 | Wait the full minute, retry |
+| `step4` reverts with `"TimelockController: operation is not ready"` | Less than the timelock delay since step 3 (step3's printed `delay: N`) | Wait the remaining seconds, retry |
 | `step4` reverts with `"NotEnoughConfirmations"` | Operator hasn't confirmed the execute txId | Run `step2(<executeTxId>)` and retry |
 | Pause drill exceeds 5 min target | Cosigner unavailability or muxing latency | File a post-mortem; the gap must close before Phase D |
 | `paused() != true` after pause tx mined | Tx receipt status 0 (revert) or wrong registry address | `cast tx <hash>` → check status; verify address |
