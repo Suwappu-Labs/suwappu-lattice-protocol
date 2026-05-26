@@ -25,10 +25,12 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 /// Sepolia (chain 84532), copy + adjust the constants below — both
 /// chains use the same v7 source.
 ///
-/// Pre-flight (run before step1):
+/// Pre-flight (run before step1; cwd = `contracts/`):
 ///   forge build --sizes                # confirm v7 fits 24576-byte limit
 ///   forge test --fork-url $GSX_RPC_URL \
-///       --match-path contracts/test/deployment/UpgradeV7.dryrun.t.sol
+///       --match-path test/deployment/UpgradeV7.dryrun.t.sol
+///                                      # path is relative to Foundry root
+///                                      # (= contracts/ after `cd contracts`);
 ///                                      # storage-layout + pause-modifier
 ///                                      # invariants verified against
 ///                                      # current on-chain state

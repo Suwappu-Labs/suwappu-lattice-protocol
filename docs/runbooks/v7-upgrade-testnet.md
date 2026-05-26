@@ -162,11 +162,12 @@ export BASE_SEPOLIA_RPC_URL=<base sepolia rpc>
 export BASE_SEPOLIA_DEPLOYER_KEY=<base sepolia deployer key>
 export BASE_SEPOLIA_OPERATOR_KEY=<base sepolia operator key>
 
-# Edit contracts/script/UpgradeV7.s.sol — replace the GSX constants
-# with the Base Sepolia ones from DEPLOYED_CONTRACTS.md, OR copy the
-# script to UpgradeV7Base.s.sol if you want to keep both invocations
-# self-documenting. (The plan's follow-up PR consolidates them under
-# a CHAIN env var.)
+# In `contracts/script/UpgradeV7.s.sol`, replace the GSX address
+# constants (PROXY/MULTISIG/TIMELOCK) inline with the Base Sepolia
+# values from the comment block above. Re-running step1-4 below
+# then invokes the same `script/UpgradeV7.s.sol` file with the
+# correct chain targets. (The plan's follow-up PR consolidates
+# this under a CHAIN env var so the in-file edit goes away.)
 ```
 
 Now repeat steps 1-4 above with these literal substitutions in
@@ -288,6 +289,14 @@ export LTP_OWNER_PRIVATE_KEY=<any multisig owner — fires executeTransaction>
     UNPAUSE_CALLDATA=0x3f4ba83a
     PREDECESSOR=0x0000000000000000000000000000000000000000000000000000000000000000
 
+    # Read the timelock's CURRENT min delay rather than hard-coding 60s.
+    # Timelock delay is governance-updatable; a stale literal here would
+    # cause schedule(...) to revert and delay restoring service.
+    TIMELOCK_DELAY=$(cast call $TIMELOCK 'getMinDelay()(uint256)' \
+        --rpc-url $GSX_RPC_URL)
+    TIMELOCK_DELAY="${TIMELOCK_DELAY%% *}"
+    echo "timelock.getMinDelay() == $TIMELOCK_DELAY seconds"
+
     # Per-cycle unique salt (re-derive for each unpause attempt).
     SALT=$(cast keccak "$(date -u +%s%N)-${RANDOM}-unpause-$REGISTRY")
     echo "salt for this unpause cycle: $SALT"
@@ -295,14 +304,14 @@ export LTP_OWNER_PRIVATE_KEY=<any multisig owner — fires executeTransaction>
     # STEP A — proposer submits timelock-schedule for unpause()
     SCHEDULE_UNPAUSE=$(cast calldata \
         'schedule(address,uint256,bytes,bytes32,bytes32,uint256)' \
-        $REGISTRY 0 $UNPAUSE_CALLDATA $PREDECESSOR $SALT 60)
+        $REGISTRY 0 $UNPAUSE_CALLDATA $PREDECESSOR $SALT $TIMELOCK_DELAY)
     cast send $MULTISIG \
         'submitTransaction(address,uint256,bytes)' \
         $TIMELOCK 0 $SCHEDULE_UNPAUSE \
         --rpc-url $GSX_RPC_URL --private-key $LTP_PROPOSER_PRIVATE_KEY
     # → capture <scheduleTxId>; STEP B/C as above
 
-    sleep 60
+    sleep "$TIMELOCK_DELAY"
 
     # STEP E — proposer submits timelock-execute for unpause()
     # Salt MUST match the schedule call so the Timelock resolves
