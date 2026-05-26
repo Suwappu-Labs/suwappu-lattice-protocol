@@ -44,10 +44,11 @@ git diff origin/main..HEAD          # should be empty
 cd contracts && forge build --sizes
 
 # 3. Storage-layout dry-run against the live testnets. This catches
-#    slot reordering BEFORE the upgrade tx broadcasts.
+#    slot reordering BEFORE the upgrade tx broadcasts. Path is relative
+#    to the Foundry project root (= `contracts/` after the `cd` above).
 export GSX_RPC_URL=<the gsx testnet rpc you have>
 export BASE_SEPOLIA_RPC_URL=<base sepolia rpc>
-forge test --match-path contracts/test/deployment/UpgradeV7.dryrun.t.sol -vv
+forge test --match-path test/deployment/UpgradeV7.dryrun.t.sol -vv
 
 # All four tests must pass (gsx + base × layout + pause-rehearsal).
 ```
@@ -159,6 +160,15 @@ deployed in Phase B will trigger in anger if a CRITICAL alert fires.
 
 **Goal:** sub-5-minute response, alert → `paused == true`.
 
+Before starting the drill, export the addresses every step below
+references. Source-of-truth for these is
+[`docs/DEPLOYED_CONTRACTS.md`](../DEPLOYED_CONTRACTS.md):
+
+```bash
+export MULTISIG=0x0106A79e9236009a05742B3fB1e3B7a52F44373D
+export REGISTRY=0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4
+```
+
 ### Drill steps (do these on GSX testnet, NOT mainnet)
 
 1. **Time start.** Someone calls `T0` — note the wall-clock minute.
@@ -167,8 +177,8 @@ deployed in Phase B will trigger in anger if a CRITICAL alert fires.
    ```bash
    scripts/propose_pause.sh \
        --rpc-url   $GSX_RPC_URL \
-       --multisig  0x0106A79e9236009a05742B3fB1e3B7a52F44373D \
-       --registry  0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4
+       --multisig  $MULTISIG \
+       --registry  $REGISTRY
    ```
 
    Copy and run the printed `cast send …` line as the proposer.
@@ -197,11 +207,15 @@ deployed in Phase B will trigger in anger if a CRITICAL alert fires.
 6. **Unpause** to restore testnet operation:
 
    ```bash
-   # Mirror of step 2-3 with `unpause()` selector 0x3f4ba83a:
-   cast send $MULTISIG 'proposeTransaction(address,uint256,bytes)' \
+   # Mirror of step 2-3 with `unpause()` selector 0x3f4ba83a. The
+   # multisig entry point is `submitTransaction(address,uint256,bytes)`
+   # (matches LTPMultiSig.sol); the submitter is auto-confirmed, so a
+   # 2-of-2 only needs the cosigner to `confirmTransaction` once before
+   # `executeTransaction` clears.
+   cast send $MULTISIG 'submitTransaction(address,uint256,bytes)' \
        $REGISTRY 0 0x3f4ba83a \
        --rpc-url $GSX_RPC_URL --private-key $GSX_DEPLOYER_KEY
-   # confirm + execute as above.
+   # Then cosigner: confirm + execute (same pattern as step 3).
    ```
 
 ### Recording the drill

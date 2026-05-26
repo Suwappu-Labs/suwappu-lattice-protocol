@@ -119,12 +119,24 @@ contract UpgradeV7DryRunTest is Test {
         // Storage from pre-upgrade reads must round-trip exactly.
         assertEq(registry.admin(), preAdmin, "admin slot moved during upgrade");
         assertEq(registry.paused(), prePaused, "paused slot moved during upgrade");
-        assertGe(registry.version(), preVersion, "version monotonicity violated");
+
+        // The v7 ceremony's invariant is a real version bump — equality
+        // here would silently green-light a no-op or wrong-impl deploy.
+        assertGt(
+            registry.version(),
+            preVersion,
+            "version did not advance — implementation not actually upgraded"
+        );
     }
 
     /// @dev Drills the emergency pause flow against a freshly-upgraded
     /// registry. Pranks as the Timelock (= admin after deploy) and asserts
     /// pause() / unpause() succeed and state flips correctly.
+    ///
+    /// Branches on the live fork's starting pause state — OZ Pausable
+    /// reverts `pause()` when already paused (and `unpause()` when not),
+    /// so the drill order depends on the snapshot. End state is always
+    /// restored to the pre-drill value.
     function _drillPauseAfterUpgrade(address proxy, address timelock) internal {
         LTPAnchorRegistry registry = LTPAnchorRegistry(proxy);
 
@@ -133,15 +145,26 @@ contract UpgradeV7DryRunTest is Test {
         vm.prank(timelock);
         UUPSUpgradeable(proxy).upgradeToAndCall(address(newImpl), "");
 
-        // Pause.
         bool wasPaused = registry.paused();
-        vm.prank(timelock);
-        registry.pause();
-        assertTrue(registry.paused(), "pause() did not flip paused = true");
 
-        // Unpause (cleanup so the pre-existing state is restored).
-        vm.prank(timelock);
-        registry.unpause();
-        assertEq(registry.paused(), wasPaused, "unpause() did not restore prior state");
+        if (wasPaused) {
+            vm.prank(timelock);
+            registry.unpause();
+            assertFalse(registry.paused(), "unpause() did not flip paused = false");
+
+            vm.prank(timelock);
+            registry.pause();
+            assertTrue(registry.paused(), "re-pause() did not restore paused = true");
+        } else {
+            vm.prank(timelock);
+            registry.pause();
+            assertTrue(registry.paused(), "pause() did not flip paused = true");
+
+            vm.prank(timelock);
+            registry.unpause();
+            assertFalse(registry.paused(), "unpause() did not flip paused = false");
+        }
+
+        assertEq(registry.paused(), wasPaused, "drill did not restore prior pause state");
     }
 }
