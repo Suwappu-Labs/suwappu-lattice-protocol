@@ -73,7 +73,11 @@ jobs:
       - name: Install project + pip-audit
         run: |
           pip install -e ".[dev,chain]"
-          pip install "pip-audit>=2.7.0,<3.0"
+          # pip-audit 2.7.x crashed with `KeyError: 'ranges'` in
+          # pip_audit/_service/osv.py when OSV returned advisory
+          # entries without a `ranges` key (observed 2026-05-26 across
+          # every PR). 2.8.x handles missing ranges gracefully.
+          pip install "pip-audit>=2.8.0,<3.0"
 
       - name: Run pip-audit against installed packages
         run: pip-audit --strict --vulnerability-service osv
