@@ -22,24 +22,24 @@ DEPLOY_DIR = os.path.join(os.path.dirname(__file__), "..", "deploy")
 
 class TestDockerfile:
     def test_dockerfile_exists(self):
-        path = os.path.join(DEPLOY_DIR, "Dockerfile")
+        path = os.path.join(DEPLOY_DIR, "Dockerfile.node")
         assert os.path.isfile(path)
 
     def test_dockerfile_has_multi_stage(self):
-        path = os.path.join(DEPLOY_DIR, "Dockerfile")
+        path = os.path.join(DEPLOY_DIR, "Dockerfile.node")
         with open(path) as f:
             content = f.read()
         assert "AS builder" in content
         assert "AS runtime" in content
 
     def test_dockerfile_has_healthcheck(self):
-        path = os.path.join(DEPLOY_DIR, "Dockerfile")
+        path = os.path.join(DEPLOY_DIR, "Dockerfile.node")
         with open(path) as f:
             content = f.read()
         assert "HEALTHCHECK" in content
 
     def test_dockerfile_runs_as_non_root(self):
-        path = os.path.join(DEPLOY_DIR, "Dockerfile")
+        path = os.path.join(DEPLOY_DIR, "Dockerfile.node")
         with open(path) as f:
             content = f.read()
         assert "USER etp" in content
