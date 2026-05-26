@@ -142,24 +142,25 @@ broadcast tx didn't deviate from the simulated path.
 
 ## Then: Base Sepolia
 
-Same script, swap RPC + addresses. **Critical:** unset the GSX env
-vars first so the step1-4 commands cannot accidentally re-target the
-chain you just finished — a chain-targeting mistake at this point
-overwrites the wrong proxy.
+The same script targets Base Sepolia (chain 84532). Open a fresh
+shell **or** `unset` the GSX vars first — chain-targeting mistakes
+here overwrite the wrong proxy:
 
 ```bash
-# Prevent accidental re-targeting of GSX. Required.
 unset GSX_RPC_URL GSX_DEPLOYER_KEY GSX_OPERATOR_KEY PROXY
+```
 
-# Re-export the four GSX_-named vars from the step1-4 commands to
-# their Base Sepolia equivalents. The step1-4 command bodies are
-# unchanged — only the values behind these variable names differ.
-export GSX_RPC_URL=$BASE_SEPOLIA_RPC_URL
-export GSX_DEPLOYER_KEY=$BASE_SEPOLIA_DEPLOYER_KEY
-export GSX_OPERATOR_KEY=$BASE_SEPOLIA_OPERATOR_KEY
+Export the Base Sepolia values (source-of-truth:
+[`docs/DEPLOYED_CONTRACTS.md`](../DEPLOYED_CONTRACTS.md)):
 
-# Base Sepolia proxy for the post-flight verification block.
-export PROXY=0x79eF1B7914f98C5C1404617449AB1f377c475996
+```bash
+# Base Sepolia chain 84532:
+#   Proxy:    0x79eF1B7914f98C5C1404617449AB1f377c475996
+#   Multisig: 0x4c324c3c3475f58b67d3c879880D6c94eDC82E49
+#   Timelock: 0xc915740e35E38569E47f611eA5772Ff5278bc5Ae
+export BASE_SEPOLIA_RPC_URL=<base sepolia rpc>
+export BASE_SEPOLIA_DEPLOYER_KEY=<base sepolia deployer key>
+export BASE_SEPOLIA_OPERATOR_KEY=<base sepolia operator key>
 
 # Edit contracts/script/UpgradeV7.s.sol — replace the GSX constants
 # with the Base Sepolia ones from DEPLOYED_CONTRACTS.md, OR copy the
@@ -168,21 +169,22 @@ export PROXY=0x79eF1B7914f98C5C1404617449AB1f377c475996
 # a CHAIN env var.)
 ```
 
-Source-of-truth for the Base Sepolia values:
+Now repeat steps 1-4 above with these literal substitutions in
+**every** command:
+
+| In step 1-4 | Replace with |
+|---|---|
+| `$GSX_RPC_URL` | `$BASE_SEPOLIA_RPC_URL` |
+| `$GSX_DEPLOYER_KEY` | `$BASE_SEPOLIA_DEPLOYER_KEY` |
+| `$GSX_OPERATOR_KEY` | `$BASE_SEPOLIA_OPERATOR_KEY` |
+
+For the post-flight verification block, swap the proxy too:
 
 ```bash
-# from DEPLOYED_CONTRACTS.md — Base Sepolia chain 84532:
-#   Proxy:    0x79eF1B7914f98C5C1404617449AB1f377c475996
-#   Multisig: 0x4c324c3c3475f58b67d3c879880D6c94eDC82E49
-#   Timelock: 0xc915740e35E38569E47f611eA5772Ff5278bc5Ae
-export BASE_SEPOLIA_RPC_URL=...
-export BASE_SEPOLIA_DEPLOYER_KEY=...
-export BASE_SEPOLIA_OPERATOR_KEY=...
+export PROXY=0x79eF1B7914f98C5C1404617449AB1f377c475996
+# Re-run the three `cast call $PROXY ...` reads from the GSX
+# post-flight block, substituting $BASE_SEPOLIA_RPC_URL for $GSX_RPC_URL.
 ```
-
-Now repeat steps 1-4 above; every `$GSX_*` reference resolves to its
-Base Sepolia counterpart through the re-export. The post-flight
-verification re-uses `$PROXY` (now the Base Sepolia proxy).
 
 ---
 
@@ -192,68 +194,122 @@ After the upgrade lands, the operator team must drill the emergency
 pause path end-to-end. This is the test that the observability stack
 deployed in Phase B will trigger in anger if a CRITICAL alert fires.
 
-**Goal:** sub-5-minute response, alert → `paused == true`.
+**Goal:** sub-5-minute response, alert → `paused == true`. With the
+60-second testnet timelock delay the drill is ~3.5 minutes wall-clock
+under best conditions.
 
-Before starting the drill, return to the repo root (the ceremony's
-step 1 left you in `contracts/`; `scripts/propose_pause.sh` is at the
-repo root) and export the addresses every step below references.
-Source-of-truth for these is
-[`docs/DEPLOYED_CONTRACTS.md`](../DEPLOYED_CONTRACTS.md):
+**Why the drill spans 7 multisig txs**: `LTPAnchorRegistry.pause()`
+is `onlyAdmin`, and the registry admin in the deployed governance
+model is the **TimelockController**, not the multisig. The flow is
+`multisig → timelock.schedule → wait → multisig → timelock.execute
+→ registry.pause()`. A direct `multisig → registry.pause()` reverts
+`NotAdmin`. This mirrors the upgrade ceremony's multisig→timelock
+pattern in `UpgradeV7.s.sol`.
+
+### Before starting the drill
+
+The ceremony's step 1 left you in `contracts/`; the helper script
+lives at the repo root. Reset the working directory back to GSX env
+vars (if you ran the Base Sepolia ceremony in the same shell) and
+export the addresses + keys every step below references:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
+
+# If you continued from the Base Sepolia run, clear its env vars so
+# they cannot accidentally re-target. The drill is GSX-only.
+unset BASE_SEPOLIA_RPC_URL BASE_SEPOLIA_DEPLOYER_KEY \
+      BASE_SEPOLIA_OPERATOR_KEY PROXY
+
+# GSX testnet (chain 103115120) — source-of-truth: DEPLOYED_CONTRACTS.md
+export GSX_RPC_URL=<gsx testnet rpc>
 export MULTISIG=0x0106A79e9236009a05742B3fB1e3B7a52F44373D
 export REGISTRY=0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4
+export TIMELOCK=0x7C2665F7e68FE635ee8F10aa0130AEBC603a9Db8
+
+# Multisig keys (load from your secret store; do NOT commit literals):
+export LTP_PROPOSER_PRIVATE_KEY=<2-of-2 signer A — submits txs>
+export LTP_COSIGNER_PRIVATE_KEY=<2-of-2 signer B — confirms>
+export LTP_OWNER_PRIVATE_KEY=<any multisig owner — fires executeTransaction>
 ```
 
 ### Drill steps (do these on GSX testnet, NOT mainnet)
 
 1. **Time start.** Someone calls `T0` — note the wall-clock minute.
-2. **Operator proposes pause** using the script:
+
+2. **Generate the multisig command sequence** with the helper. The
+   script queries `timelock.getMinDelay()` and prints `cast send`
+   lines for the full STEP A–G flow:
 
    ```bash
    scripts/propose_pause.sh \
        --rpc-url   $GSX_RPC_URL \
        --multisig  $MULTISIG \
-       --registry  $REGISTRY
+       --registry  $REGISTRY \
+       --timelock  $TIMELOCK
    ```
 
-   Copy and run the printed `cast send …` line as the proposer.
+3. **Run STEP A** (proposer submits the timelock-schedule tx). Capture
+   the printed `txId` (call it `<scheduleTxId>`) from the receipt —
+   the cosigner-confirm and executor steps need it.
 
-3. **Cosigner confirms** via:
+4. **Run STEP B** (cosigner confirms `<scheduleTxId>`).
 
-   ```bash
-   cast send $MULTISIG 'confirmTransaction(uint256)' <txId> \
-       --rpc-url $GSX_RPC_URL --private-key $GSX_OPERATOR_KEY
-   ```
+5. **Run STEP C** (any owner executes `<scheduleTxId>`) — this fires
+   `timelock.schedule(...)` and starts the 60-second delay.
 
-   then:
+6. **Run STEP D** (`sleep 60`).
 
-   ```bash
-   cast send $MULTISIG 'executeTransaction(uint256)' <txId> \
-       --rpc-url $GSX_RPC_URL --private-key $GSX_OPERATOR_KEY
-   ```
+7. **Run STEP E** (proposer submits the timelock-execute tx). Capture
+   `<executeTxId>`.
 
-4. **Verify** `paused == true`:
+8. **Run STEP F** (cosigner confirms `<executeTxId>`).
 
-   ```bash
-   cast call $REGISTRY 'paused()(bool)' --rpc-url $GSX_RPC_URL
-   ```
+9. **Run STEP G** (any owner executes `<executeTxId>`) — this fires
+   `timelock.execute(...) → registry.pause()`.
 
-5. **Time end.** Record `T_paused - T0`. Target < 5 min.
-6. **Unpause** to restore testnet operation:
+10. **Verify** `paused == true`:
 
-   ```bash
-   # Mirror of step 2-3 with `unpause()` selector 0x3f4ba83a. The
-   # multisig entry point is `submitTransaction(address,uint256,bytes)`
-   # (matches LTPMultiSig.sol); the submitter is auto-confirmed, so a
-   # 2-of-2 only needs the cosigner to `confirmTransaction` once before
-   # `executeTransaction` clears.
-   cast send $MULTISIG 'submitTransaction(address,uint256,bytes)' \
-       $REGISTRY 0 0x3f4ba83a \
-       --rpc-url $GSX_RPC_URL --private-key $GSX_DEPLOYER_KEY
-   # Then cosigner: confirm + execute (same pattern as step 3).
-   ```
+    ```bash
+    cast call $REGISTRY 'paused()(bool)' --rpc-url $GSX_RPC_URL
+    ```
+
+11. **Time end.** Record `T_paused - T0`. Target < 5 min.
+
+12. **Unpause** to restore testnet operation. Same timelock-gated
+    pattern, swapping the `pause()` selector `0x8456cb59` for
+    `unpause()` `0x3f4ba83a`:
+
+    ```bash
+    UNPAUSE_CALLDATA=0x3f4ba83a
+    BYTES32_ZERO=0x0000000000000000000000000000000000000000000000000000000000000000
+
+    # STEP A — proposer submits timelock-schedule for unpause()
+    SCHEDULE_UNPAUSE=$(cast calldata \
+        'schedule(address,uint256,bytes,bytes32,bytes32,uint256)' \
+        $REGISTRY 0 $UNPAUSE_CALLDATA $BYTES32_ZERO $BYTES32_ZERO 60)
+    cast send $MULTISIG \
+        'submitTransaction(address,uint256,bytes)' \
+        $TIMELOCK 0 $SCHEDULE_UNPAUSE \
+        --rpc-url $GSX_RPC_URL --private-key $LTP_PROPOSER_PRIVATE_KEY
+    # → capture <scheduleTxId>; STEP B/C as above
+
+    sleep 60
+
+    # STEP E — proposer submits timelock-execute for unpause()
+    EXECUTE_UNPAUSE=$(cast calldata \
+        'execute(address,uint256,bytes,bytes32,bytes32)' \
+        $REGISTRY 0 $UNPAUSE_CALLDATA $BYTES32_ZERO $BYTES32_ZERO)
+    cast send $MULTISIG \
+        'submitTransaction(address,uint256,bytes)' \
+        $TIMELOCK 0 $EXECUTE_UNPAUSE \
+        --rpc-url $GSX_RPC_URL --private-key $LTP_PROPOSER_PRIVATE_KEY
+    # → capture <executeTxId>; STEP F/G as above
+
+    # Verify
+    cast call $REGISTRY 'paused()(bool)' --rpc-url $GSX_RPC_URL
+    # expect: false
+    ```
 
 ### Recording the drill
 

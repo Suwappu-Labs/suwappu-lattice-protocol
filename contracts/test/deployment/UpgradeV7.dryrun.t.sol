@@ -67,7 +67,7 @@ contract UpgradeV7DryRunTest is Test {
             return;
         }
         vm.createSelectFork(url);
-        _drillPauseAfterUpgrade(GSX_PROXY, GSX_TIMELOCK);
+        _drillPauseAfterUpgrade(GSX_PROXY, GSX_TIMELOCK, GSX_MULTISIG);
     }
 
     // ------------------------------------------------------------------
@@ -91,7 +91,7 @@ contract UpgradeV7DryRunTest is Test {
             return;
         }
         vm.createSelectFork(url);
-        _drillPauseAfterUpgrade(BASE_SEPOLIA_PROXY, BASE_SEPOLIA_TIMELOCK);
+        _drillPauseAfterUpgrade(BASE_SEPOLIA_PROXY, BASE_SEPOLIA_TIMELOCK, BASE_SEPOLIA_MULTISIG);
     }
 
     // ------------------------------------------------------------------
@@ -130,15 +130,39 @@ contract UpgradeV7DryRunTest is Test {
     }
 
     /// @dev Drills the emergency pause flow against a freshly-upgraded
-    /// registry. Pranks as the Timelock (= admin after deploy) and asserts
-    /// pause() / unpause() succeed and state flips correctly.
+    /// registry by exercising the full governance path that the runbook
+    /// uses in production:
+    ///   multisig.submitTransaction(timelock, schedule(...))
+    ///     → multisig.confirmTransaction
+    ///     → multisig.executeTransaction (fires timelock.schedule)
+    ///     → vm.warp past timelock delay
+    ///     → multisig.submitTransaction(timelock, execute(...))
+    ///     → multisig.confirmTransaction
+    ///     → multisig.executeTransaction (fires timelock.execute → registry.pause)
+    ///
+    /// This catches governance-wiring regressions (proposer/executor
+    /// role assignments, multisig owner set, threshold) that a direct
+    /// `vm.prank(timelock); registry.pause()` would silently pass.
     ///
     /// Branches on the live fork's starting pause state — OZ Pausable
-    /// reverts `pause()` when already paused (and `unpause()` when not),
-    /// so the drill order depends on the snapshot. End state is always
-    /// restored to the pre-drill value.
-    function _drillPauseAfterUpgrade(address proxy, address timelock) internal {
+    /// reverts `pause()` when already paused (and `unpause()` when not).
+    /// End state is always restored to the pre-drill value.
+    function _drillPauseAfterUpgrade(address proxy, address timelock, address payable multisig) internal {
         LTPAnchorRegistry registry = LTPAnchorRegistry(proxy);
+        TimelockController tl = TimelockController(payable(timelock));
+        LTPMultiSig ms = LTPMultiSig(multisig);
+
+        // Governance wiring invariants — the multisig must hold both
+        // proposer and executor roles on the timelock for the ceremony
+        // to clear in production.
+        assertTrue(
+            tl.hasRole(tl.PROPOSER_ROLE(), multisig),
+            "multisig does not hold PROPOSER_ROLE on timelock"
+        );
+        assertTrue(
+            tl.hasRole(tl.EXECUTOR_ROLE(), multisig),
+            "multisig does not hold EXECUTOR_ROLE on timelock"
+        );
 
         // Upgrade first.
         LTPAnchorRegistry newImpl = new LTPAnchorRegistry();
@@ -146,25 +170,67 @@ contract UpgradeV7DryRunTest is Test {
         UUPSUpgradeable(proxy).upgradeToAndCall(address(newImpl), "");
 
         bool wasPaused = registry.paused();
+        bytes memory pauseCall = abi.encodeCall(LTPAnchorRegistry.pause, ());
+        bytes memory unpauseCall = abi.encodeCall(LTPAnchorRegistry.unpause, ());
 
         if (wasPaused) {
-            vm.prank(timelock);
-            registry.unpause();
-            assertFalse(registry.paused(), "unpause() did not flip paused = false");
+            _routeAdminCallThroughGovernance(registry, tl, ms, unpauseCall);
+            assertFalse(registry.paused(), "governance path did not unpause registry");
 
-            vm.prank(timelock);
-            registry.pause();
-            assertTrue(registry.paused(), "re-pause() did not restore paused = true");
+            _routeAdminCallThroughGovernance(registry, tl, ms, pauseCall);
+            assertTrue(registry.paused(), "governance path did not re-pause registry");
         } else {
-            vm.prank(timelock);
-            registry.pause();
-            assertTrue(registry.paused(), "pause() did not flip paused = true");
+            _routeAdminCallThroughGovernance(registry, tl, ms, pauseCall);
+            assertTrue(registry.paused(), "governance path did not pause registry");
 
-            vm.prank(timelock);
-            registry.unpause();
-            assertFalse(registry.paused(), "unpause() did not flip paused = false");
+            _routeAdminCallThroughGovernance(registry, tl, ms, unpauseCall);
+            assertFalse(registry.paused(), "governance path did not unpause registry");
         }
 
         assertEq(registry.paused(), wasPaused, "drill did not restore prior pause state");
+    }
+
+    /// @dev Drives an `onlyAdmin` registry call through the live
+    /// multisig + timelock the way the runbook prescribes: two
+    /// multisig txs (schedule then execute) bracketing the timelock
+    /// delay. Assumes a 2-of-N multisig where the first two owners
+    /// are both able to sign — true for the 2-of-2 testnet deployments.
+    function _routeAdminCallThroughGovernance(
+        LTPAnchorRegistry registry,
+        TimelockController tl,
+        LTPMultiSig ms,
+        bytes memory adminCall
+    ) internal {
+        address[] memory owners = ms.getOwners();
+        require(owners.length >= 2, "test requires >= 2 multisig owners");
+
+        uint256 delay = tl.getMinDelay();
+
+        // STEP A-C: submit + confirm + execute the timelock.schedule(...)
+        bytes memory scheduleCall = abi.encodeCall(
+            TimelockController.schedule,
+            (address(registry), 0, adminCall, bytes32(0), bytes32(0), delay)
+        );
+        vm.prank(owners[0]);
+        uint256 scheduleTxId = ms.submitTransaction(address(tl), 0, scheduleCall);
+        vm.prank(owners[1]);
+        ms.confirmTransaction(scheduleTxId);
+        vm.prank(owners[0]);
+        ms.executeTransaction(scheduleTxId);
+
+        // STEP D: advance past the timelock delay.
+        vm.warp(block.timestamp + delay + 1);
+
+        // STEP E-G: submit + confirm + execute the timelock.execute(...)
+        bytes memory executeCall = abi.encodeCall(
+            TimelockController.execute,
+            (address(registry), 0, adminCall, bytes32(0), bytes32(0))
+        );
+        vm.prank(owners[0]);
+        uint256 executeTxId = ms.submitTransaction(address(tl), 0, executeCall);
+        vm.prank(owners[1]);
+        ms.confirmTransaction(executeTxId);
+        vm.prank(owners[0]);
+        ms.executeTransaction(executeTxId);
     }
 }
