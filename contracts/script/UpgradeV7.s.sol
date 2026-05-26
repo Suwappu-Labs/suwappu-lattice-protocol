@@ -49,7 +49,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 ///     forge script script/UpgradeV7.s.sol --sig "step3(uint256)" <scheduleTxId> \
 ///       --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_DEPLOYER_KEY
 ///
-///   Step 4 — Wait TIMELOCK_DELAY (60 s on testnet), then execute upgrade
+///   Step 4 — Wait at least the timelock delay (step3 prints the value), then execute upgrade
 ///     forge script script/UpgradeV7.s.sol --sig "step4(uint256)" <executeTxId> \
 ///       --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_DEPLOYER_KEY
 ///
