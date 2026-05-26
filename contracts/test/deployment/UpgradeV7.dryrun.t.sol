@@ -125,7 +125,7 @@ contract UpgradeV7DryRunTest is Test {
         assertGt(
             registry.version(),
             preVersion,
-            "version did not advance — implementation not actually upgraded"
+            "version did not advance - implementation not actually upgraded"
         );
     }
 

@@ -257,9 +257,13 @@ export LTP_OWNER_PRIVATE_KEY=<any multisig owner — fires executeTransaction>
 4. **Run STEP B** (cosigner confirms `<scheduleTxId>`).
 
 5. **Run STEP C** (any owner executes `<scheduleTxId>`) — this fires
-   `timelock.schedule(...)` and starts the 60-second delay.
+   `timelock.schedule(...)` and starts the timelock delay countdown.
 
-6. **Run STEP D** (`sleep 60`).
+6. **Run STEP D** — the helper's banner shows the exact wait derived
+   from `timelock.getMinDelay()` (typically 60s on testnet):
+   `sleep "$TIMELOCK_DELAY"`. Do NOT use a literal 60s — the delay
+   is governance-updatable and would mismatch on chains where it has
+   been raised.
 
 7. **Run STEP E** (proposer submits the timelock-execute tx). Capture
    `<executeTxId>`.
