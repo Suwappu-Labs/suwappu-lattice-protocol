@@ -264,13 +264,18 @@ halting the registry. When the matrix says "pause", run:
 scripts/propose_pause.sh \
     --rpc-url   "$LTP_RPC_URL" \
     --multisig  "$LTP_MULTISIG_ADDRESS" \
-    --registry  "$LTP_REGISTRY_ADDRESS"
+    --registry  "$LTP_REGISTRY_ADDRESS" \
+    --timelock  "$LTP_TIMELOCK_ADDRESS"   # optional; falls back to registry.admin()
 ```
 
-Cosigners confirm via the multisig dapp; the 0-second Timelock delay
-(verified by `tests/deployment/test_v7_upgrade_dryrun.py` once Phase A
-lands) executes `pause()` immediately on threshold-met. Watch the
-**PAUSE STATUS** Grafana dashboard for the on-chain confirmation.
+The script outputs the full multisig→timelock→registry command
+sequence (STEPS A–G — schedule submit, cosigner confirm, execute,
+sleep `getMinDelay()`, execute submit, cosigner confirm, execute).
+The pause path is governance-gated because `LTPAnchorRegistry.pause()`
+is `onlyAdmin` and the registry admin is the TimelockController, not
+the multisig. Cosigners confirm via the multisig dapp or by running
+the printed STEP B / STEP F lines. Watch the **PAUSE STATUS**
+Grafana dashboard for the on-chain confirmation.
 
 > ⚠ Never bypass the multisig with a hot key. The pause path is
 > deliberately governance-gated; rushing it through an EOA defeats the

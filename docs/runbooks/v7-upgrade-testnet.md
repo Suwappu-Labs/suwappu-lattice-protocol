@@ -278,16 +278,24 @@ export LTP_OWNER_PRIVATE_KEY=<any multisig owner — fires executeTransaction>
 
 12. **Unpause** to restore testnet operation. Same timelock-gated
     pattern, swapping the `pause()` selector `0x8456cb59` for
-    `unpause()` `0x3f4ba83a`:
+    `unpause()` `0x3f4ba83a`. **The salt must be unique per
+    rehearsal/incident** — re-using a salt that hit `Done` on a
+    prior cycle makes `schedule(...)` revert because the Timelock
+    op id is no longer `Unset`. Reuse the same `$SALT` across the
+    schedule + execute calldata of this cycle so the op ids match:
 
     ```bash
     UNPAUSE_CALLDATA=0x3f4ba83a
-    BYTES32_ZERO=0x0000000000000000000000000000000000000000000000000000000000000000
+    PREDECESSOR=0x0000000000000000000000000000000000000000000000000000000000000000
+
+    # Per-cycle unique salt (re-derive for each unpause attempt).
+    SALT=$(cast keccak "$(date -u +%s%N)-${RANDOM}-unpause-$REGISTRY")
+    echo "salt for this unpause cycle: $SALT"
 
     # STEP A — proposer submits timelock-schedule for unpause()
     SCHEDULE_UNPAUSE=$(cast calldata \
         'schedule(address,uint256,bytes,bytes32,bytes32,uint256)' \
-        $REGISTRY 0 $UNPAUSE_CALLDATA $BYTES32_ZERO $BYTES32_ZERO 60)
+        $REGISTRY 0 $UNPAUSE_CALLDATA $PREDECESSOR $SALT 60)
     cast send $MULTISIG \
         'submitTransaction(address,uint256,bytes)' \
         $TIMELOCK 0 $SCHEDULE_UNPAUSE \
@@ -297,9 +305,11 @@ export LTP_OWNER_PRIVATE_KEY=<any multisig owner — fires executeTransaction>
     sleep 60
 
     # STEP E — proposer submits timelock-execute for unpause()
+    # Salt MUST match the schedule call so the Timelock resolves
+    # the same op id; don't re-derive here.
     EXECUTE_UNPAUSE=$(cast calldata \
         'execute(address,uint256,bytes,bytes32,bytes32)' \
-        $REGISTRY 0 $UNPAUSE_CALLDATA $BYTES32_ZERO $BYTES32_ZERO)
+        $REGISTRY 0 $UNPAUSE_CALLDATA $PREDECESSOR $SALT)
     cast send $MULTISIG \
         'submitTransaction(address,uint256,bytes)' \
         $TIMELOCK 0 $EXECUTE_UNPAUSE \

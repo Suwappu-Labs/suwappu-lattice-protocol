@@ -68,9 +68,14 @@ flipping the on-chain pause. The flow is:
 1. Operator gets paged (PagerDuty)
 2. Operator opens the **LTP — Pause status** Grafana dashboard
 3. If the appropriate condition holds (per OPERATOR_RUNBOOK §7), the
-   operator runs `scripts/propose_pause.sh --rpc-url <env-rpc> --multisig <addr>`
-4. Cosigners confirm via the multisig dapp; 0s-delay Timelock executes
-5. The dashboard's PAUSE STATUS panel flips red within one scrape interval
+   operator runs `scripts/propose_pause.sh --rpc-url <env-rpc>
+   --multisig <addr> --registry <addr>` (optionally `--timelock <addr>`;
+   the script falls back to `registry.admin()` if omitted)
+4. The script prints the full multisig→timelock→registry command
+   sequence (STEPS A–G); operator runs each in order, cosigners confirm
+   STEP B / STEP F via the multisig dapp or the printed lines
+5. After `getMinDelay()` seconds + STEP G, the dashboard's PAUSE STATUS
+   panel flips red within one scrape interval
 
 ## Out of scope
 
