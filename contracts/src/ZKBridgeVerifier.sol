@@ -64,6 +64,8 @@ contract ZKBridgeVerifier {
     error ProofAlreadyUsed();
     error Unauthorized();
     error SimulatedModeNotAllowedInProduction();
+    error SP1VerifierNotConfigured();
+    error STARKModeDisabled();
 
     // -----------------------------------------------------------------------
     // Constructor
@@ -93,6 +95,8 @@ contract ZKBridgeVerifier {
     function lockProduction() external {
         if (msg.sender != admin) revert Unauthorized();
         if (verificationMode == MODE_SIMULATED) revert SimulatedModeNotAllowedInProduction();
+        if (verificationMode == MODE_STARK) revert STARKModeDisabled();
+        if (verificationMode == MODE_SP1 && sp1Verifier == address(0)) revert SP1VerifierNotConfigured();
         productionMode = true;
         emit ProductionModeLocked();
     }
@@ -130,7 +134,10 @@ contract ZKBridgeVerifier {
         } else if (verificationMode == MODE_SP1) {
             valid = _verifySP1(proofBytes, inputs);
         } else if (verificationMode == MODE_STARK) {
-            valid = _verifySTARK(proofBytes, inputs);
+            // C5: STARK mode permanently disabled. _verifySTARK was a keccak256
+            // tag check, not a cryptographic STARK verifier. Reverts to prevent
+            // any accidental use.
+            revert STARKModeDisabled();
         } else {
             // RISC Zero — future backend
             revert InvalidProof();
@@ -240,16 +247,15 @@ contract ZKBridgeVerifier {
     }
 
     /// @dev SP1 verification: delegates to Succinct's on-chain SP1 verifier.
-    ///      If no sp1Verifier is configured, accepts proofs >= 128 bytes (simulated).
+    ///      Requires sp1Verifier to be set — no fallback to mock proofs.
     ///      Production: calls sp1Verifier.verifyProof(vkey, publicValues, proofBytes).
     function _verifySP1(
         bytes calldata proofBytes,
         PublicInputs calldata inputs
     ) internal view returns (bool) {
-        if (sp1Verifier == address(0)) {
-            // No real SP1 verifier configured — accept only mock proofs (exactly 128B)
-            return proofBytes.length == 128;
-        }
+        // C1: Never accept unverified input. sp1Verifier must be configured
+        // before MODE_SP1 is used. Call setSP1Verifier() first.
+        if (sp1Verifier == address(0)) revert SP1VerifierNotConfigured();
 
         // Encode public values matching circuit commit order:
         // sth_root_hash(32B) || operator_vk_hash(32B) || tree_size(8B BE) || sth_sequence(8B BE)
@@ -293,12 +299,12 @@ contract ZKBridgeVerifier {
 
     function setVerificationMode(uint8 _mode) external {
         if (msg.sender != admin) revert Unauthorized();
-        // LTP-A-007: once production-locked, admin can switch backends
-        // freely between real verifiers but can never re-enable the
-        // simulated path.
         if (productionMode && _mode == MODE_SIMULATED) {
             revert SimulatedModeNotAllowedInProduction();
         }
+        // STARK mode is permanently disabled — it used a keccak256 tag check,
+        // not a cryptographic STARK proof. Use MODE_SP1 for production.
+        if (_mode == MODE_STARK) revert STARKModeDisabled();
         verificationMode = _mode;
     }
 

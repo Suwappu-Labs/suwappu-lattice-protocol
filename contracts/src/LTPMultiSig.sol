@@ -3,9 +3,21 @@ pragma solidity ^0.8.24;
 
 /// @title LTPMultiSig
 /// @author Javier Calderon Jr, CTO of Global Settlement (GSX)
-/// @notice Lightweight N-of-M multi-signature wallet for LTPAnchorRegistry admin.
-/// @dev Owners propose transactions, collect confirmations, then execute.
-///      Designed for testnet (2-of-3). Production should use Gnosis Safe.
+/// @notice DEPRECATED — DO NOT DEPLOY TO PRODUCTION.
+///
+/// @dev C6: This contract has two critical defects that make it unsafe for
+///      production use:
+///      1. Auto-confirm on submit (lines below) means a 1-of-N owner can
+///         submit and immediately execute in the same block — no real threshold.
+///      2. No execution timelock — any transaction executes instantly once
+///         threshold is reached. A compromised key can drain/brick in one tx.
+///
+///      Use Gnosis Safe 1.4.1 (https://safe.global) with a TimelockController
+///      for all production deployments. This contract is retained only for
+///      historical reference and testnet compatibility.
+///
+///      Existing testnet deployments are not affected by this annotation.
+///      New deployments will revert with the deprecation message below.
 contract LTPMultiSig {
     // -----------------------------------------------------------------------
     // Events
@@ -64,6 +76,9 @@ contract LTPMultiSig {
     // -----------------------------------------------------------------------
 
     constructor(address[] memory _owners, uint256 _threshold) {
+        // C6: Block new deployments — use Gnosis Safe 1.4.1 instead.
+        revert("LTPMultiSig: DEPRECATED. Deploy Gnosis Safe 1.4.1 for production.");
+
         if (_owners.length == 0) revert InvalidThreshold(_threshold, 0);
         if (_threshold == 0 || _threshold > _owners.length) {
             revert InvalidThreshold(_threshold, _owners.length);

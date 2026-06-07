@@ -72,6 +72,10 @@ contract ETPGovernance {
     mapping(bytes32 => uint64) public operatorSequences;
     mapping(bytes32 => uint256) public operatorCountAtFirstVote; // Snapshot for supermajority
 
+    // H3: track which transition keys each operator voted on so votes can be
+    // cleaned up when an operator is revoked.
+    mapping(bytes32 => bytes32[]) private _operatorVotedKeys; // vkHash → transitionKeys
+
     // -----------------------------------------------------------------------
     // Modifiers
     // -----------------------------------------------------------------------
@@ -110,6 +114,19 @@ contract ETPGovernance {
         if (!authorizedOperators[vkHash]) revert OperatorNotRegistered(vkHash);
         authorizedOperators[vkHash] = false;
         operatorCount--;
+
+        // H3: Remove this operator's votes from all pending transition counts
+        // so a revoked key cannot contribute to a supermajority.
+        bytes32[] storage votedKeys = _operatorVotedKeys[vkHash];
+        for (uint256 i = 0; i < votedKeys.length; i++) {
+            bytes32 key = votedKeys[i];
+            if (hasVoted[key][vkHash]) {
+                voteCount[key]--;
+                hasVoted[key][vkHash] = false;
+            }
+        }
+        delete _operatorVotedKeys[vkHash];
+
         emit OperatorRevoked(vkHash);
     }
 
@@ -158,6 +175,7 @@ contract ETPGovernance {
         hasVoted[transitionKey][voterVkHash] = true;
         operatorSequences[voterVkHash] = sequence;
         voteCount[transitionKey]++;
+        _operatorVotedKeys[voterVkHash].push(transitionKey); // H3: track for revocation cleanup
 
         // Snapshot operator count on first vote for this transition
         if (operatorCountAtFirstVote[transitionKey] == 0) {
@@ -188,6 +206,9 @@ contract ETPGovernance {
         bytes32 transitionKey = keccak256(abi.encodePacked(fromPhase, "->", toPhase));
         uint256 snapshotCount = operatorCountAtFirstVote[transitionKey];
         if (snapshotCount == 0) snapshotCount = operatorCount; // No votes yet
+        // C3: Prevent execution with zero operators — required would be 0, allowing
+        // any EOA to trigger an immediate phase transition.
+        require(snapshotCount > 0, "SuwappuGovernance: no operators registered");
         uint256 required = (snapshotCount * requiredRatio + BASIS_POINTS - 1) / BASIS_POINTS;
         if (voteCount[transitionKey] < required) {
             revert SupermajorityNotReached(transitionKey, voteCount[transitionKey], required);
