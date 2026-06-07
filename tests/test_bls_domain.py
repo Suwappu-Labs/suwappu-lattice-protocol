@@ -11,12 +11,12 @@ class TestBLSDomainTags:
     def test_bls_sign_tag_exists(self):
         from src.ltp.domain import DOMAIN_BLS_SIGN
 
-        assert DOMAIN_BLS_SIGN == b"GSX-LTP:bls-sign:v1\x00"
+        assert DOMAIN_BLS_SIGN == b"SUWAPPU-LTP:bls-sign:v1\x00"
 
     def test_bls_attest_tag_exists(self):
         from src.ltp.domain import DOMAIN_BLS_ATTEST
 
-        assert DOMAIN_BLS_ATTEST == b"GSX-LTP:bls-attest:v1\x00"
+        assert DOMAIN_BLS_ATTEST == b"SUWAPPU-LTP:bls-attest:v1\x00"
 
     def test_tags_in_registry(self):
         from src.ltp.domain import _ALL_TAGS

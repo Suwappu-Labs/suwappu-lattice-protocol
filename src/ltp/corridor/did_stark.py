@@ -1,15 +1,15 @@
 """Cross-chain DID rotation STARK statement (paper §10.3).
 
-Wire-compatible Python mirror of `gsx-dag/crates/gsx-ltp/src/did_stark.rs`.
+Wire-compatible Python mirror of `suwappu-dag/crates/suwappu-ltp/src/did_stark.rs`.
 The load-bearing part for the cross-repo wire is `DidRotationStatement.digest()`
-— SHA3-256 with the `GSX-DID-STARK-V1` domain tag over a fixed byte layout.
+— SHA3-256 with the `SUWAPPU-DID-STARK-V1` domain tag over a fixed byte layout.
 
 The DID-document object graph (verification methods, relationships) lives in
-`gsx-precompiles` on the Rust side and has no Python mirror yet, so this
+`suwappu-precompiles` on the Rust side and has no Python mirror yet, so this
 module exposes a minimal phase-1 proof that carries an ML-DSA-65 detached
 signature over the statement digest. Caller is responsible for binding
 `old_doc_hash`/`new_doc_hash` to the documents the rotation installs; a future
-`ltp.did` module will own the document graph once gsx-precompiles is ported.
+`ltp.did` module will own the document graph once suwappu-precompiles is ported.
 """
 
 from __future__ import annotations
@@ -103,7 +103,7 @@ def prove_rotation(
     Caller supplies `expected_old_doc_hash` (the canonical hash of the old
     DID document) and the ML-DSA-65 secret key of the verification method
     selected. Method-id authorization (`CapabilityInvocation` membership) is
-    the caller's responsibility on the Python side until the gsx-precompiles
+    the caller's responsibility on the Python side until the suwappu-precompiles
     document graph is mirrored.
     """
     if statement.old_doc_hash != expected_old_doc_hash:
@@ -149,7 +149,7 @@ def prove_rotation_with_doc(
     sk: bytes,
 ) -> DidStarkProof:
     """Convenience wrapper that derives `old_doc_hash` from `old_doc` and
-    enforces the gsx-precompiles authorization predicates (method existence +
+    enforces the suwappu-precompiles authorization predicates (method existence +
     CapabilityInvocation membership).
     """
     if statement.old_doc_hash != old_doc.canonical_hash():

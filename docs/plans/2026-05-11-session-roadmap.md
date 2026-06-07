@@ -1,6 +1,6 @@
 # ETP Session Roadmap — Current State to Feature-Complete
 
-**Author:** Javier Calderon Jr, CTO — Global Settlement (GSX)
+**Author:** Javier Calderon Jr, CTO — Suwappu
 **Date:** May 11, 2026
 **Purpose:** Session-aware execution roadmap mapping every remaining spec to concrete work sessions, with dependency chains, complexity ratings, and honest caveats. Living document — update as gates are cleared.
 
@@ -15,7 +15,7 @@
 | Solidity tests | 181 |
 | **Total tests** | **3,530** |
 | Source subpackages | 20 |
-| Live deployments | 2 (GSX Testnet v5, Base Sepolia v6) |
+| Live deployments | 2 (SUWAPPU Testnet v5, Base Sepolia v6) |
 | Completed specs | 13 (A through C3b) |
 | Development days (git history) | 10 |
 | Total commits | 95 |
@@ -56,7 +56,7 @@
 
 ### Deployed On-Chain
 
-| Contract | GSX Testnet (v5) | Base Sepolia (v6) |
+| Contract | SUWAPPU Testnet (v5) | Base Sepolia (v6) |
 |----------|------------------|-------------------|
 | LTPAnchorRegistry (UUPS) | `0xB29d...` | `0x79eF...` |
 | LTPMultiSig (2-of-2) | `0x0106...` | `0x4c32...` |
@@ -159,13 +159,13 @@ C3c (Gate 5) ──► D1: Consensus Protocol ──► D2: P2P Transport ──
 
 **Open decision (MUST resolve before spec):** Consensus family.
 
-| Option | Pros | Cons | GSX Alignment |
+| Option | Pros | Cons | SUWAPPU Alignment |
 |--------|------|------|---------------|
 | Mysticeti (Sui DAG-BFT) | Sub-second latency, DAG parallelism | Newer, less battle-tested | greth + Mysticeti spike referenced in Gateway VM Plan |
 | HotStuff / HotStuff-2 | Well-studied, linear communication | Higher latency than DAG | Standard choice |
-| Tendermint/CometBFT | Mature ecosystem, Cosmos tooling | 2-round latency, older design | Less aligned with GSX direction |
+| Tendermint/CometBFT | Mature ecosystem, Cosmos tooling | 2-round latency, older design | Less aligned with SUWAPPU direction |
 
-**Recommendation:** Mysticeti, aligned with GSX mainnet direction. Prototype in D1 with fallback abstraction.
+**Recommendation:** Mysticeti, aligned with SUWAPPU mainnet direction. Prototype in D1 with fallback abstraction.
 
 **Delivers:**
 - `ConsensusAdapter` real implementation (replaces `FakeConsensusAdapter`)
@@ -218,7 +218,7 @@ C3c (Gate 5) ──► D1: Consensus Protocol ──► D2: P2P Transport ──
 - [ ] Full DKG ceremony completes over real P2P with ML-KEM encrypted shares
 - [ ] Nodes find peers and establish connections
 - [ ] Cross-node federation messages delivered reliably
-- [ ] **Deploy 3+ node testnet on GSX devnet** (the proving ground)
+- [ ] **Deploy 3+ node testnet on SUWAPPU devnet** (the proving ground)
 
 **Gate 7 Criteria (after E1-E2):**
 - [ ] Real EVM state changes via JSON-RPC
@@ -461,7 +461,7 @@ These must be resolved during brainstorming, before their respective specs:
 
 | # | Decision | Affects | Candidates | Leaning |
 |---|----------|---------|------------|---------|
-| 1 | Consensus protocol family | D1 | HotStuff / Tendermint / Mysticeti | Mysticeti (GSX alignment) |
+| 1 | Consensus protocol family | D1 | HotStuff / Tendermint / Mysticeti | Mysticeti (SUWAPPU alignment) |
 | 2 | P2P library | D2 | libp2p / gRPC / custom | libp2p |
 | 3 | Message serialization | D1, D2 | protobuf / CBOR / SSZ | protobuf or SSZ |
 | 4 | MoveVM variant | E2, I1 | Aptos / Sui / independent | Aptos Move (recommended) |
@@ -484,7 +484,7 @@ These must be resolved during brainstorming, before their respective specs:
 
 4. **Identity (I1 + I2) is the wildcard.** The DID Expansion Plan is 892 lines and four internal phases. That's practically a project within a project.
 
-5. **Gate 6 is the existential test.** When consensus + DKG + federation work across real nodes on the GSX devnet, the protocol is proven viable as a distributed system. Everything before Gate 6 runs single-process. Everything after it is multi-node. If Gate 6 fails, the architecture needs fundamental rethinking.
+5. **Gate 6 is the existential test.** When consensus + DKG + federation work across real nodes on the SUWAPPU devnet, the protocol is proven viable as a distributed system. Everything before Gate 6 runs single-process. Everything after it is multi-node. If Gate 6 fails, the architecture needs fundamental rethinking.
 
 6. **Mainnet is not in this roadmap.** This roadmap ends at feature-complete. Mainnet deployment is a separate gate with its own security audit, load testing, and regulatory review requirements.
 
@@ -540,7 +540,7 @@ This Roadmap (reference)
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Consensus protocol selection delays | High | Blocks all of Phase 6 | Align with GSX mainnet direction (greth + Mysticeti) early |
+| Consensus protocol selection delays | High | Blocks all of Phase 6 | Align with SUWAPPU mainnet direction (greth + Mysticeti) early |
 | MoveVM variant decision deferred | High | Blocks E2 and I1 | Aptos Move recommended; decide before E1 completes |
 | FIPS-certified PQC libraries immature | Medium | F1 scope unclear | liboqs is available; assess OpenSSL 3.x PQC module status |
 | SP1/RISC Zero prover performance | Medium | H1 latency concerns | Native STARK prover already built; benchmark before committing |

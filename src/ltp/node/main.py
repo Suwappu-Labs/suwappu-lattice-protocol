@@ -454,7 +454,7 @@ class ETPNode:
                     live_bridge=None,  # Requires LiveBridge setup (see scripts/bridge_live.py)
                     source_chain=self.config.bridge_operator_direction.split("_to_")[0]
                     if "_to_" in self.config.bridge_operator_direction
-                    else "gsx_testnet",
+                    else "suwappu_testnet",
                     dest_chain=self.config.bridge_operator_direction.split("_to_")[1]
                     if "_to_" in self.config.bridge_operator_direction
                     else "base_sepolia",

@@ -834,12 +834,12 @@ class TestMultiChainScheduler:
             tracker=tracker,
             config=config,
             signer_vk=alice.vk,
-            chain_label="gsx_testnet",
+            chain_label="suwappu_testnet",
         )
         scheduler.start()
         try:
             assert scheduler._thread is not None
-            assert "gsx_testnet" in scheduler._thread.name
+            assert "suwappu_testnet" in scheduler._thread.name
         finally:
             scheduler.stop()
 
@@ -873,29 +873,29 @@ class TestMultiChainScheduler:
 
     def test_independent_pipelines(self, alice):
         """Two schedulers (one per chain) submit batches independently."""
-        # --- GSX chain scheduler ---
-        inner_gsx = CommitmentNetwork()
+        # --- SUWAPPU chain scheduler ---
+        inner_suwappu = CommitmentNetwork()
         for i in range(4):
-            inner_gsx.add_node(f"gsx-node-{i}", "US-East")
-        safe_gsx = SafeCommitmentNetwork(inner_gsx)
-        inner_gsx.log.append(_make_anchoring_record("gsx-ent-0", alice))
-        inner_gsx.log.append(_make_anchoring_record("gsx-ent-1", alice))
+            inner_suwappu.add_node(f"suwappu-node-{i}", "US-East")
+        safe_suwappu = SafeCommitmentNetwork(inner_suwappu)
+        inner_suwappu.log.append(_make_anchoring_record("suwappu-ent-0", alice))
+        inner_suwappu.log.append(_make_anchoring_record("suwappu-ent-1", alice))
 
-        config_gsx = NodeConfig()
-        config_gsx.anchor_batch_size = 50
-        config_gsx.anchor_max_wait_seconds = 0.0
-        config_gsx.anchor_chain_id = 103115120
+        config_suwappu = NodeConfig()
+        config_suwappu.anchor_batch_size = 50
+        config_suwappu.anchor_max_wait_seconds = 0.0
+        config_suwappu.anchor_chain_id = 103115120
 
-        tracker_gsx = AnchorStatusTracker()
-        client_gsx = MockAnchorClient(tx_hash="0x" + "aa" * 32)
+        tracker_suwappu = AnchorStatusTracker()
+        client_suwappu = MockAnchorClient(tx_hash="0x" + "aa" * 32)
 
-        scheduler_gsx = AnchorScheduler(
-            network=safe_gsx,
-            client=client_gsx,
-            tracker=tracker_gsx,
-            config=config_gsx,
+        scheduler_suwappu = AnchorScheduler(
+            network=safe_suwappu,
+            client=client_suwappu,
+            tracker=tracker_suwappu,
+            config=config_suwappu,
             signer_vk=alice.vk,
-            chain_label="gsx_testnet",
+            chain_label="suwappu_testnet",
             chain_id=103115120,
         )
 
@@ -925,14 +925,14 @@ class TestMultiChainScheduler:
         )
 
         # --- Tick both independently ---
-        result_gsx = scheduler_gsx.tick(1)
+        result_suwappu = scheduler_suwappu.tick(1)
         result_base = scheduler_base.tick(1)
 
-        # GSX submitted its 2-record batch
-        assert result_gsx.batch_submitted is True
-        assert result_gsx.batch_size == 2
-        assert client_gsx.call_count == 1
-        assert len(client_gsx.submissions) == 2
+        # SUWAPPU submitted its 2-record batch
+        assert result_suwappu.batch_submitted is True
+        assert result_suwappu.batch_size == 2
+        assert client_suwappu.call_count == 1
+        assert len(client_suwappu.submissions) == 2
 
         # Base submitted its 1-record batch
         assert result_base.batch_submitted is True
@@ -941,17 +941,17 @@ class TestMultiChainScheduler:
         assert len(client_base.submissions) == 1
 
         # Trackers are independent — no cross-contamination
-        assert tracker_gsx.get("gsx-ent-0") is not None
-        assert tracker_gsx.get("gsx-ent-1") is not None
-        assert tracker_gsx.get("base-ent-0") is None
+        assert tracker_suwappu.get("suwappu-ent-0") is not None
+        assert tracker_suwappu.get("suwappu-ent-1") is not None
+        assert tracker_suwappu.get("base-ent-0") is None
 
         assert tracker_base.get("base-ent-0") is not None
-        assert tracker_base.get("gsx-ent-0") is None
+        assert tracker_base.get("suwappu-ent-0") is None
 
         # Chain IDs are correct on each tracker's records
-        assert tracker_gsx.get("gsx-ent-0").chain_id == 103115120
+        assert tracker_suwappu.get("suwappu-ent-0").chain_id == 103115120
         assert tracker_base.get("base-ent-0").chain_id == 84532
 
         # Tx hashes are from the correct client
-        assert tracker_gsx.get("gsx-ent-0").tx_hash == "0x" + "aa" * 32
+        assert tracker_suwappu.get("suwappu-ent-0").tx_hash == "0x" + "aa" * 32
         assert tracker_base.get("base-ent-0").tx_hash == "0x" + "bb" * 32

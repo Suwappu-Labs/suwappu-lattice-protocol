@@ -1,6 +1,6 @@
 """LTP corridor super-node attestation (paper §10).
 
-Wire-compatible Python mirror of `gsx-dag/crates/gsx-ltp/src/attestation.rs`.
+Wire-compatible Python mirror of `suwappu-dag/crates/suwappu-ltp/src/attestation.rs`.
 A `CorridorAttestation` produced here serializes to the same canonical digest
 the Rust crate signs and verifies against, so a Python corridor witness can
 participate in a 7-of-9 attestation alongside Rust validators.

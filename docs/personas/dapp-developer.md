@@ -14,7 +14,7 @@ and validating the proof your counterparty sends you.
 ## Start here
 
 1. **[DEPLOYED_CONTRACTS.md](../DEPLOYED_CONTRACTS.md)** — current registry
-   addresses on GSX Testnet and Base Sepolia, plus the upgrade history.
+   addresses on SUWAPPU Testnet and Base Sepolia, plus the upgrade history.
    Verify these addresses match what your wallet sees before signing
    anything.
 2. **[CORRIDOR_INTEGRATION.md](../CORRIDOR_INTEGRATION.md)** — the wire

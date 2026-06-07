@@ -54,9 +54,9 @@ repo.
 ## Contingency
 
 Backup and restoration evidence must cover commitment logs, audit logs,
-configuration baselines, key references, chain anchor reconciliation, and GSX-DB
-state root recovery. LTP recovery cannot claim GSX-DB state recovery without
-evidence from the `gsx-db` release gates.
+configuration baselines, key references, chain anchor reconciliation, and SUWAPPU-DB
+state root recovery. LTP recovery cannot claim SUWAPPU-DB state recovery without
+evidence from the `suwappu-db` release gates.
 
 ## Monitoring
 

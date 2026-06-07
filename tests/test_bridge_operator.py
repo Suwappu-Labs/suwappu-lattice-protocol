@@ -53,7 +53,7 @@ def mock_bridge():
     bridge.transfer.return_value = LiveBridgeResult(
         message=BridgeMessage(
             msg_type="state_update",
-            source_chain="gsx",
+            source_chain="suwappu",
             dest_chain="base",
             sender="0xabc",
             recipient="0xdef",
@@ -64,7 +64,7 @@ def mock_bridge():
         l1_anchor_tx_hash="0xdeadbeef" * 8,
         is_anchored_on_l1=True,
         l1_entity_state=2,
-        source_chain="gsx",
+        source_chain="suwappu",
         dest_chain="base",
         l1_block_height=100,
         l1_chain_id=103115120,
@@ -87,7 +87,7 @@ def operator(network, mock_bridge, keypair):
         network=network,
         live_bridge=mock_bridge,
         operator_keypair=keypair,
-        source_chain="gsx_testnet",
+        source_chain="suwappu_testnet",
         dest_chain="base_sepolia",
         interval_seconds=1.0,
     )
@@ -159,7 +159,7 @@ class TestTickBridgesRecords:
             network=network,
             live_bridge=mock_bridge,
             operator_keypair=keypair,
-            source_chain="gsx",
+            source_chain="suwappu",
             dest_chain="base",
         )
         entity_id = _commit_entity(protocol, keypair)
@@ -167,7 +167,7 @@ class TestTickBridgesRecords:
         call_args = mock_bridge.transfer.call_args
         msg = call_args[0][0]
         assert isinstance(msg, BridgeMessage)
-        assert msg.source_chain == "gsx"
+        assert msg.source_chain == "suwappu"
         assert msg.dest_chain == "base"
         assert entity_id in msg.payload.get("entity_id", "")
 
@@ -344,7 +344,7 @@ class TestConfig:
         config = NodeConfig()
         assert config.bridge_operator_enabled is False
         assert config.bridge_operator_interval_seconds == 30.0
-        assert config.bridge_operator_direction == "gsx_to_base"
+        assert config.bridge_operator_direction == "suwappu_to_base"
         assert config.bridge_operator_max_retries == 3
         assert config.bridge_operator_challenge_period == 3600.0
         assert config.bridge_operator_zk_mode == "simulated"
@@ -353,7 +353,7 @@ class TestConfig:
         env = {
             "ETP_BRIDGE_OPERATOR_ENABLED": "true",
             "ETP_BRIDGE_OPERATOR_INTERVAL": "15.0",
-            "ETP_BRIDGE_OPERATOR_DIRECTION": "base_to_gsx",
+            "ETP_BRIDGE_OPERATOR_DIRECTION": "base_to_suwappu",
             "ETP_BRIDGE_OPERATOR_MAX_RETRIES": "5",
             "ETP_BRIDGE_OPERATOR_CHALLENGE_PERIOD": "7200.0",
             "ETP_BRIDGE_OPERATOR_ZK_MODE": "stark",
@@ -364,7 +364,7 @@ class TestConfig:
             config = NodeConfig.from_env()
             assert config.bridge_operator_enabled is True
             assert config.bridge_operator_interval_seconds == 15.0
-            assert config.bridge_operator_direction == "base_to_gsx"
+            assert config.bridge_operator_direction == "base_to_suwappu"
             assert config.bridge_operator_max_retries == 5
             assert config.bridge_operator_challenge_period == 7200.0
             assert config.bridge_operator_zk_mode == "stark"

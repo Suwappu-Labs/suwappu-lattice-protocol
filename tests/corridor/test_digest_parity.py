@@ -1,9 +1,9 @@
 """Golden-vector parity tests for the cross-repo SHA3-256 domain digest.
 
 These fixtures pin the byte layout the Python `corridor` package shares with
-`gsx-dag/crates/gsx-ltp` (Rust). If a Rust-side change moves a field, the
+`suwappu-dag/crates/suwappu-ltp` (Rust). If a Rust-side change moves a field, the
 hashes here must be regenerated and the change recorded in
-`docs/design-decisions/GSX_DAG_DB_INTEGRATION.md`.
+`docs/design-decisions/SUWAPPU_DAG_DB_INTEGRATION.md`.
 """
 
 from __future__ import annotations
@@ -22,9 +22,9 @@ from ltp.corridor import (
 )
 
 # Reference digests reproduced from the byte layout of
-# `gsx-dag/crates/gsx-ltp` (see attestation.rs, da.rs, did_stark.rs). The
+# `suwappu-dag/crates/suwappu-ltp` (see attestation.rs, da.rs, did_stark.rs). The
 # values come from the Python sha3_256_domain implementation, which is the
-# byte-exact mirror of `gsx_crypto::hash::sha3_256_domain` —
+# byte-exact mirror of `suwappu_crypto::hash::sha3_256_domain` —
 # `H(len(tag) as u32 BE || tag || data)`.
 ATTEST_DIGEST_HEX = "b1dc6381728e0d2c78bbc3176ece95917eede7303ffffc940a13d7c865aa2b30"
 CID_ALPHA_HEX = "a03450af1b7cbb3bc9b074a7ef2e8d29144af0aa1954c2076f4e299a0a0388cc"

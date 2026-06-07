@@ -46,10 +46,10 @@ class TestTagRegistry:
         for name, tag in _ALL_TAGS.items():
             assert tag.endswith(b"\x00"), f"{name} missing null terminator"
 
-    def test_new_tags_follow_gsx_format(self):
+    def test_new_tags_follow_suwappu_format(self):
         new_tags = {k: v for k, v in _ALL_TAGS.items() if k.startswith("DOMAIN_")}
         for name, tag in new_tags.items():
-            assert tag.startswith(b"GSX-LTP:"), f"{name} doesn't start with GSX-LTP:"
+            assert tag.startswith(b"SUWAPPU-LTP:"), f"{name} doesn't start with SUWAPPU-LTP:"
             # Should contain version marker
             assert b":v" in tag, f"{name} missing version marker"
 
@@ -129,12 +129,12 @@ class TestGatewayVMDomainTags:
     def test_gateway_attest_domain_tag_exists(self):
         from src.ltp.domain import DOMAIN_GATEWAY_ATTEST
 
-        assert DOMAIN_GATEWAY_ATTEST == b"GSX-LTP:gateway-attest:v1\x00"
+        assert DOMAIN_GATEWAY_ATTEST == b"SUWAPPU-LTP:gateway-attest:v1\x00"
 
     def test_external_event_domain_tag_exists(self):
         from src.ltp.domain import DOMAIN_EXTERNAL_EVENT
 
-        assert DOMAIN_EXTERNAL_EVENT == b"GSX-LTP:external-event:v1\x00"
+        assert DOMAIN_EXTERNAL_EVENT == b"SUWAPPU-LTP:external-event:v1\x00"
 
 
 class TestSignerFingerprint:

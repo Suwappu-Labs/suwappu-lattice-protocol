@@ -1,14 +1,14 @@
-"""DID document mirror — byte-compatible with `gsx-dag/crates/gsx-precompiles/src/did.rs`.
+"""DID document mirror — byte-compatible with `suwappu-dag/crates/suwappu-precompiles/src/did.rs`.
 
 Phase-1 implements the canonical-hash and relationship-membership subset of
-the gsx-precompiles DID document so `did_stark.prove_rotation` /
+the suwappu-precompiles DID document so `did_stark.prove_rotation` /
 `verify_rotation_proof` can derive `old_doc_hash` themselves instead of
 relying on the caller. Validation logic is provided in a minimal form;
-production parity with the full Rust validator lands when the gsx-precompiles
+production parity with the full Rust validator lands when the suwappu-precompiles
 crate is fully ported.
 
 The canonical hash uses BLAKE3 (matching the Rust crate) with the
-`GSX-DID-DOC-V1` domain tag and big-endian u32 length prefixes for every
+`SUWAPPU-DID-DOC-V1` domain tag and big-endian u32 length prefixes for every
 variable-length field. Discriminant bytes for relationships and key
 algorithms are pinned:
 
@@ -123,11 +123,11 @@ class DidDocument:
             raise ValueError("DID id must be 32 bytes")
 
     def canonical_hash(self) -> bytes:
-        """BLAKE3 canonical hash matching `gsx-precompiles::DidDocument::canonical_hash`."""
+        """BLAKE3 canonical hash matching `suwappu-precompiles::DidDocument::canonical_hash`."""
         if not _blake3_available:
             raise RuntimeError("blake3 library not installed; install with `pip install blake3`")
         h = _blake3.blake3()
-        h.update(b"GSX-DID-DOC-V1")
+        h.update(b"SUWAPPU-DID-DOC-V1")
         h.update(self.id)
 
         # Verification methods (insertion order preserved on Python side;

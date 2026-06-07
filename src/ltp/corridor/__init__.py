@@ -1,11 +1,11 @@
-"""LTP corridor surface — wire-compatible with `gsx-dag/crates/gsx-ltp`.
+"""LTP corridor surface — wire-compatible with `suwappu-dag/crates/suwappu-ltp`.
 
 This package mirrors the Rust crate byte-for-byte so a Python LTP corridor
-witness can interoperate with the GSX DAG L1 7-of-9 attestation pipeline,
+witness can interoperate with the SUWAPPU DAG L1 7-of-9 attestation pipeline,
 Commitment-Node DA SLA, and cross-chain DID rotation proof surface.
 
-See `docs/design-decisions/GSX_DAG_DB_INTEGRATION.md` for the cross-repo
-boundary and `gsx_dag_l1_academic_v7.pdf` §10 for the protocol spec.
+See `docs/design-decisions/SUWAPPU_DAG_DB_INTEGRATION.md` for the cross-repo
+boundary and `suwappu_dag_l1_academic_v7.pdf` §10 for the protocol spec.
 """
 
 from .attestation import (
@@ -160,7 +160,7 @@ __all__ = [
     "DidStarkError",
     "OldDocHashMismatch",
     "DidStarkInvalidSignature",
-    # gsx-db state anchor
+    # suwappu-db state anchor
     "StateAnchor",
     "AuthScheme",
     "GENESIS_PARENT",
@@ -187,7 +187,7 @@ __all__ = [
     "ML_KEM_1024_CT_BYTES",
     "BLS_G2_COMPRESSED_BYTES",
     "SHA3_256_BYTES",
-    # Corridor → gsx-db submission bridge
+    # Corridor → suwappu-db submission bridge
     "build_state_anchor_blake3",
     "build_state_anchor_keccak256",
     "CorridorAnchorBuild",

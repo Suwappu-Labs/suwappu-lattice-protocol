@@ -61,7 +61,7 @@ contract DeployMainnet is Script {
         uint256 chainId = block.chainid;
         bool allowTestnet = vm.envOr("ALLOW_TESTNET_DEPLOY", false);
         // 31337 = anvil, 84532 = Base Sepolia, 11155111 = Ethereum Sepolia,
-        // 103115120 = GSX testnet. Add more as needed.
+        // 103115120 = SUWAPPU testnet. Add more as needed.
         bool isTestnet =
             chainId == 31337 ||
             chainId == 84532 ||

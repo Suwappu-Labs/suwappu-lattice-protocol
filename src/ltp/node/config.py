@@ -38,7 +38,7 @@ class NodeConfig:
     anchor_rpc_url: str = ""
     anchor_registry_address: str = ""
     anchor_operator_key: str = ""
-    anchor_chain_id: int = 103115120  # GSX Testnet default
+    anchor_chain_id: int = 103115120  # SUWAPPU Testnet default
     anchor_batch_size: int = 50
     anchor_interval_seconds: float = 15.0
     anchor_max_wait_seconds: float = 60.0
@@ -90,7 +90,7 @@ class NodeConfig:
     # Bridge operator — persistent cross-chain bridging daemon
     bridge_operator_enabled: bool = False
     bridge_operator_interval_seconds: float = 30.0
-    bridge_operator_direction: str = "gsx_to_base"
+    bridge_operator_direction: str = "suwappu_to_base"
     bridge_operator_max_retries: int = 3
     bridge_operator_challenge_period: float = 3600.0
     bridge_operator_zk_mode: str = "simulated"

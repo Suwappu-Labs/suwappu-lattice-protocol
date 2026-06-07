@@ -58,7 +58,7 @@ distributed package), the recommended additions:
 
 | ID | Future policy |
 |----|--------------|
-| LK6 | Publish account on hardware-token MFA, separate from other GSX accounts |
+| LK6 | Publish account on hardware-token MFA, separate from other SUWAPPU accounts |
 | LK7 | npm provenance signatures on every release |
 | LK8 | Integrators MUST use exact-version pinning (no `^` or `~` ranges); shipped as a hard documented requirement |
 | LK9 | Subresource Integrity (SRI) hashes published alongside the package |

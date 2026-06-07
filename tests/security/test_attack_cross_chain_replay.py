@@ -67,7 +67,7 @@ def _state_anchor(chain_id: int, mac: bytes = b"\xaa" * 32) -> StateAnchor:
 def test_state_anchor_chain_id_in_canonical_bytes():
     """The chain_id contributes to the StateAnchor's canonical byte layout.
 
-    If the Solidity LTPAnchorRegistry (gsx-db) reads chain_id from the
+    If the Solidity LTPAnchorRegistry (suwappu-db) reads chain_id from the
     anchor struct and compares against block.chainid, mutating chain_id
     here invalidates the on-chain check. We assert the wire byte layout
     encodes the chain_id rather than dropping it.

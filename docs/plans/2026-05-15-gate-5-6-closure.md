@@ -14,7 +14,7 @@ Closure here means: a single end-to-end integration test demonstrates that the p
 
 - `CommitteeManager.sign_as_committee(message, domain)` produces a 96-byte BLS12-381 aggregate signature.
 - The signature verifies under `threshold_verify(group_pk, message, signature, domain)` against the group public key produced by the DKG ceremony for the same epoch.
-- The threshold-signing scheme uses `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_` (`BLS_CORRIDOR_DST`) — byte-for-byte matching the Rust reference at `gsx-dag/crates/gsx-crypto/src/bls.rs:24::BLS_DST`.
+- The threshold-signing scheme uses `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_` (`BLS_CORRIDOR_DST`) — byte-for-byte matching the Rust reference at `suwappu-dag/crates/suwappu-crypto/src/bls.rs:24::BLS_DST`.
 
 ### Tests that prove Gate 5
 
@@ -76,7 +76,7 @@ The following are out of scope for Gates 5 and 6 closure and tracked in `docs/pl
 ## How to verify locally
 
 ```bash
-cd ~/gsx-build/gsx-lattice-protocol
+cd ~/suwappu-build/suwappu-lattice-protocol
 
 # The single closure test
 pytest tests/test_gate_5_6_closure.py -v
@@ -89,7 +89,7 @@ pytest tests/test_consensus_adapter.py tests/test_consensus_e2e.py tests/test_co
 
 # Cross-language BLS DST parity (sanity)
 grep -n BLS_CORRIDOR_DST src/ltp/corridor/constants.py
-grep -n BLS_DST ../gsx-dag/crates/gsx-crypto/src/bls.rs
+grep -n BLS_DST ../suwappu-dag/crates/suwappu-crypto/src/bls.rs
 ```
 
 ## Next gates

@@ -11,15 +11,15 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 ///
 /// Validates that the v7 implementation can be swapped behind the existing
 /// proxies without breaking the live state. Runs in fork mode against the
-/// GSX testnet (chain 103115120) and Base Sepolia (chain 84532) at recent
+/// SUWAPPU testnet (chain 103115120) and Base Sepolia (chain 84532) at recent
 /// blocks; you must export the RPC URLs before running:
 ///
-///   GSX_RPC_URL=https://...      forge test \
+///   SUWAPPU_RPC_URL=https://...      forge test \
 ///   BASE_SEPOLIA_RPC_URL=https://... \
 ///       --match-path contracts/test/deployment/UpgradeV7.dryrun.t.sol
 ///
 /// Without the URLs, the relevant test bodies are skipped — CI does not gate
-/// on fork tests today because the GSX testnet RPC is private. The script
+/// on fork tests today because the SUWAPPU testnet RPC is private. The script
 /// runs in the operator ceremony pre-flight (see docs/runbooks/v7-upgrade-
 /// testnet.md §"Pre-flight"); a follow-up PR adds the same test under a CI
 /// matrix with secret-injected RPCs.
@@ -36,10 +36,10 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 ///      multisig → timelock → registry chain in one forked transaction.
 ///   4. `unpause()` is symmetrical.
 contract UpgradeV7DryRunTest is Test {
-    // GSX Testnet (chain 103115120)
-    address constant GSX_PROXY = 0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4;
-    address payable constant GSX_MULTISIG = payable(0x0106A79e9236009a05742B3fB1e3B7a52F44373D);
-    address constant GSX_TIMELOCK = 0x7C2665F7e68FE635ee8F10aa0130AEBC603a9Db8;
+    // SUWAPPU Testnet (chain 103115120)
+    address constant SUWAPPU_PROXY = 0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4;
+    address payable constant SUWAPPU_MULTISIG = payable(0x0106A79e9236009a05742B3fB1e3B7a52F44373D);
+    address constant SUWAPPU_TIMELOCK = 0x7C2665F7e68FE635ee8F10aa0130AEBC603a9Db8;
 
     // Base Sepolia (chain 84532)
     address constant BASE_SEPOLIA_PROXY = 0x79eF1B7914f98C5C1404617449AB1f377c475996;
@@ -47,27 +47,27 @@ contract UpgradeV7DryRunTest is Test {
     address constant BASE_SEPOLIA_TIMELOCK = 0xc915740e35E38569E47f611eA5772Ff5278bc5Ae;
 
     // ------------------------------------------------------------------
-    // GSX testnet fork
+    // SUWAPPU testnet fork
     // ------------------------------------------------------------------
 
-    function testGsxStorageLayoutPreserved() public {
-        string memory url = vm.envOr("GSX_RPC_URL", string(""));
+    function testSuwappuStorageLayoutPreserved() public {
+        string memory url = vm.envOr("SUWAPPU_RPC_URL", string(""));
         if (bytes(url).length == 0) {
             vm.skip(true);
             return;
         }
         vm.createSelectFork(url);
-        _assertUpgradePreservesLayout(GSX_PROXY, GSX_TIMELOCK);
+        _assertUpgradePreservesLayout(SUWAPPU_PROXY, SUWAPPU_TIMELOCK);
     }
 
-    function testGsxPauseRehearsal() public {
-        string memory url = vm.envOr("GSX_RPC_URL", string(""));
+    function testSuwappuPauseRehearsal() public {
+        string memory url = vm.envOr("SUWAPPU_RPC_URL", string(""));
         if (bytes(url).length == 0) {
             vm.skip(true);
             return;
         }
         vm.createSelectFork(url);
-        _drillPauseAfterUpgrade(GSX_PROXY, GSX_TIMELOCK, GSX_MULTISIG);
+        _drillPauseAfterUpgrade(SUWAPPU_PROXY, SUWAPPU_TIMELOCK, SUWAPPU_MULTISIG);
     }
 
     // ------------------------------------------------------------------

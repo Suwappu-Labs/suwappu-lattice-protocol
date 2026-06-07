@@ -17,7 +17,7 @@ Temporal validation follows RFC 8392 (CWT) boundary semantics:
   - nbf <= now passes (receipt is active)
   - now >= exp (valid_until) fails (receipt has expired)
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.4
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.4
 """
 
 from __future__ import annotations

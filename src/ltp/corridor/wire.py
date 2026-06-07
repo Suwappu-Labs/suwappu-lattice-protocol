@@ -2,7 +2,7 @@
 
 This is the canonical encoding used when transmitting `CorridorAttestation`,
 `StateAnchor`, `Commitment`, `DidRotationStatement`, and `DidStarkProof`
-between Python LTP and Rust gsx-dag/gsx-db over a JSON transport.
+between Python LTP and Rust suwappu-dag/suwappu-db over a JSON transport.
 
 Design choices:
 

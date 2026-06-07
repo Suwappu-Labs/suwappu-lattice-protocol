@@ -25,17 +25,17 @@ New to LTP? Read in this order:
    suite (~10 minutes)
 2. **[WHITEPAPER.md](WHITEPAPER.md)** — three-phase protocol design
 3. **[visuals/README.md](visuals/README.md)** — Mermaid + HTML decks for
-   LTP, GSX DAG, GSX-DB, and the ecosystem atlas
+   LTP, SUWAPPU DAG, SUWAPPU-DB, and the ecosystem atlas
 4. **[CORRIDOR_INTEGRATION.md](CORRIDOR_INTEGRATION.md)** — wire format
 5. **[DEPLOYED_CONTRACTS.md](DEPLOYED_CONTRACTS.md)** — current registry
-   addresses on GSX Testnet and Base Sepolia
+   addresses on SUWAPPU Testnet and Base Sepolia
 
 ## Visuals
 
 - [Visuals overview (inline Mermaid)](visuals/README.md)
-- Presentations: [LTP](visuals/ltp.html) · [GSX DAG](visuals/gsx-dag.html) · [GSX DB](visuals/gsx-db.html) · [Ecosystem Atlas](visuals/gsx-ecosystem-atlas.html) · [Visual index](visuals/index.html)
-- Mermaid sources: [LTP](visuals/mermaid/ltp.md) · [GSX DAG](visuals/mermaid/gsx-dag.md) · [GSX DB](visuals/mermaid/gsx-db.md)
-- Excalidraw sources: [LTP](visuals/excalidraw/ltp.excalidraw) · [GSX DAG](visuals/excalidraw/gsx-dag.excalidraw) · [GSX DB](visuals/excalidraw/gsx-db.excalidraw)
+- Presentations: [LTP](visuals/ltp.html) · [SUWAPPU DAG](visuals/suwappu-dag.html) · [SUWAPPU DB](visuals/suwappu-db.html) · [Ecosystem Atlas](visuals/suwappu-ecosystem-atlas.html) · [Visual index](visuals/index.html)
+- Mermaid sources: [LTP](visuals/mermaid/ltp.md) · [SUWAPPU DAG](visuals/mermaid/suwappu-dag.md) · [SUWAPPU DB](visuals/mermaid/suwappu-db.md)
+- Excalidraw sources: [LTP](visuals/excalidraw/ltp.excalidraw) · [SUWAPPU DAG](visuals/excalidraw/suwappu-dag.excalidraw) · [SUWAPPU DB](visuals/excalidraw/suwappu-db.excalidraw)
 
 ## Index by topic
 
@@ -50,7 +50,7 @@ New to LTP? Read in this order:
 | | [Threat Model](THREAT_MODEL.md) | Adversary capabilities and invariants |
 | | [Formal Verification Status](FORMAL_VERIFICATION_STATUS.md) | What's machine-checked vs paper-proven |
 | **Architecture** | [Architecture](design-decisions/ARCHITECTURE.md) | System components, data flow, security layers |
-| | [GSX DAG / GSX-DB Integration](design-decisions/GSX_DAG_DB_INTEGRATION.md) | Cross-repo boundary with the DAG L1 and state substrate |
+| | [SUWAPPU DAG / SUWAPPU-DB Integration](design-decisions/SUWAPPU_DAG_DB_INTEGRATION.md) | Cross-repo boundary with the DAG L1 and state substrate |
 | | [Corridor Integration](CORRIDOR_INTEGRATION.md) | Wire format and ABI surface |
 | | [Streaming Protocol](design-decisions/STREAMING_PROTOCOL.md) | Chunked streaming, bandwidth amortization, backpressure |
 | | [ZK Transfer Mode](design-decisions/ZK_TRANSFER_MODE.md) | Hiding commitments, Groth16 proofs |

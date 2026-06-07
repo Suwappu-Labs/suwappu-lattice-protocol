@@ -1,6 +1,6 @@
 # LTP Offensive Security Audit — 2026-05-15
 
-**Scope.** `gsx-lattice-protocol` HEAD `b5201c9` plus the `corridor/wire-mirror` branch. Smart-contract, protocol, and Python surfaces. Modeled on the published post-mortems of the past five years of bridge hacks (Wormhole, Nomad, Ronin, Multichain, Poly Network, Harmony, Orbit, Cypher, LayerZero DVN debate, KyberSlash).
+**Scope.** `suwappu-lattice-protocol` HEAD `b5201c9` plus the `corridor/wire-mirror` branch. Smart-contract, protocol, and Python surfaces. Modeled on the published post-mortems of the past five years of bridge hacks (Wormhole, Nomad, Ronin, Multichain, Poly Network, Harmony, Orbit, Cypher, LayerZero DVN debate, KyberSlash).
 
 **Format.** Each finding has an ID (`LTP-A-NNN`), a severity, a real-world hack cross-reference, the attacker capability required, the exploit chain, a financial impact estimate framed by trust assumption, and a remediation status pointing at the commit that closes it (or the issue that defers it).
 
@@ -355,7 +355,7 @@ The constructor sets `resolutionGracePeriod = 14 days`. `setResolutionGracePerio
 5. Same for wrong dk length.
 6. The bound C library exports `PQCLEAN_MLKEM768_CLEAN_*` symbols (not the optimized variants).
 
-The audit doc previously routed this to [GLO-771](https://linear.app/globalsettlement/issue/GLO-771); that issue is now ready to close with the verification above pasted into a comment.
+The audit doc previously routed this to [GLO-771](https://linear.app/suwappu/issue/GLO-771); that issue is now ready to close with the verification above pasted into a comment.
 
 ---
 
@@ -591,7 +591,7 @@ Existing v5/v6 deployments retain the atomic-rotation semantics. v7 deploys gain
 **Severity.** HIGH.
 **File.** `contracts/src/LTPAnchorRegistry.sol:535-549`.
 **Surfaced by.** Red-Team Campaign May 2026 (SCN-015 authoring).
-**Linear.** [GLO-832](https://linear.app/globalsettlement/issue/GLO-832).
+**Linear.** [GLO-832](https://linear.app/suwappu/issue/GLO-832).
 
 **Exploit chain.** `rotateSignerWithGrace(oldVk, newVk, gracePeriod)`
 records `signerExpiresAt[oldVk] = block.timestamp + gracePeriod`
@@ -640,7 +640,7 @@ These are the surfaces the audit found correctly implemented. Recorded so extern
 | `LTP-S-004` | Chain-ID stamping on every anchor | `LTPAnchorRegistry.sol:400` |
 | `LTP-S-005` | Reentrancy guards on bridge challenge | `OptimisticBridgeChallenge.sol:13-23` |
 | `LTP-S-006` | Proof dedup via keccak256(proofBytes, inputs) | `ZKBridgeVerifier.sol:95-97` |
-| `LTP-S-007` | BLS DST byte-for-byte parity Rust↔Python | `src/ltp/corridor/constants.py:28` ↔ `gsx-dag/crates/gsx-crypto/src/bls.rs:24` |
+| `LTP-S-007` | BLS DST byte-for-byte parity Rust↔Python | `src/ltp/corridor/constants.py:28` ↔ `suwappu-dag/crates/suwappu-crypto/src/bls.rs:24` |
 | `LTP-S-008` | Length-prefixed SHA3-256 domain hash | `src/ltp/corridor/digest.py::sha3_256_domain` |
 | `LTP-S-009` | Manual G1 pubkey aggregation at verify time defends rogue-key | `corridor/bls.py:145-155` |
 | `LTP-S-010` | `assert_real_crypto()` at module import | `src/ltp/primitives.py:188` |
@@ -652,7 +652,7 @@ These are the surfaces the audit found correctly implemented. Recorded so extern
 | `LTP-S-016` | Docker runs as non-root user `etp` | `deploy/Dockerfile`, `Dockerfile.gateway` |
 | `LTP-S-017` | XChaCha20-Poly1305 authenticate-then-decrypt | `src/ltp/primitives.py:252-285` |
 | `LTP-S-018` | ML-KEM IND-CCA2 envelope to receiver's encapsulation key | `src/ltp/corridor/envelope.py:54-77` |
-| `LTP-S-019` | gsx-db state anchor MAC includes chain_id in canonical bytes | `src/ltp/corridor/state_anchor.py` |
+| `LTP-S-019` | suwappu-db state anchor MAC includes chain_id in canonical bytes | `src/ltp/corridor/state_anchor.py` |
 | `LTP-S-020` | Gate 5+6 integration closure test (PR #8 Commit 1) | `tests/test_gate_5_6_closure.py` |
 
 ---
@@ -677,7 +677,7 @@ May 2026). **Closed in this PR plus Red-Team Campaign:** 20.
 ## How to reproduce the offensive tests
 
 ```bash
-cd ~/gsx-build/gsx-lattice-protocol-harden
+cd ~/suwappu-build/suwappu-lattice-protocol-harden
 pytest tests/security/ -v
 ```
 

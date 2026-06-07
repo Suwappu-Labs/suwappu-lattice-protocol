@@ -21,13 +21,13 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 ///         additional events) without reordering existing slots — verify
 ///         this with the forge storage-layout dry-run test.
 ///
-/// Targets in this script: GSX testnet (chain 103115120). For Base
+/// Targets in this script: SUWAPPU testnet (chain 103115120). For Base
 /// Sepolia (chain 84532), copy + adjust the constants below — both
 /// chains use the same v7 source.
 ///
 /// Pre-flight (run before step1; cwd = `contracts/`):
 ///   forge build --sizes                # confirm v7 fits 24576-byte limit
-///   forge test --fork-url $GSX_RPC_URL \
+///   forge test --fork-url $SUWAPPU_RPC_URL \
 ///       --match-path test/deployment/UpgradeV7.dryrun.t.sol
 ///                                      # path is relative to Foundry root
 ///                                      # (= contracts/ after `cd contracts`);
@@ -39,24 +39,24 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 ///
 ///   Step 1 — Deploy v7 impl + submit schedule + execute (deployer key)
 ///     forge script script/UpgradeV7.s.sol --sig "step1()" \
-///       --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_DEPLOYER_KEY
+///       --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_DEPLOYER_KEY
 ///
 ///   Step 2 — Operator confirms each txId returned by step1
 ///     forge script script/UpgradeV7.s.sol --sig "step2(uint256)" <txId> \
-///       --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_OPERATOR_KEY
+///       --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_OPERATOR_KEY
 ///
 ///   Step 3 — Execute the schedule call through the multisig
 ///     forge script script/UpgradeV7.s.sol --sig "step3(uint256)" <scheduleTxId> \
-///       --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_DEPLOYER_KEY
+///       --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_DEPLOYER_KEY
 ///
 ///   Step 4 — Wait at least the timelock delay (step3 prints the value), then execute upgrade
 ///     forge script script/UpgradeV7.s.sol --sig "step4(uint256)" <executeTxId> \
-///       --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_DEPLOYER_KEY
+///       --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_DEPLOYER_KEY
 ///
 ///   Post-flight — drill the emergency pause path (separate ceremony)
 ///     See docs/runbooks/v7-upgrade-testnet.md §"Pause rehearsal".
 contract UpgradeV7 is Script {
-    // GSX Testnet (chain 103115120) deployed addresses
+    // SUWAPPU Testnet (chain 103115120) deployed addresses
     address constant PROXY = 0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4;
     address payable constant MULTISIG = payable(0x0106A79e9236009a05742B3fB1e3B7a52F44373D);
     address constant TIMELOCK = 0x7C2665F7e68FE635ee8F10aa0130AEBC603a9Db8;

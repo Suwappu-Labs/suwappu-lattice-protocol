@@ -96,7 +96,7 @@ Each scenario links to its evidence directory `SCN-XXX-<slug>/`.
 
 | Finding | Scenario | Severity | Linear | Remediation | Status |
 |---|---|---|---|---|---|
-| **LTP-A-031** | [SCN-015](SCN-015-signer-rotation-grace/) | HIGH | [GLO-832](https://linear.app/globalsettlement/issue/GLO-832) | [PR #26](https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/pull/26) commit `577e80f` | ✓ REMEDIATED-GREEN |
+| **LTP-A-031** | [SCN-015](SCN-015-signer-rotation-grace/) | HIGH | [GLO-832](https://linear.app/suwappu/issue/GLO-832) | [PR #26](https://github.com/suwappu/suwappu-lattice-protocol/pull/26) commit `577e80f` | ✓ REMEDIATED-GREEN |
 
 **One real finding caught + fixed across 33 scenarios.** That's
 the campaign's headline outcome.

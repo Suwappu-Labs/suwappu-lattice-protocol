@@ -1,4 +1,4 @@
-"""Commitment-Node DA SLA tests — mirror `gsx-ltp/src/da.rs` test surface."""
+"""Commitment-Node DA SLA tests — mirror `suwappu-ltp/src/da.rs` test surface."""
 
 from __future__ import annotations
 

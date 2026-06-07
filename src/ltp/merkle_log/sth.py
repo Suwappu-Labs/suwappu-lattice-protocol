@@ -57,7 +57,7 @@ class SignedTreeHead:
 
         NOTE: This is the legacy encoding path with NO domain prefix.
         New code should use canonical_bytes() which includes the
-        GSX-LTP domain tag. This method is preserved for backward
+        SUWAPPU-LTP domain tag. This method is preserved for backward
         compatibility with existing signatures.
         """
         return (

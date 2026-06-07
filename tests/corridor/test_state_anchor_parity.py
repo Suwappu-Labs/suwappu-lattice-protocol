@@ -1,8 +1,8 @@
-"""Cross-repo parity for the gsx-db state anchor surface.
+"""Cross-repo parity for the suwappu-db state anchor surface.
 
 Golden vectors derived from the genesis-anchor fixture in
-`gsx-db/crates/gsxdb-bridge/tests/solidity_anchor_parity.rs::fixture_valid_anchor_acceptance`:
-chain_id=103115120 (GSX L1), height=0, state_root=[7;32], parent=GENESIS, key=[1;32].
+`suwappu-db/crates/suwappudb-bridge/tests/solidity_anchor_parity.rs::fixture_valid_anchor_acceptance`:
+chain_id=103115120 (SUWAPPU L1), height=0, state_root=[7;32], parent=GENESIS, key=[1;32].
 """
 
 from __future__ import annotations

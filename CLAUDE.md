@@ -1,4 +1,4 @@
-# CLAUDE.md — gsx-lattice-protocol
+# CLAUDE.md — suwappu-lattice-protocol
 
 Project-level guidance for Claude Code sessions in this repo. Last updated
 2026-05-16. Pin against this date if behavior diverges from what's described.
@@ -81,8 +81,8 @@ rejected:
 
 ## Linear / project tracking
 
-- Workspace: `globalsettlement`
-- Team: **Global Settlement** (key `GLO`)
+- Workspace: `suwappu`
+- Team: **Suwappu** (key `GLO`)
 - Project: **LTP Dev Net** (most LTP work)
 - Open audit-related tracking issues: GLO-785 (license), GLO-786 (GitBook).
 

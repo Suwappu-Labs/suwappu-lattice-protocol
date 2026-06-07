@@ -5,7 +5,7 @@ An AnchorSubmission contains exactly the fields needed by the Solidity
 anchor contract. All fields are fixed-width or bounded, so ABI encoding
 is straightforward.
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.10
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.10
 """
 
 from __future__ import annotations

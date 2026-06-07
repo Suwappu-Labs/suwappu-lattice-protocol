@@ -48,10 +48,10 @@ exclude = [
     # Etherscan / explorer links for testnet addresses are flaky in CI
     "^https?://(www\\.)?etherscan\\.io/address/",
     "^https?://(www\\.)?basescan\\.org/address/",
-    # Private GSX repositories — unauthenticated CI returns 404 for these
-    "^https?://github\\.com/GlobalSettlementNetwork/gsx-dag",
-    "^https?://github\\.com/GlobalSettlementNetwork/gsx-db",
-    "^https?://github\\.com/GlobalSettlementNetwork/gsx-papers",
+    # Private SUWAPPU repositories — unauthenticated CI returns 404 for these
+    "^https?://github\\.com/suwappu/suwappu-dag",
+    "^https?://github\\.com/suwappu/suwappu-db",
+    "^https?://github\\.com/suwappu/suwappu-papers",
     # contributor-covenant.org occasionally resets the connection from
     # GitHub-runner CIDR ranges; the page itself is stable. Excluding to
     # avoid CI flakes — the link is still valid for human readers.

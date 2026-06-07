@@ -40,6 +40,6 @@ variable "tags" {
   default = {
     "ltp:owner"       = "platform"
     "ltp:cost-center" = "ltp-prod"
-    "ltp:repo"        = "gsx-lattice-protocol"
+    "ltp:repo"        = "suwappu-lattice-protocol"
   }
 }

@@ -1,5 +1,5 @@
 """
-Adversarial tests for the GSX Pre-Blockchain Trust Packaging Layer.
+Adversarial tests for the SUWAPPU Pre-Blockchain Trust Packaging Layer.
 
 Proves that the system correctly *rejects* invalid/tampered inputs —
 not just that valid inputs pass. Every test in this file asserts a
@@ -139,7 +139,7 @@ class TestEncoderAdversarial:
             CanonicalEncoder(b"")
 
     def test_bit_flip_in_tag_produces_different_output(self):
-        tag1 = b"GSX-LTP:test:v1\x00"
+        tag1 = b"SUWAPPU-LTP:test:v1\x00"
         tag2 = bytearray(tag1)
         tag2[0] ^= 0x01
         r1 = CanonicalEncoder(tag1).string("data").finalize()

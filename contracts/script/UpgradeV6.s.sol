@@ -17,21 +17,21 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 /// Usage (4 steps):
 ///   Step 1: Deploy new impl + schedule + submit execute (deployer key)
 ///     forge script script/UpgradeV6.s.sol --sig "step1()" \
-///       --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_DEPLOYER_KEY
+///       --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_DEPLOYER_KEY
 ///
 ///   Step 2: Second signer confirms both txIds (operator key)
 ///     forge script script/UpgradeV6.s.sol --sig "step2(uint256)" <txId> \
-///       --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_OPERATOR_KEY
+///       --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_OPERATOR_KEY
 ///
 ///   Step 3: Execute the schedule call through multisig
 ///     forge script script/UpgradeV6.s.sol --sig "step3(uint256)" <scheduleTxId> \
-///       --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_DEPLOYER_KEY
+///       --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_DEPLOYER_KEY
 ///
 ///   Step 4: Wait 60s, then execute upgrade
 ///     forge script script/UpgradeV6.s.sol --sig "step4(uint256)" <executeTxId> \
-///       --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_DEPLOYER_KEY
+///       --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_DEPLOYER_KEY
 contract UpgradeV6 is Script {
-    // GSX Testnet deployed addresses (from CLAUDE.md)
+    // SUWAPPU Testnet deployed addresses (from CLAUDE.md)
     address constant PROXY    = 0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4;
     address payable constant MULTISIG = payable(0x0106A79e9236009a05742B3fB1e3B7a52F44373D);
     address constant TIMELOCK = 0x7C2665F7e68FE635ee8F10aa0130AEBC603a9Db8;

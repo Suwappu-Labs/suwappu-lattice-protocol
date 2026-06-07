@@ -59,7 +59,7 @@ pinned:
 ## Notes on the fork-test variant
 
 The campaign plan suggested running SCN-008 as a Foundry fork
-test against the GSX Testnet deployment. A fork test is feasible
+test against the SUWAPPU Testnet deployment. A fork test is feasible
 without operator coordination (read-only) but doesn't add
 defensive value beyond the local-deploy test pinned here — the
 deployed instance runs the same bytecode. The fork variant is

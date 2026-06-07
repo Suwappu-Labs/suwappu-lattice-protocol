@@ -120,7 +120,7 @@ class TokenBucketRateLimiter:
 
 
 class DevnetAnchorClient:
-    """Submits gateway attestations to the GSX devnet LTPAnchorRegistry.
+    """Submits gateway attestations to the SUWAPPU devnet LTPAnchorRegistry.
 
     Uses composition over inheritance — inject submit_fn for testability,
     use from_gateway_config() for real RPC connections.

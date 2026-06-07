@@ -1,5 +1,5 @@
 """
-GSX Dual-Lane Cryptographic Architecture.
+SUWAPPU Dual-Lane Cryptographic Architecture.
 
 Two hash lanes serve different trust boundaries:
 

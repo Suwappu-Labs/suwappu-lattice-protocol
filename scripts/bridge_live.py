@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live cross-chain bridge execution — GSX Testnet <-> Base Sepolia.
+Live cross-chain bridge execution — SUWAPPU Testnet <-> Base Sepolia.
 
 Runs LiveBridge.transfer() against both live RPCs in both directions,
 capturing full TX hashes and writing results to JSON.
@@ -10,8 +10,8 @@ Usage:
     python scripts/bridge_live.py --direction both --output bridge_results.json
 
     # Single direction
-    python scripts/bridge_live.py --direction gsx-to-base
-    python scripts/bridge_live.py --direction base-to-gsx
+    python scripts/bridge_live.py --direction suwappu-to-base
+    python scripts/bridge_live.py --direction base-to-suwappu
 
 Requires:
     - contracts/.env with RPC URLs, operator keys, registry addresses
@@ -67,7 +67,7 @@ def load_env(env_path: str = "contracts/.env") -> dict[str, str]:
 
 
 def inject_poa_middleware(client):
-    """Inject ExtraDataToPOAMiddleware for PoA chains (GSX Testnet)."""
+    """Inject ExtraDataToPOAMiddleware for PoA chains (SUWAPPU Testnet)."""
     try:
         from web3.middleware import ExtraDataToPOAMiddleware
 
@@ -119,8 +119,8 @@ def create_protocol(keypair_path: str = "") -> tuple[LTPProtocol, KeyPair, KeyRe
 def build_chain_config(env: dict, prefix: str, chain_id: int, label: str) -> ChainConfig:
     """Build ChainConfig from env vars with a given prefix."""
     rpc_key = f"{prefix}_RPC_URL" if prefix != "BASE_SEPOLIA" else "BASE_SEPOLIA_RPC_URL"
-    registry_key = f"{prefix}_ANCHOR_REGISTRY" if prefix == "GSX" else "L2_PROXY_ADDRESS"
-    operator_key_var = f"{prefix}_OPERATOR_KEY" if prefix == "GSX" else "L2_DEPLOYER_KEY"
+    registry_key = f"{prefix}_ANCHOR_REGISTRY" if prefix == "SUWAPPU" else "L2_PROXY_ADDRESS"
+    operator_key_var = f"{prefix}_OPERATOR_KEY" if prefix == "SUWAPPU" else "L2_DEPLOYER_KEY"
 
     rpc_url = env.get(rpc_key, "")
     registry = env.get(registry_key, "")
@@ -159,7 +159,7 @@ def execute_bridge(
     l1_client = create_anchor_client(l1_config)
     l2_client = create_anchor_client(l2_config)
 
-    # Inject PoA middleware for GSX Testnet
+    # Inject PoA middleware for SUWAPPU Testnet
     if l1_config.chain_id == 103115120:
         inject_poa_middleware(l1_client)
     if l2_config.chain_id == 103115120:
@@ -249,7 +249,7 @@ def main():
     parser = argparse.ArgumentParser(description="Live cross-chain bridge execution")
     parser.add_argument(
         "--direction",
-        choices=["gsx-to-base", "base-to-gsx", "both"],
+        choices=["suwappu-to-base", "base-to-suwappu", "both"],
         default="both",
         help="Bridge direction (default: both)",
     )
@@ -275,10 +275,10 @@ def main():
     logger.info("Loaded %d env vars from %s", len(env), args.env_file)
 
     # Build chain configs
-    gsx_config = build_chain_config(env, "GSX", 103115120, "gsx_testnet")
+    suwappu_config = build_chain_config(env, "SUWAPPU", 103115120, "suwappu_testnet")
     base_config = build_chain_config(env, "BASE_SEPOLIA", 84532, "base_sepolia")
 
-    logger.info("GSX Testnet: %s → %s", gsx_config.rpc_url, gsx_config.registry_address)
+    logger.info("SUWAPPU Testnet: %s → %s", suwappu_config.rpc_url, suwappu_config.registry_address)
     logger.info("Base Sepolia: %s → %s", base_config.rpc_url, base_config.registry_address)
 
     # Create protocol with registered keypair
@@ -288,20 +288,20 @@ def main():
     results = {
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "deployer": "0xcBFDDCb830eE902248F6d1b0A0C64f6e4E35b8E9",
-        "gsx_registry": gsx_config.registry_address,
+        "suwappu_registry": suwappu_config.registry_address,
         "base_registry": base_config.registry_address,
         "transfers": [],
     }
 
     nonce = 1
 
-    if args.direction in ("gsx-to-base", "both"):
-        r = execute_bridge("gsx_to_base", protocol, operator_kp, gsx_config, base_config, nonce)
+    if args.direction in ("suwappu-to-base", "both"):
+        r = execute_bridge("suwappu_to_base", protocol, operator_kp, suwappu_config, base_config, nonce)
         results["transfers"].append(r)
         nonce += 1
 
-    if args.direction in ("base-to-gsx", "both"):
-        r = execute_bridge("base_to_gsx", protocol, operator_kp, base_config, gsx_config, nonce)
+    if args.direction in ("base-to-suwappu", "both"):
+        r = execute_bridge("base_to_suwappu", protocol, operator_kp, base_config, suwappu_config, nonce)
         results["transfers"].append(r)
 
     # Write results

@@ -28,7 +28,7 @@ class ChainConfig:
     """Immutable configuration for a single target chain."""
 
     chain_id: int
-    label: str  # "gsx_testnet", "base_sepolia"
+    label: str  # "suwappu_testnet", "base_sepolia"
     rpc_url: str
     registry_address: str
     operator_key: str  # Raw private key (development) or empty if using KMS

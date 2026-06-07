@@ -1,9 +1,9 @@
-# GSX DB — Mermaid
+# SUWAPPU DB — Mermaid
 
 ```mermaid
 flowchart LR
-  Lane[gsxdb-lane<br/>untrusted ingest] --> Bridge[gsxdb-bridge<br/>validation + OCC]
-  Bridge --> State[gsxdb-state<br/>canonical state]
+  Lane[suwappudb-lane<br/>untrusted ingest] --> Bridge[suwappudb-bridge<br/>validation + OCC]
+  Bridge --> State[suwappudb-state<br/>canonical state]
   Lane -. cannot import .- State
   State --> Tree[State tree<br/>root + proofs]
   State --> Anchor[AnchorDispatcher<br/>MAC / registry]
