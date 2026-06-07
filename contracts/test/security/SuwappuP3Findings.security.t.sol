@@ -7,6 +7,12 @@ import {SuwappuMintAdapter} from "../../src/SuwappuMintAdapter.sol";
 import {SuwappuWrappedToken} from "../../src/SuwappuWrappedToken.sol";
 import {SuwappuEcdsaMintVerifier} from "../../src/verifiers/SuwappuEcdsaMintVerifier.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract P3Token is ERC20 {
+    constructor() ERC20("P3", "P3") {}
+    function mint(address to, uint256 amt) external { _mint(to, amt); }
+}
 
 /// @title SuwappuP3Findings.security.t.sol
 /// @notice Empirical confirmation of the NEW P3 (attack-class review) findings.
@@ -132,5 +138,28 @@ contract SuwappuP3FindingsTest is Test {
         vm.prank(unlocker);
         vault.unlock(c2, relayer);
         assertEq(vault.totalLocked(address(0)), 0, "both released across days");
+    }
+
+    // ---- P3-7 [MED] — FIXED: only allowlisted ERC-20s can be locked
+    //      (rebasing/elastic tokens excluded). ----
+    function test_P3_7_token_allowlist() public {
+        SuwappuVault vault = new SuwappuVault(ADMIN, ADMIN, 0);
+        P3Token tok = new P3Token();
+        tok.mint(alice, 100 ether);
+
+        vm.prank(alice);
+        tok.approve(address(vault), type(uint256).max);
+
+        // SECURE PROPERTY: a non-allowlisted token cannot be locked.
+        vm.prank(alice);
+        vm.expectRevert(); // TokenNotAllowed
+        vault.lockERC20(address(tok), 10 ether, 8453, alice);
+
+        // After governance allowlists it, locking works.
+        vm.prank(ADMIN);
+        vault.setAllowedToken(address(tok), true);
+        vm.prank(alice);
+        vault.lockERC20(address(tok), 10 ether, 8453, alice);
+        assertEq(vault.totalLocked(address(tok)), 10 ether);
     }
 }

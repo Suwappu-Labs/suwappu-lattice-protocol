@@ -65,6 +65,10 @@ contract SuwappuCustodySecurityTest is Test {
         SuwappuVault vault = new SuwappuVault(ADMIN, ADMIN, 0); // feeBps=0
         FeeOnTransferToken fot = new FeeOnTransferToken();
         fot.mint(alice, 1_000 ether);
+        // P3-7: a FOT token would normally be excluded by the allowlist; allow it
+        // here to exercise C5's received-balance accounting (the second defence).
+        vm.prank(ADMIN);
+        vault.setAllowedToken(address(fot), true);
 
         vm.startPrank(alice);
         fot.approve(address(vault), type(uint256).max);
