@@ -52,7 +52,8 @@ contract SuwappuSupplyInvariantTest is Test {
             18,
             block.chainid,
             ETH,
-            ADMIN
+            ADMIN,
+            ADMIN  // minterManager = admin for the harness
         );
 
         adapter = new SuwappuMintAdapter(ADMIN, address(wrapped));

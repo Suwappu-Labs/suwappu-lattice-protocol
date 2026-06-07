@@ -20,26 +20,32 @@ contract SuwappuP3FindingsTest is Test {
     address internal relayer  = makeAddr("relayer");
     address internal alice    = makeAddr("alice");
 
-    // ---- P3-3 [CRITICAL]: WrappedToken DEFAULT_ADMIN_ROLE is a parallel, unconstrained minter ----
-    function test_P3_3_admin_is_parallel_unconstrained_minter() public {
+    // ---- P3-3 [CRITICAL] — FIXED: the token DEFAULT_ADMIN can no longer grant
+    //      mint authority; only the separate minter-manager (Timelock) can. ----
+    function test_P3_3_admin_cannot_grant_mint() public {
+        address manager = makeAddr("timelockManager"); // MINTER_ADMIN_ROLE holder
         SuwappuWrappedToken wt = new SuwappuWrappedToken(
-            "Suwappu Wrapped Ether", "swETH", 18, 1, address(0), ADMIN
+            "Suwappu Wrapped Ether", "swETH", 18, 1, address(0), ADMIN, manager
         );
-        SuwappuMintAdapter adapter = new SuwappuMintAdapter(ADMIN, address(wt));
         bytes32 minterRole = wt.MINTER_ROLE();
-        vm.startPrank(ADMIN);
-        wt.grantRole(minterRole, address(adapter)); // intended minter
-        // The token admin can grant MINTER_ROLE to ANYONE and mint unbacked supply,
-        // entirely bypassing the adapter's commitId / mintRecords / relayer-bond controls.
+        bytes32 minterAdminRole = wt.MINTER_ADMIN_ROLE();
+
+        // SECURE PROPERTY: the token admin (DEFAULT_ADMIN_ROLE) is NOT the admin
+        // of MINTER_ROLE, so it cannot grant mint authority to itself or anyone.
+        vm.prank(ADMIN);
+        vm.expectRevert(); // AccessControlUnauthorizedAccount(ADMIN, MINTER_ADMIN_ROLE)
         wt.grantRole(minterRole, attacker);
-        vm.stopPrank();
 
-        vm.prank(attacker);
-        wt.mint(attacker, 1_000_000 ether, bytes32(0)); // no commitId binding, no cap, no vault lock
+        // And it cannot escalate by granting itself the manager role either.
+        vm.prank(ADMIN);
+        vm.expectRevert();
+        wt.grantRole(minterAdminRole, ADMIN);
 
-        // VULNERABILITY CONFIRMED: 1M unbacked wrapped tokens exist with zero collateral.
-        assertEq(wt.totalSupply(), 1_000_000 ether, "P3-3: admin minted unbacked supply via parallel minter");
-        assertEq(wt.balanceOf(attacker), 1_000_000 ether);
+        // Only the manager can set the minter set (governed, timelocked in prod).
+        vm.prank(manager);
+        wt.grantRole(minterRole, address(0xADA));
+        assertTrue(wt.hasRole(minterRole, address(0xADA)));
+        assertFalse(wt.hasRole(minterRole, attacker), "P3-3 fixed: admin minted nothing");
     }
 
     // ---- P3-5 [HIGH] — FIXED: an attestation is bound to one adapter instance;
@@ -48,8 +54,8 @@ contract SuwappuP3FindingsTest is Test {
 
     function test_P3_5_cross_instance_replay_blocked() public {
         SuwappuVault vault = new SuwappuVault(ADMIN, ADMIN, 0);
-        SuwappuWrappedToken wt1 = new SuwappuWrappedToken("swETH-1","swETH1",18,1,address(0),ADMIN);
-        SuwappuWrappedToken wt2 = new SuwappuWrappedToken("swETH-2","swETH2",18,1,address(0),ADMIN);
+        SuwappuWrappedToken wt1 = new SuwappuWrappedToken("swETH-1","swETH1",18,1,address(0),ADMIN,ADMIN);
+        SuwappuWrappedToken wt2 = new SuwappuWrappedToken("swETH-2","swETH2",18,1,address(0),ADMIN,ADMIN);
         SuwappuMintAdapter a1 = new SuwappuMintAdapter(ADMIN, address(wt1));
         SuwappuMintAdapter a2 = new SuwappuMintAdapter(ADMIN, address(wt2));
         SuwappuEcdsaMintVerifier verifier = new SuwappuEcdsaMintVerifier(ADMIN);

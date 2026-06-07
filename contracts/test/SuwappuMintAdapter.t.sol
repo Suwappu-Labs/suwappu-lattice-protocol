@@ -26,7 +26,7 @@ contract SuwappuMintAdapterTest is Test {
 
     function setUp() public {
         wrappedToken = new SuwappuWrappedToken(
-            "Suwappu Wrapped Ether", "swETH", 18, SOURCE_CHAIN, address(0), admin
+            "Suwappu Wrapped Ether", "swETH", 18, SOURCE_CHAIN, address(0), admin, admin
         );
         adapter = new SuwappuMintAdapter(admin, address(wrappedToken));
         verifier = new SuwappuEcdsaMintVerifier(admin);
