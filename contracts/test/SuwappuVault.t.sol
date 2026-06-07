@@ -63,6 +63,7 @@ contract SuwappuVaultTest is Test {
         vault.addUnlocker(relayer);
         vault.setRefundVerifier(address(refundVerifier));
         refundVerifier.setOperator(operator, true);
+        vault.setAllowedToken(address(usdc), true); // P3-7 allowlist
         vault.setTVLCap(address(0),         5_000 ether);  // ETH cap
         vault.setTVLCap(address(usdc),      5_000_000e6);  // USDC cap
         vault.setDailyCap(address(0),       1_000 ether);

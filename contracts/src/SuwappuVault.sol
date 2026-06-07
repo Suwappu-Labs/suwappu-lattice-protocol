@@ -108,6 +108,10 @@ contract SuwappuVault is ReentrancyGuard {
     address public guardian;
     bool public paused;
 
+    /// @notice P3-7: only allowlisted ERC-20s may be locked. Excludes
+    ///         rebasing/elastic tokens that break the static totalLocked accounting.
+    mapping(address => bool) public allowedToken;
+
     // -----------------------------------------------------------------------
     // Events
     // -----------------------------------------------------------------------
@@ -143,6 +147,7 @@ contract SuwappuVault is ReentrancyGuard {
     event RefundVerifierSet(address indexed oldVerifier, address indexed newVerifier);
     event GuardianSet(address indexed oldGuardian, address indexed newGuardian);
     event DailyReleaseCapSet(address indexed token, uint256 cap);
+    event TokenAllowedSet(address indexed token, bool allowed);
     event Paused(address indexed by);
     event Unpaused(address indexed by);
     event TVLCapSet(address indexed token, uint256 cap);
@@ -172,6 +177,7 @@ contract SuwappuVault is ReentrancyGuard {
     error RefundNotAuthorized(bytes32 digest);
     error ReleaseCapExceeded(address token, uint256 requested, uint256 remaining);
     error EnforcedPause();
+    error TokenNotAllowed(address token);
 
     // -----------------------------------------------------------------------
     // Modifiers
@@ -246,6 +252,11 @@ contract SuwappuVault is ReentrancyGuard {
     {
         if (token == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
+        // P3-7: only allowlisted tokens may be locked. Rebasing/elastic tokens
+        // (stETH/AMPL-style) break the static totalLocked accounting and must be
+        // excluded; the allowlist is the governed gate. (C5's received-balance
+        // accounting is the second line of defence for any fee-on-transfer token.)
+        if (!allowedToken[token]) revert TokenNotAllowed(token);
         // C5 fix: credit the amount actually RECEIVED, not the amount requested.
         // Fee-on-transfer / deflationary tokens deliver less than `amount`;
         // crediting `amount` would overstate totalLocked and under-collateralize
@@ -457,6 +468,12 @@ contract SuwappuVault is ReentrancyGuard {
     function setDailyReleaseCap(address token, uint256 cap) external onlyAdmin {
         dailyReleaseCap[token] = cap;
         emit DailyReleaseCapSet(token, cap);
+    }
+
+    /// @notice Allow/disallow an ERC-20 for locking (P3-7). Exclude rebasing tokens.
+    function setAllowedToken(address token, bool allowed) external onlyAdmin {
+        allowedToken[token] = allowed;
+        emit TokenAllowedSet(token, allowed);
     }
 
     /// @notice Guardian OR admin can pause releases (unlock). Only admin unpauses.
