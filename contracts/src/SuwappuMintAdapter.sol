@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SuwappuWrappedToken} from "./SuwappuWrappedToken.sol";
+import {IMintAttestationVerifier} from "./interfaces/IMintAttestationVerifier.sol";
 
 /// @title SuwappuMintAdapter
 /// @notice Destination-chain contract that mints SuwappuWrappedToken when a
@@ -46,7 +47,19 @@ contract SuwappuMintAdapter is ReentrancyGuard {
     /// @notice The wrapped token this adapter controls.
     SuwappuWrappedToken public wrappedToken;
 
-    /// @notice Authorized relayers that may call mint().
+    /// @notice On-chain attestation verifier. mint() requires an authorized
+    ///         operator's signature over the bound mint digest. This is the
+    ///         trust anchor that replaces blind relayer trust (fixes C1/P3-1/P3-5).
+    ///         On Suwappu DAG this is the ML-DSA (PQ) verifier; on EVM
+    ///         destinations the ECDSA-interim verifier.
+    IMintAttestationVerifier public verifier;
+
+    /// @notice Domain tag bound into every mint attestation digest.
+    bytes32 public constant MINT_ATTESTATION_DOMAIN =
+        keccak256("SUWAPPU_MINT_ATTESTATION_V1");
+
+    /// @notice Authorized relayers that may submit mint() (spam/DoS gate only;
+    ///         security now rests on the attestation, not relayer trust).
     mapping(address => bool) public isRelayer;
 
     /// @notice commitId → mint record. Used to prevent double-minting.
@@ -78,6 +91,7 @@ contract SuwappuMintAdapter is ReentrancyGuard {
 
     event RelayerAdded(address indexed relayer);
     event RelayerRemoved(address indexed relayer);
+    event VerifierSet(address indexed oldVerifier, address indexed newVerifier);
     event WrappedTokenSet(address indexed oldToken, address indexed newToken);
     event AdminTransferStarted(address indexed currentAdmin, address indexed pendingAdmin_);
     event AdminTransferCompleted(address indexed previousAdmin, address indexed newAdmin);
@@ -91,6 +105,8 @@ contract SuwappuMintAdapter is ReentrancyGuard {
     error ZeroAmount();
     error AlreadyMinted(bytes32 commitId);
     error CommitIdMismatch(bytes32 provided, bytes32 computed);
+    error VerifierNotSet();
+    error InvalidAttestation(bytes32 digest);
 
     // -----------------------------------------------------------------------
     // Modifiers
@@ -137,15 +153,28 @@ contract SuwappuMintAdapter is ReentrancyGuard {
     ///      The relayer is economically bonded: posting a fraudulent mint
     ///      exposes them to slashing via SuwappuChallenge.
     ///
-    /// @param commitId     Commitment ID from the source-chain Locked event
-    /// @param recipient    Address to receive the wrapped tokens
-    /// @param amount       Net amount from the source Locked event
+    /// @param commitId      Commitment ID from the source-chain Locked event
+    /// @param recipient     Address to receive the wrapped tokens
+    /// @param amount        Net amount from the source Locked event
     /// @param sourceChainId Chain ID where the Vault.lock() was called
+    /// @param attestation   An authorized operator's signature over the bound
+    ///                      mint digest (ECDSA on EVM destinations, ML-DSA-65 on
+    ///                      Suwappu DAG). This is what makes the mint trust-minimized.
+    ///
+    /// @dev Security model (replaces blind relayer trust — fixes C1/P3-1/P3-5):
+    ///   The digest binds the exact mint parameters AND `block.chainid` AND
+    ///   `address(this)`, then the verifier confirms an AUTHORIZED operator
+    ///   signed it. Consequences:
+    ///     - A relayer cannot mint an arbitrary/unbacked commitId (no valid sig). [C1]
+    ///     - A self-signed (unauthorized) key is rejected by the verifier.        [P3-1]
+    ///     - The same attestation cannot replay onto another adapter instance or
+    ///       destination chain (chainid + address bound).                          [P3-5]
     function mint(
         bytes32 commitId,
         address recipient,
         uint256 amount,
-        uint256 sourceChainId
+        uint256 sourceChainId,
+        bytes calldata attestation
     )
         external
         nonReentrant
@@ -153,9 +182,25 @@ contract SuwappuMintAdapter is ReentrancyGuard {
     {
         if (recipient == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
+        if (address(verifier) == address(0)) revert VerifierNotSet();
 
         // Enforce one mint per commitId — prevents relay replay.
         if (mintRecords[commitId].mintedAt != 0) revert AlreadyMinted(commitId);
+
+        // Bind every mint parameter + this chain + this adapter into the digest,
+        // then require an authorized operator attested to it.
+        bytes32 digest = keccak256(abi.encode(
+            MINT_ATTESTATION_DOMAIN,
+            block.chainid,
+            address(this),
+            commitId,
+            recipient,
+            amount,
+            sourceChainId
+        ));
+        if (!verifier.verifyMintAttestation(digest, attestation)) {
+            revert InvalidAttestation(digest);
+        }
 
         mintRecords[commitId] = MintRecord({
             recipient:     recipient,
@@ -167,6 +212,25 @@ contract SuwappuMintAdapter is ReentrancyGuard {
         wrappedToken.mint(recipient, amount, commitId);
 
         emit Minted(commitId, recipient, amount, sourceChainId, msg.sender);
+    }
+
+    /// @notice Recompute the mint digest an operator must sign for these params.
+    ///         Off-chain operators / tests use this to produce attestations.
+    function mintDigest(
+        bytes32 commitId,
+        address recipient,
+        uint256 amount,
+        uint256 sourceChainId
+    ) public view returns (bytes32) {
+        return keccak256(abi.encode(
+            MINT_ATTESTATION_DOMAIN,
+            block.chainid,
+            address(this),
+            commitId,
+            recipient,
+            amount,
+            sourceChainId
+        ));
     }
 
     // -----------------------------------------------------------------------
@@ -244,6 +308,15 @@ contract SuwappuMintAdapter is ReentrancyGuard {
     function removeRelayer(address relayer) external onlyAdmin {
         isRelayer[relayer] = false;
         emit RelayerRemoved(relayer);
+    }
+
+    /// @notice Set the on-chain attestation verifier (ML-DSA on Suwappu DAG,
+    ///         ECDSA-interim on EVM). Required before mint() can succeed.
+    ///         Should be governed by the Timelock in production.
+    function setVerifier(address newVerifier) external onlyAdmin {
+        if (newVerifier == address(0)) revert ZeroAddress();
+        emit VerifierSet(address(verifier), newVerifier);
+        verifier = IMintAttestationVerifier(newVerifier);
     }
 
     // -----------------------------------------------------------------------

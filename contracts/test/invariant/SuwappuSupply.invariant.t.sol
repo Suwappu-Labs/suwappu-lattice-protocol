@@ -5,6 +5,8 @@ import "forge-std/Test.sol";
 import {SuwappuVault} from "../../src/SuwappuVault.sol";
 import {SuwappuMintAdapter} from "../../src/SuwappuMintAdapter.sol";
 import {SuwappuWrappedToken} from "../../src/SuwappuWrappedToken.sol";
+import {SuwappuEcdsaMintVerifier} from "../../src/verifiers/SuwappuEcdsaMintVerifier.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /// @title SuwappuSupplyInvariantTest
 /// @notice Cross-domain stateful invariant suite for the Suwappu lock-and-mint
@@ -55,12 +57,20 @@ contract SuwappuSupplyInvariantTest is Test {
 
         adapter = new SuwappuMintAdapter(ADMIN, address(wrapped));
 
-        handler = new SuwappuSupplyHandler(vault, adapter, wrapped);
+        // On-chain attestation gate: only an AUTHORIZED operator's signature
+        // over the bound mint digest lets mint() succeed (the C1/P3-1/P3-5 fix).
+        SuwappuEcdsaMintVerifier verifier = new SuwappuEcdsaMintVerifier(ADMIN);
+        uint256 operatorPk = 0xA110CE;
+        address operator = vm.addr(operatorPk);
+
+        handler = new SuwappuSupplyHandler(vault, adapter, wrapped, operatorPk);
 
         vm.startPrank(ADMIN);
         wrapped.grantRole(wrapped.MINTER_ROLE(), address(adapter));
         wrapped.grantRole(wrapped.BURNER_ROLE(), address(adapter));
-        adapter.addRelayer(address(handler)); // relayer == adversary
+        adapter.addRelayer(address(handler)); // relayer == adversary (now needs a valid attestation)
+        adapter.setVerifier(address(verifier));
+        verifier.setOperator(operator, true);
         vault.addUnlocker(address(handler));   // also the source-chain unlocker
         vm.stopPrank();
 
@@ -103,14 +113,25 @@ contract SuwappuSupplyHandler is Test {
 
     bool public observedDoubleSpend;
 
-    constructor(SuwappuVault _v, SuwappuMintAdapter _a, SuwappuWrappedToken _w) {
+    uint256 internal operatorPk;   // authorized operator (honest attestations)
+    uint256 internal constant ROGUE_PK = 0xBADBAD; // unauthorized (self-signed, P3-1)
+
+    constructor(SuwappuVault _v, SuwappuMintAdapter _a, SuwappuWrappedToken _w, uint256 _operatorPk) {
         vault = _v;
         adapter = _a;
         wrapped = _w;
+        operatorPk = _operatorPk;
         vm.deal(address(this), 10_000 ether);
     }
 
     receive() external payable {}
+
+    /// Produce an ECDSA attestation over `digest` signed by `pk`.
+    function _attest(uint256 pk, bytes32 digest) internal view returns (bytes memory) {
+        bytes32 ethHash = MessageHashUtils.toEthSignedMessageHash(digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, ethHash);
+        return abi.encodePacked(r, s, v);
+    }
 
     function _markTerminal(bytes32 id, uint8 which) internal {
         if (which == 0) minted[id] = true;
@@ -130,22 +151,36 @@ contract SuwappuSupplyHandler is Test {
         } catch {}
     }
 
-    // ---- Relayer mints HONESTLY: exactly the locked amount, vault's commitId ----
+    // ---- Relayer mints HONESTLY: exactly the locked amount, with a VALID
+    //      authorized-operator attestation over the bound digest. ----
     function honestMint(uint256 i) external {
         if (commits.length == 0) return;
         bytes32 id = commits[i % commits.length];
         if (minted[id] || lockedNet[id] == 0) return;
-        try adapter.mint(id, address(this), lockedNet[id], block.chainid) {
+        bytes32 digest = adapter.mintDigest(id, address(this), lockedNet[id], block.chainid);
+        bytes memory att = _attest(operatorPk, digest);
+        try adapter.mint(id, address(this), lockedNet[id], block.chainid, att) {
             _markTerminal(id, 0);
         } catch {}
     }
 
-    // ---- Relayer mints ADVERSARIALLY: arbitrary commitId + amount (C1) ----
-    function maliciousMint(bytes32 fakeId, uint256 amt, address to) external {
+    // ---- Relayer mints ADVERSARIALLY: arbitrary commitId/amount, NO valid
+    //      operator attestation (C1). Must always revert post-fix. ----
+    function maliciousMint(bytes32 fakeId, uint256 amt, address to, bytes calldata junkAtt) external {
         amt = bound(amt, 1, 100 ether);
         if (to == address(0)) to = address(0xBAD);
         if (lockedNet[fakeId] != 0) return; // must be an id with NO backing lock
-        try adapter.mint(fakeId, to, amt, block.chainid) {} catch {}
+        try adapter.mint(fakeId, to, amt, block.chainid, junkAtt) {} catch {}
+    }
+
+    // ---- Attacker SELF-SIGNS with an unauthorized key (P3-1). Must revert. ----
+    function selfSignedMint(bytes32 fakeId, uint256 amt, address to) external {
+        amt = bound(amt, 1, 100 ether);
+        if (to == address(0)) to = address(0xBAD);
+        if (lockedNet[fakeId] != 0) return;
+        bytes32 digest = adapter.mintDigest(fakeId, to, amt, block.chainid);
+        bytes memory rogueAtt = _attest(ROGUE_PK, digest); // valid sig, wrong (unauthorized) key
+        try adapter.mint(fakeId, to, amt, block.chainid, rogueAtt) {} catch {}
     }
 
     // ---- Relayer unlocks source collateral (return path) ----
