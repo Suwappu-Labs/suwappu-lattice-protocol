@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {IMintAttestationVerifier} from "./interfaces/IMintAttestationVerifier.sol";
 
 /// @title SuwappuVault
 /// @notice Locks source-chain assets (ETH or ERC-20) and issues a commitment ID
@@ -79,6 +80,19 @@ contract SuwappuVault is ReentrancyGuard {
     /// @notice Addresses authorized to call unlock() (relayer set)
     mapping(address => bool) public isUnlocker;
 
+    /// @notice Attestation verifier gating claimRefund. A refund releases source
+    ///         collateral, so it must be authorized by an operator confirming
+    ///         the commit is refund-eligible — i.e. the destination mint did NOT
+    ///         complete. Without this, a user could mint on the destination AND
+    ///         reclaim the source collateral (C2 cross-domain double-spend).
+    ///         Same verifier shape as the mint gate (ML-DSA on Suwappu DAG,
+    ///         ECDSA-interim on EVM); the REFUND domain tag separates the two.
+    IMintAttestationVerifier public refundVerifier;
+
+    /// @notice Domain tag bound into every refund-eligibility attestation digest.
+    bytes32 public constant REFUND_ATTESTATION_DOMAIN =
+        keccak256("SUWAPPU_REFUND_ATTESTATION_V1");
+
     // Rate limiter: token → day-bucket → volume used
     mapping(address => mapping(uint256 => uint256)) private _dailyVolume;
     /// @notice token → daily volume cap (0 = no cap for that token)
@@ -116,6 +130,7 @@ contract SuwappuVault is ReentrancyGuard {
     event FeeSwept(address indexed token, address indexed to, uint256 amount);
     event UnlockerAdded(address indexed unlocker);
     event UnlockerRemoved(address indexed unlocker);
+    event RefundVerifierSet(address indexed oldVerifier, address indexed newVerifier);
     event TVLCapSet(address indexed token, uint256 cap);
     event DailyCapSet(address indexed token, uint256 cap);
     event FeeBpsSet(uint256 oldBps, uint256 newBps);
@@ -139,6 +154,8 @@ contract SuwappuVault is ReentrancyGuard {
     error FeeBpsTooHigh(uint256 provided, uint256 max);
     error RefundTimeoutTooShort(uint256 provided, uint256 min);
     error ETHTransferFailed();
+    error RefundVerifierNotSet();
+    error RefundNotAuthorized(bytes32 digest);
 
     // -----------------------------------------------------------------------
     // Modifiers
@@ -310,11 +327,15 @@ contract SuwappuVault is ReentrancyGuard {
     // Core: refund (permissionless, after timeout)
     // -----------------------------------------------------------------------
 
-    /// @notice Reclaim locked funds if the relay was never completed.
-    ///         Anyone may call this on behalf of the depositor, but funds
-    ///         always go to the original depositor (c.from).
-    /// @param commitId  The timed-out commitment to refund
-    function claimRefund(bytes32 commitId) external nonReentrant {
+    /// @notice Reclaim locked funds if the relay was never completed. Funds
+    ///         always go to the original depositor (c.from). Requires an
+    ///         operator attestation that the commit is refund-eligible (the
+    ///         destination mint did not complete) — this is the C2 fix: it
+    ///         prevents reclaiming collateral that is backing minted wrapped
+    ///         tokens on the destination chain.
+    /// @param commitId    The timed-out commitment to refund
+    /// @param attestation Authorized-operator signature over the refund digest
+    function claimRefund(bytes32 commitId, bytes calldata attestation) external nonReentrant {
         CommitData storage c = commits[commitId];
         if (c.status == LockStatus.NONE) revert CommitNotFound(commitId);
         if (c.status != LockStatus.LOCKED) revert CommitNotLocked(commitId, c.status);
@@ -322,11 +343,31 @@ contract SuwappuVault is ReentrancyGuard {
         uint64 readyAt = c.lockedAt + uint64(refundTimeout);
         if (block.timestamp < readyAt) revert RefundNotReady(commitId, readyAt);
 
+        if (address(refundVerifier) == address(0)) revert RefundVerifierNotSet();
+        bytes32 digest = refundDigest(commitId);
+        if (!refundVerifier.verifyMintAttestation(digest, attestation)) {
+            revert RefundNotAuthorized(digest);
+        }
+
         c.status = LockStatus.REFUNDED;
         totalLocked[c.token] -= c.amount;
 
         _transfer(c.token, c.from, c.amount);
         emit Refunded(commitId, c.token, c.from, c.amount);
+    }
+
+    /// @notice The digest an operator must sign to authorize a refund of `commitId`.
+    function refundDigest(bytes32 commitId) public view returns (bytes32) {
+        CommitData storage c = commits[commitId];
+        return keccak256(abi.encode(
+            REFUND_ATTESTATION_DOMAIN,
+            block.chainid,
+            address(this),
+            commitId,
+            c.from,
+            c.amount,
+            c.token
+        ));
     }
 
     // -----------------------------------------------------------------------
@@ -360,6 +401,14 @@ contract SuwappuVault is ReentrancyGuard {
         if (newRecipient == address(0)) revert ZeroAddress();
         emit FeeRecipientSet(feeRecipient, newRecipient);
         feeRecipient = newRecipient;
+    }
+
+    /// @notice Set the refund-attestation verifier. Required before claimRefund
+    ///         can succeed. Governed by the Timelock in production.
+    function setRefundVerifier(address newVerifier) external onlyAdmin {
+        if (newVerifier == address(0)) revert ZeroAddress();
+        emit RefundVerifierSet(address(refundVerifier), newVerifier);
+        refundVerifier = IMintAttestationVerifier(newVerifier);
     }
 
     function setRefundTimeout(uint256 newTimeout) external onlyAdmin {
