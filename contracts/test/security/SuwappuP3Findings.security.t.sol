@@ -89,4 +89,48 @@ contract SuwappuP3FindingsTest is Test {
         assertEq(wt1.totalSupply(), 10 ether);
         assertEq(wt2.totalSupply(), 0, "P3-5 fixed: cross-instance attestation replay blocked");
     }
+
+    // ---- P3-4 [HIGH] — FIXED: daily release cap + guardian pause bound a
+    //      compromised unlocker's blast radius on Vault.unlock. ----
+    function test_P3_4_release_cap_and_pause() public {
+        SuwappuVault vault = new SuwappuVault(ADMIN, ADMIN, 0);
+        address guardian = makeAddr("guardian");
+        address unlocker = makeAddr("unlocker");
+
+        vm.startPrank(ADMIN);
+        vault.addUnlocker(unlocker);
+        vault.setGuardian(guardian);
+        vault.setDailyReleaseCap(address(0), 1 ether); // 1 ETH/day release cap
+        vm.stopPrank();
+
+        // Two 1-ETH locks (separate depositors).
+        vm.deal(alice, 1 ether); vm.prank(alice);
+        bytes32 c1 = vault.lockETH{value: 1 ether}(8453, alice);
+        vm.deal(relayer, 1 ether); vm.prank(relayer);
+        bytes32 c2 = vault.lockETH{value: 1 ether}(8453, relayer);
+
+        // First unlock (1 ETH) fits the daily cap.
+        vm.prank(unlocker);
+        vault.unlock(c1, alice);
+
+        // SECURE PROPERTY 1: the second unlock exceeds the daily release cap → revert.
+        vm.prank(unlocker);
+        vm.expectRevert(); // ReleaseCapExceeded
+        vault.unlock(c2, relayer);
+
+        // SECURE PROPERTY 2: guardian can pause; unlock then reverts entirely.
+        vm.prank(guardian);
+        vault.pause();
+        vm.warp(block.timestamp + 2 days); // even on a fresh day, pause holds
+        vm.prank(unlocker);
+        vm.expectRevert(); // EnforcedPause
+        vault.unlock(c2, relayer);
+
+        // Only admin unpauses; then a fresh-day unlock succeeds.
+        vm.prank(ADMIN);
+        vault.unpause();
+        vm.prank(unlocker);
+        vault.unlock(c2, relayer);
+        assertEq(vault.totalLocked(address(0)), 0, "both released across days");
+    }
 }
