@@ -149,7 +149,7 @@ contract SuwappuRefundEscrowTest is Test {
         escrow.claim(rid, address(0), 1 ether, proof);
 
         assertEq(alice.balance, aliceBefore + 1 ether);
-        assertTrue(escrow.claimed(rid, alice));
+        assertTrue(escrow.claimed(rid, alice, address(0)));
     }
 
     function test_claim_eth_bob() public {
