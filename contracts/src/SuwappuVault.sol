@@ -98,6 +98,16 @@ contract SuwappuVault is ReentrancyGuard {
     /// @notice token → daily volume cap (0 = no cap for that token)
     mapping(address => uint256) public dailyCap;
 
+    /// @notice P3-4: a daily cap on RELEASES (unlock), bounding the blast radius
+    ///         of a compromised unlocker key. token → cap (0 = no cap).
+    mapping(address => uint256) public dailyReleaseCap;
+    mapping(address => mapping(uint256 => uint256)) private _dailyReleased;
+
+    /// @notice P3-4: guardian can PAUSE releases (unlock/refund) if a key is
+    ///         compromised; only admin can UNPAUSE. Set via setGuardian.
+    address public guardian;
+    bool public paused;
+
     // -----------------------------------------------------------------------
     // Events
     // -----------------------------------------------------------------------
@@ -131,6 +141,10 @@ contract SuwappuVault is ReentrancyGuard {
     event UnlockerAdded(address indexed unlocker);
     event UnlockerRemoved(address indexed unlocker);
     event RefundVerifierSet(address indexed oldVerifier, address indexed newVerifier);
+    event GuardianSet(address indexed oldGuardian, address indexed newGuardian);
+    event DailyReleaseCapSet(address indexed token, uint256 cap);
+    event Paused(address indexed by);
+    event Unpaused(address indexed by);
     event TVLCapSet(address indexed token, uint256 cap);
     event DailyCapSet(address indexed token, uint256 cap);
     event FeeBpsSet(uint256 oldBps, uint256 newBps);
@@ -156,6 +170,8 @@ contract SuwappuVault is ReentrancyGuard {
     error ETHTransferFailed();
     error RefundVerifierNotSet();
     error RefundNotAuthorized(bytes32 digest);
+    error ReleaseCapExceeded(address token, uint256 requested, uint256 remaining);
+    error EnforcedPause();
 
     // -----------------------------------------------------------------------
     // Modifiers
@@ -168,6 +184,11 @@ contract SuwappuVault is ReentrancyGuard {
 
     modifier onlyUnlocker() {
         if (!isUnlocker[msg.sender]) revert Unauthorized();
+        _;
+    }
+
+    modifier whenNotPaused() {
+        if (paused) revert EnforcedPause();
         _;
     }
 
@@ -308,6 +329,7 @@ contract SuwappuVault is ReentrancyGuard {
     function unlock(bytes32 commitId, address recipient)
         external
         nonReentrant
+        whenNotPaused
         onlyUnlocker
     {
         if (recipient == address(0)) revert ZeroAddress();
@@ -315,6 +337,18 @@ contract SuwappuVault is ReentrancyGuard {
         CommitData storage c = commits[commitId];
         if (c.status == LockStatus.NONE) revert CommitNotFound(commitId);
         if (c.status != LockStatus.LOCKED) revert CommitNotLocked(commitId, c.status);
+
+        // P3-4: per-asset daily release cap bounds a compromised unlocker's
+        // blast radius (cap == 0 means unlimited; set per-asset in production).
+        uint256 cap = dailyReleaseCap[c.token];
+        if (cap > 0) {
+            uint256 day = block.timestamp / 1 days;
+            uint256 used = _dailyReleased[c.token][day];
+            if (used + c.amount > cap) {
+                revert ReleaseCapExceeded(c.token, c.amount, cap - used);
+            }
+            _dailyReleased[c.token][day] = used + c.amount;
+        }
 
         c.status = LockStatus.UNLOCKED;
         totalLocked[c.token] -= c.amount;
@@ -409,6 +443,40 @@ contract SuwappuVault is ReentrancyGuard {
         if (newVerifier == address(0)) revert ZeroAddress();
         emit RefundVerifierSet(address(refundVerifier), newVerifier);
         refundVerifier = IMintAttestationVerifier(newVerifier);
+    }
+
+    // ---- P3-4: release blast-radius controls ----
+
+    /// @notice Set the pause guardian (can halt releases on key compromise).
+    function setGuardian(address newGuardian) external onlyAdmin {
+        emit GuardianSet(guardian, newGuardian);
+        guardian = newGuardian;
+    }
+
+    /// @notice Per-asset daily release (unlock) cap. 0 = unlimited.
+    function setDailyReleaseCap(address token, uint256 cap) external onlyAdmin {
+        dailyReleaseCap[token] = cap;
+        emit DailyReleaseCapSet(token, cap);
+    }
+
+    /// @notice Guardian OR admin can pause releases (unlock). Only admin unpauses.
+    function pause() external {
+        if (msg.sender != guardian && msg.sender != admin) revert Unauthorized();
+        paused = true;
+        emit Paused(msg.sender);
+    }
+
+    function unpause() external onlyAdmin {
+        paused = false;
+        emit Unpaused(msg.sender);
+    }
+
+    /// @notice Remaining release capacity for a token today.
+    function dailyReleaseRemaining(address token) external view returns (uint256) {
+        uint256 cap = dailyReleaseCap[token];
+        if (cap == 0) return type(uint256).max;
+        uint256 used = _dailyReleased[token][block.timestamp / 1 days];
+        return used >= cap ? 0 : cap - used;
     }
 
     function setRefundTimeout(uint256 newTimeout) external onlyAdmin {
