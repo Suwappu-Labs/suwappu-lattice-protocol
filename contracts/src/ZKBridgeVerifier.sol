@@ -47,6 +47,15 @@ contract ZKBridgeVerifier {
     address public sp1Verifier;     // Succinct's on-chain SP1 verifier (or simulated)
     bytes32 public sp1ProgramVKey;  // Verification key for the SP1 ML-DSA circuit ELF
 
+    /// @notice Authorized operator verification-key hashes (C3 / P3-1). A proof
+    ///         is only accepted if its `operatorVkHash` is registered here — a
+    ///         self-signed/unauthorized key cannot finalize anything.
+    mapping(bytes32 => bool) public authorizedOperatorVk;
+
+    /// @notice Addresses permitted to submit verifyAndFinalize (C3 access
+    ///         control). Defense-in-depth on top of operator authorization.
+    mapping(address => bool) public isProver;
+
     // -----------------------------------------------------------------------
     // Events
     // -----------------------------------------------------------------------
@@ -54,6 +63,8 @@ contract ZKBridgeVerifier {
     event ProofVerified(bytes32 indexed anchorDigest, bytes32 sthRootHash, bytes32 operatorVkHash, uint64 sthSequence);
     event ProofRejected(bytes32 indexed anchorDigest, string reason);
     event SP1VerifierUpdated(address indexed verifier, bytes32 indexed vkey);
+    event OperatorVkSet(bytes32 indexed operatorVkHash, bool authorized);
+    event ProverSet(address indexed prover, bool authorized);
 
     // -----------------------------------------------------------------------
     // Errors
@@ -63,6 +74,8 @@ contract ZKBridgeVerifier {
     error InvalidPublicInputs();
     error ProofAlreadyUsed();
     error Unauthorized();
+    error UnauthorizedOperator(bytes32 operatorVkHash);
+    error UnauthorizedProver(address caller);
     error SimulatedModeNotAllowedInProduction();
     error SP1VerifierNotConfigured();
     error STARKModeDisabled();
@@ -114,25 +127,40 @@ contract ZKBridgeVerifier {
         bytes calldata proofBytes,
         PublicInputs calldata inputs
     ) external {
+        // C3 access control: only an authorized prover may submit.
+        if (!isProver[msg.sender]) revert UnauthorizedProver(msg.sender);
+
         // Validate public inputs
-        if (inputs.sthRootHash == bytes32(0) || inputs.operatorVkHash == bytes32(0)) {
+        if (inputs.sthRootHash == bytes32(0) || inputs.operatorVkHash == bytes32(0) || anchorDigest == bytes32(0)) {
             revert InvalidPublicInputs();
         }
 
-        // Compute proof ID for dedup (includes public inputs to prevent cross-context replay)
-        bytes32 proofId = keccak256(abi.encodePacked(proofBytes, inputs.sthRootHash, inputs.operatorVkHash, inputs.treeSize, inputs.sthSequence));
+        // C3 / P3-1: the attesting operator key must be authorized — a
+        // self-signed/unregistered key cannot finalize anything.
+        if (!authorizedOperatorVk[inputs.operatorVkHash]) {
+            revert UnauthorizedOperator(inputs.operatorVkHash);
+        }
+
+        // Compute proof ID for dedup. C3: bind anchorDigest so a proof cannot be
+        // replayed to finalize a DIFFERENT digest (and bind chainid+address so it
+        // cannot be replayed onto another deployment).
+        bytes32 proofId = keccak256(abi.encodePacked(
+            block.chainid, address(this), anchorDigest,
+            proofBytes, inputs.sthRootHash, inputs.operatorVkHash, inputs.treeSize, inputs.sthSequence
+        ));
         if (verifiedProofs[proofId]) revert ProofAlreadyUsed();
 
         // LTP-A-007: refuse simulated proofs when locked into production.
         if (productionMode && verificationMode == MODE_SIMULATED) {
             revert SimulatedModeNotAllowedInProduction();
         }
-        // Dispatch to verification backend
+        // Dispatch to verification backend. anchorDigest is threaded in so the
+        // proof's public values commit to the exact digest being finalized (C3).
         bool valid;
         if (verificationMode == MODE_SIMULATED) {
-            valid = _verifySimulated(proofBytes, inputs);
+            valid = _verifySimulated(anchorDigest, proofBytes, inputs);
         } else if (verificationMode == MODE_SP1) {
-            valid = _verifySP1(proofBytes, inputs);
+            valid = _verifySP1(anchorDigest, proofBytes, inputs);
         } else if (verificationMode == MODE_STARK) {
             // C5: STARK mode permanently disabled. _verifySTARK was a keccak256
             // tag check, not a cryptographic STARK verifier. Reverts to prevent
@@ -165,6 +193,7 @@ contract ZKBridgeVerifier {
     ///      Proof layout: [0:32] proof_hash, [32:64] verification_tag.
     ///      verify_tag must equal keccak256(sthRootHash || operatorVkHash || treeSize || sthSequence || proof_hash || "sim-verify")
     function _verifySimulated(
+        bytes32 anchorDigest,
         bytes calldata proofBytes,
         PublicInputs calldata inputs
     ) internal pure returns (bool) {
@@ -173,7 +202,10 @@ contract ZKBridgeVerifier {
         bytes32 proofHash = bytes32(proofBytes[:32]);
         bytes32 claimedTag = bytes32(proofBytes[32:64]);
 
+        // C3: bind anchorDigest into the tag so the proof commits to the exact
+        // digest being finalized.
         bytes32 expectedTag = keccak256(abi.encodePacked(
+            anchorDigest,
             inputs.sthRootHash,
             inputs.operatorVkHash,
             inputs.treeSize,
@@ -250,6 +282,7 @@ contract ZKBridgeVerifier {
     ///      Requires sp1Verifier to be set — no fallback to mock proofs.
     ///      Production: calls sp1Verifier.verifyProof(vkey, publicValues, proofBytes).
     function _verifySP1(
+        bytes32 anchorDigest,
         bytes calldata proofBytes,
         PublicInputs calldata inputs
     ) internal view returns (bool) {
@@ -262,16 +295,19 @@ contract ZKBridgeVerifier {
         // silently accept every proof.
         if (sp1Verifier.code.length == 0) revert SP1VerifierNotConfigured();
 
-        // Encode public values matching circuit commit order:
-        // sth_root_hash(32B) || operator_vk_hash(32B) || tree_size(8B BE) || sth_sequence(8B BE)
-        // Note: uint64 in abi.encodePacked produces 8 bytes (not 32 like abi.encode)
+        // Encode public values matching circuit commit order. C3: anchorDigest is
+        // prepended so the proof cryptographically commits to the exact digest it
+        // finalizes — the SP1 circuit ELF MUST commit these values in this order.
+        // anchor_digest(32B) || sth_root_hash(32B) || operator_vk_hash(32B)
+        //   || tree_size(8B BE) || sth_sequence(8B BE)
         bytes memory publicValues = abi.encodePacked(
+            anchorDigest,            // 32 bytes (C3 binding)
             inputs.sthRootHash,      // 32 bytes
             inputs.operatorVkHash,   // 32 bytes
             inputs.treeSize,         // 8 bytes (uint64 in encodePacked = 8B)
             inputs.sthSequence       // 8 bytes (uint64 in encodePacked = 8B)
         );
-        // Total: 80 bytes — matches SP1 circuit commit (32 + 32 + 8 + 8)
+        // Total: 112 bytes — matches SP1 circuit commit (32 + 32 + 32 + 8 + 8)
 
         // Call SP1 verifier contract: verifyProof(bytes32 vkey, bytes publicValues, bytes proof)
         (bool success, bytes memory returnData) = sp1Verifier.staticcall(
@@ -311,6 +347,20 @@ contract ZKBridgeVerifier {
         // not a cryptographic STARK proof. Use MODE_SP1 for production.
         if (_mode == MODE_STARK) revert STARKModeDisabled();
         verificationMode = _mode;
+    }
+
+    /// @notice Register/deregister an authorized operator verification-key hash (C3/P3-1).
+    function setAuthorizedOperatorVk(bytes32 operatorVkHash, bool authorized) external {
+        if (msg.sender != admin) revert Unauthorized();
+        authorizedOperatorVk[operatorVkHash] = authorized;
+        emit OperatorVkSet(operatorVkHash, authorized);
+    }
+
+    /// @notice Register/deregister an address permitted to submit verifyAndFinalize (C3).
+    function setProver(address prover, bool authorized) external {
+        if (msg.sender != admin) revert Unauthorized();
+        isProver[prover] = authorized;
+        emit ProverSet(prover, authorized);
     }
 
     function transferAdmin(address newAdmin) external {
