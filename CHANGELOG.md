@@ -35,7 +35,7 @@ public-surface promise and the cross-version compatibility matrix.
 ## [5.0.0] - 2026-03-25
 
 ### Added
-- LTPAnchorRegistry v5 deployed on GSX Testnet (Chain ID `103115120`)
+- LTPAnchorRegistry v5 deployed on SUWAPPU Testnet (Chain ID `103115120`)
   - UUPS Proxy: `0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4`
   - Implementation: `0xADf01df5B6Bef8e37d253571ab6e21177aCb7796`
   - MultiSig (2-of-2): `0x0106A79e9236009a05742B3fB1e3B7a52F44373D`
@@ -51,7 +51,7 @@ public-surface promise and the cross-version compatibility matrix.
 ## [4.0.0] - 2026-03-25
 
 ### Added
-- Verified production deployment on GSX Testnet (block 687137)
+- Verified production deployment on SUWAPPU Testnet (block 687137)
 - 84 Solidity tests: unit, integration, fuzz (256 iterations), invariant (3,840 calls), cross-parity
 - `FormalVerification.t.sol` — fuzz testing + invariant testing
 - `CrossParityTest` — Python ↔ Solidity state machine validation
@@ -84,7 +84,7 @@ public-surface promise and the cross-version compatibility matrix.
   - `ILTPAnchorRegistry.sol` — registry interface with events and errors
   - `Deploy.s.sol`, `DeployTestnet.s.sol` — deployment scripts
   - `contracts.yml` CI workflow — 3-stage pipeline (forge → pytest → integration)
-  - Initial GSX Testnet deployment (Chain ID `103115120`)
+  - Initial SUWAPPU Testnet deployment (Chain ID `103115120`)
 - **New Python modules (40+):**
   - `src/ltp/anchor/` — EntityState machine, AnchorSubmission, AnchorClient with circuit breaker
   - `src/ltp/dual_lane/` — SHA3-256 canonical + BLAKE3-256 internal lane separation
@@ -92,7 +92,7 @@ public-surface promise and the cross-version compatibility matrix.
   - `src/ltp/network/` — gRPC client/server with 7 RPCs, RemoteNode proxy
   - `src/ltp/storage/` — Memory, SQLite (WAL mode), Filesystem shard stores
   - `src/ltp/verify/` — Pure verification SDK (no state, no side effects)
-  - `domain.py` — 11 domain separation tags (`GSX-LTP:*`)
+  - `domain.py` — 11 domain separation tags (`SUWAPPU-LTP:*`)
   - `encoding.py` — Deterministic canonical binary serialization
   - `envelope.py` — ML-DSA-65 signed envelope wrapper
   - `receipt.py` — Approval receipts with RFC 8392 temporal semantics

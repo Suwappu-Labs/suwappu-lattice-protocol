@@ -74,7 +74,7 @@ class TestHelmValues:
         assert values["anchor"]["enabled"] is True
         chains = values["anchor"]["chains"]
         chain_ids = {c["chainId"] for c in chains}
-        assert 103115120 in chain_ids  # GSX Testnet
+        assert 103115120 in chain_ids  # SUWAPPU Testnet
         assert 84532 in chain_ids  # Base Sepolia
 
 

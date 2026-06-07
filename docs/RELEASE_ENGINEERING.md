@@ -11,7 +11,7 @@ to the GitHub Releases page.
 ## When to cut a release
 
 - A new contract version is deployed on testnet or mainnet (e.g.
-  `v5.0.0` for the GSX Testnet LTPAnchorRegistry v5 deployment).
+  `v5.0.0` for the SUWAPPU Testnet LTPAnchorRegistry v5 deployment).
 - A new SDK surface lands that downstream consumers will pin to.
 - A security fix that consumers should adopt by version (e.g. an
   LTP-A finding remediation).
@@ -48,7 +48,7 @@ Documentation-only changes do not need a release tag.
 8. **Verify the SLSA provenance:**
    ```bash
    gh attestation verify ltp-X.Y.Z.tar.gz \
-     --owner GlobalSettlementNetwork
+     --owner suwappu
    ```
 9. **Announce the release** in the operator runbook channel and link
    the Release page.

@@ -2183,13 +2183,13 @@ client-side encryption and server-side ignorance — similar to LTP's "nodes sto
 addressed messages and capability-based private groups. SSB's offline-first design (gossip
 replication, no central server) parallels LTP's sender-independence property.
 
-**GSX DAG L1 + GSX-DB (2026)** [18][19] is the companion deployment surface for
-LTP in the GSX stack. GSX DAG provides certificate-DAG ordering, validator-ring
-consensus, and corridor super-node attestation. GSX-DB provides the canonical
+**SUWAPPU DAG L1 + SUWAPPU-DB (2026)** [18][19] is the companion deployment surface for
+LTP in the SUWAPPU stack. SUWAPPU DAG provides certificate-DAG ordering, validator-ring
+consensus, and corridor super-node attestation. SUWAPPU-DB provides the canonical
 state substrate below that chain: capability-gated mutation, dual EVM/Move
 projections, OCC block execution, state-tree roots, anchor dispatch, recovery
 replay, and L2 state sync. LTP remains the transfer and attestation layer; it
-does not mutate the GSX-DB state substrate directly.
+does not mutate the SUWAPPU-DB state substrate directly.
 
 ### 8.7 What LTP Contributes
 
@@ -2236,7 +2236,7 @@ cryptographic standards, each of which may influence regional adoption requireme
 | Country | Body | Program | Status (2025) | Relevance to LTP |
 |---------|------|---------|---------------|-----------------|
 | **USA** | NIST | FIPS 203 (ML-KEM), 204 (ML-DSA), 205 (SLH-DSA) | Standards final (Aug 2024); HQC selected as 2nd KEM | Primary alignment target |
-| **China** | CACR (中国密码学会) | Chinese PQC Algorithm Competition | Algorithm collection phase; openHiTLS provides ML-KEM/ML-DSA | Critical for GSX L1 deployment |
+| **China** | CACR (中国密码学会) | Chinese PQC Algorithm Competition | Algorithm collection phase; openHiTLS provides ML-KEM/ML-DSA | Critical for SUWAPPU L1 deployment |
 | **Japan** | CRYPTREC | CRYPTREC Report 2024 | Published Jul 2025; Symposium 2025 held | Government crypto evaluation |
 | **Korea** | KpqC | Korean PQC Competition | Evaluation phase; ETRI leads research | Independent algorithm track |
 | **France** | ANSSI | PQ Migration Recommendations | Published; supports hybrid schemes | EU regulatory influence |
@@ -2286,9 +2286,9 @@ is designed to accommodate regional algorithm requirements without protocol-leve
 
 [17] L. Grassi, D. Khovratovich, C. Rechberger, A. Roy, M. Schofnegger, "Poseidon: A New Hash Function for Zero-Knowledge Proof Systems," USENIX Security Symposium, 2021.
 
-[18] Global Settlement Network, "GSX DAG Layer 1," companion implementation and academic paper, 2026. https://github.com/GlobalSettlementNetwork/gsx-dag
+[18] Suwappu, "SUWAPPU DAG Layer 1," companion implementation and academic paper, 2026. https://github.com/suwappu/suwappu-dag
 
-[19] Global Settlement Network, "GSX-DB: A Polymorphic Dual-VM State Substrate with Capability-Gated Mutation," companion implementation, 2026. https://github.com/GlobalSettlementNetwork/gsx-db
+[19] Suwappu, "SUWAPPU-DB: A Polymorphic Dual-VM State Substrate with Capability-Gated Mutation," companion implementation, 2026. https://github.com/suwappu/suwappu-db
 
 - [Bos et al., 2017] CRYSTALS-Kyber: A CCA-secure module-lattice-based KEM. IACR ePrint 2017/634. https://eprint.iacr.org/2017/634
 - [Bhargavan et al., 2024] Formal verification of the PQXDH post-quantum key agreement protocol. USENIX Security 2024. https://www.usenix.org/conference/usenixsecurity24/presentation/bhargavan
@@ -2325,12 +2325,12 @@ Two distributed systems synchronize state by exchanging lattice keys. Each syste
 the other's state from the commitment network. This is faster than traditional replication because
 shards are fetched locally, and only the delta (new entity) needs materialization.
 
-In the GSX stack, the state being synchronized is the GSX-DB state root produced
-after GSX DAG ordering. The flow is one-directional: DAG-ordered blocks update
-GSX-DB through its `gsxdb-bridge` capability gate; GSX-DB emits state roots and
+In the SUWAPPU stack, the state being synchronized is the SUWAPPU-DB state root produced
+after SUWAPPU DAG ordering. The flow is one-directional: DAG-ordered blocks update
+SUWAPPU-DB through its `suwappudb-bridge` capability gate; SUWAPPU-DB emits state roots and
 anchors; LTP corridor super-nodes attest those anchors; receivers materialize
 committed snapshots or deltas with lattice keys. A lattice key can authorize
-materialization, but it cannot directly mutate GSX-DB state.
+materialization, but it cannot directly mutate SUWAPPU-DB state.
 
 ### 9.5 High-Latency Link Optimization
 

@@ -115,7 +115,7 @@ DEV_CHAIN_IDS = {
     1337,
     31337,
     84532,  # Base Sepolia
-    103115120,  # GSX testnet/devnet default
+    103115120,  # SUWAPPU testnet/devnet default
 }
 
 DEV_RPC_MARKERS = (

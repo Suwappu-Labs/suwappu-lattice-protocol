@@ -16,7 +16,7 @@ for contributing to the project.
 
 ```bash
 # Clone the repository
-git clone https://github.com/GlobalSettlementNetwork/Entanglement-Transfer-Protocol.git
+git clone https://github.com/suwappu/Entanglement-Transfer-Protocol.git
 cd Entanglement-Transfer-Protocol
 
 # Install in development mode (includes test deps + real PQ crypto)
@@ -166,7 +166,7 @@ When modifying `LTPAnchorRegistry.sol`:
 
 - [Architecture](docs/design-decisions/ARCHITECTURE.md) — System components and data flow
 - [Whitepaper](docs/WHITEPAPER.md) — Full protocol specification
-- [Visuals](docs/visuals/README.md) — Inline-Mermaid diagrams of LTP, GSX DAG, GSX-DB, anchor lifecycle, trust boundary, DKG
+- [Visuals](docs/visuals/README.md) — Inline-Mermaid diagrams of LTP, SUWAPPU DAG, SUWAPPU-DB, anchor lifecycle, trust boundary, DKG
 - [Corridor Integration](docs/CORRIDOR_INTEGRATION.md) — how to interop with the 7-of-9 attestation pipeline from Python / Rust / JS
 - [Stability Promises](docs/STABILITY_PROMISES.md) — semver, deprecation policy, what's public vs internal
 - [Formal Verification Status](docs/FORMAL_VERIFICATION_STATUS.md) — what's symbolically verified and what isn't

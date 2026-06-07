@@ -1,6 +1,6 @@
 # ETP Node — Dual-Chain Configuration Template
 #
-# This template configures a node to anchor on both GSX Testnet and Base Sepolia.
+# This template configures a node to anchor on both SUWAPPU Testnet and Base Sepolia.
 # Copy to config/node_l2.toml and fill in the operator keys.
 
 [node]
@@ -35,13 +35,13 @@ interval = 15.0
 max_wait = 60.0
 rest_port = 8082
 
-# Primary chain: GSX Testnet
+# Primary chain: SUWAPPU Testnet
 [[anchor.chains]]
 chain_id = 103115120
-label = "gsx_testnet"
-rpc_url = "https://rpc.testnet.gsx.network"
+label = "suwappu_testnet"
+rpc_url = "https://rpc.testnet.suwappu.network"
 registry_address = "0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4"
-operator_key = "REPLACE_WITH_GSX_OPERATOR_KEY"  # TODO: replace with KMS key ID before mainnet
+operator_key = "REPLACE_WITH_SUWAPPU_OPERATOR_KEY"  # TODO: replace with KMS key ID before mainnet
 confirmation_depth = 3
 finality_depth = 1
 

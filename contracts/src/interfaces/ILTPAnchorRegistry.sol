@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 /// @title ILTPAnchorRegistry
-/// @author Javier Calderon Jr, CTO of Global Settlement (GSX)
+/// @author Javier Calderon Jr, CTO of Suwappu
 /// @notice Interface for the LTP on-chain anchor registry.
 /// @dev Stores anchor digests, enforces state machine transitions,
 ///      tracks per-signer sequences, and manages signer authorization.

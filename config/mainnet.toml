@@ -70,7 +70,7 @@ liveness_timeout_seconds = 90.0
 [bridge_operator]
 enabled = true
 interval = 30.0
-direction = "REPLACE_BRIDGE_DIRECTION" # "gsx_to_base" | "base_to_gsx"
+direction = "REPLACE_BRIDGE_DIRECTION" # "suwappu_to_base" | "base_to_suwappu"
 max_retries = 3
 challenge_period = 604800.0            # 7 days (testnet: 1 hour)
 zk_mode = "stark"                      # Post-quantum hash-only proofs (testnet: "simulated")

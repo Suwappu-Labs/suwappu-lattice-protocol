@@ -55,16 +55,16 @@ flowchart TD
 | Bridge | `bridge/` (`anchor.py`, `relayer.py`, `materializer.py`) |
 | Verification | `verify/` (`core.py`, `results.py`) |
 
-### GSX Stack Boundary
+### SUWAPPU Stack Boundary
 
-LTP is the transfer and attestation layer in the GSX stack. `gsx-dag` owns
-certificate-DAG ordering and validator-ring consensus. `gsx-db` owns the
+LTP is the transfer and attestation layer in the SUWAPPU stack. `suwappu-dag` owns
+certificate-DAG ordering and validator-ring consensus. `suwappu-db` owns the
 canonical EVM/Move state substrate, including capability-gated mutation,
 state-root calculation, anchor dispatch, recovery replay, and L2 sync. LTP
 anchors and attests those state roots through `LTPAnchorRegistry`; it does not
-directly mutate GSX-DB state.
+directly mutate SUWAPPU-DB state.
 
-See [GSX DAG and GSX-DB Integration](GSX_DAG_DB_INTEGRATION.md) for the
+See [SUWAPPU DAG and SUWAPPU-DB Integration](SUWAPPU_DAG_DB_INTEGRATION.md) for the
 cross-repo source paths and verification trail.
 
 ---

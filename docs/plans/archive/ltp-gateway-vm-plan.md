@@ -3,9 +3,9 @@
 
 ---
 
-# LTP Gateway VM Plan — POA Attestation Gateway for GSX Devnet
+# LTP Gateway VM Plan — POA Attestation Gateway for SUWAPPU Devnet
 
-**Author:** Javier Calderon Jr, CTO - Global Settlement (GSX)
+**Author:** Javier Calderon Jr, CTO - Suwappu
 
 **Date:** April 30, 2026
 
@@ -19,7 +19,7 @@
 
 ## Summary
 
-This plan defines a phased approach to deploying the LTP/ETP protocol as a live participant in the GSX network, progressing from a single-VM attestation gateway to a dual-VM execution environment:
+This plan defines a phased approach to deploying the LTP/ETP protocol as a live participant in the SUWAPPU network, progressing from a single-VM attestation gateway to a dual-VM execution environment:
 
 | Phase | Scope | VM Model | Goal |
 |---|---|---|---|
@@ -27,7 +27,7 @@ This plan defines a phased approach to deploying the LTP/ETP protocol as a live 
 | **4** | Dual VM Introduction | EVM + MoveVM | Establish dual execution environment for future identity layer |
 | **Strategic** | greth + Mysticeti spike | Parallel | Ensure design does not conflict with mainnet chain direction |
 
-Phases 1-3 build a hardened single-VM gateway that qualifies external chain events for acceptance into GSX devnet. This is what the implementation can honestly support today — proven infrastructure, no new execution environments.
+Phases 1-3 build a hardened single-VM gateway that qualifies external chain events for acceptance into SUWAPPU devnet. This is what the implementation can honestly support today — proven infrastructure, no new execution environments.
 
 Phase 4 introduces MoveVM as a second execution environment alongside EVM, establishing the writer permissioning model, BLS state root attestation(putting theory to the test), and Move state propagation. Phase 4 is infrastructure plumbing — it builds the dual-VM runtime but does not yet implement the identity system. Identity comes from the subsequent Proposed MoveVM+DID Architecture and DID Expansion Plan, which build on the dual-VM foundation.
 
@@ -51,7 +51,7 @@ DID Expansion Plan
 
 - An external event qualifier
 - An LTP attestation signer
-- A permissioned bridge into GSX devnet
+- A permissioned bridge into SUWAPPU devnet
 - Proven as a commitment, relay, bridge, and attestation system
 - The stepping stone to the dual-VM architecture
 
@@ -71,7 +71,7 @@ The LTP/ETP implementation has the right infrastructure for the single-VM gatewa
 
 | Existing Component | Location | Role in Gateway |
 |---|---|---|
-| Deployed bridge contracts | GSX Testnet + Base Sepolia | Event source / anchor target |
+| Deployed bridge contracts | SUWAPPU Testnet + Base Sepolia | Event source / anchor target |
 | Live bidirectional bridge | `src/ltp/bridge/live.py` | Cross-chain transfer mechanics |
 | BridgeOperatorService | `src/ltp/bridge/operator.py` | Daemon pattern: poll, commit, retry |
 | Commitment Log | `src/ltp/commitment.py` | Append-only attestation record |
@@ -124,7 +124,7 @@ The VM is the first POA-style authority surface:
 | Observe | Monitor external testnet bridge contract for triggering events |
 | Verify | Check source chain finality, event validity, replay status |
 | Attest | Create ML-DSA-65 signed LTP commitment record |
-| Anchor | Submit commitment to GSX devnet via authorized signer |
+| Anchor | Submit commitment to SUWAPPU devnet via authorized signer |
 | Reject | Refuse malformed, replayed, or unauthorized events |
 
 The gateway does **not**:
@@ -227,7 +227,7 @@ Commitment Log Entry
         |
 ML-DSA-65 Signed Attestation
         |
-Anchor to GSX Devnet
+Anchor to SUWAPPU Devnet
         |
 Devnet Contract (LTPAnchorRegistry)
         |
@@ -263,7 +263,7 @@ The gateway VM runs a single hardened process composed of:
 | **Finality Watcher** | Extends `AnchorVerifier` pattern | Wait for confirmation/finality depth before processing |
 | **Event Validator** | New (validation checklist above) | Verify event fields, replay status, routing |
 | **LTP Commitment Writer** | Extends `BridgeOperatorService` | Create commitment record, sign with ML-DSA-65 |
-| **Devnet Anchor Client** | Extends `AnchorClient` | Submit commitment to GSX devnet registry |
+| **Devnet Anchor Client** | Extends `AnchorClient` | Submit commitment to SUWAPPU devnet registry |
 | **Replay Protection DB** | Extends `SequenceTracker` | Per-source-chain, per-event deduplication |
 | **Challenge Manager** | Existing `ChallengeManager` | Optimistic mode: track challenge windows |
 | **Retry Queue** | Existing `BridgeOperatorService` retry pattern | Failed submissions retried on subsequent ticks |
@@ -288,10 +288,10 @@ finality_depth = 12          # blocks before event is considered final
 poll_interval_seconds = 5
 
 [gateway_vm.destination]
-chain_id = 103115120         # GSX Devnet
+chain_id = 103115120         # SUWAPPU Devnet
 rpc_url = "https://..."
 registry_address = "0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4"
-operator_key = "env:GSX_GATEWAY_KEY"  # resolved from environment
+operator_key = "env:SUWAPPU_GATEWAY_KEY"  # resolved from environment
 
 [gateway_vm.validation]
 replay_db_path = "/data/replay.db"
@@ -312,7 +312,7 @@ log_level = "info"
 
 ### Phase 1: LTP Gateway VM (Single VM, EVM)
 
-**Goal:** One hardened VM that bridges external testnet events into GSX devnet via LTP attestation.
+**Goal:** One hardened VM that bridges external testnet events into SUWAPPU devnet via LTP attestation.
 
 **Deliverables:**
 
@@ -333,7 +333,7 @@ log_level = "info"
    - `gateway_anchor_latency` -- Histogram of time from event observation to devnet anchor
    - `gateway_finality_wait` -- Histogram of time spent waiting for finality
    - `gateway_replay_rejections` -- Counter of replay attempts detected
-5. Deployment: single VM instance on GSX infrastructure
+5. Deployment: single VM instance on SUWAPPU infrastructure
 6. Tests: unit tests for each component + integration test for full event-to-anchor flow
 
 **Builds on:**
@@ -343,7 +343,7 @@ log_level = "info"
 - `SequenceTracker` (monotonic sequencing, replay protection)
 - `StructuredLogger` + `MetricsRegistry` (observability)
 - `ChallengeManager` (optimistic mode challenge tracking)
-- Deployed contracts on GSX Testnet and Base Sepolia
+- Deployed contracts on SUWAPPU Testnet and Base Sepolia
 
 ### Phase 2: Triggering Transaction Flow
 
@@ -358,7 +358,7 @@ log_level = "info"
 4. Gateway validates event fields (12-point checklist)
 5. Gateway creates LTP commitment record
 6. Gateway signs commitment with authorized ML-DSA-65 key
-7. Gateway anchors commitment to GSX devnet (LTPAnchorRegistry.anchor())
+7. Gateway anchors commitment to SUWAPPU devnet (LTPAnchorRegistry.anchor())
 8. Devnet contract accepts only if signer + payload + replay checks pass
 9. Gateway logs full trace for audit (structured JSON, correlation ID)
 ```
@@ -367,7 +367,7 @@ log_level = "info"
 
 1. End-to-end integration test: trigger bridge contract -> gateway processes -> devnet anchor verified
 2. Multi-event batch test: multiple events in rapid succession
-3. Bidirectional test: Base Sepolia -> GSX and GSX -> Base Sepolia
+3. Bidirectional test: Base Sepolia -> SUWAPPU and SUWAPPU -> Base Sepolia
 4. Operational dashboard: Grafana dashboard template for gateway metrics
 5. Gateway REST endpoints:
    - `GET /gateway/status` -- Current gateway state (listening, syncing, active, degraded)
@@ -668,7 +668,7 @@ Each layer is independently useful and incrementally buildable. The single-VM ga
 | Confirmation depth tracking | `AnchorVerifier` (two-phase verification) | Reuse for source chain finality |
 | Replay protection | `SequenceTracker` (per-signer monotonic) | Extend with per-event-hash dedup |
 | Challenge window management | `ChallengeManager` (state machine, auto-finalize) | Reuse directly |
-| ML-DSA-65 attestation signing | `MLDSA.sign()` + domain separation | New domain tag: `GSX-LTP:GATEWAY-ATTEST:v1` |
+| ML-DSA-65 attestation signing | `MLDSA.sign()` + domain separation | New domain tag: `SUWAPPU-LTP:GATEWAY-ATTEST:v1` |
 | Structured logging | `StructuredLogger` + `CorrelationContext` | Reuse directly |
 | Prometheus metrics | `MetricsRegistry` | Add gateway-specific counters |
 | TOML + env config | `NodeConfig.from_toml_with_env_overlay()` | Extend with gateway fields |
@@ -700,7 +700,7 @@ Estimated new code (Phase 4): ~4,000-6,000 lines + MoveVM binary integration.
 
 | # | Question | Resolution Target |
 |---|---|---|
-| 1 | GSX devnet RPC endpoint and chain ID for the gateway VM target | Blockchain team |
+| 1 | SUWAPPU devnet RPC endpoint and chain ID for the gateway VM target | Blockchain team |
 | 2 | How many gateway VMs should run in parallel for the initial testnet? | Architecture decision -- start with 1, scale to 3 for redundancy testing |
 | 3 | Should the gateway VM run in Docker or as a bare process on the VM? | Dockerfile exists in `deploy/Dockerfile` -- Docker preferred for reproducibility |
 | 4 | What is the finality depth for Base Sepolia events before gateway processing? | Suggest 12 blocks (~2 min), configurable |

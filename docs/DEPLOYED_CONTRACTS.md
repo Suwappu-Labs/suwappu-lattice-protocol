@@ -1,6 +1,6 @@
 # ETP Deployed Contracts and Wallets
 
-**Author:** Javier Calderon Jr, CTO — Global Settlement (GSX)
+**Author:** Javier Calderon Jr, CTO — Suwappu
 **Last Updated:** April 27, 2026
 
 ---
@@ -16,7 +16,7 @@ The deployer wallet deployed all contracts on both chains. After deployment, adm
 
 ---
 
-## GSX Testnet — Chain ID `103115120`
+## SUWAPPU Testnet — Chain ID `103115120`
 
 ### Registry (v7, pending deploy — ceremony per docs/runbooks/v7-upgrade-testnet.md)
 
@@ -114,9 +114,9 @@ MultiSig (2-of-2) → TimelockController (60s) → LTPAnchorRegistry (Proxy)
 ## On-Chain Verification Commands
 
 ```bash
-# GSX Testnet
-cast call 0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4 "version()(uint256)" --rpc-url "$GSX_RPC_URL"
-cast call 0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4 "admin()(address)" --rpc-url "$GSX_RPC_URL"
+# SUWAPPU Testnet
+cast call 0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4 "version()(uint256)" --rpc-url "$SUWAPPU_RPC_URL"
+cast call 0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4 "admin()(address)" --rpc-url "$SUWAPPU_RPC_URL"
 
 # Base Sepolia
 cast call 0x79eF1B7914f98C5C1404617449AB1f377c475996 "version()(uint256)" --rpc-url "$BASE_SEPOLIA_RPC_URL"
@@ -162,4 +162,4 @@ The Solidity changes in PR #8 Commit 5 (`docs/security/audits/internal/SECURITY_
 | BridgeEmitter authorized senders | `contracts/src/BridgeEmitter.sol` | New deploys pass `permissionless=false` and call `setAuthorized(...)` per legitimate caller |
 | Signer rotation grace period | `contracts/src/LTPAnchorRegistry.sol::rotateSignerWithGrace` | New optional admin function lets in-flight anchors signed by the old key remain valid for up to 7 days after rotation |
 
-After v7 deploys, update the GSX Testnet / Base Sepolia tables above with the new addresses and link the corresponding governance proposal IDs.
+After v7 deploys, update the SUWAPPU Testnet / Base Sepolia tables above with the new addresses and link the corresponding governance proposal IDs.

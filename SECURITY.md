@@ -5,7 +5,7 @@
 If you discover a security vulnerability in the Entanglement Transfer Protocol,
 please report it responsibly.
 
-**Email:** security@globalsettlement.network
+**Email:** security@suwappu.network
 
 Please include:
 - Description of the vulnerability
@@ -50,7 +50,7 @@ within 7 days.
 
 - **Known intentional divergences** — Solidity allows `UNKNOWN→ANCHORED`
   (documented in `CrossParityTest`); this is by design
-- **Testnet timelock delay** — the 60-second delay on GSX Testnet is intentionally
+- **Testnet timelock delay** — the 60-second delay on SUWAPPU Testnet is intentionally
   short for testing; production will use 24-48 hour delays
 - **Denial of service on local instances** — the PoC runs in-memory with no
   network exposure
@@ -70,7 +70,7 @@ MultiSig (2-of-2) → TimelockController (60s testnet / 24-48h production) → L
 - **LTPMultiSig** — N-of-M multi-signature wallet controlling the Timelock.
 - **TimelockController** — OpenZeppelin time-delayed governance between MultiSig and Registry.
 
-### Deployed Contract Addresses (GSX Testnet — Chain ID `103115120`)
+### Deployed Contract Addresses (SUWAPPU Testnet — Chain ID `103115120`)
 
 | Contract | Address |
 |----------|---------|

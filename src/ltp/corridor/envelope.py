@@ -7,9 +7,9 @@ regardless of payload size — is anchored by a three-part envelope:
 |---|---|---|
 | `sealed_session_key` | ML-KEM ciphertext (768: 1,088 B; 1024: 1,568 B) | Receiver-sealed AEAD session key |
 | `aggregate_signature` | 96 B (compressed-G2 BLS12-381) | 7-of-9 corridor aggregate |
-| `payload_root` | 32 B (SHA3-256 with `GSX-LTP-CID-V1` tag) | Content-addressed payload digest |
+| `payload_root` | 32 B (SHA3-256 with `SUWAPPU-LTP-CID-V1` tag) | Content-addressed payload digest |
 
-The 1,600 B figure in `gsx-dag/crates/gsx-ltp/src/lib.rs` is the pinned
+The 1,600 B figure in `suwappu-dag/crates/suwappu-ltp/src/lib.rs` is the pinned
 constant; the breakdown in the doc comment ("ML-KEM-768 sealed session key
 ≈1,568 B") is mis-labeled — 1,568 B is the ML-KEM-1024 ciphertext size,
 not ML-KEM-768 (which is 1,088 B). This envelope accepts either parameter
@@ -53,7 +53,7 @@ class OnChainCommitment:
 
     sealed_session_key: bytes
     aggregate_signature: bytes
-    payload_root: bytes  # 32 bytes, MUST be a SHA3-256 digest under GSX-LTP-CID-V1
+    payload_root: bytes  # 32 bytes, MUST be a SHA3-256 digest under SUWAPPU-LTP-CID-V1
 
     def __post_init__(self) -> None:
         if len(self.aggregate_signature) != BLS_G2_COMPRESSED_BYTES:
@@ -83,7 +83,7 @@ class OnChainCommitment:
         """Enforce the exact §10.2 constant. Only ML-KEM-1024 + 96 + 32 = 1,696
         gets close; under ML-KEM-768 the total is 1,216. Neither hits 1,600
         exactly — the constant is a paper-level approximation. Strict mode is
-        provided for forward-compatibility once gsx-dag pins a precise layout.
+        provided for forward-compatibility once suwappu-dag pins a precise layout.
         """
         if self.total_bytes != ON_CHAIN_COMMITMENT_BYTES:
             raise EnvelopeSizeError(
@@ -137,7 +137,7 @@ class OnChainCommitment:
     ) -> "OnChainCommitment":
         """Build an envelope from a corridor attestation + receiver-sealed
         session key + raw payload. The payload root is computed under the
-        `GSX-LTP-CID-V1` domain tag (`Cid.of(payload)`) so the on-chain
+        `SUWAPPU-LTP-CID-V1` domain tag (`Cid.of(payload)`) so the on-chain
         commitment binds the same content identifier as the DA layer.
         """
         return cls.from_parts(
@@ -151,8 +151,8 @@ class OnChainCommitment:
         return Cid(self.payload_root)
 
     def commitment_digest(self) -> bytes:
-        """SHA3-256 of the serialized envelope under the GSX-LTP-COMMITMENT-V1
+        """SHA3-256 of the serialized envelope under the SUWAPPU-LTP-COMMITMENT-V1
         domain tag. This is what an on-chain anchor would record as the
         constant-size commitment identifier.
         """
-        return sha3_256_domain(b"GSX-LTP-COMMITMENT-V1", self.serialize())
+        return sha3_256_domain(b"SUWAPPU-LTP-COMMITMENT-V1", self.serialize())

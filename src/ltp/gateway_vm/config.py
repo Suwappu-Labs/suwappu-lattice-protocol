@@ -26,8 +26,8 @@ class GatewayVMConfig:
     finality_depth: int = 12
     poll_interval_seconds: float = 5.0
 
-    # Destination chain (GSX devnet to anchor into)
-    dest_chain_id: int = 103115120  # GSX Testnet
+    # Destination chain (SUWAPPU devnet to anchor into)
+    dest_chain_id: int = 103115120  # SUWAPPU Testnet
     dest_rpc_url: str = ""
     dest_registry_address: str = ""
 

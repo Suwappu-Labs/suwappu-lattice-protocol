@@ -50,7 +50,7 @@ Format: **60-90 minute paper exercise** with the on-call team.
 
 The facilitator describes:
 > An operator is scrolling X and sees a sponsored post:
-> "Global Settlement Network launches LTP token airdrop —
+> "Suwappu launches LTP token airdrop —
 > claim before Friday at ltp-airdrop.io." The site looks
 > polished; the URL is not on our official domain list.
 

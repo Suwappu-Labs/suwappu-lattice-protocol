@@ -7,12 +7,12 @@ class TestDomainTags:
     def test_multi_vm_state_root_tag_exists(self):
         from src.ltp.domain import DOMAIN_MULTI_VM_STATE_ROOT
 
-        assert DOMAIN_MULTI_VM_STATE_ROOT == b"GSX-LTP:multi-vm-state-root:v1\x00"
+        assert DOMAIN_MULTI_VM_STATE_ROOT == b"SUWAPPU-LTP:multi-vm-state-root:v1\x00"
 
     def test_multi_vm_attest_tag_exists(self):
         from src.ltp.domain import DOMAIN_MULTI_VM_ATTEST
 
-        assert DOMAIN_MULTI_VM_ATTEST == b"GSX-LTP:multi-vm-attest:v1\x00"
+        assert DOMAIN_MULTI_VM_ATTEST == b"SUWAPPU-LTP:multi-vm-attest:v1\x00"
 
     def test_tags_in_all_registry(self):
         from src.ltp import domain

@@ -1,6 +1,6 @@
 # ETP Production Roadmap
 
-**Author:** Javier Calderon Jr, CTO — Global Settlement (GSX)
+**Author:** Javier Calderon Jr, CTO — Suwappu
 **Date:** May 11, 2026
 **Purpose:** Map all remaining work from current state to production-ready multi-node deployment. Living reference document — update as specs are completed.
 
@@ -15,7 +15,7 @@
 | Tests passing | 3,461 |
 | Solidity contracts | 8 |
 | Deploy scripts | 15 |
-| Live deployments | 2 (GSX Testnet v5, Base Sepolia v6) |
+| Live deployments | 2 (SUWAPPU Testnet v5, Base Sepolia v6) |
 | Subpackages | 20 |
 
 ---
@@ -69,7 +69,7 @@
 - Consensus protocol family (BFT variant selection)
 - P2P transport library
 - Message serialization format (protobuf? CBOR? SSZ?)
-- Relationship to GSX mainnet chain direction (greth + Mysticeti spike referenced in Gateway VM Plan)
+- Relationship to SUWAPPU mainnet chain direction (greth + Mysticeti spike referenced in Gateway VM Plan)
 
 ---
 
@@ -267,7 +267,7 @@ C3c → D1 → D2 → D3 → E1 → E2 → I1 → I2
 | Federation | Cross-node federation messages delivered reliably |
 | No regressions | All tests pass |
 
-**Decision:** This is the **first multi-node gate**. Deploy 3+ node testnet on GSX devnet. This is the proving ground — if consensus + DKG + federation work across real nodes, the protocol is viable.
+**Decision:** This is the **first multi-node gate**. Deploy 3+ node testnet on SUWAPPU devnet. This is the proving ground — if consensus + DKG + federation work across real nodes, the protocol is viable.
 
 ### Gate 7 — Execution Backends Complete (E1 + E2)
 | Check | Criteria |
@@ -336,7 +336,7 @@ C3c → D1 → D2 → D3 → E1 → E2 → I1 → I2
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Consensus protocol selection delays | High | Blocks all of Phase 6 | Align with GSX mainnet direction (greth + Mysticeti) early |
+| Consensus protocol selection delays | High | Blocks all of Phase 6 | Align with SUWAPPU mainnet direction (greth + Mysticeti) early |
 | MoveVM variant decision deferred | High | Blocks E2 and I1 | Aptos Move recommended; make decision before E1 completes |
 | FIPS-certified PQC libraries immature | Medium | F1 scope unclear | liboqs is available; assess OpenSSL 3.x PQC module status |
 | SP1/RISC Zero prover performance | Medium | H1 latency concerns | Real provers exist; benchmark before committing to production path |

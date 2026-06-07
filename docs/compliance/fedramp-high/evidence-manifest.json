@@ -1,11 +1,11 @@
 {
-  "package": "gsx-lattice-protocol-fedramp-high-readiness",
+  "package": "suwappu-lattice-protocol-fedramp-high-readiness",
   "version": 1,
   "deployment_profile": "fedramp-high",
   "required_release_repositories": [
-    "gsx-lattice-protocol",
-    "gsx-dag",
-    "gsx-db"
+    "suwappu-lattice-protocol",
+    "suwappu-dag",
+    "suwappu-db"
   ],
   "authoritative_references": [
     "https://www.fedramp.gov/docs/rev5/playbook/csp/authorization/ssp/",
@@ -16,9 +16,9 @@
     "https://csrc.nist.gov/publications/detail/fips/202/final"
   ],
   "required_release_fields": [
-    "gsx-lattice-protocol commit/tag",
-    "gsx-dag commit/tag",
-    "gsx-db commit/tag",
+    "suwappu-lattice-protocol commit/tag",
+    "suwappu-dag commit/tag",
+    "suwappu-db commit/tag",
     "SBOM path",
     "dependency scan path",
     "Semgrep path",
@@ -92,11 +92,11 @@
       "poam": ""
     },
     {
-      "id": "gsx-boundary",
+      "id": "suwappu-boundary",
       "control_ids": ["CA-3", "SA-9", "SR-3"],
       "owner": "architecture",
       "status": "implemented",
-      "evidence_path": "docs/design-decisions/GSX_DAG_DB_INTEGRATION.md",
+      "evidence_path": "docs/design-decisions/SUWAPPU_DAG_DB_INTEGRATION.md",
       "test_command": "python3 -m pytest tests/test_fedramp_high_readiness.py -q",
       "poam": ""
     },

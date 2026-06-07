@@ -3,7 +3,7 @@ global:
   evaluation_interval: 15s
   external_labels:
     cluster: etp-mainnet
-    network: gsx-lattice-protocol
+    network: suwappu-lattice-protocol
 
 rule_files:
   - /etc/prometheus/alerts.yml

@@ -6,15 +6,15 @@
 sender
   -> LTP COMMIT
   -> commitment log and encrypted shard placement
-  -> GSX-DAG ordered block attestation from companion repo
-  -> GSX-DB state root from companion repo
+  -> Suwappu DAG ordered block attestation from companion repo
+  -> SUWAPPU-DB state root from companion repo
   -> LTP anchor submit/verify through LTPAnchorRegistry
   -> lattice-key materialization of snapshot or delta
   -> receiver
 ```
 
 LTP carries transfer and attestation evidence. Ordering and state mutation are
-outside this repository and must be evidenced by `gsx-dag` and `gsx-db`.
+outside this repository and must be evidenced by `suwappu-dag` and `suwappu-db`.
 
 ## Trust-Boundary Transitions
 
@@ -25,8 +25,8 @@ outside this repository and must be evidenced by `gsx-dag` and `gsx-db`.
 | gateway to chains | production RPC endpoint and bytecode checks | `deploy/preflight_gateway.py` |
 | application to KMS/HSM | key ID reference, no plaintext private key | `src/ltp/cloud/`, `src/ltp/hsm.py` |
 | application to SIEM | structured audit export | `src/ltp/compliance.py` |
-| LTP to GSX-DAG | attestation boundary only | `docs/design-decisions/GSX_DAG_DB_INTEGRATION.md` |
-| LTP to GSX-DB | anchor/materialization boundary only | `docs/design-decisions/GSX_DAG_DB_INTEGRATION.md` |
+| LTP to Suwappu DAG | attestation boundary only | `docs/design-decisions/SUWAPPU_DAG_DB_INTEGRATION.md` |
+| LTP to SUWAPPU-DB | anchor/materialization boundary only | `docs/design-decisions/SUWAPPU_DAG_DB_INTEGRATION.md` |
 
 ## Required Audit Events
 

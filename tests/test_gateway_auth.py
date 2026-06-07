@@ -155,13 +155,13 @@ class TestDomainSeparation:
         from src.ltp.domain import _ALL_TAGS
 
         assert "DOMAIN_JWT_TOKEN" in _ALL_TAGS
-        assert _ALL_TAGS["DOMAIN_JWT_TOKEN"] == b"GSX-LTP:jwt-token:v1\x00"
+        assert _ALL_TAGS["DOMAIN_JWT_TOKEN"] == b"SUWAPPU-LTP:jwt-token:v1\x00"
 
     def test_peer_gossip_domain_tag_unique(self):
         from src.ltp.domain import _ALL_TAGS
 
         assert "DOMAIN_PEER_GOSSIP" in _ALL_TAGS
-        assert _ALL_TAGS["DOMAIN_PEER_GOSSIP"] == b"GSX-LTP:peer-gossip:v1\x00"
+        assert _ALL_TAGS["DOMAIN_PEER_GOSSIP"] == b"SUWAPPU-LTP:peer-gossip:v1\x00"
 
 
 # ---------------------------------------------------------------------------

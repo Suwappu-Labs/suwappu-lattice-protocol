@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 /// @title LTPMultiSig
-/// @author Javier Calderon Jr, CTO of Global Settlement (GSX)
+/// @author Javier Calderon Jr, CTO of Suwappu
 /// @notice DEPRECATED — DO NOT DEPLOY TO PRODUCTION.
 ///
 /// @dev C6: This contract has two critical defects that make it unsafe for

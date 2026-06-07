@@ -12,7 +12,7 @@ The Python package (`ltp`) and the deployed Solidity contracts follow **semantic
 
 The current version is published in [`pyproject.toml`](../pyproject.toml) `project.version` and in [`CHANGELOG.md`](../CHANGELOG.md).
 
-The on-chain `LTPAnchorRegistry` exposes its own integer `version()` view — currently `v5` on GSX Testnet and `v6` on Base Sepolia. See [`docs/DEPLOYED_CONTRACTS.md`](DEPLOYED_CONTRACTS.md) for addresses and the governance path that controls upgrades.
+The on-chain `LTPAnchorRegistry` exposes its own integer `version()` view — currently `v5` on SUWAPPU Testnet and `v6` on Base Sepolia. See [`docs/DEPLOYED_CONTRACTS.md`](DEPLOYED_CONTRACTS.md) for addresses and the governance path that controls upgrades.
 
 ## Public surface
 
@@ -78,7 +78,7 @@ are live, which are planned, and how to read version skew.
 
 | Python SDK | Solidity Registry | Wire Format | Status |
 |---|---|---|---|
-| 3.x | v5 | `LTP-corridor-v1` | live (GSX Testnet, Chain ID `103115120`) |
+| 3.x | v5 | `LTP-corridor-v1` | live (SUWAPPU Testnet, Chain ID `103115120`) |
 | 3.x | v6 | `LTP-corridor-v1` | live (Base Sepolia) |
 | 4.x *(planned)* | v7 *(planned)* | `LTP-corridor-v1` | pending GLO-770 |
 

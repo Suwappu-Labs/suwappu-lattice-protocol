@@ -7,9 +7,9 @@ Self-contained code examples demonstrating ETP's capabilities, organized by comp
 For architectural context behind these examples, see [`docs/visuals/`](../docs/visuals/README.md):
 
 - [LTP presentation](../docs/visuals/ltp.html)
-- [GSX DAG presentation](../docs/visuals/gsx-dag.html)
-- [GSX DB presentation](../docs/visuals/gsx-db.html)
-- [Ecosystem Atlas](../docs/visuals/gsx-ecosystem-atlas.html)
+- [SUWAPPU DAG presentation](../docs/visuals/suwappu-dag.html)
+- [SUWAPPU DB presentation](../docs/visuals/suwappu-db.html)
+- [Ecosystem Atlas](../docs/visuals/suwappu-ecosystem-atlas.html)
 
 ## Prerequisites
 

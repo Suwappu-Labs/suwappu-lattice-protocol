@@ -85,7 +85,7 @@ def render_rule(rule: AlertRule) -> str:
         f"            source: ltp.observability.alerts.create_etp_alert_rules\n"
         f"          annotations:\n"
         f"            summary: {rule.description!r}\n"
-        f"            runbook: https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/blob/main/docs/OPERATOR_RUNBOOK.md#{rule.name.replace('_', '-')}\n"
+        f"            runbook: https://github.com/suwappu/suwappu-lattice-protocol/blob/main/docs/OPERATOR_RUNBOOK.md#{rule.name.replace('_', '-')}\n"
     )
 
 

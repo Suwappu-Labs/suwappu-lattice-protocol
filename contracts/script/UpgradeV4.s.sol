@@ -14,15 +14,15 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 /// Usage (3 steps):
 ///   Step 1: Deploy new impl + schedule upgrade
 ///     forge script script/UpgradeV4.s.sol --sig "step1()" \
-///       --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_DEPLOYER_KEY
+///       --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_DEPLOYER_KEY
 ///
 ///   Step 2: Second signer confirms (run with operator key)
 ///     forge script script/UpgradeV4.s.sol --sig "step2(uint256)" <txId> \
-///       --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_OPERATOR_KEY
+///       --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_OPERATOR_KEY
 ///
 ///   Step 3: Wait 60s, then execute upgrade
 ///     forge script script/UpgradeV4.s.sol --sig "step3(uint256,uint256)" <scheduleTxId> <executeTxId> \
-///       --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_DEPLOYER_KEY
+///       --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_DEPLOYER_KEY
 contract UpgradeV4 is Script {
     // Existing deployed addresses (from .env)
     address constant PROXY    = 0x6042e3083743568dac44B9eB4C31639540d238B3;

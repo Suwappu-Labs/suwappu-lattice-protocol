@@ -20,13 +20,13 @@
 
 ## Visuals
 
-Diagrams of LTP, GSX DAG, GSX-DB, and the ecosystem atlas live in [`docs/visuals/`](docs/visuals/README.md) — each in three forms (inline Mermaid that renders on GitHub/GitBook, standalone HTML decks, and editable Mermaid/Excalidraw sources).
+Diagrams of LTP, SUWAPPU DAG, SUWAPPU-DB, and the ecosystem atlas live in [`docs/visuals/`](docs/visuals/README.md) — each in three forms (inline Mermaid that renders on GitHub/GitBook, standalone HTML decks, and editable Mermaid/Excalidraw sources).
 
 - [Visuals overview](docs/visuals/README.md) — inline-rendered Mermaid diagrams
-- [LTP presentation](docs/visuals/ltp.html), [GSX DAG presentation](docs/visuals/gsx-dag.html), [GSX DB presentation](docs/visuals/gsx-db.html)
-- [GSX Ecosystem Atlas](docs/visuals/gsx-ecosystem-atlas.html), [Visual index](docs/visuals/index.html)
-- Mermaid sources: [LTP](docs/visuals/mermaid/ltp.md) · [GSX DAG](docs/visuals/mermaid/gsx-dag.md) · [GSX DB](docs/visuals/mermaid/gsx-db.md)
-- Excalidraw sources: [LTP](docs/visuals/excalidraw/ltp.excalidraw) · [GSX DAG](docs/visuals/excalidraw/gsx-dag.excalidraw) · [GSX DB](docs/visuals/excalidraw/gsx-db.excalidraw)
+- [LTP presentation](docs/visuals/ltp.html), [SUWAPPU DAG presentation](docs/visuals/suwappu-dag.html), [SUWAPPU DB presentation](docs/visuals/suwappu-db.html)
+- [SUWAPPU Ecosystem Atlas](docs/visuals/suwappu-ecosystem-atlas.html), [Visual index](docs/visuals/index.html)
+- Mermaid sources: [LTP](docs/visuals/mermaid/ltp.md) · [SUWAPPU DAG](docs/visuals/mermaid/suwappu-dag.md) · [SUWAPPU DB](docs/visuals/mermaid/suwappu-db.md)
+- Excalidraw sources: [LTP](docs/visuals/excalidraw/ltp.excalidraw) · [SUWAPPU DAG](docs/visuals/excalidraw/suwappu-dag.excalidraw) · [SUWAPPU DB](docs/visuals/excalidraw/suwappu-db.excalidraw)
 
 ## The Problem
 
@@ -82,24 +82,24 @@ The entity is never serialized and shipped as a monolithic payload. It is
 | **Post-Quantum Cryptography** | ML-KEM-768/1024 (FIPS 203) + ML-DSA-65/87 (FIPS 204) + XChaCha20-Poly1305 | Active — real crypto, Level 3 + Level 5 |
 | **Lattice Transfer Protocol** | 3-phase lifecycle with erasure coding, Merkle audit log, threshold reconstruction | Complete |
 | **Dual-Lane Hashing** | SHA3-256 (canonical/on-chain) + BLAKE3-256 (internal/performance) | Enforced separation |
-| **On-Chain Settlement** | LTPAnchorRegistry v6 with UUPS proxy + MultiSig + Timelock governance | Deployed on GSX Testnet + Base Sepolia |
+| **On-Chain Settlement** | LTPAnchorRegistry v6 with UUPS proxy + MultiSig + Timelock governance | Deployed on SUWAPPU Testnet + Base Sepolia |
 
-## GSX Stack Alignment
+## SUWAPPU Stack Alignment
 
-LTP is the transfer and attestation layer for the GSX stack. `gsx-dag` owns DAG
-ordering and validator-ring consensus; `gsx-db` owns the canonical EVM/Move
+LTP is the transfer and attestation layer for the SUWAPPU stack. `suwappu-dag` owns DAG
+ordering and validator-ring consensus; `suwappu-db` owns the canonical EVM/Move
 state substrate and emits the state roots that LTP anchors and attests.
 
 | Layer | Repository | LTP Integration |
 |-------|------------|-----------------|
-| Transfer + attestation | `gsx-lattice-protocol` | COMMIT/LATTICE/MATERIALIZE, gateway VM, `LTPAnchorRegistry` |
-| Consensus + ordering | `gsx-dag` | Consumes LTP corridor attestations through `crates/gsx-ltp` |
-| State substrate | `gsx-db` | Produces state roots and anchors through `gsxdb-bridge` / `gsxdb-state` |
+| Transfer + attestation | `suwappu-lattice-protocol` | COMMIT/LATTICE/MATERIALIZE, gateway VM, `LTPAnchorRegistry` |
+| Consensus + ordering | `suwappu-dag` | Consumes LTP corridor attestations through `crates/suwappu-ltp` |
+| State substrate | `suwappu-db` | Produces state roots and anchors through `suwappudb-bridge` / `suwappudb-state` |
 
-See [GSX DAG and GSX-DB Integration](docs/design-decisions/GSX_DAG_DB_INTEGRATION.md)
+See [SUWAPPU DAG and SUWAPPU-DB Integration](docs/design-decisions/SUWAPPU_DAG_DB_INTEGRATION.md)
 for the current cross-repo boundary.
 
-The Python wire-compatible mirror of `gsx-dag/crates/gsx-ltp` lives in
+The Python wire-compatible mirror of `suwappu-dag/crates/suwappu-ltp` lives in
 [`src/ltp/corridor/`](src/ltp/corridor): 7-of-9 corridor attestation,
 Commitment-Node DA SLA, cross-chain DID rotation statement, and the
 length-prefixed SHA3-256 domain digest the DAG L1 signs over. Digest parity
@@ -122,8 +122,8 @@ against the Rust reference is locked in `tests/corridor/test_digest_parity.py`.
 | **HSM Custody** | Real boundary — sentinels for dk/sk | `hsm_sign()` / `hsm_decaps()` route through HSM; no plaintext leak |
 | **Ethereum Backend** | Real when RPC configured | Fail-closed; no silent fallback to simulation in real mode |
 | **Base L1 Backend** | Local simulation for testing | Production requires deployed chain infrastructure |
-| **GSX-DAG Boundary** | External Rust L1 | DAG ordering and validator-ring consensus live in `gsx-dag` |
-| **GSX-DB Boundary** | External Rust substrate | State mutation, OCC, state roots, recovery, and L2 sync live in `gsx-db` |
+| **Suwappu DAG Boundary** | External Rust L1 | DAG ordering and validator-ring consensus live in `suwappu-dag` |
+| **SUWAPPU-DB Boundary** | External Rust substrate | State mutation, OCC, state roots, recovery, and L2 sync live in `suwappu-db` |
 
 ## What's Implemented
 
@@ -216,7 +216,7 @@ flowchart BT
 
 ## Smart Contracts
 
-### GSX Testnet (v5) — Chain ID `103115120`
+### SUWAPPU Testnet (v5) — Chain ID `103115120`
 
 | Contract | Address |
 |----------|---------|
@@ -242,7 +242,7 @@ v1 (Mar 23)   Implementation only          No proxy, no governance
 v2 (Mar 23)   + UUPS Proxy + MultiSig      Upgradeable, 2-of-2 control
 v3 (Mar 23)   + TimelockController          Time-delayed governance
 v4 (Mar 25)   Verified production deploy    84 Solidity + 1,167 Python tests
-v5 (Mar 25)   Author attribution + v5      GSX Testnet production
+v5 (Mar 25)   Author attribution + v5      SUWAPPU Testnet production
 v6 (Apr 14)   Base Sepolia L2 deployment   Bidirectional bridge
 ```
 
@@ -252,7 +252,7 @@ v6 (Apr 14)   Base Sepolia L2 deployment   Bidirectional bridge
 
 ```bash
 # Clone and install
-git clone https://github.com/GlobalSettlementNetwork/Entanglement-Transfer-Protocol.git
+git clone https://github.com/suwappu/Entanglement-Transfer-Protocol.git
 cd Entanglement-Transfer-Protocol
 pip install -e ".[dev]"
 
@@ -307,7 +307,7 @@ Entanglement-Transfer-Protocol/
 │   │   └── FormalVerification.t.sol   # 21 fuzz/invariant/parity tests
 │   └── script/
 │       ├── Deploy.s.sol               # Local deployment
-│       ├── DeployTestnet.s.sol        # GSX Testnet deployment
+│       ├── DeployTestnet.s.sol        # SUWAPPU Testnet deployment
 │       ├── DeployMainnet.s.sol        # Production deployment (configurable)
 │       └── UpgradeV4.s.sol            # Governance-controlled UUPS upgrade
 │
@@ -330,8 +330,8 @@ See [docs/README.md](docs/README.md) for the full documentation index.
 |----------|-------------|
 | [Whitepaper](docs/WHITEPAPER.md) | Full protocol specification |
 | [Architecture](docs/design-decisions/ARCHITECTURE.md) | System components and data flow |
-| [Visuals](docs/visuals/README.md) | Inline-Mermaid diagrams (LTP, GSX DAG, GSX-DB, anchor lifecycle, trust boundary, DKG) |
-| [GSX DAG and GSX-DB Integration](docs/design-decisions/GSX_DAG_DB_INTEGRATION.md) | Cross-repo boundary with the DAG L1 and state substrate |
+| [Visuals](docs/visuals/README.md) | Inline-Mermaid diagrams (LTP, SUWAPPU DAG, SUWAPPU-DB, anchor lifecycle, trust boundary, DKG) |
+| [SUWAPPU DAG and SUWAPPU-DB Integration](docs/design-decisions/SUWAPPU_DAG_DB_INTEGRATION.md) | Cross-repo boundary with the DAG L1 and state substrate |
 | [Production Roadmap](docs/plans/2026-05-11-production-roadmap.md) | Current milestones (2026-05-11) |
 | [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) | Docker, Kubernetes, CI/CD |
 | [Bridge MVP](docs/bridge-mvp-scope.md) | Cross-chain bridge scope |

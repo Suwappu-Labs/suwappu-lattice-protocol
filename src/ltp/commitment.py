@@ -504,7 +504,7 @@ class CommitmentRecord:
     def canonical_bytes(self) -> bytes:
         """Deterministic binary encoding using CanonicalEncoder.
 
-        Uses the new GSX-LTP domain-separated tag. This is the forward-looking
+        Uses the new SUWAPPU-LTP domain-separated tag. This is the forward-looking
         encoding path — new code (envelopes, receipts) should use this.
         The legacy signable_payload() is preserved for backward compatibility.
         """

@@ -4,7 +4,7 @@ Pure verification functions for the Lattice Transfer Protocol.
 All functions are pure — no network, no state, no side effects.
 They accept trust artifacts and return VerificationResult.
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.8
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.8
 """
 
 from __future__ import annotations
