@@ -30,21 +30,23 @@ contract ZKBridgeVerifierTest is Test {
         challenge = new OptimisticBridgeChallenge(admin, PERIOD, OP_BOND, CH_BOND);
         zkVerifier = new ZKBridgeVerifier(admin, address(challenge), 0); // MODE_SIMULATED
 
-        // Authorize the ZK verifier on the challenge contract
-        vm.prank(admin);
+        // Authorize the ZK verifier on the challenge contract, plus the
+        // C3 operator-authorization + prover access control.
+        vm.startPrank(admin);
         challenge.setZKVerifier(address(zkVerifier));
+        zkVerifier.setAuthorizedOperatorVk(OP_VK_HASH, true);
+        zkVerifier.setProver(address(this), true);
+        vm.stopPrank();
 
         vm.deal(operator, 10 ether);
         vm.deal(challenger, 10 ether);
     }
 
-    /// @dev Helper: build a valid simulated proof for the test public inputs
-    function _buildSimulatedProof() internal pure returns (bytes memory) {
-        // proof_hash: arbitrary 32 bytes
+    /// @dev Helper: build a valid simulated proof bound to `anchorDigest` (C3).
+    function _buildSimulatedProof(bytes32 anchorDigest) internal pure returns (bytes memory) {
         bytes32 proofHash = keccak256("test-proof-hash");
-        // verify_tag: keccak256(sthRootHash || operatorVkHash || treeSize || sthSequence || proofHash || "sim-verify")
         bytes32 verifyTag = keccak256(abi.encodePacked(
-            STH_ROOT, OP_VK_HASH, TREE_SIZE, STH_SEQ, proofHash, "sim-verify"
+            anchorDigest, STH_ROOT, OP_VK_HASH, TREE_SIZE, STH_SEQ, proofHash, "sim-verify"
         ));
         return abi.encodePacked(proofHash, verifyTag);
     }
@@ -67,7 +69,7 @@ contract ZKBridgeVerifierTest is Test {
         vm.prank(operator);
         challenge.openWindow{value: OP_BOND}(DIGEST_1);
 
-        bytes memory proof = _buildSimulatedProof();
+        bytes memory proof = _buildSimulatedProof(DIGEST_1);
         zkVerifier.verifyAndFinalize(DIGEST_1, proof, _inputs());
 
         assertTrue(challenge.isFinalized(DIGEST_1));
@@ -94,7 +96,7 @@ contract ZKBridgeVerifierTest is Test {
         });
 
         vm.expectRevert(ZKBridgeVerifier.InvalidPublicInputs.selector);
-        zkVerifier.verifyAndFinalize(DIGEST_1, _buildSimulatedProof(), zeroInputs);
+        zkVerifier.verifyAndFinalize(DIGEST_1, _buildSimulatedProof(DIGEST_1), zeroInputs);
     }
 
     function test_verifyAndFinalize_rejectsShortProof() public {
@@ -117,7 +119,7 @@ contract ZKBridgeVerifierTest is Test {
         assertTrue(challenge.isChallenged(DIGEST_1));
 
         // ZK proof finalizes the challenged window
-        bytes memory proof = _buildSimulatedProof();
+        bytes memory proof = _buildSimulatedProof(DIGEST_1);
         zkVerifier.verifyAndFinalize(DIGEST_1, proof, _inputs());
 
         assertTrue(challenge.isFinalized(DIGEST_1));
@@ -133,7 +135,7 @@ contract ZKBridgeVerifierTest is Test {
         uint256 opBal = operator.balance;
         uint256 chBal = challenger.balance;
 
-        bytes memory proof = _buildSimulatedProof();
+        bytes memory proof = _buildSimulatedProof(DIGEST_1);
         zkVerifier.verifyAndFinalize(DIGEST_1, proof, _inputs());
 
         assertEq(operator.balance, opBal + OP_BOND);
@@ -144,14 +146,14 @@ contract ZKBridgeVerifierTest is Test {
         vm.prank(operator);
         challenge.openWindow{value: OP_BOND}(DIGEST_1);
 
-        bytes memory proof = _buildSimulatedProof();
+        bytes memory proof = _buildSimulatedProof(DIGEST_1);
         zkVerifier.verifyAndFinalize(DIGEST_1, proof, _inputs());
 
         // Same proof on a different anchor
         vm.prank(operator);
         challenge.openWindow{value: OP_BOND}(DIGEST_2);
 
-        vm.expectRevert(ZKBridgeVerifier.ProofAlreadyUsed.selector);
+        vm.expectRevert(ZKBridgeVerifier.InvalidProof.selector); // proof bound to DIGEST_1 (C3)
         zkVerifier.verifyAndFinalize(DIGEST_2, proof, _inputs());
     }
 
