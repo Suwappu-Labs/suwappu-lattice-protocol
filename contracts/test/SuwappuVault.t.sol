@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 import {Test, Vm} from "forge-std/Test.sol";
 import {SuwappuVault} from "../src/SuwappuVault.sol";
+import {SuwappuEcdsaMintVerifier} from "../src/verifiers/SuwappuEcdsaMintVerifier.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract MockERC20 {
     string public name = "Mock USDC";
@@ -47,12 +49,20 @@ contract SuwappuVaultTest is Test {
     // Setup
     // -----------------------------------------------------------------------
 
+    SuwappuEcdsaMintVerifier refundVerifier;
+    uint256 constant OPERATOR_PK = 0xA110CE;
+    address operator;
+
     function setUp() public {
         vault = new SuwappuVault(admin, treasury, FEE_BPS);
         usdc  = new MockERC20();
+        refundVerifier = new SuwappuEcdsaMintVerifier(admin);
+        operator = vm.addr(OPERATOR_PK);
 
         vm.startPrank(admin);
         vault.addUnlocker(relayer);
+        vault.setRefundVerifier(address(refundVerifier));
+        refundVerifier.setOperator(operator, true);
         vault.setTVLCap(address(0),         5_000 ether);  // ETH cap
         vault.setTVLCap(address(usdc),      5_000_000e6);  // USDC cap
         vault.setDailyCap(address(0),       1_000 ether);
@@ -62,6 +72,14 @@ contract SuwappuVaultTest is Test {
         // Fund test accounts
         vm.deal(alice, 10 ether);
         usdc.mint(alice, 1_000_000e6);
+    }
+
+    /// Operator refund-eligibility attestation for a commit (C2 gate).
+    function _refundAtt(bytes32 commitId) internal view returns (bytes memory) {
+        bytes32 digest = vault.refundDigest(commitId);
+        bytes32 ethHash = MessageHashUtils.toEthSignedMessageHash(digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(OPERATOR_PK, ethHash);
+        return abi.encodePacked(r, s, v);
     }
 
     // -----------------------------------------------------------------------
@@ -251,7 +269,7 @@ contract SuwappuVaultTest is Test {
 
         // Advance past refund timeout
         vm.warp(block.timestamp + vault.refundTimeout() + 1);
-        vault.claimRefund(commitId);
+        vault.claimRefund(commitId, _refundAtt(commitId));
 
         assertEq(alice.balance, aliceBefore + netAmount);
         assertEq(uint8(vault.getCommit(commitId).status), uint8(SuwappuVault.LockStatus.REFUNDED));
@@ -263,7 +281,7 @@ contract SuwappuVaultTest is Test {
         bytes32 commitId = vault.lockETH{value: 1 ether}(DEST_CHAIN, bob);
 
         vm.expectRevert();
-        vault.claimRefund(commitId);
+        vault.claimRefund(commitId, "");
     }
 
     function test_claimRefund_reverts_afterUnlock() public {
@@ -275,7 +293,7 @@ contract SuwappuVaultTest is Test {
 
         vm.warp(block.timestamp + vault.refundTimeout() + 1);
         vm.expectRevert();
-        vault.claimRefund(commitId); // already UNLOCKED
+        vault.claimRefund(commitId, ""); // already UNLOCKED
     }
 
     // -----------------------------------------------------------------------
@@ -354,7 +372,7 @@ contract SuwappuVaultTest is Test {
         assertLe(vault.totalLocked(address(0)), address(vault).balance);
 
         vm.warp(block.timestamp + vault.refundTimeout() + 1);
-        vault.claimRefund(c2);
+        vault.claimRefund(c2, _refundAtt(c2));
 
         assertLe(vault.totalLocked(address(0)), address(vault).balance);
         // Only fees remain
