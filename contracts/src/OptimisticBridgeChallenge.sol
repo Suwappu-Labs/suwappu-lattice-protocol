@@ -254,6 +254,7 @@ contract OptimisticBridgeChallenge {
     // -----------------------------------------------------------------------
 
     function setChallengePeriod(uint256 newPeriod) external onlyAdmin {
+        require(newPeriod >= 1 hours, "SuwappuChallenge: period below 1 hour minimum");
         challengePeriod = newPeriod;
     }
 
@@ -355,16 +356,17 @@ contract OptimisticBridgeChallenge {
     event ZKVerifierSet(address indexed zkVerifier);
 
     function setZKVerifier(address _zkVerifier) external onlyAdmin {
+        require(_zkVerifier != address(0), "SuwappuChallenge: zero verifier");
         zkVerifier = _zkVerifier;
         emit ZKVerifierSet(_zkVerifier);
     }
 
-    /// @notice Finalize a window via ZK proof of *validity*. Callable by admin
-    ///         or authorized ZK verifier. Skips the challenge period — instant
-    ///         finality. Returns both bonds (operator was honest; challenger
-    ///         acted in good faith and is not slashed). LTP-A-001.
+    /// @notice Finalize a window via ZK proof of *validity*. Callable only by
+    ///         the authorized ZK verifier — admin cannot bypass proof verification.
+    ///         Skips the challenge period — instant finality. Returns both bonds.
+    ///         LTP-A-001 / C4 fix: admin removed from caller check.
     function finalizeWithZKProof(bytes32 anchorDigest) external nonReentrant {
-        if (msg.sender != admin && msg.sender != zkVerifier) revert Unauthorized();
+        if (msg.sender != zkVerifier) revert Unauthorized();
 
         Challenge storage c = _challenges[anchorDigest];
         if (c.status != STATUS_OPEN && c.status != STATUS_CHALLENGED) revert WindowNotOpen();
