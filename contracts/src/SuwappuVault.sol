@@ -208,8 +208,15 @@ contract SuwappuVault is ReentrancyGuard {
     {
         if (token == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
+        // C5 fix: credit the amount actually RECEIVED, not the amount requested.
+        // Fee-on-transfer / deflationary tokens deliver less than `amount`;
+        // crediting `amount` would overstate totalLocked and under-collateralize
+        // the vault. Measure the real balance delta instead.
+        uint256 balBefore = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        return _lock(token, amount, destChainId, destRecipient);
+        uint256 received = IERC20(token).balanceOf(address(this)) - balBefore;
+        if (received == 0) revert ZeroAmount();
+        return _lock(token, received, destChainId, destRecipient);
     }
 
     function _lock(

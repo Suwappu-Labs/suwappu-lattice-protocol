@@ -11,6 +11,16 @@ remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
 ]
 
+[invariant]
+# Audit program P0: deeper stateful invariant coverage for the custody layer.
+# fail_on_revert = false because handlers use try/catch + ghost-variable
+# accounting (see test/invariant/*.invariant.t.sol).
+runs = 512
+depth = 100
+fail_on_revert = false
+call_override = false
+shrink_run_limit = 5000
+
 [rpc_endpoints]
 gsx_testnet = "${GSX_RPC_URL}"
 local = "http://localhost:8545"

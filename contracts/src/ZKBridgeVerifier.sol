@@ -256,6 +256,11 @@ contract ZKBridgeVerifier {
         // C1: Never accept unverified input. sp1Verifier must be configured
         // before MODE_SP1 is used. Call setSP1Verifier() first.
         if (sp1Verifier == address(0)) revert SP1VerifierNotConfigured();
+        // C4 fix: a staticcall to a code-less address returns (success=true,"")
+        // which the tail used to treat as "verified". Reject a verifier with no
+        // contract code so a misconfigured/not-yet-deployed verifier cannot
+        // silently accept every proof.
+        if (sp1Verifier.code.length == 0) revert SP1VerifierNotConfigured();
 
         // Encode public values matching circuit commit order:
         // sth_root_hash(32B) || operator_vk_hash(32B) || tree_size(8B BE) || sth_sequence(8B BE)
@@ -278,11 +283,11 @@ contract ZKBridgeVerifier {
             )
         );
         if (!success) return false;
-        // If verifier returns data, decode it; if it just doesn't revert, success = true
-        if (returnData.length > 0) {
-            return abi.decode(returnData, (bool));
-        }
-        return true;
+        // C4 fix: a real SP1 verifier returns an ABI-encoded bool. Empty
+        // returndata (e.g. from an EOA/code-less target) must NOT be treated as
+        // a passing proof — reject it.
+        if (returnData.length == 0) return false;
+        return abi.decode(returnData, (bool));
     }
 
     // -----------------------------------------------------------------------

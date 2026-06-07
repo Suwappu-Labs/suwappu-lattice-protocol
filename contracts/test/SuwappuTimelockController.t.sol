@@ -134,7 +134,7 @@ contract SuwappuTimelockControllerTest is Test {
         // First register pause() as an emergency selector (via timelock self-call)
         // We'll do this directly via the timelock itself (simulating a completed proposal)
         vm.prank(address(timelock)); // only self can call setSelectorDelay / setEmergencySelector
-        timelock.setEmergencySelector(SEL_PAUSE, true);
+        timelock.setEmergencySelector(address(target), SEL_PAUSE, true);
 
         // Guardian can now call pause() immediately
         bytes memory data = abi.encodeWithSelector(SEL_PAUSE);
@@ -156,7 +156,7 @@ contract SuwappuTimelockControllerTest is Test {
 
     function test_guardianExecute_reverts_notGuardian() public {
         vm.prank(address(timelock));
-        timelock.setEmergencySelector(SEL_PAUSE, true);
+        timelock.setEmergencySelector(address(target), SEL_PAUSE, true);
 
         vm.prank(alice); // not a guardian
         vm.expectRevert();
