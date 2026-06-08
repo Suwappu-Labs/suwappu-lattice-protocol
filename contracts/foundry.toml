@@ -10,6 +10,8 @@ evm_version = "cancun"
 remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
 ]
+# Read-only access to test fixtures (P10 storage-proof eth_getProof vectors).
+fs_permissions = [{ access = "read", path = "./test/fixtures" }]
 
 [invariant]
 # Audit program P0: deeper stateful invariant coverage for the custody layer.
@@ -26,6 +28,9 @@ suwappu_testnet = "${SUWAPPU_RPC_URL}"
 local = "http://localhost:8545"
 base_sepolia = "${BASE_SEPOLIA_RPC_URL}"
 base_mainnet = "${BASE_MAINNET_RPC_URL}"
+# Public BSC RPC — hosts a live SP1Helios deployment (Across V4) used by the P10
+# Sp1HeliosHeaderOracle fork test. Overridable via ${BSC_RPC_URL}.
+bsc = "${BSC_RPC_URL}"
 
 [fmt]
 line_length = 100
