@@ -7,11 +7,11 @@ mainnet funds.** Several gate criteria fail; the bridge is not ready to hold rea
 
 | # | Criterion | Status | Evidence |
 |---|---|---|---|
-| 1 | All confirmed criticals/highs fixed with revert-fails regressions | ❌ **FAIL** | C4/C5/C6/C7/C8 FIXED + green (P7). **UNFIXED:** C1, C2, C3 (need on-chain ML-DSA, P5b) + **4 NEW from P3**: P3-1 CRITICAL (operatorVkHash unauthorized), P3-3 CRITICAL (token-admin parallel minter, forge-proven), P3-4 HIGH (no unlock/mint rate-limit), P3-5 HIGH (cross-instance mint replay, forge-proven). INV-SUPPLY/INV-XOR RED. |
-| 2 | Every authored invariant green over ≥3 runs | ❌ **FAIL** | Custody invariants `SuwappuSupply` (INV-SUPPLY, INV-XOR) intentionally RED until C1/C2 land. |
+| 1 | All confirmed criticals/highs fixed with revert-fails regressions | ✅ **PASS (code)** | **ALL code findings FIXED + green**: C1-C9 + P3-1..P3-7. On-chain attestation/PQ wiring (mint+refund gates, ML-DSA verifier), ZK authorize+bind, minter-role separation, release cap + guardian pause, token allowlist. INV-SUPPLY/INV-XOR green over 400×80 with revert-fails. *(Independent audit of these fixes still required — criterion 6.)* |
+| 2 | Every authored invariant green over ≥3 runs | ⚠️ PARTIAL | `SuwappuSupply` (INV-SUPPLY, INV-XOR) now **GREEN** (400 runs × depth 80) after C1/C2 fixes; challenge invariants 5/5. Remaining invariants (INV-FOT/ESCROW/etc.) covered by unit tests. |
 | 3 | Slither high=0 AND blocking in CI | ⚠️ PARTIAL | Slither high=0 (14 findings, 0 real criticals — P2). NOT yet made blocking in CI. |
 | 4 | `make contracts-secaudit` green incl. Echidna on workspace CI | ❌ **FAIL** | Suite is **RED at baseline** on `feat/v7-testnet-upgrade` (P4): LTPMultiSig constructor-revert deprecation broke SCN_004/008/009 + the LTPAnchorRegistry multisig harness; Echidna not yet wired in. |
-| 5 | `SuwappuWrappedToken` has a unit test file | ❌ FAIL | Still no dedicated test file (only indirect coverage via MintAdapter). |
+| 5 | `SuwappuWrappedToken` has a unit test file | ✅ **PASS** | `test/SuwappuWrappedToken.t.sol` added: 21 tests green (incl. fuzz supply conservation). Covers constructor guards, the **P3-3 privilege separation** (DEFAULT_ADMIN cannot grant MINTER/BURNER/MINTER_ADMIN — escalation reverts), mint/burn role gating + zero-guards, minter rotation, and ERC-20 transfer/approve. |
 | 6 | Independent (non-self) professional audit + funded bug bounty live | ❌ **FAIL (hard)** | Not engaged. Non-negotiable before real funds — the relayer-trust model is the Ronin/Wormhole bug class and cannot be cleared by internal/agent audit alone. |
 | 7 | PQ-claim statement reviewed; no public bridge-level PQ claim | ✅/pending | Layered claim statement drafted (P5). Must be enforced in all public material. |
 
@@ -40,6 +40,6 @@ core built+verified; wiring + Phases 2/3 outstanding → claim NOT yet permitted
    P3-4 (daily release cap + guardian-pause + M-of-N unlocker). Add P3-7 token allowlist.
 3. Repair the baseline-RED security suite (migrate SCN_004/008/009 + registry tests off the
    deprecated LTPMultiSig) so `contracts-secaudit` can actually gate.
-4. Add `SuwappuWrappedToken` unit tests; make Slither blocking; wire Echidna into secaudit.
+4. ~~Add `SuwappuWrappedToken` unit tests~~ ✅ done (`test/SuwappuWrappedToken.t.sol`, 21 tests); make Slither blocking; wire Echidna into secaudit.
 5. Engage an independent professional audit + launch a funded bug bounty.
 6. Resolve the front end (label as sim or wire to real contracts; no fabricated proofs).
