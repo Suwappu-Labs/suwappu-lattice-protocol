@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SuwappuWrappedToken} from "./SuwappuWrappedToken.sol";
 import {IMintAttestationVerifier} from "./interfaces/IMintAttestationVerifier.sol";
+import {ISourceLockVerifier, LockClaim} from "./interfaces/ISourceLockVerifier.sol";
 
 /// @title SuwappuMintAdapter
 /// @notice Destination-chain contract that mints SuwappuWrappedToken when a
@@ -61,6 +62,20 @@ contract SuwappuMintAdapter is ReentrancyGuard {
     ///         security now rests on the attestation, not relayer trust).
     mapping(address => bool) public isRelayer;
 
+    /// @notice P10 source-lock proof verifier. When set (non-zero), mint() requires
+    ///         a cryptographic proof that the source Vault recorded the lock — the
+    ///         `attestation` arg is reinterpreted as the proof, and the operator
+    ///         attestation gate is bypassed (the proof IS the security gate; the
+    ///         relayer set remains operational/sequencing control). When unset,
+    ///         the legacy IMintAttestationVerifier (k-of-N) path is used.
+    ///         See docs/security/audits/suwappu/P10_SOURCE_EVENT_PROOF.md.
+    ISourceLockVerifier public sourceLockVerifier;
+
+    /// @notice Governance-pinned canonical SuwappuVault per source chain id. The
+    ///         source-lock proof is meaningless unless the Vault address it proves
+    ///         against is the real one — so it is pinned here, not relayer-supplied.
+    mapping(uint256 => address) public sourceVaultOf;
+
     /// @notice commitId → mint record. Used to prevent double-minting.
     mapping(bytes32 => MintRecord) public mintRecords;
 
@@ -91,6 +106,8 @@ contract SuwappuMintAdapter is ReentrancyGuard {
     event RelayerAdded(address indexed relayer);
     event RelayerRemoved(address indexed relayer);
     event VerifierSet(address indexed oldVerifier, address indexed newVerifier);
+    event SourceLockVerifierSet(address indexed oldVerifier, address indexed newVerifier);
+    event SourceVaultSet(uint256 indexed sourceChainId, address indexed vault);
     event WrappedTokenSet(address indexed oldToken, address indexed newToken);
     event AdminTransferStarted(address indexed currentAdmin, address indexed pendingAdmin_);
     event AdminTransferCompleted(address indexed previousAdmin, address indexed newAdmin);
@@ -105,6 +122,8 @@ contract SuwappuMintAdapter is ReentrancyGuard {
     error AlreadyMinted(bytes32 commitId);
     error VerifierNotSet();
     error InvalidAttestation(bytes32 digest);
+    error SourceLockNotProven(bytes32 commitId);
+    error SourceVaultNotSet(uint256 sourceChainId);
 
     // -----------------------------------------------------------------------
     // Modifiers
@@ -176,26 +195,46 @@ contract SuwappuMintAdapter is ReentrancyGuard {
     ) external nonReentrant onlyRelayer {
         if (recipient == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
-        if (address(verifier) == address(0)) revert VerifierNotSet();
 
         // Enforce one mint per commitId — prevents relay replay.
         if (mintRecords[commitId].mintedAt != 0) revert AlreadyMinted(commitId);
 
-        // Bind every mint parameter + this chain + this adapter into the digest,
-        // then require an authorized operator attested to it.
-        bytes32 digest = keccak256(
-            abi.encode(
-                MINT_ATTESTATION_DOMAIN,
-                block.chainid,
-                address(this),
-                commitId,
-                recipient,
-                amount,
-                sourceChainId
-            )
-        );
-        if (!verifier.verifyMintAttestation(digest, attestation)) {
-            revert InvalidAttestation(digest);
+        if (address(sourceLockVerifier) != address(0)) {
+            // P10 path: require a cryptographic proof that the source Vault
+            // recorded this exact lock. `attestation` is the proof. This removes
+            // relayer trust for correctness (the operator attestation is bypassed;
+            // onlyRelayer remains operational/sequencing control).
+            address srcVault = sourceVaultOf[sourceChainId];
+            if (srcVault == address(0)) revert SourceVaultNotSet(sourceChainId);
+            LockClaim memory claim = LockClaim({
+                sourceChainId: sourceChainId,
+                sourceVault: srcVault,
+                commitId: commitId,
+                destRecipient: recipient,
+                amount: amount,
+                destChainId: block.chainid
+            });
+            if (!sourceLockVerifier.verifyLock(claim, attestation)) {
+                revert SourceLockNotProven(commitId);
+            }
+        } else {
+            // Legacy path: an authorized operator (k-of-N) attests to the bound
+            // digest. Trust rests on the operator set, not a source-event proof.
+            if (address(verifier) == address(0)) revert VerifierNotSet();
+            bytes32 digest = keccak256(
+                abi.encode(
+                    MINT_ATTESTATION_DOMAIN,
+                    block.chainid,
+                    address(this),
+                    commitId,
+                    recipient,
+                    amount,
+                    sourceChainId
+                )
+            );
+            if (!verifier.verifyMintAttestation(digest, attestation)) {
+                revert InvalidAttestation(digest);
+            }
         }
 
         mintRecords[commitId] = MintRecord({
@@ -307,6 +346,24 @@ contract SuwappuMintAdapter is ReentrancyGuard {
         if (newVerifier == address(0)) revert ZeroAddress();
         emit VerifierSet(address(verifier), newVerifier);
         verifier = IMintAttestationVerifier(newVerifier);
+    }
+
+    /// @notice Set (or clear, with address(0)) the P10 source-lock proof verifier.
+    ///         When set, mint() requires a source-lock proof instead of the operator
+    ///         attestation. Timelock-governed in production. Clearing it falls back
+    ///         to the legacy attestation path (kept available during rollout).
+    function setSourceLockVerifier(address newVerifier) external onlyAdmin {
+        emit SourceLockVerifierSet(address(sourceLockVerifier), newVerifier);
+        sourceLockVerifier = ISourceLockVerifier(newVerifier);
+    }
+
+    /// @notice Pin the canonical SuwappuVault for a source chain id. The source-lock
+    ///         proof verifies against this address, so it must be the real Vault.
+    ///         Required (per source chain) before mint() can use the P10 path.
+    function setSourceVault(uint256 sourceChainId, address vault) external onlyAdmin {
+        if (vault == address(0)) revert ZeroAddress();
+        sourceVaultOf[sourceChainId] = vault;
+        emit SourceVaultSet(sourceChainId, vault);
     }
 
     // -----------------------------------------------------------------------
