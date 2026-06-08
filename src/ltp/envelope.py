@@ -12,7 +12,7 @@ Design patterns adopted from crypto-rs (dark-bio/crypto-rs):
     (mirrors cose::peek())
   - max_drift parameter for timestamp freshness validation (CWT pattern)
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.3
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.3
 """
 
 from __future__ import annotations

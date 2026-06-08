@@ -15,7 +15,7 @@ Encoding rules:
 Wire format is designed to be translatable to CBOR (RFC 8949) for future
 cross-language interop with Rust/Go/TS siblings.
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.1
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.1
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ class CanonicalEncoder:
 
     Usage:
         encoded = (
-            CanonicalEncoder(b"GSX-LTP:commit-record:v1\\x00")
+            CanonicalEncoder(b"SUWAPPU-LTP:commit-record:v1\\x00")
             .string(record.entity_id)
             .uint64(record.sequence)
             .raw_bytes(record.root_hash)
@@ -46,7 +46,7 @@ class CanonicalEncoder:
         """Initialize with an object tag that prefixes every encoded blob.
 
         Args:
-            object_tag: Domain-separated tag, e.g. b"GSX-LTP:commit-record:v1\\x00"
+            object_tag: Domain-separated tag, e.g. b"SUWAPPU-LTP:commit-record:v1\\x00"
         """
         if not object_tag:
             raise ValueError("object_tag must not be empty")

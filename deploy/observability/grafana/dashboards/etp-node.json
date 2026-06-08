@@ -728,7 +728,7 @@
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["etp", "ltp", "gsx"],
+  "tags": ["etp", "ltp", "suwappu"],
   "templating": {
     "list": [
       {

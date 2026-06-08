@@ -11,7 +11,7 @@ State diagram:
                 ↓           ↓           ↓
              DELETED     DELETED     DELETED
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.9
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.9
 """
 
 from __future__ import annotations

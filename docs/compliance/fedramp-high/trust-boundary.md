@@ -9,7 +9,7 @@
 | Key boundary | KMS/HSM private-key operations | key IDs only, no plaintext operator key env vars |
 | Chain boundary | External production chains and deployed contracts | chain ID, RPC, bytecode, registry version checks |
 | Audit boundary | Audit logger to SIEM or audit sink | structured export, retention, review workflow |
-| Cross-repo boundary | GSX-DAG and GSX-DB evidence surfaces | pinned commits and release gates |
+| Cross-repo boundary | Suwappu DAG and SUWAPPU-DB evidence surfaces | pinned commits and release gates |
 
 ## Fail-Closed Rules
 
@@ -27,9 +27,9 @@ The `fedramp-high` profile must stop deployment when:
 ## Lattice Key Constraint
 
 A lattice key authorizes materialization of committed snapshots or deltas. It
-does not authorize GSX-DB mutation, validator ordering, bridge-token issuance,
-or direct writes to canonical `BalanceSlot`s. GSX-DB state mutation must pass
-through `gsxdb-bridge` and its capability gate.
+does not authorize SUWAPPU-DB mutation, validator ordering, bridge-token issuance,
+or direct writes to canonical `BalanceSlot`s. SUWAPPU-DB state mutation must pass
+through `suwappudb-bridge` and its capability gate.
 
 ## Crypto Boundary Language
 

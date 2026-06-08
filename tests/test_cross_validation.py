@@ -176,7 +176,7 @@ class TestEncodingPathDivergence:
             shape_hash="d" * 64,
             timestamp=1234567890.0,
         )
-        assert record.canonical_bytes().startswith(b"GSX-LTP:commit-record:v1\x00")
+        assert record.canonical_bytes().startswith(b"SUWAPPU-LTP:commit-record:v1\x00")
 
     def test_signable_payload_excludes_ttl_epochs(self):
         """signable_payload() omits ttl_epochs; canonical_bytes() includes it."""
@@ -227,7 +227,7 @@ class TestEncodingPathDivergence:
 
         sth = SignedTreeHead.sign(1, 5, b"\xab" * 32, alice.vk, alice.sk)
         assert sth.signable_payload()[:4] == struct.pack(">Q", 1)[:4]  # Legacy: raw fields
-        assert sth.canonical_bytes().startswith(b"GSX-LTP:sth-sign:v1\x00")
+        assert sth.canonical_bytes().startswith(b"SUWAPPU-LTP:sth-sign:v1\x00")
 
 
 # ── Key fingerprint consistency ────────────────────────────────────────────

@@ -20,7 +20,7 @@ jobs:
         working-directory: contracts
         run: |
           git config user.name "ci"
-          git config user.email "ci@gsx.dev"
+          git config user.email "ci@suwappu.dev"
           forge install foundry-rs/forge-std
           forge install OpenZeppelin/openzeppelin-contracts
 
@@ -105,7 +105,7 @@ jobs:
         working-directory: contracts
         run: |
           git config user.name "ci"
-          git config user.email "ci@gsx.dev"
+          git config user.email "ci@suwappu.dev"
           forge install foundry-rs/forge-std
           forge install OpenZeppelin/openzeppelin-contracts
 
@@ -136,7 +136,7 @@ jobs:
         working-directory: contracts
         run: |
           git config user.name "ci"
-          git config user.email "ci@gsx.dev"
+          git config user.email "ci@suwappu.dev"
           forge install foundry-rs/forge-std
           forge install OpenZeppelin/openzeppelin-contracts
 
@@ -166,7 +166,7 @@ jobs:
         working-directory: contracts
         run: |
           git config user.name "ci"
-          git config user.email "ci@gsx.dev"
+          git config user.email "ci@suwappu.dev"
           forge install foundry-rs/forge-std
           forge install OpenZeppelin/openzeppelin-contracts
           forge build

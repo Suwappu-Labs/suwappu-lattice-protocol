@@ -13,7 +13,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
-_DOMAIN = b"GSX-LTP:zk-stark:v1\x00"
+_DOMAIN = b"SUWAPPU-LTP:zk-stark:v1\x00"
 _LEAF_TAG = _DOMAIN + b"stark-leaf"
 _NODE_TAG = _DOMAIN + b"stark-node"
 _EMPTY_LEAF = b"\x00" * 32

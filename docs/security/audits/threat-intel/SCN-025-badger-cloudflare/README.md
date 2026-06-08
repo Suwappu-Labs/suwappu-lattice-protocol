@@ -35,7 +35,7 @@ Recommended defenses when a dApp is added:
 
 | ID | Policy |
 |----|--------|
-| B1 | CDN account uses hardware-token MFA, separate from other GSX accounts |
+| B1 | CDN account uses hardware-token MFA, separate from other SUWAPPU accounts |
 | B2 | All loaded JS / CSS assets carry SRI hashes that the HTML pins |
 | B3 | Worker changes require dual-approval; alert on any deploy event |
 | B4 | Independent external monitoring (e.g., a watcher that fetches the dApp from an external IP and diffs the bytes against a known baseline) |

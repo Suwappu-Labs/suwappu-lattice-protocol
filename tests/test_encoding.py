@@ -162,7 +162,7 @@ class TestCanonicalEncoderDeterminism:
     def test_same_input_same_output(self):
         for _ in range(10):
             r = (
-                CanonicalEncoder(b"GSX-LTP:test:v1\x00")
+                CanonicalEncoder(b"SUWAPPU-LTP:test:v1\x00")
                 .string("entity-123")
                 .uint64(42)
                 .float64(1234567890.123)
@@ -170,7 +170,7 @@ class TestCanonicalEncoderDeterminism:
                 .finalize()
             )
             assert r == (
-                CanonicalEncoder(b"GSX-LTP:test:v1\x00")
+                CanonicalEncoder(b"SUWAPPU-LTP:test:v1\x00")
                 .string("entity-123")
                 .uint64(42)
                 .float64(1234567890.123)
@@ -282,5 +282,5 @@ class TestCanonicalEncoderIntegration:
         assert sp.startswith(b"LTP-COMMIT-v1\x00")
         # canonical_bytes uses new tag
         cb = record.canonical_bytes()
-        assert cb.startswith(b"GSX-LTP:commit-record:v1\x00")
+        assert cb.startswith(b"SUWAPPU-LTP:commit-record:v1\x00")
         assert sp != cb  # Different encoding paths

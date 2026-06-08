@@ -15,7 +15,7 @@ minutes if you have Python 3.10+ and Foundry installed.
 1. **[CONTRIBUTING.md](../../CONTRIBUTING.md)** — prerequisites, clone,
    install, run tests, PR workflow, code style.
 2. **[CODE_OF_CONDUCT.md](../../CODE_OF_CONDUCT.md)** — Contributor
-   Covenant 2.1. Enforcement contact is `core@globalsettlement.dev`.
+   Covenant 2.1. Enforcement contact is `core@suwappu.dev`.
 3. **[Makefile](../../Makefile)** — every command you need. Run
    `make help` to list targets. Notable: `make test-python`,
    `make test-contracts`, `make contracts-secaudit`, `make audit`.
@@ -29,8 +29,8 @@ minutes if you have Python 3.10+ and Foundry installed.
 
 ```bash
 # Clone + install
-git clone https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol.git
-cd gsx-lattice-protocol
+git clone https://github.com/suwappu/suwappu-lattice-protocol.git
+cd suwappu-lattice-protocol
 python3 -m pip install -e ".[dev]"
 
 # Sanity check

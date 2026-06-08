@@ -1,30 +1,30 @@
-# CODEOWNERS for gsx-lattice-protocol
+# CODEOWNERS for suwappu-lattice-protocol
 #
 # Required reviewers for paths matching the patterns below. The last
 # matching pattern wins. See:
 # https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # Default — any unmatched file
-*                                   @tomagsx
+*                                   @tomasuwappu
 
 # Smart contracts and contract scripts
-/contracts/                         @tomagsx
-/contracts/script/                  @tomagsx
+/contracts/                         @tomasuwappu
+/contracts/script/                  @tomasuwappu
 
 # Cryptographic core and corridor wire format
-/src/ltp/corridor/                  @tomagsx
-/src/ltp/crypto/                    @tomagsx
-/src/ltp/anchor/                    @tomagsx
+/src/ltp/corridor/                  @tomasuwappu
+/src/ltp/crypto/                    @tomasuwappu
+/src/ltp/anchor/                    @tomasuwappu
 
 # Compliance evidence (FedRAMP High)
-/docs/compliance/                   @tomagsx
+/docs/compliance/                   @tomasuwappu
 
 # Deployment, CI, and release engineering
-/.github/workflows/                 @tomagsx
-/deploy/                            @tomagsx
-/Makefile                           @tomagsx
+/.github/workflows/                 @tomasuwappu
+/deploy/                            @tomasuwappu
+/Makefile                           @tomasuwappu
 
 # Security policy and threat model
-/SECURITY.md                        @tomagsx
-/docs/THREAT_MODEL.md               @tomagsx
-/docs/SECURITY_AUDIT_*.md           @tomagsx
+/SECURITY.md                        @tomasuwappu
+/docs/THREAT_MODEL.md               @tomasuwappu
+/docs/SECURITY_AUDIT_*.md           @tomasuwappu

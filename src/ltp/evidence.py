@@ -9,7 +9,7 @@ Used for:
   - Cross-chain bridge verification (all proofs in one package)
   - Dispute resolution (evidence for on-chain adjudication)
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.12
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.12
 """
 
 from __future__ import annotations

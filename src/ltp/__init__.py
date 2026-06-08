@@ -109,7 +109,7 @@ from .economics import (
     SlashingTier,
 )
 
-# GSX Pre-Blockchain Trust Packaging Layer
+# SUWAPPU Pre-Blockchain Trust Packaging Layer
 from .encoding import CanonicalEncoder
 from .enforcement import (
     AuditFailureCondition,
@@ -292,7 +292,7 @@ __all__ = [
     "ComplianceFramework",
     "set_crypto_provider",
     "get_crypto_provider",
-    # GSX Pre-Blockchain Trust Packaging Layer
+    # SUWAPPU Pre-Blockchain Trust Packaging Layer
     "CanonicalEncoder",
     "DOMAIN_ENTITY_ID",
     "DOMAIN_COMMIT_SIGN",
@@ -334,13 +334,13 @@ __all__ = [
     "assert_real_crypto",
     # Utilities
     "reset_poc_state",
-    # Cross-repo wire surface with gsx-dag (paper §10)
+    # Cross-repo wire surface with suwappu-dag (paper §10)
     "corridor",
 ]
 
 
 # Sub-namespace import — re-exported so callers can `from ltp import corridor`
-# and reach the wire-compatible mirror of `gsx-dag/crates/gsx-ltp`.
+# and reach the wire-compatible mirror of `suwappu-dag/crates/suwappu-ltp`.
 from . import corridor  # noqa: E402
 
 # Lazy imports to avoid circular dependency (merkle_log → ltp.primitives → ltp)

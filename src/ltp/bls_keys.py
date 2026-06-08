@@ -86,7 +86,7 @@ class BLSKeyPair:
     def derive_from(
         cls,
         mldsa_sk: bytes,
-        context: bytes = b"GSX-BLS-DERIVE:v1",
+        context: bytes = b"SUWAPPU-BLS-DERIVE:v1",
         label: str = "",
     ) -> BLSKeyPair:
         """Derive a BLS keypair from an ML-DSA signing key (Mode 3).
@@ -102,7 +102,7 @@ class BLSKeyPair:
         # HKDF-Extract: PRK = HMAC-SHA3-256(salt=context, IKM=mldsa_sk)
         prk = hmac.new(context, mldsa_sk, hashlib.sha3_256).digest()
         # HKDF-Expand: OKM = HMAC-SHA3-256(PRK, info || 0x01)
-        info = b"GSX-BLS-KEY" + b"\x01"
+        info = b"SUWAPPU-BLS-KEY" + b"\x01"
         okm = hmac.new(prk, info, hashlib.sha3_256).digest()
 
         # Reduce to valid BLS scalar range

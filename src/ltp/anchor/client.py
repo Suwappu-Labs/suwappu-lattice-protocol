@@ -8,7 +8,7 @@ web3.py's contract function interface for standard ABI encoding.
 
 Requires: pip install web3>=6.0.0  (or install ltp[chain])
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.10
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.10
 """
 
 from __future__ import annotations
@@ -310,8 +310,8 @@ class AnchorClient:
     def from_env(cls, prefix: str = "") -> "AnchorClient":
         """Create an AnchorClient from environment variables.
 
-        Reads configuration from env vars, optionally prefixed (e.g. prefix="GSX_"
-        reads GSX_RPC_URL, GSX_CHAIN_ID, etc.).
+        Reads configuration from env vars, optionally prefixed (e.g. prefix="SUWAPPU_"
+        reads SUWAPPU_RPC_URL, SUWAPPU_CHAIN_ID, etc.).
 
         Required env vars: {prefix}RPC_URL, {prefix}ANCHOR_REGISTRY,
                           {prefix}OPERATOR_KEY, {prefix}CHAIN_ID

@@ -37,7 +37,7 @@ from .fri import FRIParams, FRIProof, fri_commit_and_prove, fri_verify
 STARK_VERSION = 3
 
 # Domain tag for STARK Fiat-Shamir
-_STARK_DOMAIN = b"GSX-LTP:zk-stark:v1\x00"
+_STARK_DOMAIN = b"SUWAPPU-LTP:zk-stark:v1\x00"
 
 
 @dataclass(frozen=True)

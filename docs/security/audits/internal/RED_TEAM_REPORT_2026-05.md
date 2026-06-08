@@ -8,7 +8,7 @@
 > in hours, not days.
 >
 > **Campaign window.** 2026-05-15 → 2026-05-17 (3-day intensive).
-> **Repository.** `GlobalSettlementNetwork/gsx-lattice-protocol`.
+> **Repository.** `suwappu/suwappu-lattice-protocol`.
 > **Commit at close.** `698b894` (`main`, post PR #28 merge).
 > **Authorization.** [`/SECURITY_TESTING.md`](../../../../SECURITY_TESTING.md), timestamp 2026-05-16.
 > **Process record.** [`RED_TEAM_CAMPAIGN_2026-05.md`](RED_TEAM_CAMPAIGN_2026-05.md).
@@ -99,8 +99,8 @@ are addressed by operator-policy documents pending activation.
 
 ### 3.2 Out of scope for THIS campaign
 
-- **gsx-dag BFT consensus.** Audited under a separate workstream
-  (`GlobalSettlementNetwork/gsx-dag`). Cross-repo wire-format
+- **suwappu-dag BFT consensus.** Audited under a separate workstream
+  (`suwappu/suwappu-dag`). Cross-repo wire-format
   invariants are covered by SCN-030 (IBC replay class) but the
   consensus algorithm itself is not.
 - **Economic / market-manipulation attacks.** No price-feed
@@ -321,8 +321,8 @@ and are not duplicated here.
 | **Difficulty (ToB-style)** | Low — single missing check, deterministic to exploit once a rotation grace window is open |
 | **Surfaced by** | SCN-015 authoring (Signer rotation in-flight race) |
 | **Target** | `contracts/src/LTPAnchorRegistry.sol:535-549` |
-| **Linear** | [GLO-832](https://linear.app/globalsettlement/issue/GLO-832) |
-| **Remediation PR** | [#26](https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/pull/26), commit `577e80f` |
+| **Linear** | [GLO-832](https://linear.app/suwappu/issue/GLO-832) |
+| **Remediation PR** | [#26](https://github.com/suwappu/suwappu-lattice-protocol/pull/26), commit `577e80f` |
 | **Status** | ✓ Fixed |
 | **Regression test** | `test_G6_old_key_rejected_after_grace_via_anchor` in `contracts/test/security/historical/SCN_015_SignerRotationGrace.t.sol` |
 
@@ -399,7 +399,7 @@ risk class. Tracked separately; not blocking on this finding.
 
 #### Remediation evidence
 
-- Fix commit: `577e80f` (PR [#26](https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/pull/26))
+- Fix commit: `577e80f` (PR [#26](https://github.com/suwappu/suwappu-lattice-protocol/pull/26))
 - Regression test (added same PR): `test_G6_old_key_rejected_after_grace_via_anchor`
 - Pre-fix verification: before the fix landed, the G6 test
   failed on the exact input the operator believed was now safe.
@@ -499,7 +499,7 @@ Self-rated. Categories from ToB TRAIL methodology; ratings
 | **Specification** | Satisfactory | Wire format specified in `LTP-corridor-v1`; STABILITY_PROMISES contract; THREAT_MODEL.md published. |
 | **Testing & Verification** | Strong | ~1,200 Python tests + 84+ Solidity tests + 70 new historical tests (this campaign) + 8 invariants + 5 Echidna harnesses + cross-parity test. CI runs all on every push. |
 | **Transaction Ordering** | Satisfactory | Sequence per signer enforced (`signerSequences`); replay rejection by digest; cross-chain replay covered by SCN-030. |
-| **Trusted Computing Base** | Satisfactory | TCB enumerated: Solidity compiler 0.8.24, Foundry pinned, Python 3.10-3.13, OpenZeppelin (digest-pinned), HSM vendor, gsx-dag consensus (out-of-scope here). |
+| **Trusted Computing Base** | Satisfactory | TCB enumerated: Solidity compiler 0.8.24, Foundry pinned, Python 3.10-3.13, OpenZeppelin (digest-pinned), HSM vendor, suwappu-dag consensus (out-of-scope here). |
 | **Upgradeability** | Satisfactory | UUPS with `_disableInitializers()`; `_authorizeUpgrade` gated to Timelock; upgrade plan template under `plans/`; CODEOWNERS routes contract changes. |
 
 Two categories deserve auditor attention based on the self-

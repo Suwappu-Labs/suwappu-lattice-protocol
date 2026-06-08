@@ -7,10 +7,10 @@ LTP team verifies its own defenses internally.
 
 ## Authorization
 
-The Global Settlement Network project lead authorizes the LTP
+The Suwappu project lead authorizes the LTP
 engineering team and its tooling (including AI coding assistants
 operating under direct human supervision) to conduct security tests
-against systems **owned and operated by Global Settlement Network**.
+against systems **owned and operated by Suwappu**.
 
 Campaigns documented under this charter:
 
@@ -30,15 +30,15 @@ Every security-testing campaign run under this charter operates under
 these explicit rules:
 
 1. **Owned systems only.** Tests target code and infrastructure owned
-   by Global Settlement Network — primarily this repository
-   (`gsx-lattice-protocol`) and its sibling repositories (`gsx-dag`,
-   `gsx-db`, `ETP`). No third-party systems are probed.
+   by Suwappu — primarily this repository
+   (`suwappu-lattice-protocol`) and its sibling repositories (`suwappu-dag`,
+   `suwappu-db`, `ETP`). No third-party systems are probed.
 2. **Isolated environments.** Contract-layer tests run in Foundry's
    local EVM, on `anvil`, or as Foundry mainnet-fork tests
    (`forge test --fork-url`). Mainnet-fork tests **never** broadcast
    transactions — they read state and simulate calls only.
 3. **Testnet caveat.** A limited subset of campaign scenarios may run
-   against GSX Testnet's deployed registry. Those tests use a
+   against SUWAPPU Testnet's deployed registry. Those tests use a
    dedicated test-only operator key with negligible balance, rotated
    after each phase closes.
 4. **People-in-the-loop drills require consent.** Tabletop exercises
@@ -59,7 +59,7 @@ these explicit rules:
 ## How to file a new campaign
 
 1. Open a Linear issue in the **LTP Dev Net** project (team
-   "Global Settlement") with the label `security-campaign` describing
+   "Suwappu") with the label `security-campaign` describing
    the scenario set.
 2. Create a campaign master document under `docs/security/` following
    the pattern of `RED_TEAM_CAMPAIGN_2026-05.md`.

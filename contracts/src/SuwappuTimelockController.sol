@@ -47,16 +47,19 @@ contract SuwappuTimelockController is TimelockController {
     ///         If non-zero, max(selectorDelay, minDelay) is enforced.
     mapping(bytes4 => uint256) public selectorDelay;
 
-    /// @notice Function selectors the guardian may execute without timelock.
+    /// @notice (target, selector) pairs the guardian may execute without timelock.
+    ///         C8 fix: bound to a SPECIFIC target, not just a global selector, so a
+    ///         whitelisted emergency selector (e.g. pause()) cannot be invoked on an
+    ///         unintended contract that happens to share the selector.
     ///         Only pause() and similarly reversible emergency functions belong here.
-    mapping(bytes4 => bool) public emergencySelectors;
+    mapping(address => mapping(bytes4 => bool)) public emergencySelectors;
 
     // -----------------------------------------------------------------------
     // Events
     // -----------------------------------------------------------------------
 
     event SelectorDelaySet(bytes4 indexed selector, uint256 delay);
-    event EmergencySelectorSet(bytes4 indexed selector, bool enabled);
+    event EmergencySelectorSet(address indexed target, bytes4 indexed selector, bool enabled);
     event GuardianExecuted(address indexed guardian, address indexed target, bytes4 selector);
 
     // -----------------------------------------------------------------------
@@ -153,7 +156,7 @@ contract SuwappuTimelockController is TimelockController {
         if (data.length < 4) revert EmptyCalldata();
 
         bytes4 sel = bytes4(data[:4]);
-        if (!emergencySelectors[sel]) revert NotEmergencySelector(sel);
+        if (!emergencySelectors[target][sel]) revert NotEmergencySelector(sel);
 
         emit GuardianExecuted(msg.sender, target, sel);
 
@@ -180,11 +183,12 @@ contract SuwappuTimelockController is TimelockController {
     /// @notice Add or remove a selector from the guardian emergency whitelist.
     ///         Must be scheduled through this timelock (self-administered).
     ///         Only add selectors for REVERSIBLE emergency actions (pause, not destroy).
+    /// @param target    Contract the guardian may invoke this selector on
     /// @param selector  4-byte function selector to whitelist / de-whitelist
     /// @param enabled   true to enable, false to remove
-    function setEmergencySelector(bytes4 selector, bool enabled) external onlySelf {
-        emergencySelectors[selector] = enabled;
-        emit EmergencySelectorSet(selector, enabled);
+    function setEmergencySelector(address target, bytes4 selector, bool enabled) external onlySelf {
+        emergencySelectors[target][selector] = enabled;
+        emit EmergencySelectorSet(target, selector, enabled);
     }
 
     // -----------------------------------------------------------------------

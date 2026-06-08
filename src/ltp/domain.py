@@ -9,10 +9,10 @@ Architecture:
   - primitives.py MUST NEVER import from domain.py (one-way dependency)
   - Domain tags are bytes literals — no cross-module dependency needed
 
-All tags follow the format: b"GSX-LTP:<name>:v<N>\\x00"
+All tags follow the format: b"SUWAPPU-LTP:<name>:v<N>\\x00"
 The trailing null byte acts as a separator to prevent prefix collisions.
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.2
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.2
 """
 
 from __future__ import annotations
@@ -57,37 +57,37 @@ __all__ = [
 # Canonical trust boundary tags
 # ---------------------------------------------------------------------------
 
-DOMAIN_ENTITY_ID = b"GSX-LTP:entity-id:v1\x00"
-DOMAIN_COMMIT_SIGN = b"GSX-LTP:commit-sign:v1\x00"
-DOMAIN_COMMIT_RECORD = b"GSX-LTP:commit-record:v1\x00"
-DOMAIN_STH_SIGN = b"GSX-LTP:sth-sign:v1\x00"
-DOMAIN_SHARD_NONCE = b"GSX-LTP:shard-nonce:v1\x00"
-DOMAIN_APPROVAL_RECEIPT = b"GSX-LTP:approval-receipt:v1\x00"
-DOMAIN_ANCHOR_DIGEST = b"GSX-LTP:anchor-digest:v1\x00"
-DOMAIN_SIGNED_ENVELOPE = b"GSX-LTP:signed-envelope:v1\x00"
-DOMAIN_SIGNER_POLICY = b"GSX-LTP:signer-policy:v1\x00"
-DOMAIN_LATTICE_KEY = b"GSX-LTP:lattice-key:v1\x00"
-DOMAIN_BRIDGE_MSG = b"GSX-LTP:bridge-msg:v1\x00"
-DOMAIN_NODE_HANDSHAKE = b"GSX-LTP:node-handshake:v1\x00"
-DOMAIN_FRAUD_PROOF = b"GSX-LTP:fraud-proof:v1\x00"
-DOMAIN_CHALLENGE = b"GSX-LTP:challenge:v1\x00"
-DOMAIN_WATCHER = b"GSX-LTP:watcher:v1\x00"
-DOMAIN_ZK_BRIDGE = b"GSX-LTP:zk-bridge:v1\x00"
-DOMAIN_KEY_ROTATION = b"GSX-LTP:key-rotation:v1\x00"
-DOMAIN_KEY_ADMISSION = b"GSX-LTP:key-admission:v1\x00"
-DOMAIN_NODE_ENDORSEMENT = b"GSX-LTP:node-endorsement:v1\x00"
-DOMAIN_GOVERNANCE_VOTE = b"GSX-LTP:governance-vote:v1\x00"
-DOMAIN_NIR = b"GSX-LTP:nir:v1\x00"
-DOMAIN_FED_AGREEMENT = b"GSX-LTP:fed-agreement:v1\x00"
-DOMAIN_JWT_TOKEN = b"GSX-LTP:jwt-token:v1\x00"
-DOMAIN_PEER_GOSSIP = b"GSX-LTP:peer-gossip:v1\x00"
-DOMAIN_ZK_TRANSFER = b"GSX-LTP:zk-transfer:v1\x00"
-DOMAIN_GATEWAY_ATTEST = b"GSX-LTP:gateway-attest:v1\x00"
-DOMAIN_EXTERNAL_EVENT = b"GSX-LTP:external-event:v1\x00"
-DOMAIN_MULTI_VM_STATE_ROOT = b"GSX-LTP:multi-vm-state-root:v1\x00"
-DOMAIN_MULTI_VM_ATTEST = b"GSX-LTP:multi-vm-attest:v1\x00"
-DOMAIN_BLS_SIGN = b"GSX-LTP:bls-sign:v1\x00"
-DOMAIN_BLS_ATTEST = b"GSX-LTP:bls-attest:v1\x00"
+DOMAIN_ENTITY_ID = b"SUWAPPU-LTP:entity-id:v1\x00"
+DOMAIN_COMMIT_SIGN = b"SUWAPPU-LTP:commit-sign:v1\x00"
+DOMAIN_COMMIT_RECORD = b"SUWAPPU-LTP:commit-record:v1\x00"
+DOMAIN_STH_SIGN = b"SUWAPPU-LTP:sth-sign:v1\x00"
+DOMAIN_SHARD_NONCE = b"SUWAPPU-LTP:shard-nonce:v1\x00"
+DOMAIN_APPROVAL_RECEIPT = b"SUWAPPU-LTP:approval-receipt:v1\x00"
+DOMAIN_ANCHOR_DIGEST = b"SUWAPPU-LTP:anchor-digest:v1\x00"
+DOMAIN_SIGNED_ENVELOPE = b"SUWAPPU-LTP:signed-envelope:v1\x00"
+DOMAIN_SIGNER_POLICY = b"SUWAPPU-LTP:signer-policy:v1\x00"
+DOMAIN_LATTICE_KEY = b"SUWAPPU-LTP:lattice-key:v1\x00"
+DOMAIN_BRIDGE_MSG = b"SUWAPPU-LTP:bridge-msg:v1\x00"
+DOMAIN_NODE_HANDSHAKE = b"SUWAPPU-LTP:node-handshake:v1\x00"
+DOMAIN_FRAUD_PROOF = b"SUWAPPU-LTP:fraud-proof:v1\x00"
+DOMAIN_CHALLENGE = b"SUWAPPU-LTP:challenge:v1\x00"
+DOMAIN_WATCHER = b"SUWAPPU-LTP:watcher:v1\x00"
+DOMAIN_ZK_BRIDGE = b"SUWAPPU-LTP:zk-bridge:v1\x00"
+DOMAIN_KEY_ROTATION = b"SUWAPPU-LTP:key-rotation:v1\x00"
+DOMAIN_KEY_ADMISSION = b"SUWAPPU-LTP:key-admission:v1\x00"
+DOMAIN_NODE_ENDORSEMENT = b"SUWAPPU-LTP:node-endorsement:v1\x00"
+DOMAIN_GOVERNANCE_VOTE = b"SUWAPPU-LTP:governance-vote:v1\x00"
+DOMAIN_NIR = b"SUWAPPU-LTP:nir:v1\x00"
+DOMAIN_FED_AGREEMENT = b"SUWAPPU-LTP:fed-agreement:v1\x00"
+DOMAIN_JWT_TOKEN = b"SUWAPPU-LTP:jwt-token:v1\x00"
+DOMAIN_PEER_GOSSIP = b"SUWAPPU-LTP:peer-gossip:v1\x00"
+DOMAIN_ZK_TRANSFER = b"SUWAPPU-LTP:zk-transfer:v1\x00"
+DOMAIN_GATEWAY_ATTEST = b"SUWAPPU-LTP:gateway-attest:v1\x00"
+DOMAIN_EXTERNAL_EVENT = b"SUWAPPU-LTP:external-event:v1\x00"
+DOMAIN_MULTI_VM_STATE_ROOT = b"SUWAPPU-LTP:multi-vm-state-root:v1\x00"
+DOMAIN_MULTI_VM_ATTEST = b"SUWAPPU-LTP:multi-vm-attest:v1\x00"
+DOMAIN_BLS_SIGN = b"SUWAPPU-LTP:bls-sign:v1\x00"
+DOMAIN_BLS_ATTEST = b"SUWAPPU-LTP:bls-attest:v1\x00"
 
 
 # ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 
 `src/ltp/bls.py::BLS` signs under py_ecc's `G2ProofOfPossession` ciphersuite,
 whose hash-to-curve DST is `BLS_SIG_BLS12381G2_XMD:SHA-256_POP_`. The cross-
-repo corridor surface in `gsx-dag/crates/gsx-crypto/src/bls.rs` uses
+repo corridor surface in `suwappu-dag/crates/suwappu-crypto/src/bls.rs` uses
 `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_`. Signatures produced under one
 DST will never verify under the other, so the corridor pipeline cannot route
 through the existing `BLS` class.

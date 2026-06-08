@@ -8,7 +8,7 @@ import {TimelockController} from "@openzeppelin/contracts/governance/TimelockCon
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /// @title DeployTestnet
-/// @notice GSX Testnet deployment — UUPS proxy + multi-sig + timelock admin.
+/// @notice SUWAPPU Testnet deployment — UUPS proxy + multi-sig + timelock admin.
 ///
 /// Architecture:
 ///   LTPMultiSig (proposer/executor/canceller)
@@ -30,7 +30,7 @@ contract DeployTestnet is Script {
 
         // 3. Deploy 2-of-2 multi-sig with both operator wallets
         address deployer = msg.sender;
-        address operator = vm.envAddress("GSX_OPERATOR_ADDRESS");
+        address operator = vm.envAddress("SUWAPPU_OPERATOR_ADDRESS");
 
         address[] memory owners = new address[](2);
         owners[0] = deployer;
@@ -61,7 +61,7 @@ contract DeployTestnet is Script {
 
         vm.stopBroadcast();
 
-        console.log("=== GSX Testnet Deployment (v3 - Timelock Governance) ===");
+        console.log("=== SUWAPPU Testnet Deployment (v3 - Timelock Governance) ===");
         console.log("Implementation:", address(implementation));
         console.log("Proxy (registry):", address(proxy));
         console.log("MultiSig:", address(multisig));

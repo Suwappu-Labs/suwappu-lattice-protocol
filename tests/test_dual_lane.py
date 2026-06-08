@@ -1,5 +1,5 @@
 """
-Tests for the GSX Dual-Lane Cryptographic Architecture.
+Tests for the SUWAPPU Dual-Lane Cryptographic Architecture.
 
 Covers:
   - Lane isolation (canonical → sha3-256:, internal → blake3: or sha3-256: fallback)

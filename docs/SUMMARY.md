@@ -23,7 +23,7 @@
 
 * [Whitepaper](WHITEPAPER.md)
 * [Architecture](design-decisions/ARCHITECTURE.md)
-* [GSX DAG and GSX-DB Integration](design-decisions/GSX_DAG_DB_INTEGRATION.md)
+* [SUWAPPU DAG and SUWAPPU-DB Integration](design-decisions/SUWAPPU_DAG_DB_INTEGRATION.md)
 * [Corridor Integration](CORRIDOR_INTEGRATION.md)
 * [Streaming Protocol](design-decisions/STREAMING_PROTOCOL.md)
 * [ZK Transfer Mode](design-decisions/ZK_TRANSFER_MODE.md)

@@ -1,4 +1,4 @@
-"""Gateway VM — POA attestation gateway for GSX devnet."""
+"""Gateway VM — POA attestation gateway for SUWAPPU devnet."""
 
 from .anchor_client import (
     CircuitBreaker,

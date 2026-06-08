@@ -4,30 +4,30 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 
 /// @title CrossChainForkTest
-/// @notice Fork tests against both GSX Testnet and Base Sepolia registries.
-/// @dev Requires GSX_RPC_URL and BASE_SEPOLIA_RPC_URL env vars. Skips if missing.
+/// @notice Fork tests against both SUWAPPU Testnet and Base Sepolia registries.
+/// @dev Requires SUWAPPU_RPC_URL and BASE_SEPOLIA_RPC_URL env vars. Skips if missing.
 contract CrossChainForkTest is Test {
     // Deployed registry proxies
-    address constant GSX_PROXY = 0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4;
+    address constant SUWAPPU_PROXY = 0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4;
     address constant BASE_PROXY = 0x79eF1B7914f98C5C1404617449AB1f377c475996;
 
     // Signer VK hash registered on Base Sepolia deploy (from L2_INITIAL_SIGNERS)
     bytes32 constant SIGNER_VK_HASH = 0x869ccc023e1fe777e23c0c67c8bf4eba3a67ac6bdeef5028514575829e79456a;
 
-    uint256 gsxFork;
+    uint256 suwappuFork;
     uint256 baseFork;
-    bool gsxAvailable;
+    bool suwappuAvailable;
     bool baseAvailable;
 
     function setUp() public {
         // Use envOr to avoid revert when env vars are missing (CI)
-        string memory gsxRpc = vm.envOr("GSX_RPC_URL", string(""));
+        string memory suwappuRpc = vm.envOr("SUWAPPU_RPC_URL", string(""));
         string memory baseRpc = vm.envOr("BASE_SEPOLIA_RPC_URL", string(""));
 
-        if (bytes(gsxRpc).length > 0) {
-            try vm.createFork(gsxRpc) returns (uint256 forkId) {
-                gsxFork = forkId;
-                gsxAvailable = true;
+        if (bytes(suwappuRpc).length > 0) {
+            try vm.createFork(suwappuRpc) returns (uint256 forkId) {
+                suwappuFork = forkId;
+                suwappuAvailable = true;
             } catch {}
         }
 
@@ -39,21 +39,21 @@ contract CrossChainForkTest is Test {
         }
     }
 
-    /// @notice Both registries report version >= 5 (GSX v5, Base v6).
+    /// @notice Both registries report version >= 5 (SUWAPPU v5, Base v6).
     function test_both_registries_version() public {
-        if (!gsxAvailable || !baseAvailable) {
+        if (!suwappuAvailable || !baseAvailable) {
             emit log("SKIP: RPC URLs not available");
             return;
         }
 
-        // Check GSX version (v5+)
-        vm.selectFork(gsxFork);
-        (bool ok1, bytes memory data1) = GSX_PROXY.staticcall(
+        // Check SUWAPPU version (v5+)
+        vm.selectFork(suwappuFork);
+        (bool ok1, bytes memory data1) = SUWAPPU_PROXY.staticcall(
             abi.encodeWithSignature("version()")
         );
-        assertTrue(ok1, "GSX version() call failed");
-        uint256 gsxVersion = abi.decode(data1, (uint256));
-        assertGe(gsxVersion, 5, "GSX version should be >= 5");
+        assertTrue(ok1, "SUWAPPU version() call failed");
+        uint256 suwappuVersion = abi.decode(data1, (uint256));
+        assertGe(suwappuVersion, 5, "SUWAPPU version should be >= 5");
 
         // Check Base version (v6)
         vm.selectFork(baseFork);
@@ -65,9 +65,9 @@ contract CrossChainForkTest is Test {
         assertEq(baseVersion, 6, "Base version should be 6");
     }
 
-    /// @notice Anchor on GSX fork is NOT visible on Base fork (chain isolation).
+    /// @notice Anchor on SUWAPPU fork is NOT visible on Base fork (chain isolation).
     function test_cross_chain_isolation() public {
-        if (!gsxAvailable || !baseAvailable) {
+        if (!suwappuAvailable || !baseAvailable) {
             emit log("SKIP: RPC URLs not available");
             return;
         }
@@ -75,14 +75,14 @@ contract CrossChainForkTest is Test {
         // Use a unique test digest
         bytes32 testDigest = keccak256("cross-chain-isolation-test-4d");
 
-        // Check it's NOT anchored on GSX
-        vm.selectFork(gsxFork);
-        (bool ok1, bytes memory data1) = GSX_PROXY.staticcall(
+        // Check it's NOT anchored on SUWAPPU
+        vm.selectFork(suwappuFork);
+        (bool ok1, bytes memory data1) = SUWAPPU_PROXY.staticcall(
             abi.encodeWithSignature("isAnchored(bytes32)", testDigest)
         );
-        assertTrue(ok1, "GSX isAnchored call failed");
-        bool anchoredOnGsx = abi.decode(data1, (bool));
-        assertFalse(anchoredOnGsx, "Test digest should not exist on GSX");
+        assertTrue(ok1, "SUWAPPU isAnchored call failed");
+        bool anchoredOnSuwappu = abi.decode(data1, (bool));
+        assertFalse(anchoredOnSuwappu, "Test digest should not exist on SUWAPPU");
 
         // Check it's NOT anchored on Base either
         vm.selectFork(baseFork);

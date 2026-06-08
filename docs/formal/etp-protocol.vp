@@ -5,7 +5,7 @@
 // ML-KEM-768 is modeled as DH key exchange (semantically equivalent
 // for confidentiality analysis under symbolic model).
 //
-// Author: Global Settlement Network
+// Author: Suwappu
 // Date: 2026-03-29
 
 attacker[active]

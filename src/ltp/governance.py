@@ -9,7 +9,7 @@ Defines the policy framework for multi-signer authorization:
 Integrates with existing ComplianceRole and Permission enums from
 compliance.py (read-only imports).
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.7
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.7
 """
 
 from __future__ import annotations

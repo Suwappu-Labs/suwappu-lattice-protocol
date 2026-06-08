@@ -2,13 +2,13 @@
 
 ## Boundary Statement
 
-`gsx-lattice-protocol` is the transfer, attestation, gateway, and anchor layer
-for the GSX stack. The assessment boundary for this repository includes code,
+`suwappu-lattice-protocol` is the transfer, attestation, gateway, and anchor layer
+for the SUWAPPU stack. The assessment boundary for this repository includes code,
 configuration, contracts, tests, and operational evidence that prove LTP can
 run as a hardened component inside a FedRAMP High cloud service offering.
 
-The boundary does not include the GSX ordering engine or the GSX state
-substrate. Those remain owned by `gsx-dag` and `gsx-db` and must provide their
+The boundary does not include the SUWAPPU ordering engine or the SUWAPPU state
+substrate. Those remain owned by `suwappu-dag` and `suwappu-db` and must provide their
 own release evidence.
 
 ## In Boundary
@@ -30,8 +30,8 @@ own release evidence.
 
 | External system | Owner | Required evidence |
 |---|---|---|
-| `gsx-dag` | DAG team | ordered-block integrity, validator consensus, LTP corridor attestation tests |
-| `gsx-db` | DB team | state mutation controls, state root correctness, recovery, L2 sync tests |
+| `suwappu-dag` | DAG team | ordered-block integrity, validator consensus, LTP corridor attestation tests |
+| `suwappu-db` | DB team | state mutation controls, state root correctness, recovery, L2 sync tests |
 | KMS/HSM | Cloud/security team | FIPS 140-3 module boundary and validation certificate evidence |
 | SIEM/audit sink | SecOps | ingest endpoint, retention, alert routing, access controls |
 | IdP / PKI | Platform security | identity proofing, certificate issuance, revocation, mTLS trust anchors |

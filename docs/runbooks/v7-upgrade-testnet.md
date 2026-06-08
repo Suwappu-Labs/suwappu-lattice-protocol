@@ -1,7 +1,7 @@
 # v7 Upgrade — testnet ceremony
 
 Step-by-step ceremony for swapping the v6 implementation behind the
-GSX testnet (chain `103115120`) and Base Sepolia (chain `84532`)
+SUWAPPU testnet (chain `103115120`) and Base Sepolia (chain `84532`)
 `LTPAnchorRegistry` proxies with the v7 implementation that's on
 `main` today. Mainnet runs from a different runbook
 (`docs/runbooks/mainnet-deploy.md`, Phase D — not yet authored).
@@ -46,11 +46,11 @@ cd contracts && forge build --sizes
 # 3. Storage-layout dry-run against the live testnets. This catches
 #    slot reordering BEFORE the upgrade tx broadcasts. Path is relative
 #    to the Foundry project root (= `contracts/` after the `cd` above).
-export GSX_RPC_URL=<the gsx testnet rpc you have>
+export SUWAPPU_RPC_URL=<the suwappu testnet rpc you have>
 export BASE_SEPOLIA_RPC_URL=<base sepolia rpc>
 forge test --match-path test/deployment/UpgradeV7.dryrun.t.sol -vv
 
-# All four tests must pass (gsx + base × layout + pause-rehearsal).
+# All four tests must pass (suwappu + base × layout + pause-rehearsal).
 ```
 
 If any dry-run test fails, **STOP**. The upgrade will revert or — worse
@@ -60,15 +60,15 @@ proceeding.
 
 ---
 
-## Ceremony — GSX testnet first
+## Ceremony — SUWAPPU testnet first
 
 The 60-second timelock means the whole thing takes ~5 minutes if both
 signers are at their keyboards. Run from a clean shell with:
 
 ```bash
-export GSX_RPC_URL=...
-export GSX_DEPLOYER_KEY=...   # the deployer wallet from DEPLOYED_CONTRACTS.md
-export GSX_OPERATOR_KEY=...   # the second multisig signer
+export SUWAPPU_RPC_URL=...
+export SUWAPPU_DEPLOYER_KEY=...   # the deployer wallet from DEPLOYED_CONTRACTS.md
+export SUWAPPU_OPERATOR_KEY=...   # the second multisig signer
 ```
 
 ### Step 1 — Deploy v7 impl + submit schedule + execute (deployer)
@@ -76,9 +76,9 @@ export GSX_OPERATOR_KEY=...   # the second multisig signer
 ```bash
 cd contracts
 forge script script/UpgradeV7.s.sol --sig "step1()" \
-    --rpc-url $GSX_RPC_URL \
+    --rpc-url $SUWAPPU_RPC_URL \
     --broadcast \
-    --private-key $GSX_DEPLOYER_KEY
+    --private-key $SUWAPPU_DEPLOYER_KEY
 ```
 
 Save the printed `Schedule txId` and `Execute txId` — you need both
@@ -90,17 +90,17 @@ Run twice, once per txId:
 
 ```bash
 forge script script/UpgradeV7.s.sol --sig "step2(uint256)" <scheduleTxId> \
-    --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_OPERATOR_KEY
+    --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_OPERATOR_KEY
 
 forge script script/UpgradeV7.s.sol --sig "step2(uint256)" <executeTxId> \
-    --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_OPERATOR_KEY
+    --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_OPERATOR_KEY
 ```
 
 ### Step 3 — Execute the schedule call through the multisig (deployer)
 
 ```bash
 forge script script/UpgradeV7.s.sol --sig "step3(uint256)" <scheduleTxId> \
-    --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_DEPLOYER_KEY
+    --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_DEPLOYER_KEY
 ```
 
 The timelock countdown starts now. Wait at least the delay step3
@@ -112,7 +112,7 @@ this without redeploying), then broadcast step4. step4 reverts with
 
 ```bash
 forge script script/UpgradeV7.s.sol --sig "step4(uint256)" <executeTxId> \
-    --rpc-url $GSX_RPC_URL --broadcast --private-key $GSX_DEPLOYER_KEY
+    --rpc-url $SUWAPPU_RPC_URL --broadcast --private-key $SUWAPPU_DEPLOYER_KEY
 ```
 
 step4 logs `Registry version:` and `Proxy:` as a sanity check; it does
@@ -126,16 +126,16 @@ the ceremony.
 ### Post-flight — storage-layout verification (live state)
 
 ```bash
-# The GSX testnet LTPAnchorRegistry proxy address (source-of-truth:
+# The SUWAPPU testnet LTPAnchorRegistry proxy address (source-of-truth:
 # DEPLOYED_CONTRACTS.md). Same value as the $REGISTRY variable
 # exported in the pause-rehearsal section below.
 export PROXY=0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4
 
 forge inspect LTPAnchorRegistry storage-layout > /tmp/v7-layout.json
 # Compare against the post-upgrade slot reads:
-cast call $PROXY "admin()(address)"   --rpc-url $GSX_RPC_URL
-cast call $PROXY "paused()(bool)"     --rpc-url $GSX_RPC_URL
-cast call $PROXY "version()(uint256)" --rpc-url $GSX_RPC_URL
+cast call $PROXY "admin()(address)"   --rpc-url $SUWAPPU_RPC_URL
+cast call $PROXY "paused()(bool)"     --rpc-url $SUWAPPU_RPC_URL
+cast call $PROXY "version()(uint256)" --rpc-url $SUWAPPU_RPC_URL
 ```
 
 The dry-run test asserted these; the live-state read confirms the
@@ -146,11 +146,11 @@ broadcast tx didn't deviate from the simulated path.
 ## Then: Base Sepolia
 
 The same script targets Base Sepolia (chain 84532). Open a fresh
-shell **or** `unset` the GSX vars first — chain-targeting mistakes
+shell **or** `unset` the SUWAPPU vars first — chain-targeting mistakes
 here overwrite the wrong proxy:
 
 ```bash
-unset GSX_RPC_URL GSX_DEPLOYER_KEY GSX_OPERATOR_KEY PROXY
+unset SUWAPPU_RPC_URL SUWAPPU_DEPLOYER_KEY SUWAPPU_OPERATOR_KEY PROXY
 ```
 
 Export the Base Sepolia values (source-of-truth:
@@ -165,7 +165,7 @@ export BASE_SEPOLIA_RPC_URL=<base sepolia rpc>
 export BASE_SEPOLIA_DEPLOYER_KEY=<base sepolia deployer key>
 export BASE_SEPOLIA_OPERATOR_KEY=<base sepolia operator key>
 
-# In `contracts/script/UpgradeV7.s.sol`, replace the GSX address
+# In `contracts/script/UpgradeV7.s.sol`, replace the SUWAPPU address
 # constants (PROXY/MULTISIG/TIMELOCK) inline with the Base Sepolia
 # values from the comment block above. Re-running step1-4 below
 # then invokes the same `script/UpgradeV7.s.sol` file with the
@@ -178,16 +178,16 @@ Now repeat steps 1-4 above with these literal substitutions in
 
 | In step 1-4 | Replace with |
 |---|---|
-| `$GSX_RPC_URL` | `$BASE_SEPOLIA_RPC_URL` |
-| `$GSX_DEPLOYER_KEY` | `$BASE_SEPOLIA_DEPLOYER_KEY` |
-| `$GSX_OPERATOR_KEY` | `$BASE_SEPOLIA_OPERATOR_KEY` |
+| `$SUWAPPU_RPC_URL` | `$BASE_SEPOLIA_RPC_URL` |
+| `$SUWAPPU_DEPLOYER_KEY` | `$BASE_SEPOLIA_DEPLOYER_KEY` |
+| `$SUWAPPU_OPERATOR_KEY` | `$BASE_SEPOLIA_OPERATOR_KEY` |
 
 For the post-flight verification block, swap the proxy too:
 
 ```bash
 export PROXY=0x79eF1B7914f98C5C1404617449AB1f377c475996
-# Re-run the three `cast call $PROXY ...` reads from the GSX
-# post-flight block, substituting $BASE_SEPOLIA_RPC_URL for $GSX_RPC_URL.
+# Re-run the three `cast call $PROXY ...` reads from the SUWAPPU
+# post-flight block, substituting $BASE_SEPOLIA_RPC_URL for $SUWAPPU_RPC_URL.
 ```
 
 ---
@@ -213,7 +213,7 @@ pattern in `UpgradeV7.s.sol`.
 ### Before starting the drill
 
 The ceremony's step 1 left you in `contracts/`; the helper script
-lives at the repo root. Reset the working directory back to GSX env
+lives at the repo root. Reset the working directory back to SUWAPPU env
 vars (if you ran the Base Sepolia ceremony in the same shell) and
 export the addresses + keys every step below references:
 
@@ -221,12 +221,12 @@ export the addresses + keys every step below references:
 cd "$(git rev-parse --show-toplevel)"
 
 # If you continued from the Base Sepolia run, clear its env vars so
-# they cannot accidentally re-target. The drill is GSX-only.
+# they cannot accidentally re-target. The drill is SUWAPPU-only.
 unset BASE_SEPOLIA_RPC_URL BASE_SEPOLIA_DEPLOYER_KEY \
       BASE_SEPOLIA_OPERATOR_KEY PROXY
 
-# GSX testnet (chain 103115120) — source-of-truth: DEPLOYED_CONTRACTS.md
-export GSX_RPC_URL=<gsx testnet rpc>
+# SUWAPPU testnet (chain 103115120) — source-of-truth: DEPLOYED_CONTRACTS.md
+export SUWAPPU_RPC_URL=<suwappu testnet rpc>
 export MULTISIG=0x0106A79e9236009a05742B3fB1e3B7a52F44373D
 export REGISTRY=0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4
 export TIMELOCK=0x7C2665F7e68FE635ee8F10aa0130AEBC603a9Db8
@@ -237,7 +237,7 @@ export LTP_COSIGNER_PRIVATE_KEY=<2-of-2 signer B — confirms>
 export LTP_OWNER_PRIVATE_KEY=<any multisig owner — fires executeTransaction>
 ```
 
-### Drill steps (do these on GSX testnet, NOT mainnet)
+### Drill steps (do these on SUWAPPU testnet, NOT mainnet)
 
 1. **Time start.** Someone calls `T0` — note the wall-clock minute.
 
@@ -247,7 +247,7 @@ export LTP_OWNER_PRIVATE_KEY=<any multisig owner — fires executeTransaction>
 
    ```bash
    scripts/propose_pause.sh \
-       --rpc-url   $GSX_RPC_URL \
+       --rpc-url   $SUWAPPU_RPC_URL \
        --multisig  $MULTISIG \
        --registry  $REGISTRY \
        --timelock  $TIMELOCK
@@ -279,7 +279,7 @@ export LTP_OWNER_PRIVATE_KEY=<any multisig owner — fires executeTransaction>
 10. **Verify** `paused == true`:
 
     ```bash
-    cast call $REGISTRY 'paused()(bool)' --rpc-url $GSX_RPC_URL
+    cast call $REGISTRY 'paused()(bool)' --rpc-url $SUWAPPU_RPC_URL
     ```
 
 11. **Time end.** Record `T_paused - T0`. Target < 5 min.
@@ -300,7 +300,7 @@ export LTP_OWNER_PRIVATE_KEY=<any multisig owner — fires executeTransaction>
     # Timelock delay is governance-updatable; a stale literal here would
     # cause schedule(...) to revert and delay restoring service.
     TIMELOCK_DELAY=$(cast call $TIMELOCK 'getMinDelay()(uint256)' \
-        --rpc-url $GSX_RPC_URL)
+        --rpc-url $SUWAPPU_RPC_URL)
     TIMELOCK_DELAY="${TIMELOCK_DELAY%% *}"
     echo "timelock.getMinDelay() == $TIMELOCK_DELAY seconds"
 
@@ -315,7 +315,7 @@ export LTP_OWNER_PRIVATE_KEY=<any multisig owner — fires executeTransaction>
     cast send $MULTISIG \
         'submitTransaction(address,uint256,bytes)' \
         $TIMELOCK 0 $SCHEDULE_UNPAUSE \
-        --rpc-url $GSX_RPC_URL --private-key $LTP_PROPOSER_PRIVATE_KEY
+        --rpc-url $SUWAPPU_RPC_URL --private-key $LTP_PROPOSER_PRIVATE_KEY
     # → capture <scheduleTxId>; STEP B/C as above
 
     sleep "$TIMELOCK_DELAY"
@@ -329,11 +329,11 @@ export LTP_OWNER_PRIVATE_KEY=<any multisig owner — fires executeTransaction>
     cast send $MULTISIG \
         'submitTransaction(address,uint256,bytes)' \
         $TIMELOCK 0 $EXECUTE_UNPAUSE \
-        --rpc-url $GSX_RPC_URL --private-key $LTP_PROPOSER_PRIVATE_KEY
+        --rpc-url $SUWAPPU_RPC_URL --private-key $LTP_PROPOSER_PRIVATE_KEY
     # → capture <executeTxId>; STEP F/G as above
 
     # Verify
-    cast call $REGISTRY 'paused()(bool)' --rpc-url $GSX_RPC_URL
+    cast call $REGISTRY 'paused()(bool)' --rpc-url $SUWAPPU_RPC_URL
     # expect: false
     ```
 
@@ -352,7 +352,7 @@ governance committee uses this row in the Phase D mainnet sign-off.
 
 | Symptom | Cause | Recovery |
 |---|---|---|
-| `step1` reverts with `"NotOwner"` | Wrong key for `$GSX_DEPLOYER_KEY` | Confirm wallet — see DEPLOYED_CONTRACTS.md `Deployer` row |
+| `step1` reverts with `"NotOwner"` | Wrong key for `$SUWAPPU_DEPLOYER_KEY` | Confirm wallet — see DEPLOYED_CONTRACTS.md `Deployer` row |
 | `step3` reverts with `"NotEnoughConfirmations"` | Operator hasn't confirmed the schedule txId | Run `step2(<scheduleTxId>)` first |
 | `step4` reverts with `"TimelockController: operation is not ready"` | Less than the timelock delay since step 3 (step3's printed `delay: N`) | Wait the remaining seconds, retry |
 | `step4` reverts with `"NotEnoughConfirmations"` | Operator hasn't confirmed the execute txId | Run `step2(<executeTxId>)` and retry |

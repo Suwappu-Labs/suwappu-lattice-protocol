@@ -36,7 +36,7 @@ If/when a dApp is added, the recommended defense stack:
 | C2 | Domain transfer lock enabled at the registrar level |
 | C3 | DNSSEC enabled on the zone |
 | C4 | DNS A records pinned to a CDN whose TLS cert is shipped with the dApp client (cert pinning at the protocol level) |
-| C5 | Dedicated registrar account NOT shared with other GSX domains; password manager + hardware-key gated |
+| C5 | Dedicated registrar account NOT shared with other SUWAPPU domains; password manager + hardware-key gated |
 | C6 | Monitor the zone via an external service (e.g., DNSWatch) for any record change; alert immediately |
 
 These will move into `OPERATOR_RUNBOOK.md` §13.7 ("Frontend

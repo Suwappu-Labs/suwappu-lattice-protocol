@@ -3,7 +3,7 @@ Integration tests for cross-chain LiveBridge.
 
 Requires live chain access:
   - BASE_SEPOLIA_RPC_URL + BASE_SEPOLIA_OPERATOR_KEY
-  - GSX_RPC_URL + GSX_OPERATOR_KEY (for dual_write tests)
+  - SUWAPPU_RPC_URL + SUWAPPU_OPERATOR_KEY (for dual_write tests)
 
 All tests skip gracefully when env vars are not set.
 """
@@ -22,8 +22,8 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _have_gsx() -> bool:
-    return bool(os.environ.get("GSX_RPC_URL") and os.environ.get("GSX_OPERATOR_KEY"))
+def _have_suwappu() -> bool:
+    return bool(os.environ.get("SUWAPPU_RPC_URL") and os.environ.get("SUWAPPU_OPERATOR_KEY"))
 
 
 @pytest.fixture(scope="module")
@@ -42,18 +42,18 @@ def base_client():
 
 
 @pytest.fixture(scope="module")
-def gsx_client():
-    """AnchorClient connected to GSX Testnet. Returns None if not available."""
-    if not _have_gsx():
+def suwappu_client():
+    """AnchorClient connected to SUWAPPU Testnet. Returns None if not available."""
+    if not _have_suwappu():
         return None
     from src.ltp.anchor.chain_config import ChainConfig, create_anchor_client
 
     config = ChainConfig(
         chain_id=103115120,
-        label="gsx_testnet",
-        rpc_url=os.environ["GSX_RPC_URL"],
+        label="suwappu_testnet",
+        rpc_url=os.environ["SUWAPPU_RPC_URL"],
         registry_address="0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4",
-        operator_key=os.environ["GSX_OPERATOR_KEY"],
+        operator_key=os.environ["SUWAPPU_OPERATOR_KEY"],
     )
     return create_anchor_client(config)
 
@@ -90,8 +90,8 @@ def keypairs():
 class TestCrossChainTransfer:
     """Live cross-chain transfer tests using Base Sepolia as L1."""
 
-    def test_cross_chain_transfer_l1_only(self, protocol, base_client, gsx_client, keypairs):
-        """Base as L1, GSX as L2, dual_write=False. Anchor on Base only."""
+    def test_cross_chain_transfer_l1_only(self, protocol, base_client, suwappu_client, keypairs):
+        """Base as L1, SUWAPPU as L2, dual_write=False. Anchor on Base only."""
         from src.ltp.bridge.live import LiveBridge
         from src.ltp.bridge.message import BridgeMessage
 
@@ -101,17 +101,17 @@ class TestCrossChainTransfer:
             operator_keypair=keypairs["operator"],
             l2_verifier_keypair=keypairs["verifier"],
             source_chain="base_sepolia",
-            dest_chain="gsx_testnet",
+            dest_chain="suwappu_testnet",
             l1_chain_id=84532,
-            l2_client=gsx_client,
-            l2_chain_id=103115120 if gsx_client else None,
+            l2_client=suwappu_client,
+            l2_chain_id=103115120 if suwappu_client else None,
             dual_write=False,
         )
 
         msg = BridgeMessage(
             msg_type="token_lock",
             source_chain="base_sepolia",
-            dest_chain="gsx_testnet",
+            dest_chain="suwappu_testnet",
             sender="0xIntegrationTestSender",
             recipient="0xIntegrationTestRecipient",
             payload={"token": "USDC", "amount": 1, "test": True},
@@ -126,29 +126,29 @@ class TestCrossChainTransfer:
         assert result.l2_anchor_tx_hash is None
         assert result.is_anchored_on_l2 is None
 
-    def test_cross_chain_result_metadata(self, protocol, base_client, gsx_client, keypairs):
+    def test_cross_chain_result_metadata(self, protocol, base_client, suwappu_client, keypairs):
         """Verify cross_chain flag and real block heights."""
         from src.ltp.bridge.live import LiveBridge
         from src.ltp.bridge.message import BridgeMessage
 
-        has_gsx = gsx_client is not None
+        has_suwappu = suwappu_client is not None
         bridge = LiveBridge(
             protocol=protocol,
             l1_client=base_client,
             operator_keypair=keypairs["operator"],
             l2_verifier_keypair=keypairs["verifier"],
             source_chain="base_sepolia",
-            dest_chain="gsx_testnet",
+            dest_chain="suwappu_testnet",
             l1_chain_id=84532,
-            l2_client=gsx_client if has_gsx else None,
-            l2_chain_id=103115120 if has_gsx else None,
+            l2_client=suwappu_client if has_suwappu else None,
+            l2_chain_id=103115120 if has_suwappu else None,
             dual_write=False,
         )
 
         msg = BridgeMessage(
             msg_type="state_update",
             source_chain="base_sepolia",
-            dest_chain="gsx_testnet",
+            dest_chain="suwappu_testnet",
             sender="0xMetadataTest",
             recipient="0xMetadataTest",
             payload={"key": "metadata_test"},
@@ -157,17 +157,17 @@ class TestCrossChainTransfer:
 
         result = bridge.transfer(msg)
         assert result is not None
-        assert result.cross_chain == has_gsx
+        assert result.cross_chain == has_suwappu
         assert result.l1_chain_id == 84532
         # Block height should be a real positive number
         assert result.l1_block_height > 0
 
     @pytest.mark.skipif(
-        not _have_gsx(),
-        reason="GSX_RPC_URL/GSX_OPERATOR_KEY not set — skipping dual_write test",
+        not _have_suwappu(),
+        reason="SUWAPPU_RPC_URL/SUWAPPU_OPERATOR_KEY not set — skipping dual_write test",
     )
-    def test_cross_chain_dual_write(self, protocol, base_client, gsx_client, keypairs):
-        """Anchor on Base, re-anchor on GSX (dual_write=True).
+    def test_cross_chain_dual_write(self, protocol, base_client, suwappu_client, keypairs):
+        """Anchor on Base, re-anchor on SUWAPPU (dual_write=True).
 
         Requires signer registered on both chains.
         """
@@ -180,9 +180,9 @@ class TestCrossChainTransfer:
             operator_keypair=keypairs["operator"],
             l2_verifier_keypair=keypairs["verifier"],
             source_chain="base_sepolia",
-            dest_chain="gsx_testnet",
+            dest_chain="suwappu_testnet",
             l1_chain_id=84532,
-            l2_client=gsx_client,
+            l2_client=suwappu_client,
             l2_chain_id=103115120,
             dual_write=True,
         )
@@ -190,7 +190,7 @@ class TestCrossChainTransfer:
         msg = BridgeMessage(
             msg_type="token_lock",
             source_chain="base_sepolia",
-            dest_chain="gsx_testnet",
+            dest_chain="suwappu_testnet",
             sender="0xDualWriteSender",
             recipient="0xDualWriteRecipient",
             payload={"token": "ETH", "amount": 1, "dual_write": True},
@@ -201,7 +201,7 @@ class TestCrossChainTransfer:
         assert result is not None
         assert result.is_anchored_on_l1 is True
 
-        # L2 re-anchor may fail if GSX signer not registered (non-fatal)
+        # L2 re-anchor may fail if SUWAPPU signer not registered (non-fatal)
         if result.l2_anchor_tx_hash is not None:
             assert result.is_anchored_on_l2 is True
             assert result.l2_chain_id == 103115120

@@ -485,7 +485,7 @@ An entity enters `DISPUTED` when:
 1. Freeze ingest for the affected entity: `PUT /admin/entities/<id>/freeze`.
 2. Run `etp-node dispute --entity <id> --export /tmp/evidence.tar.gz` —
    this collects local shards, peer responses, and STH inclusion proofs.
-3. Upload to the dispute S3 bucket (`s3://gsx-etp-disputes/<incident>/`).
+3. Upload to the dispute S3 bucket (`s3://suwappu-etp-disputes/<incident>/`).
 4. File an on-chain dispute:
    `cast send $REGISTRY "dispute(bytes32,bytes32)" $ENTITY_ID $EVIDENCE_HASH`.
 5. Wait for multisig resolution (up to 48h). Do not force-transition the
@@ -542,10 +542,10 @@ curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" \
 
 ## 12. Contact
 
-- **Core team:** core@globalsettlement.dev
-- **Security on-call:** security@globalsettlement.dev (PGP key on keybase)
-- **Slack:** `#etp-ops` (GSX workspace)
-- **Incident tracker:** https://github.com/GlobalSettlementNetwork/gsx-lattice-protocol/issues
+- **Core team:** core@suwappu.dev
+- **Security on-call:** security@suwappu.dev (PGP key on keybase)
+- **Slack:** `#etp-ops` (SUWAPPU workspace)
+- **Incident tracker:** https://github.com/suwappu/suwappu-lattice-protocol/issues
 
 ---
 
@@ -562,16 +562,16 @@ section is the human-decision side.
 
 | Slot | Role | Key custody |
 |---|---|---|
-| 1 | GSX engineering — region A | AWS KMS (us-east-1) gated by IAM + MFA |
-| 2 | GSX engineering — region B | GCP Cloud KMS (europe-west1) gated by IAM + MFA |
-| 3 | GSX engineering — region C | AWS KMS (ap-southeast-1) gated by IAM + MFA |
-| 4 | GSX founder / lead | Ledger hardware wallet in cold storage |
-| 5 | GSX founder / lead | Ledger hardware wallet (separate physical location) |
+| 1 | SUWAPPU engineering — region A | AWS KMS (us-east-1) gated by IAM + MFA |
+| 2 | SUWAPPU engineering — region B | GCP Cloud KMS (europe-west1) gated by IAM + MFA |
+| 3 | SUWAPPU engineering — region C | AWS KMS (ap-southeast-1) gated by IAM + MFA |
+| 4 | SUWAPPU founder / lead | Ledger hardware wallet in cold storage |
+| 5 | SUWAPPU founder / lead | Ledger hardware wallet (separate physical location) |
 | 6 | External audit firm cosigner | Audit firm's institutional custody |
 | 7 | Institutional partner cosigner | Partner's institutional custody |
 
 **Threshold = 5-of-7 (≈71%).** Matches Optimism / Arbitrum supermajority
-practice. Internal-only attack still requires all 5 GSX-controlled keys
+practice. Internal-only attack still requires all 5 SUWAPPU-controlled keys
 (slots 1–5); any 3-key compromise can't reach quorum.
 
 **Before deploying:**
@@ -669,7 +669,7 @@ release procedure. Summary:
    provenance via Sigstore, and creates a GitHub Release with the
    CHANGELOG section as the body.
 5. Verify with `gh attestation verify <artifact> --owner
-   GlobalSettlementNetwork`.
+   suwappu`.
 
 GPG signing is deferred — pipeline will be extended once the ops team
 provisions a release-signing key (HSM-backed; see §1 KMS setup).

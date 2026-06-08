@@ -17,7 +17,7 @@ uses.
 ### Path A — VS Code devcontainer (recommended)
 
 ```bash
-git clone <repo> && cd gsx-lattice-protocol
+git clone <repo> && cd suwappu-lattice-protocol
 code .
 # In VS Code, run: "Dev Containers: Reopen in Container"
 # Wait ~3–5 minutes for the first build; subsequent opens are instant.
@@ -30,7 +30,7 @@ solhint, foundryup, and the pre-commit git hook, then sanity-checks
 ### Path B — bare metal
 
 ```bash
-git clone <repo> && cd gsx-lattice-protocol
+git clone <repo> && cd suwappu-lattice-protocol
 python3.12 -m venv .venv && source .venv/bin/activate
 just setup
 ```

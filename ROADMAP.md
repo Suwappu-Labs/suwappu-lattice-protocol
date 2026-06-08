@@ -1,13 +1,13 @@
 # Roadmap
 
-`gsx-lattice-protocol` is the **Lattice Transfer Protocol** — the
+`suwappu-lattice-protocol` is the **Lattice Transfer Protocol** — the
 constant-size, post-quantum-conservative cross-chain attestation layer
-that bridges chains together under the Global Settlement Network. It is
+that bridges chains together under the Suwappu. It is
 the bridge/gateway tier sitting above the
-[`gsx-dag`](https://github.com/GlobalSettlementNetwork/gsx-dag) L1.
+[`suwappu-dag`](https://github.com/suwappu/suwappu-dag) L1.
 
 See [`CHANGELOG.md`](./CHANGELOG.md) for the shipped versions and the
-[GSX LTP academic paper](https://github.com/GlobalSettlementNetwork/gsx-papers/blob/main/papers/ltp/gsx_ltp_academic_v7.pdf)
+[SUWAPPU LTP academic paper](https://github.com/suwappu/suwappu-papers/blob/main/papers/ltp/suwappu_ltp_academic_v7.pdf)
 for the formal specification.
 
 ---
@@ -21,8 +21,8 @@ for the formal specification.
 | **2** | Q2 2026 | Gateway service — `deploy/run_gateway.sh`, docker compose + helm, preflight checks | ✅ |
 | **3** | Q3 2026 | Multi-chain corridor expansion — onboard the second + third source chains | 🟡 In flight |
 | **4** | Q3 2026 | DA non-availability slashing surface — substrate-side `Intent::SlashLTPProvider` follow-on | ⏳ Next |
-| **5** | Q4 2026 | Cross-DID STARK pipeline closure (SP1 / Plonky3 integration with `gsx-dag` precompile) | ⏳ |
-| **GA** | aligned with gsx-dag mainnet (M18–M24) | `gsx-lattice-protocol` v1.0 cut against mainnet genesis | ⏳ |
+| **5** | Q4 2026 | Cross-DID STARK pipeline closure (SP1 / Plonky3 integration with `suwappu-dag` precompile) | ⏳ |
+| **GA** | aligned with suwappu-dag mainnet (M18–M24) | `suwappu-lattice-protocol` v1.0 cut against mainnet genesis | ⏳ |
 
 ---
 
@@ -30,15 +30,15 @@ for the formal specification.
 
 The LTP cadence is keyed to the L1's bridge readiness:
 
-- LTP reference impl + gateway → consumed by `gsx-dag` Phase 4
+- LTP reference impl + gateway → consumed by `suwappu-dag` Phase 4
   (devnet) and Phase 5 (testnet) to clear the cross-chain attestation
   surface.
 - LTP DA-slashing → unblocks the substrate-side
-  `Intent::SlashLTPProvider` in `gsx-dag` (planned for v0.4.x).
-- LTP `v1.0` → cut against `gsx-dag` mainnet genesis.
+  `Intent::SlashLTPProvider` in `suwappu-dag` (planned for v0.4.x).
+- LTP `v1.0` → cut against `suwappu-dag` mainnet genesis.
 
 See the
-[`gsx-dag` ROADMAP](https://github.com/GlobalSettlementNetwork/gsx-dag/blob/main/ROADMAP.md)
+[`suwappu-dag` ROADMAP](https://github.com/suwappu/suwappu-dag/blob/main/ROADMAP.md)
 for the full mainnet plan.
 
 ---

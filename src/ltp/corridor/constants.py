@@ -1,6 +1,6 @@
-"""Cross-repo constants that bind LTP to gsx-dag/crates/gsx-ltp.
+"""Cross-repo constants that bind LTP to suwappu-dag/crates/suwappu-ltp.
 
-These constants must match `gsx-dag/crates/gsx-ltp/src/lib.rs` byte-for-byte.
+These constants must match `suwappu-dag/crates/suwappu-ltp/src/lib.rs` byte-for-byte.
 Any drift here will break wire compatibility with the DAG L1 corridor surface.
 """
 
@@ -17,9 +17,9 @@ LTP_ATTESTATION_QUORUM_SIZE = 9
 
 # Domain tags. These are passed to `sha3_256_domain(tag, data)` exactly as
 # encoded here so the resulting digests match the Rust crate.
-DOMAIN_TAG_ATTEST = b"GSX-LTP-ATTEST-V1"
-DOMAIN_TAG_CID = b"GSX-LTP-CID-V1"
-DOMAIN_TAG_DID_STARK = b"GSX-DID-STARK-V1"
+DOMAIN_TAG_ATTEST = b"SUWAPPU-LTP-ATTEST-V1"
+DOMAIN_TAG_CID = b"SUWAPPU-LTP-CID-V1"
+DOMAIN_TAG_DID_STARK = b"SUWAPPU-DID-STARK-V1"
 
 # Proof-of-possession domain for corridor SuperNode registration. Closes
 # LTP-A-015 (Boneh-Drijvers-Neven rogue-key attack on aggregate BLS) by
@@ -34,7 +34,7 @@ DOMAIN_TAG_CORRIDOR_POP = b"LTP-CORRIDOR-POP-V1"
 DOMAIN_TAG_DKG_COMMIT = b"LTP-DKG-COMMIT-V1"
 
 # BLS hash-to-curve domain separation tag for the corridor signing surface.
-# Matches `gsx-dag/crates/gsx-crypto/src/bls.rs::BLS_DST`. LTP's default BLS
+# Matches `suwappu-dag/crates/suwappu-crypto/src/bls.rs::BLS_DST`. LTP's default BLS
 # helper signs under py_ecc's `G2ProofOfPossession` DST instead, so the
 # corridor surface uses this constant explicitly when calling into blst.
 BLS_CORRIDOR_DST = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_"

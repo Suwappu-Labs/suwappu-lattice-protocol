@@ -65,11 +65,18 @@ contract SuwappuRefundEscrow is ReentrancyGuard {
     /// @notice Monotonically increasing round counter.
     uint256 public roundCount;
 
+    /// @notice Latest closesAt across all rounds. `sweepUnclaimed` is gated on
+    ///         this (C6 fix) so a closed round cannot be swept while another
+    ///         round's claim window is still open — the escrow is a shared pool.
+    uint64 public latestClosesAt;
+
     /// @notice roundId → round metadata.
     mapping(uint256 => Round) public rounds;
 
-    /// @notice roundId → claimant → claimed flag.
-    mapping(uint256 => mapping(address => bool)) public claimed;
+    /// @notice roundId → claimant → token → claimed flag.
+    ///         Keyed by token (C7 fix) so a multi-token entitlement in one round
+    ///         is not blocked after a single-token claim.
+    mapping(uint256 => mapping(address => mapping(address => bool))) public claimed;
 
     // -----------------------------------------------------------------------
     // Events
@@ -169,6 +176,8 @@ contract SuwappuRefundEscrow is ReentrancyGuard {
             exists:      true
         });
 
+        if (closesAt > latestClosesAt) latestClosesAt = closesAt; // C6: track newest window
+
         emit RoundOpened(roundId, root, closesAt, description);
     }
 
@@ -196,15 +205,15 @@ contract SuwappuRefundEscrow is ReentrancyGuard {
         Round storage r = rounds[roundId];
         if (!r.exists)                                   revert RoundNotFound(roundId);
         if (block.timestamp > r.closesAt)                revert RoundClosed(roundId, r.closesAt);
-        if (claimed[roundId][msg.sender])                revert AlreadyClaimed(roundId, msg.sender);
+        if (claimed[roundId][msg.sender][token])         revert AlreadyClaimed(roundId, msg.sender);
         if (amount == 0)                                 revert ZeroAmount();
 
         // Verify merkle proof
         bytes32 leaf = keccak256(abi.encodePacked(msg.sender, token, amount, roundId));
         if (!MerkleProof.verify(proof, r.root, leaf))    revert InvalidProof();
 
-        // Mark as claimed before transfer (CEI pattern)
-        claimed[roundId][msg.sender] = true;
+        // Mark as claimed before transfer (CEI pattern). Keyed by token (C7).
+        claimed[roundId][msg.sender][token] = true;
 
         emit Claimed(roundId, msg.sender, token, amount);
 
@@ -231,8 +240,11 @@ contract SuwappuRefundEscrow is ReentrancyGuard {
         nonReentrant
     {
         Round storage r = rounds[roundId];
-        if (!r.exists)                       revert RoundNotFound(roundId);
-        if (block.timestamp <= r.closesAt)   revert RoundStillOpen(roundId, r.closesAt);
+        if (!r.exists)                          revert RoundNotFound(roundId);
+        // C6 fix: do not sweep while ANY round is still open. The escrow is a
+        // shared pool, so sweeping a closed round must not be able to take funds
+        // owed to claimants of a round whose window has not yet elapsed.
+        if (block.timestamp <= latestClosesAt)  revert RoundStillOpen(roundId, latestClosesAt);
 
         uint256 balance = _balance(token);
         if (balance == 0) return;

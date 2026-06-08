@@ -22,7 +22,7 @@ Key sizes (composite):
   PK: 32B (Ed25519) + 1952B (ML-DSA-65) = 1984B
   Sig: 64B (Ed25519) + 3309B (ML-DSA-65) = 3373B
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.14
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.14
 """
 
 from __future__ import annotations
