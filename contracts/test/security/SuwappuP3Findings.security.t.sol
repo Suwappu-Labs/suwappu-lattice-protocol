@@ -11,7 +11,10 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract P3Token is ERC20 {
     constructor() ERC20("P3", "P3") {}
-    function mint(address to, uint256 amt) external { _mint(to, amt); }
+
+    function mint(address to, uint256 amt) external {
+        _mint(to, amt);
+    }
 }
 
 /// @title SuwappuP3Findings.security.t.sol
@@ -23,8 +26,8 @@ contract P3Token is ERC20 {
 contract SuwappuP3FindingsTest is Test {
     address internal constant ADMIN = address(0xA1);
     address internal attacker = makeAddr("attacker");
-    address internal relayer  = makeAddr("relayer");
-    address internal alice    = makeAddr("alice");
+    address internal relayer = makeAddr("relayer");
+    address internal alice = makeAddr("alice");
 
     // ---- P3-3 [CRITICAL] — FIXED: the token DEFAULT_ADMIN can no longer grant
     //      mint authority; only the separate minter-manager (Timelock) can. ----
@@ -59,19 +62,27 @@ contract SuwappuP3FindingsTest is Test {
     uint256 constant OPERATOR_PK = 0xA110CE;
 
     function test_P3_5_cross_instance_replay_blocked() public {
+        address manager = makeAddr("timelockManager"); // distinct from ADMIN (P3-3 guard)
         SuwappuVault vault = new SuwappuVault(ADMIN, ADMIN, 0);
-        SuwappuWrappedToken wt1 = new SuwappuWrappedToken("swETH-1","swETH1",18,1,address(0),ADMIN,ADMIN);
-        SuwappuWrappedToken wt2 = new SuwappuWrappedToken("swETH-2","swETH2",18,1,address(0),ADMIN,ADMIN);
+        SuwappuWrappedToken wt1 =
+            new SuwappuWrappedToken("swETH-1", "swETH1", 18, 1, address(0), ADMIN, manager);
+        SuwappuWrappedToken wt2 =
+            new SuwappuWrappedToken("swETH-2", "swETH2", 18, 1, address(0), ADMIN, manager);
         SuwappuMintAdapter a1 = new SuwappuMintAdapter(ADMIN, address(wt1));
         SuwappuMintAdapter a2 = new SuwappuMintAdapter(ADMIN, address(wt2));
         SuwappuEcdsaMintVerifier verifier = new SuwappuEcdsaMintVerifier(ADMIN);
         address operator = vm.addr(OPERATOR_PK);
 
-        vm.startPrank(ADMIN);
+        vm.startPrank(manager);
         wt1.grantRole(wt1.MINTER_ROLE(), address(a1));
         wt2.grantRole(wt2.MINTER_ROLE(), address(a2));
-        a1.addRelayer(relayer); a2.addRelayer(relayer);
-        a1.setVerifier(address(verifier)); a2.setVerifier(address(verifier));
+        vm.stopPrank();
+
+        vm.startPrank(ADMIN);
+        a1.addRelayer(relayer);
+        a2.addRelayer(relayer);
+        a1.setVerifier(address(verifier));
+        a2.setVerifier(address(verifier));
         verifier.setOperator(operator, true);
         vm.stopPrank();
 
@@ -81,7 +92,8 @@ contract SuwappuP3FindingsTest is Test {
 
         // Operator attests the mint FOR a1 (digest binds a1's address).
         bytes32 d1 = a1.mintDigest(commitId, alice, 10 ether, 1);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(OPERATOR_PK, MessageHashUtils.toEthSignedMessageHash(d1));
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(OPERATOR_PK, MessageHashUtils.toEthSignedMessageHash(d1));
         bytes memory att1 = abi.encodePacked(r, s, v);
 
         vm.startPrank(relayer);
@@ -110,9 +122,11 @@ contract SuwappuP3FindingsTest is Test {
         vm.stopPrank();
 
         // Two 1-ETH locks (separate depositors).
-        vm.deal(alice, 1 ether); vm.prank(alice);
+        vm.deal(alice, 1 ether);
+        vm.prank(alice);
         bytes32 c1 = vault.lockETH{value: 1 ether}(8453, alice);
-        vm.deal(relayer, 1 ether); vm.prank(relayer);
+        vm.deal(relayer, 1 ether);
+        vm.prank(relayer);
         bytes32 c2 = vault.lockETH{value: 1 ether}(8453, relayer);
 
         // First unlock (1 ETH) fits the daily cap.

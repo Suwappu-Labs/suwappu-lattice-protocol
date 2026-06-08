@@ -59,7 +59,11 @@ contract SuwappuMlDsaMintVerifier is IMintAttestationVerifier {
         override
         returns (bool)
     {
-        (bytes memory pubkey, bytes memory sig) = abi.decode(attestation, (bytes, bytes));
+        // Decode defensively: a malformed/truncated encoding returns false for
+        // parity with the ECDSA verifier (which returns false on bad length),
+        // rather than reverting the caller's tx.
+        (bool decoded, bytes memory pubkey, bytes memory sig) = _tryDecode(attestation);
+        if (!decoded) return false;
         if (pubkey.length != PK_LEN || sig.length != SIG_LEN) return false;
 
         // Operator authorization (P3-1): the signing key must be authorized.
@@ -72,6 +76,30 @@ contract SuwappuMlDsaMintVerifier is IMintAttestationVerifier {
         // other than a single word equal to 1 (mirrors the C4 fix discipline).
         if (!ok || out.length != 32) return false;
         return abi.decode(out, (uint256)) == 1;
+    }
+
+    /// @dev abi.decode reverts on malformed input; wrap it in an external
+    ///      try/catch (self-staticcall, safe in a view) so the verifier returns
+    ///      false instead of reverting. `this.decodeAttestation` is external pure.
+    function _tryDecode(bytes calldata attestation)
+        private
+        view
+        returns (bool ok, bytes memory pubkey, bytes memory sig)
+    {
+        try this.decodeAttestation(attestation) returns (bytes memory pk, bytes memory s) {
+            return (true, pk, s);
+        } catch {
+            return (false, "", "");
+        }
+    }
+
+    /// @dev External so it can be try/caught. Pure: only decodes calldata.
+    function decodeAttestation(bytes calldata attestation)
+        external
+        pure
+        returns (bytes memory pubkey, bytes memory sig)
+    {
+        return abi.decode(attestation, (bytes, bytes));
     }
 
     // ---- governance ----

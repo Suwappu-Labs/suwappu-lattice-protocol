@@ -40,6 +40,27 @@ core built+verified; wiring + Phases 2/3 outstanding → claim NOT yet permitted
    P3-4 (daily release cap + guardian-pause + M-of-N unlocker). Add P3-7 token allowlist.
 3. Repair the baseline-RED security suite (migrate SCN_004/008/009 + registry tests off the
    deprecated LTPMultiSig) so `contracts-secaudit` can actually gate.
-4. ~~Add `SuwappuWrappedToken` unit tests~~ ✅ done (`test/SuwappuWrappedToken.t.sol`, 21 tests); make Slither blocking; wire Echidna into secaudit.
+4. ~~Add `SuwappuWrappedToken` unit tests~~ ✅ done (`test/SuwappuWrappedToken.t.sol`, 22 tests); make Slither blocking; wire Echidna into secaudit.
 5. Engage an independent professional audit + launch a funded bug bounty.
 6. Resolve the front end (label as sim or wire to real contracts; no fabricated proofs).
+
+## Independent fix-verification + regression fixes (P9, 2026-06-08)
+
+`docs/security/audits/suwappu/P9_FIX_VERIFICATION.md` — the adversarial fix-verification
+the 2026-06-07 red-team could not finish (its verifier stage died on a usage limit). 57-agent
+workflow: all C1–C9 / P3-1..P3-7 fixes HOLD cryptographically; **zero new criticals** (4 new
+findings, all low/info). It surfaced **3 fixes with deploy/liveness/default regressions**, now
+**FIXED in code** (`test/SuwappuVaultMainnetSafety.t.sol`, `test/deployment/DeploySuwappuMainnet.t.sol`):
+- **P3-3 wiring (was CRITICAL-if-shipped):** `SuwappuWrappedToken` constructor now reverts on
+  `admin_ == minterManager_`; `DeploySuwappuMainnet.s.sol` wires a real `SuwappuTimelockController`
+  as `minterManager` (Safe ≠ Timelock), caps configured, two-step admin handoff.
+- **C2 refund-liveness (was HIGH):** `Vault.emergencyRefund` — a timelock-`emergencyRescuer`
+  trustless backstop so an offline/censoring operator can no longer freeze locked principal.
+- **P3-4 (was HIGH):** `unlockPartial` drains a commit larger than the daily cap over days
+  (no permanent lockup); leaky-bucket release limiter removes the ~2x UTC-midnight burst;
+  partially-released commits are refund-blocked (no double-spend).
+
+Still outstanding for mainnet (UNCHANGED by this pass): on-chain anchor/lock-proof binding (P5b)
++ M-of-N operator threshold; bind chainid/addr into SP1 publicValues; verifier-admin = Timelock
+(not EOA) must be proven on the live deploy; Echidna into CI + Slither-blocking; **criterion 6
+(independent audit + bug bounty) — the relayer-trust model is the residual architectural risk.**

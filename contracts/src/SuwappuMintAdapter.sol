@@ -34,7 +34,7 @@ contract SuwappuMintAdapter is ReentrancyGuard {
         address recipient;
         uint256 amount;
         uint256 sourceChainId;
-        uint64  mintedAt;
+        uint64 mintedAt;
     }
 
     // -----------------------------------------------------------------------
@@ -55,8 +55,7 @@ contract SuwappuMintAdapter is ReentrancyGuard {
     IMintAttestationVerifier public verifier;
 
     /// @notice Domain tag bound into every mint attestation digest.
-    bytes32 public constant MINT_ATTESTATION_DOMAIN =
-        keccak256("SUWAPPU_MINT_ATTESTATION_V1");
+    bytes32 public constant MINT_ATTESTATION_DOMAIN = keccak256("SUWAPPU_MINT_ATTESTATION_V1");
 
     /// @notice Authorized relayers that may submit mint() (spam/DoS gate only;
     ///         security now rests on the attestation, not relayer trust).
@@ -75,18 +74,18 @@ contract SuwappuMintAdapter is ReentrancyGuard {
     event Minted(
         bytes32 indexed commitId,
         address indexed recipient,
-        uint256  amount,
-        uint256  sourceChainId,
-        address  relayer
+        uint256 amount,
+        uint256 sourceChainId,
+        address relayer
     );
 
     event BurnForRelease(
         bytes32 indexed releaseId,
         address indexed from,
-        address  destRecipient,    // recipient on source chain
-        uint256  amount,
-        uint256  destChainId,      // source chain ID (where unlock will happen)
-        uint64   burnedAt
+        address destRecipient, // recipient on source chain
+        uint256 amount,
+        uint256 destChainId, // source chain ID (where unlock will happen)
+        uint64 burnedAt
     );
 
     event RelayerAdded(address indexed relayer);
@@ -104,7 +103,6 @@ contract SuwappuMintAdapter is ReentrancyGuard {
     error ZeroAddress();
     error ZeroAmount();
     error AlreadyMinted(bytes32 commitId);
-    error CommitIdMismatch(bytes32 provided, bytes32 computed);
     error VerifierNotSet();
     error InvalidAttestation(bytes32 digest);
 
@@ -142,16 +140,16 @@ contract SuwappuMintAdapter is ReentrancyGuard {
     /// @notice Mint wrapped tokens to a recipient after a source-chain lock
     ///         has been finalized by an authorized relayer.
     ///
-    /// @dev The relayer must supply the exact parameters that were emitted
-    ///      in the source-chain Locked event. The vault uses the same
-    ///      keccak256 derivation for commitId — any parameter mismatch
-    ///      produces a different commitId that has no mint record, causing
-    ///      the mint to fail on the double-mint guard (AlreadyMinted won't
-    ///      fire, but the recipient won't receive tokens either because
-    ///      no matching Locked event exists on-chain for that commitId).
-    ///
-    ///      The relayer is economically bonded: posting a fraudulent mint
-    ///      exposes them to slashing via SuwappuChallenge.
+    /// @dev The commitId↔params linkage is NOT re-derived on-chain (there is no
+    ///      source-chain Locked event visible here). Instead it is asserted by an
+    ///      AUTHORIZED operator's signature over a digest that binds
+    ///      (commitId, recipient, amount, sourceChainId, block.chainid,
+    ///      address(this)). The verifier rejects any signature not from the
+    ///      governed operator set, so a relayer cannot fabricate a mint and a
+    ///      captured attestation cannot be replayed onto another chain/instance.
+    ///      The true on-chain proof that the source lock exists is the deferred
+    ///      P5b anchor/lock-proof binding; until then the operator set is the
+    ///      trust anchor (see docs/security/audits/suwappu/P9_FIX_VERIFICATION.md).
     ///
     /// @param commitId      Commitment ID from the source-chain Locked event
     /// @param recipient     Address to receive the wrapped tokens
@@ -175,11 +173,7 @@ contract SuwappuMintAdapter is ReentrancyGuard {
         uint256 amount,
         uint256 sourceChainId,
         bytes calldata attestation
-    )
-        external
-        nonReentrant
-        onlyRelayer
-    {
+    ) external nonReentrant onlyRelayer {
         if (recipient == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
         if (address(verifier) == address(0)) revert VerifierNotSet();
@@ -189,24 +183,26 @@ contract SuwappuMintAdapter is ReentrancyGuard {
 
         // Bind every mint parameter + this chain + this adapter into the digest,
         // then require an authorized operator attested to it.
-        bytes32 digest = keccak256(abi.encode(
-            MINT_ATTESTATION_DOMAIN,
-            block.chainid,
-            address(this),
-            commitId,
-            recipient,
-            amount,
-            sourceChainId
-        ));
+        bytes32 digest = keccak256(
+            abi.encode(
+                MINT_ATTESTATION_DOMAIN,
+                block.chainid,
+                address(this),
+                commitId,
+                recipient,
+                amount,
+                sourceChainId
+            )
+        );
         if (!verifier.verifyMintAttestation(digest, attestation)) {
             revert InvalidAttestation(digest);
         }
 
         mintRecords[commitId] = MintRecord({
-            recipient:     recipient,
-            amount:        amount,
+            recipient: recipient,
+            amount: amount,
             sourceChainId: sourceChainId,
-            mintedAt:      uint64(block.timestamp)
+            mintedAt: uint64(block.timestamp)
         });
 
         wrappedToken.mint(recipient, amount, commitId);
@@ -216,21 +212,22 @@ contract SuwappuMintAdapter is ReentrancyGuard {
 
     /// @notice Recompute the mint digest an operator must sign for these params.
     ///         Off-chain operators / tests use this to produce attestations.
-    function mintDigest(
-        bytes32 commitId,
-        address recipient,
-        uint256 amount,
-        uint256 sourceChainId
-    ) public view returns (bytes32) {
-        return keccak256(abi.encode(
-            MINT_ATTESTATION_DOMAIN,
-            block.chainid,
-            address(this),
-            commitId,
-            recipient,
-            amount,
-            sourceChainId
-        ));
+    function mintDigest(bytes32 commitId, address recipient, uint256 amount, uint256 sourceChainId)
+        public
+        view
+        returns (bytes32)
+    {
+        return keccak256(
+            abi.encode(
+                MINT_ATTESTATION_DOMAIN,
+                block.chainid,
+                address(this),
+                commitId,
+                recipient,
+                amount,
+                sourceChainId
+            )
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -245,11 +242,7 @@ contract SuwappuMintAdapter is ReentrancyGuard {
     /// @param destChainId   Chain ID of the source chain where funds will be unlocked
     /// @param destRecipient Address on the source chain that will receive the unlocked funds
     /// @return releaseId    Unique ID for this burn event (relayer uses this to call unlock)
-    function burn(
-        uint256 amount,
-        uint256 destChainId,
-        address destRecipient
-    )
+    function burn(uint256 amount, uint256 destChainId, address destRecipient)
         external
         nonReentrant
         returns (bytes32 releaseId)
@@ -258,27 +251,24 @@ contract SuwappuMintAdapter is ReentrancyGuard {
         if (destRecipient == address(0)) revert ZeroAddress();
 
         // Generate deterministic releaseId — mirrors vault's commitId derivation.
-        releaseId = keccak256(abi.encodePacked(
-            block.chainid,
-            address(this),
-            _burnNonce++,
-            msg.sender,
-            amount,
-            destChainId,
-            destRecipient
-        ));
+        releaseId = keccak256(
+            abi.encodePacked(
+                block.chainid,
+                address(this),
+                _burnNonce++,
+                msg.sender,
+                amount,
+                destChainId,
+                destRecipient
+            )
+        );
 
         // Burn the wrapped tokens. Caller must have approved this contract or
         // hold the tokens directly (standard ERC-20 spend from msg.sender).
         wrappedToken.burn(msg.sender, amount, releaseId);
 
         emit BurnForRelease(
-            releaseId,
-            msg.sender,
-            destRecipient,
-            amount,
-            destChainId,
-            uint64(block.timestamp)
+            releaseId, msg.sender, destRecipient, amount, destChainId, uint64(block.timestamp)
         );
     }
 

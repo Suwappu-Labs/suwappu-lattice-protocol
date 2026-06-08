@@ -34,8 +34,8 @@ contract SuwappuWrappedToken is ERC20, AccessControl {
     // -----------------------------------------------------------------------
 
     uint8 private immutable _decimals;
-    uint256 public sourceChainId;    // chain ID where the underlying asset lives
-    address public sourceToken;      // token address on source chain (address(0) for native ETH)
+    uint256 public sourceChainId; // chain ID where the underlying asset lives
+    address public sourceToken; // token address on source chain (address(0) for native ETH)
 
     // -----------------------------------------------------------------------
     // Events
@@ -69,6 +69,11 @@ contract SuwappuWrappedToken is ERC20, AccessControl {
     ) ERC20(name_, symbol_) {
         require(admin_ != address(0), "SuwappuWrappedToken: zero admin");
         require(minterManager_ != address(0), "SuwappuWrappedToken: zero minter manager");
+        // P3-3 safe-by-default: the role split only protects custody if the token
+        // admin (Gnosis Safe) and the minter-manager (Timelock) are DISTINCT
+        // principals. Deploying with admin_ == minterManager_ silently re-collapses
+        // them and hands the admin a parallel mint path. Forbid it at construction.
+        require(admin_ != minterManager_, "SuwappuWrappedToken: admin == minter manager");
         _decimals = decimals_;
         sourceChainId = sourceChainId_;
         sourceToken = sourceToken_;
@@ -98,10 +103,7 @@ contract SuwappuWrappedToken is ERC20, AccessControl {
     /// @param to       Destination recipient address
     /// @param amount   Amount to mint (in token's native decimals)
     /// @param commitId The vault commitment ID that authorized this mint
-    function mint(address to, uint256 amount, bytes32 commitId)
-        external
-        onlyRole(MINTER_ROLE)
-    {
+    function mint(address to, uint256 amount, bytes32 commitId) external onlyRole(MINTER_ROLE) {
         require(to != address(0), "SuwappuWrappedToken: zero recipient");
         require(amount > 0, "SuwappuWrappedToken: zero amount");
         _mint(to, amount);
@@ -112,10 +114,7 @@ contract SuwappuWrappedToken is ERC20, AccessControl {
     /// @param from      Token holder whose balance is burned
     /// @param amount    Amount to burn
     /// @param releaseId The release ID that will authorize the source-chain unlock
-    function burn(address from, uint256 amount, bytes32 releaseId)
-        external
-        onlyRole(BURNER_ROLE)
-    {
+    function burn(address from, uint256 amount, bytes32 releaseId) external onlyRole(BURNER_ROLE) {
         require(amount > 0, "SuwappuWrappedToken: zero amount");
         _burn(from, amount);
         emit Burned(from, amount, releaseId);
