@@ -10,6 +10,8 @@ evm_version = "cancun"
 remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
 ]
+# Read-only access to test fixtures (P10 storage-proof eth_getProof vectors).
+fs_permissions = [{ access = "read", path = "./test/fixtures" }]
 
 [invariant]
 # Audit program P0: deeper stateful invariant coverage for the custody layer.
