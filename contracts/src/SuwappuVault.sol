@@ -33,16 +33,21 @@ contract SuwappuVault is ReentrancyGuard {
     /// @notice address(0) is used throughout to represent native ETH.
     address public constant ETH = address(0);
 
-    enum LockStatus { NONE, LOCKED, UNLOCKED, REFUNDED }
+    enum LockStatus {
+        NONE,
+        LOCKED,
+        UNLOCKED,
+        REFUNDED
+    }
 
     struct CommitData {
-        address token;          // address(0) for ETH
-        address from;           // original depositor
-        address destRecipient;  // recipient on destination chain
-        uint256 amount;         // net locked amount (after fee)
-        uint256 fee;            // fee retained by vault
-        uint256 destChainId;    // target chain
-        uint64  lockedAt;       // block.timestamp at lock time
+        address token; // address(0) for ETH
+        address from; // original depositor
+        address destRecipient; // recipient on destination chain
+        uint256 amount; // net locked amount (after fee)
+        uint256 fee; // fee retained by vault
+        uint256 destChainId; // target chain
+        uint64 lockedAt; // block.timestamp at lock time
         LockStatus status;
     }
 
@@ -90,8 +95,7 @@ contract SuwappuVault is ReentrancyGuard {
     IMintAttestationVerifier public refundVerifier;
 
     /// @notice Domain tag bound into every refund-eligibility attestation digest.
-    bytes32 public constant REFUND_ATTESTATION_DOMAIN =
-        keccak256("SUWAPPU_REFUND_ATTESTATION_V1");
+    bytes32 public constant REFUND_ATTESTATION_DOMAIN = keccak256("SUWAPPU_REFUND_ATTESTATION_V1");
 
     // Rate limiter: token → day-bucket → volume used
     mapping(address => mapping(uint256 => uint256)) private _dailyVolume;
@@ -101,7 +105,28 @@ contract SuwappuVault is ReentrancyGuard {
     /// @notice P3-4: a daily cap on RELEASES (unlock), bounding the blast radius
     ///         of a compromised unlocker key. token → cap (0 = no cap).
     mapping(address => uint256) public dailyReleaseCap;
-    mapping(address => mapping(uint256 => uint256)) private _dailyReleased;
+    /// @notice Leaky-bucket release accounting (replaces the fixed calendar-day
+    ///         bucket, which allowed a ~2x burst across the UTC midnight boundary).
+    ///         The bucket refills linearly at `dailyReleaseCap` per day, so there
+    ///         is no boundary to straddle.
+    mapping(address => uint256) private _releaseBucketUsed;
+    mapping(address => uint256) private _releaseBucketTs;
+
+    /// @notice P3-4 partial release: amount of a commit already released via
+    ///         unlock/unlockPartial. Lets a single commit larger than the daily
+    ///         release cap exit over multiple days instead of being permanently
+    ///         stuck. A commit with released > 0 is committed to the unlock path
+    ///         and can no longer be refunded.
+    mapping(bytes32 => uint256) public released;
+
+    /// @notice C2 trustless-exit backstop: the only principal that may
+    ///         emergency-refund a stuck commit WITHOUT an operator attestation.
+    ///         MUST be the TimelockController in production, so the rescue is
+    ///         subject to the timelock delay (a public objection window) rather
+    ///         than instant — this is the chosen fix for the refund-liveness
+    ///         regression (an offline/censoring operator can otherwise freeze
+    ///         locked principal indefinitely).
+    address public emergencyRescuer;
 
     /// @notice P3-4: guardian can PAUSE releases (unlock/refund) if a key is
     ///         compromised; only admin can UNPAUSE. Set via setGuardian.
@@ -120,28 +145,27 @@ contract SuwappuVault is ReentrancyGuard {
         bytes32 indexed commitId,
         address indexed token,
         address indexed from,
-        address  destRecipient,
-        uint256  amount,        // net amount (after fee)
-        uint256  fee,
-        uint256  destChainId,
-        uint64   lockedAt
+        address destRecipient,
+        uint256 amount, // net amount (after fee)
+        uint256 fee,
+        uint256 destChainId,
+        uint64 lockedAt
     );
 
     event Unlocked(
-        bytes32 indexed commitId,
-        address indexed token,
-        address indexed recipient,
-        uint256  amount
+        bytes32 indexed commitId, address indexed token, address indexed recipient, uint256 amount
     );
 
     event Refunded(
-        bytes32 indexed commitId,
-        address indexed token,
-        address indexed to,
-        uint256  amount
+        bytes32 indexed commitId, address indexed token, address indexed to, uint256 amount
+    );
+
+    event EmergencyRefunded(
+        bytes32 indexed commitId, address indexed token, address indexed to, uint256 amount
     );
 
     event FeeSwept(address indexed token, address indexed to, uint256 amount);
+    event EmergencyRescuerSet(address indexed oldRescuer, address indexed newRescuer);
     event UnlockerAdded(address indexed unlocker);
     event UnlockerRemoved(address indexed unlocker);
     event RefundVerifierSet(address indexed oldVerifier, address indexed newVerifier);
@@ -176,6 +200,8 @@ contract SuwappuVault is ReentrancyGuard {
     error RefundVerifierNotSet();
     error RefundNotAuthorized(bytes32 digest);
     error ReleaseCapExceeded(address token, uint256 requested, uint256 remaining);
+    error ReleaseExceedsCommit(bytes32 commitId, uint256 requested, uint256 remaining);
+    error CommitPartiallyReleased(bytes32 commitId);
     error EnforcedPause();
     error TokenNotAllowed(address token);
 
@@ -190,6 +216,11 @@ contract SuwappuVault is ReentrancyGuard {
 
     modifier onlyUnlocker() {
         if (!isUnlocker[msg.sender]) revert Unauthorized();
+        _;
+    }
+
+    modifier onlyEmergencyRescuer() {
+        if (msg.sender != emergencyRescuer) revert Unauthorized();
         _;
     }
 
@@ -240,12 +271,7 @@ contract SuwappuVault is ReentrancyGuard {
     /// @param destChainId   Target chain ID
     /// @param destRecipient Recipient address on the destination chain
     /// @return commitId     Unique identifier for this lock commitment
-    function lockERC20(
-        address token,
-        uint256 amount,
-        uint256 destChainId,
-        address destRecipient
-    )
+    function lockERC20(address token, uint256 amount, uint256 destChainId, address destRecipient)
         external
         nonReentrant
         returns (bytes32 commitId)
@@ -268,12 +294,10 @@ contract SuwappuVault is ReentrancyGuard {
         return _lock(token, received, destChainId, destRecipient);
     }
 
-    function _lock(
-        address token,
-        uint256 grossAmount,
-        uint256 destChainId,
-        address destRecipient
-    ) internal returns (bytes32 commitId) {
+    function _lock(address token, uint256 grossAmount, uint256 destChainId, address destRecipient)
+        internal
+        returns (bytes32 commitId)
+    {
         if (destRecipient == address(0)) revert ZeroAddress();
 
         // Compute fee and net amount
@@ -300,32 +324,43 @@ contract SuwappuVault is ReentrancyGuard {
         }
 
         // Generate deterministic, collision-resistant commitId
-        commitId = keccak256(abi.encodePacked(
-            block.chainid,
-            address(this),
-            _lockNonce++,
-            msg.sender,
-            token,
-            netAmount,
-            destChainId,
-            destRecipient
-        ));
+        commitId = keccak256(
+            abi.encodePacked(
+                block.chainid,
+                address(this),
+                _lockNonce++,
+                msg.sender,
+                token,
+                netAmount,
+                destChainId,
+                destRecipient
+            )
+        );
 
         // Record commitment
         commits[commitId] = CommitData({
-            token:         token,
-            from:          msg.sender,
+            token: token,
+            from: msg.sender,
             destRecipient: destRecipient,
-            amount:        netAmount,
-            fee:           fee,
-            destChainId:   destChainId,
-            lockedAt:      uint64(block.timestamp),
-            status:        LockStatus.LOCKED
+            amount: netAmount,
+            fee: fee,
+            destChainId: destChainId,
+            lockedAt: uint64(block.timestamp),
+            status: LockStatus.LOCKED
         });
 
         totalLocked[token] += netAmount;
 
-        emit Locked(commitId, token, msg.sender, destRecipient, netAmount, fee, destChainId, uint64(block.timestamp));
+        emit Locked(
+            commitId,
+            token,
+            msg.sender,
+            destRecipient,
+            netAmount,
+            fee,
+            destChainId,
+            uint64(block.timestamp)
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -349,23 +384,74 @@ contract SuwappuVault is ReentrancyGuard {
         if (c.status == LockStatus.NONE) revert CommitNotFound(commitId);
         if (c.status != LockStatus.LOCKED) revert CommitNotLocked(commitId, c.status);
 
-        // P3-4: per-asset daily release cap bounds a compromised unlocker's
-        // blast radius (cap == 0 means unlimited; set per-asset in production).
-        uint256 cap = dailyReleaseCap[c.token];
-        if (cap > 0) {
-            uint256 day = block.timestamp / 1 days;
-            uint256 used = _dailyReleased[c.token][day];
-            if (used + c.amount > cap) {
-                revert ReleaseCapExceeded(c.token, c.amount, cap - used);
-            }
-            _dailyReleased[c.token][day] = used + c.amount;
-        }
+        // Release the full remaining amount (handles a commit already partially
+        // released via unlockPartial). If `remaining` exceeds the daily release
+        // cap, use unlockPartial to drain it over multiple days.
+        uint256 remaining = c.amount - released[commitId];
+        _consumeReleaseCap(c.token, remaining);
 
+        released[commitId] = c.amount;
         c.status = LockStatus.UNLOCKED;
-        totalLocked[c.token] -= c.amount;
+        totalLocked[c.token] -= remaining;
 
-        _transfer(c.token, recipient, c.amount);
-        emit Unlocked(commitId, c.token, recipient, c.amount);
+        _transfer(c.token, recipient, remaining);
+        emit Unlocked(commitId, c.token, recipient, remaining);
+    }
+
+    /// @notice Release part of a commit. P3-4 fix for the "single commit larger
+    ///         than the daily release cap is permanently un-unlockable" lockup:
+    ///         drain the commit in tranches across days. The commit stays LOCKED
+    ///         (and unrefundable, since released > 0) until fully released.
+    /// @param commitId  The commitment to partially release
+    /// @param recipient Address to receive this tranche
+    /// @param amount    Tranche size (must not exceed the unreleased remainder)
+    function unlockPartial(bytes32 commitId, address recipient, uint256 amount)
+        external
+        nonReentrant
+        whenNotPaused
+        onlyUnlocker
+    {
+        if (recipient == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
+
+        CommitData storage c = commits[commitId];
+        if (c.status == LockStatus.NONE) revert CommitNotFound(commitId);
+        if (c.status != LockStatus.LOCKED) revert CommitNotLocked(commitId, c.status);
+
+        uint256 rel = released[commitId];
+        uint256 remaining = c.amount - rel;
+        if (amount > remaining) revert ReleaseExceedsCommit(commitId, amount, remaining);
+
+        _consumeReleaseCap(c.token, amount);
+
+        rel += amount;
+        released[commitId] = rel;
+        totalLocked[c.token] -= amount;
+        if (rel == c.amount) c.status = LockStatus.UNLOCKED;
+
+        _transfer(c.token, recipient, amount);
+        emit Unlocked(commitId, c.token, recipient, amount);
+    }
+
+    /// @dev Leaky-bucket release rate limiter. The bucket refills linearly at
+    ///      `dailyReleaseCap` per day; `used` can never exceed the cap. cap == 0
+    ///      means unlimited (governance MUST set a per-asset cap in production —
+    ///      see DeploySuwappuMainnet).
+    function _consumeReleaseCap(address token, uint256 amount) internal {
+        uint256 cap = dailyReleaseCap[token];
+        if (cap == 0) return;
+
+        uint256 used = _releaseBucketUsed[token];
+        uint256 last = _releaseBucketTs[token];
+        if (last != 0) {
+            uint256 refilled = ((block.timestamp - last) * cap) / 1 days;
+            used = used > refilled ? used - refilled : 0;
+        }
+        if (used + amount > cap) {
+            revert ReleaseCapExceeded(token, amount, cap > used ? cap - used : 0);
+        }
+        _releaseBucketUsed[token] = used + amount;
+        _releaseBucketTs[token] = block.timestamp;
     }
 
     // -----------------------------------------------------------------------
@@ -384,6 +470,9 @@ contract SuwappuVault is ReentrancyGuard {
         CommitData storage c = commits[commitId];
         if (c.status == LockStatus.NONE) revert CommitNotFound(commitId);
         if (c.status != LockStatus.LOCKED) revert CommitNotLocked(commitId, c.status);
+        // A commit already partially released via unlockPartial is committed to
+        // the unlock path; it must not also be refundable (would double-spend).
+        if (released[commitId] != 0) revert CommitPartiallyReleased(commitId);
 
         uint64 readyAt = c.lockedAt + uint64(refundTimeout);
         if (block.timestamp < readyAt) revert RefundNotReady(commitId, readyAt);
@@ -401,18 +490,47 @@ contract SuwappuVault is ReentrancyGuard {
         emit Refunded(commitId, c.token, c.from, c.amount);
     }
 
+    /// @notice C2 trustless-exit backstop. Refund a stuck commit to its depositor
+    ///         WITHOUT an operator attestation. Callable ONLY by the
+    ///         emergencyRescuer, which MUST be the TimelockController in
+    ///         production — so this rescue is subject to the timelock delay (a
+    ///         public window for operators to object / pause), not instant. This
+    ///         is what stops an offline or censoring operator from freezing locked
+    ///         principal indefinitely once the refund gate (C2) was added.
+    /// @dev Same terminal-state and accounting discipline as claimRefund; the
+    ///      timelock delay (off-chain) substitutes for the operator attestation as
+    ///      the safeguard against refunding a commit that was actually minted.
+    function emergencyRefund(bytes32 commitId) external nonReentrant onlyEmergencyRescuer {
+        CommitData storage c = commits[commitId];
+        if (c.status == LockStatus.NONE) revert CommitNotFound(commitId);
+        if (c.status != LockStatus.LOCKED) revert CommitNotLocked(commitId, c.status);
+        if (released[commitId] != 0) revert CommitPartiallyReleased(commitId);
+
+        uint64 readyAt = c.lockedAt + uint64(refundTimeout);
+        if (block.timestamp < readyAt) revert RefundNotReady(commitId, readyAt);
+
+        c.status = LockStatus.REFUNDED;
+        totalLocked[c.token] -= c.amount;
+
+        _transfer(c.token, c.from, c.amount);
+        emit EmergencyRefunded(commitId, c.token, c.from, c.amount);
+        emit Refunded(commitId, c.token, c.from, c.amount);
+    }
+
     /// @notice The digest an operator must sign to authorize a refund of `commitId`.
     function refundDigest(bytes32 commitId) public view returns (bytes32) {
         CommitData storage c = commits[commitId];
-        return keccak256(abi.encode(
-            REFUND_ATTESTATION_DOMAIN,
-            block.chainid,
-            address(this),
-            commitId,
-            c.from,
-            c.amount,
-            c.token
-        ));
+        return keccak256(
+            abi.encode(
+                REFUND_ATTESTATION_DOMAIN,
+                block.chainid,
+                address(this),
+                commitId,
+                c.from,
+                c.amount,
+                c.token
+            )
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -424,8 +542,8 @@ contract SuwappuVault is ReentrancyGuard {
     /// @param token  address(0) for ETH, ERC-20 address otherwise
     function sweepFees(address token) external nonReentrant onlyAdmin {
         uint256 balance = _balance(token);
-        uint256 locked  = totalLocked[token];
-        uint256 fees    = balance > locked ? balance - locked : 0;
+        uint256 locked = totalLocked[token];
+        uint256 fees = balance > locked ? balance - locked : 0;
         if (fees == 0) return;
 
         _transfer(token, feeRecipient, fees);
@@ -464,6 +582,13 @@ contract SuwappuVault is ReentrancyGuard {
         guardian = newGuardian;
     }
 
+    /// @notice Set the emergency rescuer (C2). MUST be the TimelockController in
+    ///         production so emergencyRefund is timelock-delayed, not instant.
+    function setEmergencyRescuer(address newRescuer) external onlyAdmin {
+        emit EmergencyRescuerSet(emergencyRescuer, newRescuer);
+        emergencyRescuer = newRescuer;
+    }
+
     /// @notice Per-asset daily release (unlock) cap. 0 = unlimited.
     function setDailyReleaseCap(address token, uint256 cap) external onlyAdmin {
         dailyReleaseCap[token] = cap;
@@ -488,16 +613,23 @@ contract SuwappuVault is ReentrancyGuard {
         emit Unpaused(msg.sender);
     }
 
-    /// @notice Remaining release capacity for a token today.
+    /// @notice Remaining release capacity for a token right now (leaky bucket).
     function dailyReleaseRemaining(address token) external view returns (uint256) {
         uint256 cap = dailyReleaseCap[token];
         if (cap == 0) return type(uint256).max;
-        uint256 used = _dailyReleased[token][block.timestamp / 1 days];
+        uint256 used = _releaseBucketUsed[token];
+        uint256 last = _releaseBucketTs[token];
+        if (last != 0) {
+            uint256 refilled = ((block.timestamp - last) * cap) / 1 days;
+            used = used > refilled ? used - refilled : 0;
+        }
         return used >= cap ? 0 : cap - used;
     }
 
     function setRefundTimeout(uint256 newTimeout) external onlyAdmin {
-        if (newTimeout < MIN_REFUND_TIMEOUT) revert RefundTimeoutTooShort(newTimeout, MIN_REFUND_TIMEOUT);
+        if (newTimeout < MIN_REFUND_TIMEOUT) {
+            revert RefundTimeoutTooShort(newTimeout, MIN_REFUND_TIMEOUT);
+        }
         emit RefundTimeoutSet(refundTimeout, newTimeout);
         refundTimeout = newTimeout;
     }
@@ -547,14 +679,14 @@ contract SuwappuVault is ReentrancyGuard {
     /// @notice Current fee balance available to sweep for a given token.
     function pendingFees(address token) external view returns (uint256) {
         uint256 balance = _balance(token);
-        uint256 locked  = totalLocked[token];
+        uint256 locked = totalLocked[token];
         return balance > locked ? balance - locked : 0;
     }
 
     /// @notice Remaining daily capacity for a token.
     function dailyRemaining(address token) external view returns (uint256) {
         if (dailyCap[token] == 0) return type(uint256).max;
-        uint256 day  = block.timestamp / 1 days;
+        uint256 day = block.timestamp / 1 days;
         uint256 used = _dailyVolume[token][day];
         return used >= dailyCap[token] ? 0 : dailyCap[token] - used;
     }
