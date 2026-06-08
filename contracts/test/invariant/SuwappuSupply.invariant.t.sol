@@ -32,13 +32,14 @@ import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/Messa
 /// the Handler + ghost-variable pattern established in
 /// OptimisticBridgeChallenge.invariant.t.sol.
 contract SuwappuSupplyInvariantTest is Test {
-    SuwappuVault         internal vault;
-    SuwappuMintAdapter   internal adapter;
-    SuwappuWrappedToken  internal wrapped;
+    SuwappuVault internal vault;
+    SuwappuMintAdapter internal adapter;
+    SuwappuWrappedToken internal wrapped;
     SuwappuSupplyHandler internal handler;
 
     address internal constant ADMIN = address(0xA1);
-    address internal constant ETH   = address(0); // native asset sentinel
+    address internal constant MINTER_MANAGER = address(0xA2); // distinct from ADMIN (P3-3 guard)
+    address internal constant ETH = address(0); // native asset sentinel
 
     function setUp() public {
         // feeBps = 0 so netAmount == grossAmount: keeps the supply/collateral
@@ -53,7 +54,7 @@ contract SuwappuSupplyInvariantTest is Test {
             block.chainid,
             ETH,
             ADMIN,
-            ADMIN  // minterManager = admin for the harness
+            MINTER_MANAGER // distinct minter-manager (Timelock in prod) — P3-3 guard
         );
 
         adapter = new SuwappuMintAdapter(ADMIN, address(wrapped));
@@ -66,14 +67,17 @@ contract SuwappuSupplyInvariantTest is Test {
 
         handler = new SuwappuSupplyHandler(vault, adapter, wrapped, operatorPk);
 
-        vm.startPrank(ADMIN);
+        vm.startPrank(MINTER_MANAGER);
         wrapped.grantRole(wrapped.MINTER_ROLE(), address(adapter));
         wrapped.grantRole(wrapped.BURNER_ROLE(), address(adapter));
+        vm.stopPrank();
+
+        vm.startPrank(ADMIN);
         adapter.addRelayer(address(handler)); // relayer == adversary (now needs a valid attestation)
         adapter.setVerifier(address(verifier));
         vault.setRefundVerifier(address(verifier)); // same operator gates refunds (C2)
         verifier.setOperator(operator, true);
-        vault.addUnlocker(address(handler));   // also the source-chain unlocker
+        vault.addUnlocker(address(handler)); // also the source-chain unlocker
         vm.stopPrank();
 
         targetContract(address(handler));
@@ -102,17 +106,17 @@ contract SuwappuSupplyInvariantTest is Test {
 /// @notice Bounds the fuzzer to legal (and adversarial-but-permitted) entry
 ///         points and tracks cross-domain ghost state.
 contract SuwappuSupplyHandler is Test {
-    SuwappuVault        public vault;
-    SuwappuMintAdapter  public adapter;
+    SuwappuVault public vault;
+    SuwappuMintAdapter public adapter;
     SuwappuWrappedToken public wrapped;
 
-    address internal constant ETH  = address(0);
+    address internal constant ETH = address(0);
     uint256 internal constant DEST = 8453; // Base, the nominal destination chain
 
     bytes32[] public commits;
     mapping(bytes32 => uint256) public lockedNet; // commitId -> net locked
     mapping(bytes32 => bool) public minted;
-    mapping(bytes32 => bool) public returned;  // forward mint later burned+unlocked
+    mapping(bytes32 => bool) public returned; // forward mint later burned+unlocked
     mapping(bytes32 => bool) public refunded;
 
     bool public observedDoubleSpend;
@@ -122,10 +126,15 @@ contract SuwappuSupplyHandler is Test {
         if (minted[id] && refunded[id]) observedDoubleSpend = true;
     }
 
-    uint256 internal operatorPk;   // authorized operator (honest attestations)
+    uint256 internal operatorPk; // authorized operator (honest attestations)
     uint256 internal constant ROGUE_PK = 0xBADBAD; // unauthorized (self-signed, P3-1)
 
-    constructor(SuwappuVault _v, SuwappuMintAdapter _a, SuwappuWrappedToken _w, uint256 _operatorPk) {
+    constructor(
+        SuwappuVault _v,
+        SuwappuMintAdapter _a,
+        SuwappuWrappedToken _w,
+        uint256 _operatorPk
+    ) {
         vault = _v;
         adapter = _a;
         wrapped = _w;
@@ -171,7 +180,9 @@ contract SuwappuSupplyHandler is Test {
 
     // ---- Relayer mints ADVERSARIALLY: arbitrary commitId/amount, NO valid
     //      operator attestation (C1). Must always revert post-fix. ----
-    function maliciousMint(bytes32 fakeId, uint256 amt, address to, bytes calldata junkAtt) external {
+    function maliciousMint(bytes32 fakeId, uint256 amt, address to, bytes calldata junkAtt)
+        external
+    {
         amt = bound(amt, 1, 100 ether);
         if (to == address(0)) to = address(0xBAD);
         if (lockedNet[fakeId] != 0) return; // must be an id with NO backing lock

@@ -96,6 +96,13 @@ contract SuwappuWrappedTokenTest is Test {
         new SuwappuWrappedToken("n", "s", 18, SOURCE_CHAIN, SOURCE_TOKEN, admin, address(0));
     }
 
+    /// P3-3 safe-by-default: admin and minterManager must be distinct, else the
+    /// admin silently regains a parallel mint path (the very thing P3-3 closes).
+    function test_Constructor_RevertsWhenAdminEqualsMinterManager() public {
+        vm.expectRevert(bytes("SuwappuWrappedToken: admin == minter manager"));
+        new SuwappuWrappedToken("n", "s", 18, SOURCE_CHAIN, SOURCE_TOKEN, admin, admin);
+    }
+
     // -----------------------------------------------------------------------
     // Role wiring (P3-3 privilege separation)
     // -----------------------------------------------------------------------

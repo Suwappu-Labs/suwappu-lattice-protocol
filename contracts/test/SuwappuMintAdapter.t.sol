@@ -12,29 +12,34 @@ contract SuwappuMintAdapterTest is Test {
     SuwappuWrappedToken wrappedToken;
     SuwappuEcdsaMintVerifier verifier;
 
-    address admin   = makeAddr("admin");
+    address admin = makeAddr("admin");
+    address minterManager = makeAddr("minterManager"); // distinct from admin (P3-3 guard)
     address relayer = makeAddr("relayer");
-    address alice   = makeAddr("alice");
-    address bob     = makeAddr("bob");
+    address alice = makeAddr("alice");
+    address bob = makeAddr("bob");
 
     uint256 constant OPERATOR_PK = 0xA110CE;
     address operator;
 
-    uint256 constant SOURCE_CHAIN = 1;   // Ethereum mainnet
-    uint256 constant DEST_CHAIN   = 8453; // Base
-    bytes32 constant COMMIT_ID    = keccak256("test-commit-1");
+    uint256 constant SOURCE_CHAIN = 1; // Ethereum mainnet
+    uint256 constant DEST_CHAIN = 8453; // Base
+    bytes32 constant COMMIT_ID = keccak256("test-commit-1");
 
     function setUp() public {
         wrappedToken = new SuwappuWrappedToken(
-            "Suwappu Wrapped Ether", "swETH", 18, SOURCE_CHAIN, address(0), admin, admin
+            "Suwappu Wrapped Ether", "swETH", 18, SOURCE_CHAIN, address(0), admin, minterManager
         );
         adapter = new SuwappuMintAdapter(admin, address(wrappedToken));
         verifier = new SuwappuEcdsaMintVerifier(admin);
         operator = vm.addr(OPERATOR_PK);
 
-        vm.startPrank(admin);
+        // MINTER/BURNER are administered by the minter-manager (Timelock in prod).
+        vm.startPrank(minterManager);
         wrappedToken.grantRole(wrappedToken.MINTER_ROLE(), address(adapter));
         wrappedToken.grantRole(wrappedToken.BURNER_ROLE(), address(adapter));
+        vm.stopPrank();
+
+        vm.startPrank(admin);
         adapter.addRelayer(relayer);
         adapter.setVerifier(address(verifier));
         verifier.setOperator(operator, true);
@@ -43,7 +48,9 @@ contract SuwappuMintAdapterTest is Test {
 
     /// Valid attestation by the authorized operator over the bound mint digest.
     function _att(bytes32 commitId, address recipient, uint256 amount, uint256 src)
-        internal view returns (bytes memory)
+        internal
+        view
+        returns (bytes memory)
     {
         bytes32 digest = adapter.mintDigest(commitId, recipient, amount, src);
         bytes32 ethHash = MessageHashUtils.toEthSignedMessageHash(digest);
@@ -75,7 +82,9 @@ contract SuwappuMintAdapterTest is Test {
         bytes memory att = _att(COMMIT_ID, alice, 1 ether, SOURCE_CHAIN);
         vm.startPrank(relayer);
         adapter.mint(COMMIT_ID, alice, 1 ether, SOURCE_CHAIN, att);
-        vm.expectRevert(abi.encodeWithSelector(SuwappuMintAdapter.AlreadyMinted.selector, COMMIT_ID));
+        vm.expectRevert(
+            abi.encodeWithSelector(SuwappuMintAdapter.AlreadyMinted.selector, COMMIT_ID)
+        );
         adapter.mint(COMMIT_ID, alice, 1 ether, SOURCE_CHAIN, att);
         vm.stopPrank();
     }
