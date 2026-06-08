@@ -50,13 +50,13 @@ class TestNetworkIdentityRecord:
             operator,
             _genesis_root(),
             0,
-            "GSX Testnet",
-            "https://gsx.example.com",
+            "SUWAPPU Testnet",
+            "https://suwappu.example.com",
         )
         assert nir.network_id != ""
         assert nir.operator_vk == operator.vk
         assert nir.genesis_sth_root == _genesis_root()
-        assert nir.display_name == "GSX Testnet"
+        assert nir.display_name == "SUWAPPU Testnet"
         assert len(nir.signature) > 0
 
     def test_verify_signature(self, operator):

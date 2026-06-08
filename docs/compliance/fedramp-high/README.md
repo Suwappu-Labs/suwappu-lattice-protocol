@@ -1,6 +1,6 @@
 # FedRAMP High Readiness Package
 
-This package is the `gsx-lattice-protocol` evidence overlay for a FedRAMP High
+This package is the `suwappu-lattice-protocol` evidence overlay for a FedRAMP High
 readiness review. It is not an authorization package, an agency sponsorship, a
 3PAO assessment, or an ATO. A production authorization still requires the
 official SSP, SAP, SAR, POA&M, continuous monitoring process, agency review,
@@ -34,7 +34,7 @@ environment variables.
 - `system-boundary.md`: LTP component boundary and external dependencies.
 - `data-flow.md`: data flow, audit flow, and trust-boundary transitions.
 - `trust-boundary.md`: trust zones and fail-closed expectations.
-- `assessment-boundary.md`: cross-repo boundary across LTP, `gsx-dag`, and `gsx-db`.
+- `assessment-boundary.md`: cross-repo boundary across LTP, `suwappu-dag`, and `suwappu-db`.
 - `control-matrix.md`: NIST SP 800-53 Rev. 5 High readiness crosswalk for repo evidence.
 - `ssp-narratives.md`: SSP-style implementation narratives.
 - `release-evidence.md`: release evidence and exact commit/tag requirements.
@@ -53,12 +53,12 @@ python3 -m src.simulator.ci_harness --seeds 42,123,777 --steps 500 --fault-rate 
 Cross-repo release gates:
 
 ```bash
-cd ../gsx-dag && cargo test --workspace
-cd ../gsx-dag && PROPTEST_CASES=10000 cargo test --workspace --release
-cd ../gsx-db && cargo test --workspace
-cd ../gsx-db && scripts/check-lane-separation.sh
-cd ../gsx-db && scripts/cross-parity.sh
-cd ../gsx-db && PROPTEST_CASES=10000 cargo test --workspace --release
+cd ../suwappu-dag && cargo test --workspace
+cd ../suwappu-dag && PROPTEST_CASES=10000 cargo test --workspace --release
+cd ../suwappu-db && cargo test --workspace
+cd ../suwappu-db && scripts/check-lane-separation.sh
+cd ../suwappu-db && scripts/cross-parity.sh
+cd ../suwappu-db && PROPTEST_CASES=10000 cargo test --workspace --release
 ```
 
 ## References

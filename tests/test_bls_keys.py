@@ -82,8 +82,8 @@ class TestBLSKeyPairDerived:
         from src.ltp.keypair import KeyPair
 
         mldsa_kp = KeyPair.generate("ctx-test")
-        bls_a = BLSKeyPair.derive_from(mldsa_kp.sk, context=b"GSX-BLS-DERIVE:v1:chain-1")
-        bls_b = BLSKeyPair.derive_from(mldsa_kp.sk, context=b"GSX-BLS-DERIVE:v1:chain-2")
+        bls_a = BLSKeyPair.derive_from(mldsa_kp.sk, context=b"SUWAPPU-BLS-DERIVE:v1:chain-1")
+        bls_b = BLSKeyPair.derive_from(mldsa_kp.sk, context=b"SUWAPPU-BLS-DERIVE:v1:chain-2")
         assert bls_a.pk != bls_b.pk
         assert bls_a.sk != bls_b.sk
 

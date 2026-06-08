@@ -82,7 +82,7 @@ anchor:
   enabled: true
   chains:
     - chainId: 103115120
-      label: gsx_testnet
+      label: suwappu_testnet
       rpcUrl: ""  # Set via secrets
       registryAddress: "0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4"
     - chainId: 84532

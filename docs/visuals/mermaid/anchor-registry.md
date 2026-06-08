@@ -13,7 +13,7 @@ classDiagram
     +uint8 receiptType
     +anchor()
   }
-  class GSXDB_PerChain {
+  class SUWAPPUDB_PerChain {
     +uint32 chainId
     +uint64 height
     +bytes32 stateRoot
@@ -21,5 +21,5 @@ classDiagram
     +bytes32 mac
     +submit()
   }
-  LTP_PerEntity ..> GSXDB_PerChain : same 7-of-9 quorum, different scope
+  LTP_PerEntity ..> SUWAPPUDB_PerChain : same 7-of-9 quorum, different scope
 ```

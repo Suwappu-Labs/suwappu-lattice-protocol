@@ -48,7 +48,7 @@ compromise).
 LTPMultiSig has no proxy-signing surface. Every confirmation is
 gated by `msg.sender == owner`. There is no `permit`,
 `executeWithSig`, or gas-relayer entrypoint. The deployed
-instance on GSX Testnet runs the same bytecode (verified via
+instance on SUWAPPU Testnet runs the same bytecode (verified via
 `docs/DEPLOYED_CONTRACTS.md`).
 
 The operator-tier hardening for sustained key compromise

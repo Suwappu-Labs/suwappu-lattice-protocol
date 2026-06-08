@@ -21,6 +21,14 @@ contract SuwappuWrappedToken is ERC20, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
+    /// @notice Admin role for MINTER_ROLE / BURNER_ROLE. Self-administered and
+    ///         held by a dedicated minter-manager (the Timelock in production),
+    ///         SEPARATE from DEFAULT_ADMIN_ROLE. This is the P3-3 fix: the token
+    ///         admin can no longer grant itself mint authority — only the
+    ///         minter-manager can change the minter/burner set, and DEFAULT_ADMIN
+    ///         is not the admin of MINTER_ADMIN_ROLE, so it cannot escalate.
+    bytes32 public constant MINTER_ADMIN_ROLE = keccak256("MINTER_ADMIN_ROLE");
+
     // -----------------------------------------------------------------------
     // State
     // -----------------------------------------------------------------------
@@ -45,20 +53,33 @@ contract SuwappuWrappedToken is ERC20, AccessControl {
     /// @param decimals_     Matches the source asset decimals (18 for ETH, 6 for USDC)
     /// @param sourceChainId_ Chain ID of the source chain
     /// @param sourceToken_  Token address on source chain (address(0) for native ETH)
-    /// @param admin_        Initial DEFAULT_ADMIN_ROLE holder (Gnosis Safe address)
+    /// @param admin_         Initial DEFAULT_ADMIN_ROLE holder (Gnosis Safe address).
+    ///                       Can manage non-minter config but CANNOT grant mint authority.
+    /// @param minterManager_ MINTER_ADMIN_ROLE holder — the only principal that can
+    ///                       grant/revoke MINTER_ROLE/BURNER_ROLE. MUST be the
+    ///                       TimelockController in production (P3-3).
     constructor(
         string memory name_,
         string memory symbol_,
         uint8 decimals_,
         uint256 sourceChainId_,
         address sourceToken_,
-        address admin_
+        address admin_,
+        address minterManager_
     ) ERC20(name_, symbol_) {
         require(admin_ != address(0), "SuwappuWrappedToken: zero admin");
+        require(minterManager_ != address(0), "SuwappuWrappedToken: zero minter manager");
         _decimals = decimals_;
         sourceChainId = sourceChainId_;
         sourceToken = sourceToken_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+
+        // P3-3: minter/burner management is separated from DEFAULT_ADMIN and
+        // self-administered, so the token admin can never escalate to mint.
+        _setRoleAdmin(MINTER_ROLE, MINTER_ADMIN_ROLE);
+        _setRoleAdmin(BURNER_ROLE, MINTER_ADMIN_ROLE);
+        _setRoleAdmin(MINTER_ADMIN_ROLE, MINTER_ADMIN_ROLE);
+        _grantRole(MINTER_ADMIN_ROLE, minterManager_);
     }
 
     // -----------------------------------------------------------------------

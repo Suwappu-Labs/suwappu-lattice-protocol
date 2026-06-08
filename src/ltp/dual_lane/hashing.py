@@ -1,5 +1,5 @@
 """
-GSX Dual-Lane hash functions and HashFunction enum.
+SUWAPPU Dual-Lane hash functions and HashFunction enum.
 
 Two hash lanes serve different trust boundaries:
 

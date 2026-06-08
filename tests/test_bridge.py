@@ -564,7 +564,7 @@ class TestCrossChainLiveBridge:
 
         l1_config = ChainConfig(
             chain_id=103115120,
-            label="gsx_testnet",
+            label="suwappu_testnet",
             rpc_url="http://localhost:8545",
             registry_address="0x" + "ab" * 20,
             operator_key="0x" + "cd" * 32,

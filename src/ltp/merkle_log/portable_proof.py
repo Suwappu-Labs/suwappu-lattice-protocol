@@ -10,7 +10,7 @@ A PortableMerkleProof contains everything needed for standalone verification:
   - The audit path (sibling hashes) with direction flags
   - Tree type discriminator
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.6
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.6
 """
 
 from __future__ import annotations

@@ -5,7 +5,7 @@
 
 # ETP DID Expansion Plan — Decentralized Identity via Lattice Transfer Protocol
 
-**Author:** Javier Calderon Jr, CTO — Global Settlement (GSX)
+**Author:** Javier Calderon Jr, CTO — Suwappu
 **Date:** April 24, 2026
 **Status:** Planning
 **Scope:** `did:etp` method specification, DID/VC integration architecture, phased implementation roadmap, PQ-safe ZK cross-chain resolution path.
@@ -49,7 +49,7 @@ Each phase builds on the previous. Federation VCs prove the DID method works wit
 
 ### 2.1 Current ETP Implementation State
 
-As of April 2026, ETP comprises 250+ files, 2,726+ tests (all passing), and live bidirectional bridge operations on GSX Testnet (chain ID 103115120) and Base Sepolia (chain ID 84532). The system implements:
+As of April 2026, ETP comprises 250+ files, 2,726+ tests (all passing), and live bidirectional bridge operations on SUWAPPU Testnet (chain ID 103115120) and Base Sepolia (chain ID 84532). The system implements:
 
 - **Real PQ cryptography**: ML-KEM-768/1024, ML-DSA-65/87, XChaCha20-Poly1305 (zero simulations)
 - **Three-phase transfer lifecycle**: Commit → Lattice → Materialize with constant-size sealed keys (~1,300-1,442 bytes)
@@ -148,13 +148,13 @@ The following constraints were established during a team architecture call:
 did:etp:<network_id>:<identifier>
 ```
 
-- **`network_id`**: Derived from the NIR genesis STH hash. Distinguishes GSX Testnet, Base Sepolia, future mainnets. Human-readable aliases permitted (`gsx-testnet`, `base-sepolia`) with canonical resolution to the full hash.
+- **`network_id`**: Derived from the NIR genesis STH hash. Distinguishes SUWAPPU Testnet, Base Sepolia, future mainnets. Human-readable aliases permitted (`suwappu-testnet`, `base-sepolia`) with canonical resolution to the full hash.
 - **`identifier`**: SHA3-256 hash of the initial DID Document entity committed to the Commitment Log. Deterministic, collision-resistant, post-quantum safe. Prefixed with `sha3-256:` per the ETP dual-lane convention.
 
 **Examples:**
 ```
-did:etp:gsx-testnet:sha3-256:a1b2c3d4e5f6...    (federation network DID)
-did:etp:gsx-testnet:sha3-256:f7e8d9c0b1a2...    (node operator DID)
+did:etp:suwappu-testnet:sha3-256:a1b2c3d4e5f6...    (federation network DID)
+did:etp:suwappu-testnet:sha3-256:f7e8d9c0b1a2...    (node operator DID)
 did:etp:base-sepolia:sha3-256:1a2b3c4d5e6f...   (institutional user DID)
 ```
 
@@ -166,15 +166,15 @@ W3C DID Core 1.0 compliant with ETP-specific extensions:
 {
   "@context": [
     "https://www.w3.org/ns/did/v1",
-    "https://etp.gsx.io/ns/did/v1"
+    "https://etp.suwappu.io/ns/did/v1"
   ],
-  "id": "did:etp:gsx-testnet:sha3-256:a1b2c3d4...",
-  "controller": "did:etp:gsx-testnet:sha3-256:f4e5d6a7...",
+  "id": "did:etp:suwappu-testnet:sha3-256:a1b2c3d4...",
+  "controller": "did:etp:suwappu-testnet:sha3-256:f4e5d6a7...",
   "verificationMethod": [
     {
       "id": "#ml-dsa-65-key-1",
       "type": "MLDSA65VerificationKey2026",
-      "controller": "did:etp:gsx-testnet:sha3-256:a1b2c3d4...",
+      "controller": "did:etp:suwappu-testnet:sha3-256:a1b2c3d4...",
       "publicKeyMultibase": "z..."
     }
   ],
@@ -182,7 +182,7 @@ W3C DID Core 1.0 compliant with ETP-specific extensions:
     {
       "id": "#ml-kem-768-key-1",
       "type": "MLKEM768KeyAgreementKey2026",
-      "controller": "did:etp:gsx-testnet:sha3-256:a1b2c3d4...",
+      "controller": "did:etp:suwappu-testnet:sha3-256:a1b2c3d4...",
       "publicKeyMultibase": "z..."
     }
   ],
@@ -192,12 +192,12 @@ W3C DID Core 1.0 compliant with ETP-specific extensions:
     {
       "id": "#commitment-log",
       "type": "ETPCommitmentLog",
-      "serviceEndpoint": "https://log.gsx.io/ct/v1/"
+      "serviceEndpoint": "https://log.suwappu.io/ct/v1/"
     },
     {
       "id": "#federation-api",
       "type": "ETPFederationEndpoint",
-      "serviceEndpoint": "https://fed.gsx.io/federation/v1/"
+      "serviceEndpoint": "https://fed.suwappu.io/federation/v1/"
     }
   ],
   "chainAnchors": [
@@ -223,7 +223,7 @@ W3C DID Core 1.0 compliant with ETP-specific extensions:
 }
 ```
 
-**Verification Method types**: `MLDSA65VerificationKey2026` and `MLKEM768KeyAgreementKey2026` are new W3C verification method types for FIPS 204 (ML-DSA-65) and FIPS 203 (ML-KEM-768). No registered type exists for these algorithms — ETP defines them in its DID context (`https://etp.gsx.io/ns/did/v1`).
+**Verification Method types**: `MLDSA65VerificationKey2026` and `MLKEM768KeyAgreementKey2026` are new W3C verification method types for FIPS 204 (ML-DSA-65) and FIPS 203 (ML-KEM-768). No registered type exists for these algorithms — ETP defines them in its DID context (`https://etp.suwappu.io/ns/did/v1`).
 
 **`chainAnchors[]`**: Forward-compatible array listing on-chain anchor points. Both `LTPAnchorRegistry` and `ETPDIDRegistry` are listed. When STARK-based cross-chain resolution arrives (Y-mode), anchors gain a `zkProof` field — same schema, richer trust model. This field enables centralized exchanges to verify DID state against on-chain records.
 
@@ -320,7 +320,7 @@ Entity v1 (create)    Entity v2 (rotate key)    Entity v3 (add service)
 │  ─────────────────────────────────────────────                │
 │  - anchor() remains independently callable                    │
 │  - No DID awareness — stays general-purpose                   │
-│  - Existing deployments (GSX Testnet, Base Sepolia) unaffected│
+│  - Existing deployments (SUWAPPU Testnet, Base Sepolia) unaffected│
 │  - 5-layer validation unchanged                               │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -444,7 +444,7 @@ Key rotation and revocation events are broadcast to federated networks via the e
 ```json
 {
   "type": "did_revocation",
-  "did": "did:etp:gsx-testnet:sha3-256:...",
+  "did": "did:etp:suwappu-testnet:sha3-256:...",
   "action": "rotate | revoke",
   "newSequence": 3,
   "sthSequence": 87,
@@ -567,7 +567,7 @@ These are estimates. Actual costs depend on EVM implementation details and will 
 Cross-chain DID resolution in Phases 1-2 uses the existing LiveBridge:
 
 ```
-Resolver on Base Sepolia wants did:etp:gsx-testnet:...
+Resolver on Base Sepolia wants did:etp:suwappu-testnet:...
   → LiveBridge has already synced the DID pointer to Base Sepolia
   → Resolver queries local ETPDIDRegistry
   → Fetches full DID Document from Commitment Log (federation fetch or local cache)
@@ -581,10 +581,10 @@ This works and ships immediately. The trust assumption is acceptable for federat
 Phase 3+ upgrades cross-chain resolution to trustless via ETP's STARK prover:
 
 ```
-Resolver on Base Sepolia wants did:etp:gsx-testnet:...
-  → Requests ZK proof of GSX Testnet DID state
+Resolver on Base Sepolia wants did:etp:suwappu-testnet:...
+  → Requests ZK proof of SUWAPPU Testnet DID state
   → ETP STARK prover generates FRI-based proof of:
-      1. ETPDIDRegistry.didPointers[didHash] == entityIdHash (on GSX Testnet)
+      1. ETPDIDRegistry.didPointers[didHash] == entityIdHash (on SUWAPPU Testnet)
       2. LTPAnchorRegistry.anchors[entityIdHash].anchoredAt != 0 (anchor exists)
       3. STH signature is valid for the claimed tree size (log integrity)
   → Proof submitted to ZKBridgeVerifier on Base Sepolia (STARK v3 format)
@@ -677,10 +677,10 @@ Federation agreements (already implemented as bilateral ML-DSA-65 signed agreeme
 {
   "@context": [
     "https://www.w3.org/2018/credentials/v1",
-    "https://etp.gsx.io/ns/credentials/v1"
+    "https://etp.suwappu.io/ns/credentials/v1"
   ],
   "type": ["VerifiableCredential", "ETPFederationCredential"],
-  "issuer": "did:etp:gsx-testnet:sha3-256:...",
+  "issuer": "did:etp:suwappu-testnet:sha3-256:...",
   "issuanceDate": "2026-04-23T12:00:00Z",
   "credentialSubject": {
     "id": "did:etp:base-sepolia:sha3-256:...",
@@ -692,7 +692,7 @@ Federation agreements (already implemented as bilateral ML-DSA-65 signed agreeme
   "proof": {
     "type": "MLDSA65Signature2026",
     "created": "2026-04-23T12:00:00Z",
-    "verificationMethod": "did:etp:gsx-testnet:sha3-256:...#ml-dsa-65-key-1",
+    "verificationMethod": "did:etp:suwappu-testnet:sha3-256:...#ml-dsa-65-key-1",
     "proofPurpose": "assertionMethod",
     "proofValue": "z..."
   }
@@ -747,7 +747,7 @@ For granular per-VC revocation (revoking a specific credential without revoking 
 4. `contracts/src/DIDOperations.sol` — Wrapper contract for atomic operations
 5. Integration with existing `FederationAgreement` → VC issuance pipeline
 6. Gossip revocation broadcast (new message type in `PeerExchangeMessage`)
-7. Deployment to GSX Testnet and Base Sepolia
+7. Deployment to SUWAPPU Testnet and Base Sepolia
 8. End-to-end tests: create federation DID → issue VC → resolve cross-network → verify → revoke
 
 **Fee model**: Operator pays (5A).
@@ -854,7 +854,7 @@ For granular per-VC revocation (revoking a specific credential without revoking 
 |---|---|---|---|
 | W3C DID Core 1.0 spec stability | Phase 1 | Low — spec is a W3C Recommendation | Track via W3C DID WG |
 | Gravm/Mysticy precompile support | Phase 4 | Medium — chain development timeline | Contract-level (3C) works indefinitely without precompile |
-| ERC-4337 or equivalent on GSX chain | Phase 4 | Low-medium — standard pattern | Custom relayer as fallback |
+| ERC-4337 or equivalent on SUWAPPU chain | Phase 4 | Low-medium — standard pattern | Custom relayer as fallback |
 
 ---
 

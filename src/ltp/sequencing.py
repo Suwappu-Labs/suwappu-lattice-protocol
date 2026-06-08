@@ -7,7 +7,7 @@ Semantics:
   - Temporal expiry: receipts with past valid_until are rejected
   - Batch validation for efficient bulk processing
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.5
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.5
 """
 
 from __future__ import annotations

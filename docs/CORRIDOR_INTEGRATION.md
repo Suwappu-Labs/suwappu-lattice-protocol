@@ -2,7 +2,7 @@
 
 How to participate in LTP's 7-of-9 corridor attestation pipeline from outside the Python codebase.
 
-The corridor is the bridge layer that takes a `gsx-db` state root, gathers BLS partial signatures from a super-node quorum, and emits an aggregated attestation that an on-chain `LTPAnchorRegistry` verifier can check. The wire format is byte-for-byte stable across Python (`src/ltp/corridor/`) and Rust (`gsx-dag/crates/gsx-ltp`).
+The corridor is the bridge layer that takes a `suwappu-db` state root, gathers BLS partial signatures from a super-node quorum, and emits an aggregated attestation that an on-chain `LTPAnchorRegistry` verifier can check. The wire format is byte-for-byte stable across Python (`src/ltp/corridor/`) and Rust (`suwappu-dag/crates/suwappu-ltp`).
 
 ## Cross-language invariants
 
@@ -10,7 +10,7 @@ These constants and digest constructions are part of the public surface (see [`S
 
 | Invariant | Where | Value |
 |---|---|---|
-| Corridor BLS DST | `src/ltp/corridor/constants.py::BLS_CORRIDOR_DST` and `gsx-dag/crates/gsx-crypto/src/bls.rs:24::BLS_DST` | `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_` |
+| Corridor BLS DST | `src/ltp/corridor/constants.py::BLS_CORRIDOR_DST` and `suwappu-dag/crates/suwappu-crypto/src/bls.rs:24::BLS_DST` | `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_` |
 | Attestation domain hash | `src/ltp/corridor/digest.py::sha3_256_domain` | `H(len(tag)||tag||data)` with `len` as `u32` big-endian |
 | Quorum | `src/ltp/corridor/constants.py::LTP_ATTESTATION_QUORUM_THRESHOLD / _SIZE` | `7-of-9` |
 | BLS signature size | wire format | 96 bytes |
@@ -31,7 +31,7 @@ from src.ltp.corridor.attestation import (
 from src.ltp.corridor.wire import corridor_attestation_from_dict, WireFormatError
 
 # Suppose `corridor` is the 9-member super-node set you fetched from
-# gsx-dag, and `attestation_json` is the JSON the corridor leader gave you.
+# suwappu-dag, and `attestation_json` is the JSON the corridor leader gave you.
 try:
     attestation: CorridorAttestation = corridor_attestation_from_dict(attestation_json)
 except WireFormatError as e:
@@ -48,15 +48,15 @@ The `WireFormatError` boundary is important: never let bare `bytes.fromhex(...)`
 
 ## Rust — produce an attestation
 
-Use the canonical Rust crate at `gsx-dag/crates/gsx-ltp`. The high-level flow:
+Use the canonical Rust crate at `suwappu-dag/crates/suwappu-ltp`. The high-level flow:
 
 ```rust
-use gsx_ltp::{Corridor, AttestationPayload, attest, verify_attestation};
-use gsx_crypto::bls::{sign, BLS_DST};
+use suwappu_ltp::{Corridor, AttestationPayload, attest, verify_attestation};
+use suwappu_crypto::bls::{sign, BLS_DST};
 
 // 1. Each super-node signs the canonical digest of the payload.
 let payload = AttestationPayload { /* source_chain, target_chain, source_height, state_root, timestamp_round */ };
-let digest = payload.canonical_digest();        // length-prefixed SHA3-256 under "GSX-LTP-ATTEST-V1"
+let digest = payload.canonical_digest();        // length-prefixed SHA3-256 under "SUWAPPU-LTP-ATTEST-V1"
 let partial = sign(&sk, &digest, BLS_DST, &[]); // BLS_DST is identical to BLS_CORRIDOR_DST in Python
 
 // 2. The corridor leader gathers >=7 partials and aggregates.
@@ -66,7 +66,7 @@ let attestation = attest(&corridor, payload, partials)?;
 let wire = serde_json::to_string(&attestation.to_wire())?;
 ```
 
-The `gsx-dag` README has the full sample with key management and quorum selection. The Python `attestation.py::attest` mirrors the same validation order:
+The `suwappu-dag` README has the full sample with key management and quorum selection. The Python `attestation.py::attest` mirrors the same validation order:
 
 1. Corridor size is 9.
 2. Every signing witness is a corridor member.
@@ -114,5 +114,5 @@ The current on-chain contract does **not** re-verify the BLS aggregate; it trust
 ## Reference implementations
 
 - Python: [`src/ltp/corridor/`](../src/ltp/corridor/) — full attestation, DA SLA, DID rotation, state anchor surfaces
-- Rust: `gsx-dag/crates/gsx-ltp` — canonical, byte-for-byte matching reference
+- Rust: `suwappu-dag/crates/suwappu-ltp` — canonical, byte-for-byte matching reference
 - Solidity (read side): [`contracts/src/LTPAnchorRegistry.sol`](../contracts/src/LTPAnchorRegistry.sol)

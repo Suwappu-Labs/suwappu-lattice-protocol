@@ -56,7 +56,7 @@ class BridgeOperatorService:
         live_bridge,
         *,
         operator_keypair=None,
-        source_chain: str = "gsx_testnet",
+        source_chain: str = "suwappu_testnet",
         dest_chain: str = "base_sepolia",
         sender_address: str = "",
         recipient_address: str = "",

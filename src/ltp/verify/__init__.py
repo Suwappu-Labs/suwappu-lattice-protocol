@@ -5,7 +5,7 @@ Pure verification functions — no network, no state, no side effects.
 Designed for external verifiers (auditors, regulators, cross-chain bridges)
 who need to verify trust artifacts without running an LTP node.
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.8
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.8
 """
 
 from .core import (

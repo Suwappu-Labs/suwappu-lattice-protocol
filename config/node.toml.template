@@ -32,7 +32,7 @@ enabled = false              # opt-in: set true to enable on-chain anchoring
 rpc_url = ""                 # ETP_ANCHOR_RPC_URL — JSON-RPC endpoint
 registry_address = ""        # ETP_ANCHOR_REGISTRY — LTPAnchorRegistry proxy
 operator_key = ""            # ETP_ANCHOR_OPERATOR_KEY — hex-encoded private key
-chain_id = 103115120         # GSX Testnet default
+chain_id = 103115120         # SUWAPPU Testnet default
 batch_size = 50              # max records per anchor tx
 interval = 15.0              # seconds between anchor attempts
 max_wait = 60.0              # max seconds to wait for tx receipt
@@ -64,7 +64,7 @@ liveness_timeout_seconds = 90.0  # disconnect peer after no ping for this durati
 [bridge_operator]
 enabled = false              # true = persistent cross-chain bridge daemon
 interval = 30.0              # seconds between bridge polls
-direction = "gsx_to_base"   # "gsx_to_base" | "base_to_gsx"
+direction = "suwappu_to_base"   # "suwappu_to_base" | "base_to_suwappu"
 max_retries = 3              # retries before dropping a failed entity
 challenge_period = 3600.0    # challenge window seconds (3600 = 1hr testnet, 604800 = 7d prod)
 zk_mode = "simulated"        # "simulated" | "stark"

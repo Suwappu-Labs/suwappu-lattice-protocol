@@ -8,7 +8,7 @@ Not to be confused with bridge/anchor.py (L1 bridge anchor), which handles
 cross-chain message commitment. This package manages the on-chain entity
 state machine that smart contracts use to track trust artifacts.
 
-Reference: GSX_PRE_BLOCKCHAIN_ROADMAP.md §2.9-2.10
+Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.9-2.10
 """
 
 from .chain_config import ChainConfig, create_anchor_client

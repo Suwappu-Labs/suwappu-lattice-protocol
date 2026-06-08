@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 /// @title OptimisticBridgeChallenge
-/// @author Javier Calderon Jr, CTO of Global Settlement (GSX)
+/// @author Javier Calderon Jr, CTO of Suwappu
 /// @notice On-chain challenge window management for the ETP optimistic bridge.
 ///         Operators bond when opening windows; challengers bond when filing
 ///         fraud proofs. Losing party's bond is slashed to the winner.

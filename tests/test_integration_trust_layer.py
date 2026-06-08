@@ -1,5 +1,5 @@
 """
-End-to-end integration tests for the GSX Pre-Blockchain Trust Packaging Layer.
+End-to-end integration tests for the SUWAPPU Pre-Blockchain Trust Packaging Layer.
 
 Tests the full pipeline from Entity → Commit → Receipt → Envelope → Anchor,
 verifying that all components interoperate correctly and don't interfere with

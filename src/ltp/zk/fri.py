@@ -30,7 +30,7 @@ from . import field as F
 from .merkle import MerkleProof, StarkMerkleTree
 
 # FRI domain tag for Fiat-Shamir
-_FRI_DOMAIN = b"GSX-LTP:fri:v1\x00"
+_FRI_DOMAIN = b"SUWAPPU-LTP:fri:v1\x00"
 
 # Default parameters
 DEFAULT_BLOWUP = 4

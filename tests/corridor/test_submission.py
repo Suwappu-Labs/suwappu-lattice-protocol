@@ -1,4 +1,4 @@
-"""Corridor → gsx-db state anchor submission bridge tests."""
+"""Corridor → suwappu-db state anchor submission bridge tests."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ def _attestation(target_chain: int = 103_115_120) -> CorridorAttestation:
 
 def test_keccak256_build_matches_state_anchor_fixture() -> None:
     """The Solidity-keccak path on this attestation should match the
-    `fixture_valid_anchor_acceptance` fixture from gsx-db's parity tests.
+    `fixture_valid_anchor_acceptance` fixture from suwappu-db's parity tests.
     """
     att = _attestation()
     build = build_state_anchor_keccak256(att, chain_key=bytes([1] * 32))

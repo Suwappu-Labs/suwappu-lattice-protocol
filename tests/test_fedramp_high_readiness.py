@@ -98,7 +98,7 @@ def test_fedramp_preflight_accepts_secure_static_config(monkeypatch):
     monkeypatch.setenv("ETP_GATEWAY_VM_SOURCE_CHAIN_ID", "1")
     monkeypatch.setenv("ETP_GATEWAY_VM_DEST_CHAIN_ID", "42161")
     monkeypatch.setenv("ETP_GATEWAY_VM_SOURCE_RPC_URL", "https://rpc.ethereum-mainnet.internal")
-    monkeypatch.setenv("ETP_GATEWAY_VM_DEST_RPC_URL", "https://rpc.gsx-prod.internal")
+    monkeypatch.setenv("ETP_GATEWAY_VM_DEST_RPC_URL", "https://rpc.suwappu-prod.internal")
     monkeypatch.setenv("ETP_GATEWAY_VM_SOURCE_BRIDGE_CONTRACT", "0x" + "1" * 40)
     monkeypatch.setenv("ETP_GATEWAY_VM_DEST_REGISTRY", "0x" + "2" * 40)
     monkeypatch.setenv("ETP_GATEWAY_VM_OPERATOR_KMS_KEY_ID", "alias/ltp-gateway")
@@ -122,7 +122,7 @@ def test_fedramp_preflight_accepts_secure_static_config(monkeypatch):
         preflight.check_fedramp_prover_modes(),
         preflight.check_fedramp_production_networks(
             "https://rpc.ethereum-mainnet.internal",
-            "https://rpc.gsx-prod.internal",
+            "https://rpc.suwappu-prod.internal",
         ),
         preflight.check_fedramp_contract_addresses("0x" + "1" * 40, "0x" + "2" * 40),
     ]
@@ -212,9 +212,9 @@ def test_evidence_manifest_has_existing_paths_and_commands():
 
     assert manifest["deployment_profile"] == "fedramp-high"
     assert {
-        "gsx-lattice-protocol",
-        "gsx-dag",
-        "gsx-db",
+        "suwappu-lattice-protocol",
+        "suwappu-dag",
+        "suwappu-db",
     }.issubset(set(manifest["required_release_repositories"]))
 
     for entry in manifest["evidence"]:
@@ -225,21 +225,21 @@ def test_evidence_manifest_has_existing_paths_and_commands():
         assert (REPO_ROOT / entry["evidence_path"]).exists(), entry["evidence_path"]
 
 
-def test_gsx_integration_doc_preserves_cross_repo_boundaries():
-    doc = (REPO_ROOT / "docs/design-decisions/GSX_DAG_DB_INTEGRATION.md").read_text()
+def test_suwappu_integration_doc_preserves_cross_repo_boundaries():
+    doc = (REPO_ROOT / "docs/design-decisions/SUWAPPU_DAG_DB_INTEGRATION.md").read_text()
     lower = doc.lower()
     assert "assessment boundary" in lower
-    assert "`gsx-dag` provides ordering" in doc
-    assert "`gsx-db` provides state mutation" in doc
-    assert "cannot mutate GSX-DB state" in doc
+    assert "`suwappu-dag` provides ordering" in doc
+    assert "`suwappu-db` provides state mutation" in doc
+    assert "cannot mutate SUWAPPU-DB state" in doc
     assert "exact commits or tags" in doc
 
 
 def test_release_evidence_requires_exact_cross_repo_commits():
     doc = (REPO_ROOT / "docs/compliance/fedramp-high/release-evidence.md").read_text()
-    assert "gsx-lattice-protocol commit/tag" in doc
-    assert "gsx-dag commit/tag" in doc
-    assert "gsx-db commit/tag" in doc
+    assert "suwappu-lattice-protocol commit/tag" in doc
+    assert "suwappu-dag commit/tag" in doc
+    assert "suwappu-db commit/tag" in doc
     assert "SBOM" in doc
     assert "Semgrep" in doc
     assert "Provenance" in doc or "provenance" in doc

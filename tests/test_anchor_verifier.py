@@ -793,23 +793,23 @@ class TestMultiChainVerifier:
     def test_independent_verification(self):
         """Two verifiers (each with own tracker and client) independently
         confirm entities without cross-contamination."""
-        # --- GSX chain verifier ---
-        tracker_gsx = AnchorStatusTracker()
-        _setup_submitted(tracker_gsx, "gsx-ent-0", "0xgsx_tx")
-        _setup_submitted(tracker_gsx, "gsx-ent-1", "0xgsx_tx")
+        # --- SUWAPPU chain verifier ---
+        tracker_suwappu = AnchorStatusTracker()
+        _setup_submitted(tracker_suwappu, "suwappu-ent-0", "0xsuwappu_tx")
+        _setup_submitted(tracker_suwappu, "suwappu-ent-1", "0xsuwappu_tx")
 
-        provider_gsx = MockChainProvider(
+        provider_suwappu = MockChainProvider(
             block_number=200,
             receipts={
-                "0xgsx_tx": {"status": 1, "blockNumber": 100, "gasUsed": 90_000},
+                "0xsuwappu_tx": {"status": 1, "blockNumber": 100, "gasUsed": 90_000},
             },
         )
-        config_gsx = _make_config(confirmation_depth=3)
-        verifier_gsx = AnchorVerifier(
-            provider_gsx,
-            tracker_gsx,
-            config_gsx,
-            chain_label="gsx_testnet",
+        config_suwappu = _make_config(confirmation_depth=3)
+        verifier_suwappu = AnchorVerifier(
+            provider_suwappu,
+            tracker_suwappu,
+            config_suwappu,
+            chain_label="suwappu_testnet",
         )
 
         # --- Base Sepolia chain verifier ---
@@ -831,15 +831,15 @@ class TestMultiChainVerifier:
         )
 
         # --- Tick both independently ---
-        result_gsx = verifier_gsx.tick(1)
+        result_suwappu = verifier_suwappu.tick(1)
         result_base = verifier_base.tick(1)
 
-        # GSX: 2 entities confirmed and finalized (depth=200-100=100 >= 3)
-        assert result_gsx.submitted_checked == 2
-        assert result_gsx.confirmed == 2
-        assert result_gsx.finalized == 2
-        assert tracker_gsx.get("gsx-ent-0").status is AnchorStatus.FINALIZED
-        assert tracker_gsx.get("gsx-ent-1").status is AnchorStatus.FINALIZED
+        # SUWAPPU: 2 entities confirmed and finalized (depth=200-100=100 >= 3)
+        assert result_suwappu.submitted_checked == 2
+        assert result_suwappu.confirmed == 2
+        assert result_suwappu.finalized == 2
+        assert tracker_suwappu.get("suwappu-ent-0").status is AnchorStatus.FINALIZED
+        assert tracker_suwappu.get("suwappu-ent-1").status is AnchorStatus.FINALIZED
 
         # Base: 1 entity confirmed and finalized (depth=500-400=100 >= 5)
         assert result_base.submitted_checked == 1
@@ -848,12 +848,12 @@ class TestMultiChainVerifier:
         assert tracker_base.get("base-ent-0").status is AnchorStatus.FINALIZED
 
         # Trackers are independent — no cross-contamination
-        assert tracker_gsx.get("base-ent-0") is None
-        assert tracker_base.get("gsx-ent-0") is None
-        assert tracker_base.get("gsx-ent-1") is None
+        assert tracker_suwappu.get("base-ent-0") is None
+        assert tracker_base.get("suwappu-ent-0") is None
+        assert tracker_base.get("suwappu-ent-1") is None
 
         # Providers received correct calls
-        assert len(provider_gsx.receipt_calls) == 1
-        assert provider_gsx.receipt_calls[0] == "0xgsx_tx"
+        assert len(provider_suwappu.receipt_calls) == 1
+        assert provider_suwappu.receipt_calls[0] == "0xsuwappu_tx"
         assert len(provider_base.receipt_calls) == 1
         assert provider_base.receipt_calls[0] == "0xbase_tx"

@@ -13,7 +13,7 @@ official SSP or POA&M package.
 | Semgrep | Static analysis results with all High/Critical findings resolved or POA&M-owned |
 | Signed artifacts | Container image digests, contract build artifacts, and release bundles signed |
 | Provenance | SLSA/in-toto provenance attestation for each shipped artifact |
-| Pinned SHAs | Exact `gsx-lattice-protocol`, `gsx-dag`, and `gsx-db` commits or tags |
+| Pinned SHAs | Exact `suwappu-lattice-protocol`, `suwappu-dag`, and `suwappu-db` commits or tags |
 | Test reports | Local LTP, contracts, simulator, DAG, and DB gate output |
 | POA&M | Owner, due date, severity, residual risk, and mitigation for every gap |
 | KMS/HSM evidence | FIPS 140-3 certificate, module boundary, operating mode, key policy |
@@ -28,9 +28,9 @@ Environment:
 Deployment profile: fedramp-high
 
 Repository pins:
-- gsx-lattice-protocol commit/tag:
-- gsx-dag commit/tag:
-- gsx-db commit/tag:
+- suwappu-lattice-protocol commit/tag:
+- suwappu-dag commit/tag:
+- suwappu-db commit/tag:
 
 Artifacts:
 - Container image digest:
@@ -47,12 +47,12 @@ LTP gates:
 - python3 -m src.simulator.ci_harness --seeds 42,123,777 --steps 500 --fault-rate 0.1:
 
 Cross-repo gates:
-- gsx-dag cargo test --workspace:
-- gsx-dag PROPTEST_CASES=10000 cargo test --workspace --release:
-- gsx-db cargo test --workspace:
-- gsx-db scripts/check-lane-separation.sh:
-- gsx-db scripts/cross-parity.sh:
-- gsx-db PROPTEST_CASES=10000 cargo test --workspace --release:
+- suwappu-dag cargo test --workspace:
+- suwappu-dag PROPTEST_CASES=10000 cargo test --workspace --release:
+- suwappu-db cargo test --workspace:
+- suwappu-db scripts/check-lane-separation.sh:
+- suwappu-db scripts/cross-parity.sh:
+- suwappu-db PROPTEST_CASES=10000 cargo test --workspace --release:
 
 KMS/HSM evidence:
 - Module name:

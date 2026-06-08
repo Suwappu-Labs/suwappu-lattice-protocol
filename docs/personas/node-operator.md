@@ -50,5 +50,5 @@ Before bringing a node into production traffic:
   tolerates up to 3 missed consecutive epochs before the contract enters
   degraded mode (see [THREAT_MODEL.md](../THREAT_MODEL.md) §"Liveness").
 - **"Where do alerts go?"**
-  → Default: `security-on-call@globalsettlement.dev`. Override in
+  → Default: `security-on-call@suwappu.dev`. Override in
   `config/alerting.yaml`.

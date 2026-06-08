@@ -806,12 +806,12 @@ class TestHealthAndCTSharedPort:
 class TestMultiChainConfig:
     """Test multi-chain anchor configuration via [[anchor.chains]]."""
 
-    _CHAIN_GSX = {
+    _CHAIN_SUWAPPU = {
         "chain_id": 103115120,
-        "label": "gsx_testnet",
-        "rpc_url": "https://rpc.testnet.gsx.network",
+        "label": "suwappu_testnet",
+        "rpc_url": "https://rpc.testnet.suwappu.network",
         "registry_address": "0x" + "aB" * 20,
-        "operator_key": "0xgsxkey",
+        "operator_key": "0xsuwappukey",
         "confirmation_depth": 3,
         "finality_depth": 1,
     }
@@ -838,12 +838,12 @@ enabled = true
 
 [[anchor.chains]]
 chain_id = 103115120
-label = "gsx_testnet"
-rpc_url = "https://rpc.testnet.gsx.network"
+label = "suwappu_testnet"
+rpc_url = "https://rpc.testnet.suwappu.network"
 registry_address = "0x"""
             + "aB" * 20
             + """"
-operator_key = "0xgsxkey"
+operator_key = "0xsuwappukey"
 confirmation_depth = 3
 finality_depth = 1
 
@@ -870,7 +870,7 @@ finality_depth = 2
     def test_get_chain_configs_from_flat_fields(self):
         """Backward compat: flat fields produce single ChainConfig."""
         config = NodeConfig(
-            anchor_rpc_url="https://rpc.testnet.gsx.network",
+            anchor_rpc_url="https://rpc.testnet.suwappu.network",
             anchor_registry_address="0x" + "aB" * 20,
             anchor_operator_key="0xkey",
             anchor_chain_id=103115120,
@@ -878,12 +878,12 @@ finality_depth = 2
         chains = config.get_chain_configs()
         assert len(chains) == 1
         assert chains[0].chain_id == 103115120
-        assert chains[0].rpc_url == "https://rpc.testnet.gsx.network"
+        assert chains[0].rpc_url == "https://rpc.testnet.suwappu.network"
 
     def test_get_chain_configs_from_chains_list(self):
         """Multi-chain: anchor_chains list produces multiple ChainConfigs."""
         config = NodeConfig(
-            anchor_chains=[self._CHAIN_GSX, self._CHAIN_BASE],
+            anchor_chains=[self._CHAIN_SUWAPPU, self._CHAIN_BASE],
         )
         chains = config.get_chain_configs()
         assert len(chains) == 2
@@ -898,7 +898,7 @@ finality_depth = 2
             anchor_registry_address="0x" + "FF" * 20,
             anchor_operator_key="0xignored",
             anchor_chain_id=999,
-            anchor_chains=[self._CHAIN_GSX],
+            anchor_chains=[self._CHAIN_SUWAPPU],
         )
         chains = config.get_chain_configs()
         assert len(chains) == 1

@@ -83,6 +83,10 @@ contract SecurityTest is Test {
             admin, 1 hours, 1 wei, 1 wei
         );
         ZKBridgeVerifier zk = new ZKBridgeVerifier(admin, address(ch), 1); // MODE_SP1
+        // lockProduction now refuses MODE_SP1 with an unconfigured verifier
+        // (C1/C4 hardening) — configure one before locking.
+        vm.prank(admin);
+        zk.setSP1Verifier(address(0x5191), keccak256("vk"));
         vm.prank(admin);
         zk.lockProduction();
         assertTrue(zk.productionMode());

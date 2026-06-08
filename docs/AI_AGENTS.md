@@ -15,7 +15,7 @@ Before suggesting a non-trivial change, an agent should load:
 1. **[../CONTRIBUTING.md](../CONTRIBUTING.md)** — prerequisites, test commands,
    PR workflow.
 2. **[../CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md)** — enforcement contact
-   `core@globalsettlement.dev`.
+   `core@suwappu.dev`.
 3. **[OPERATOR_RUNBOOK.md](OPERATOR_RUNBOOK.md) §13** — v7 deploy checklist.
    If a change touches deploy paths, this is the authoritative checklist.
 4. **[SECURITY_AUDIT_2026-05-15.md](security/audits/internal/SECURITY_AUDIT_2026-05-15.md)** — every

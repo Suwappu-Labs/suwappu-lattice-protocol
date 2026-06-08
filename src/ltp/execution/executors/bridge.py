@@ -1,7 +1,7 @@
 """BridgeModule — wraps Gate 3 GatewayVMService as a system module (0xE0).
 
 Gate 3's bridge gateway (Base Sepolia event relay → ML-DSA-65 attestation
-→ GSX anchor) becomes one module within the execution layer. The existing
+→ SUWAPPU anchor) becomes one module within the execution layer. The existing
 poll-mode continues to work; consensus-mode is added on top.
 """
 

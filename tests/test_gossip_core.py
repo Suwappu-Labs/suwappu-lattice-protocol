@@ -64,7 +64,7 @@ def gossip(peer_manager, alice):
 class TestDomainTag:
     def test_peer_gossip_tag_registered(self):
         assert "DOMAIN_PEER_GOSSIP" in _ALL_TAGS
-        assert _ALL_TAGS["DOMAIN_PEER_GOSSIP"] == b"GSX-LTP:peer-gossip:v1\x00"
+        assert _ALL_TAGS["DOMAIN_PEER_GOSSIP"] == b"SUWAPPU-LTP:peer-gossip:v1\x00"
 
 
 # ---------------------------------------------------------------------------

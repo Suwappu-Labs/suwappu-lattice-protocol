@@ -1,4 +1,4 @@
-"""DID document canonical-hash parity with `gsx-precompiles::DidDocument`."""
+"""DID document canonical-hash parity with `suwappu-precompiles::DidDocument`."""
 
 from __future__ import annotations
 

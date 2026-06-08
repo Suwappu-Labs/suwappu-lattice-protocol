@@ -183,7 +183,7 @@ campaign.
 - **Formal verification.** Halmos / hevm symbolic execution
   is a separate workstream (May report §11 item 1).
 - **Cross-repo wire parity.** Separate workstream (May report
-  §11 item — implicit; see `2-patterns/gsx-cross-repo-wire-parity`).
+  §11 item — implicit; see `2-patterns/suwappu-cross-repo-wire-parity`).
 - **Live mainnet broadcasts.** Fork-sim only.
 - **Bond-floor governance review.** `setMinOperatorBond` /
   `setMinChallengerBond` admin policy is documented but not

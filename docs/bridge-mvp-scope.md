@@ -140,7 +140,7 @@ Wraps `LTPProtocol.materialize()` with bridge verification:
 
 ### What the MVP Does NOT Include
 
-- **Smart contract integration** — Smart contract integration is underway — LTPAnchorRegistry (UUPS proxy) and LTPMultiSig are deployed on GSX Testnet (Chain ID 103115120)
+- **Smart contract integration** — Smart contract integration is underway — LTPAnchorRegistry (UUPS proxy) and LTPMultiSig are deployed on SUWAPPU Testnet (Chain ID 103115120)
 - **Multi-relayer consensus** — single relayer (trust assumptions documented)
 - **Fee mechanism** — no economic incentives/slashing
 - **Finality oracle** — L1 block finality is simulated (configurable parameter)

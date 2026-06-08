@@ -30,21 +30,23 @@ contract ZKBridgeVerifierTest is Test {
         challenge = new OptimisticBridgeChallenge(admin, PERIOD, OP_BOND, CH_BOND);
         zkVerifier = new ZKBridgeVerifier(admin, address(challenge), 0); // MODE_SIMULATED
 
-        // Authorize the ZK verifier on the challenge contract
-        vm.prank(admin);
+        // Authorize the ZK verifier on the challenge contract, plus the
+        // C3 operator-authorization + prover access control.
+        vm.startPrank(admin);
         challenge.setZKVerifier(address(zkVerifier));
+        zkVerifier.setAuthorizedOperatorVk(OP_VK_HASH, true);
+        zkVerifier.setProver(address(this), true);
+        vm.stopPrank();
 
         vm.deal(operator, 10 ether);
         vm.deal(challenger, 10 ether);
     }
 
-    /// @dev Helper: build a valid simulated proof for the test public inputs
-    function _buildSimulatedProof() internal pure returns (bytes memory) {
-        // proof_hash: arbitrary 32 bytes
+    /// @dev Helper: build a valid simulated proof bound to `anchorDigest` (C3).
+    function _buildSimulatedProof(bytes32 anchorDigest) internal pure returns (bytes memory) {
         bytes32 proofHash = keccak256("test-proof-hash");
-        // verify_tag: keccak256(sthRootHash || operatorVkHash || treeSize || sthSequence || proofHash || "sim-verify")
         bytes32 verifyTag = keccak256(abi.encodePacked(
-            STH_ROOT, OP_VK_HASH, TREE_SIZE, STH_SEQ, proofHash, "sim-verify"
+            anchorDigest, STH_ROOT, OP_VK_HASH, TREE_SIZE, STH_SEQ, proofHash, "sim-verify"
         ));
         return abi.encodePacked(proofHash, verifyTag);
     }
@@ -67,7 +69,7 @@ contract ZKBridgeVerifierTest is Test {
         vm.prank(operator);
         challenge.openWindow{value: OP_BOND}(DIGEST_1);
 
-        bytes memory proof = _buildSimulatedProof();
+        bytes memory proof = _buildSimulatedProof(DIGEST_1);
         zkVerifier.verifyAndFinalize(DIGEST_1, proof, _inputs());
 
         assertTrue(challenge.isFinalized(DIGEST_1));
@@ -94,7 +96,7 @@ contract ZKBridgeVerifierTest is Test {
         });
 
         vm.expectRevert(ZKBridgeVerifier.InvalidPublicInputs.selector);
-        zkVerifier.verifyAndFinalize(DIGEST_1, _buildSimulatedProof(), zeroInputs);
+        zkVerifier.verifyAndFinalize(DIGEST_1, _buildSimulatedProof(DIGEST_1), zeroInputs);
     }
 
     function test_verifyAndFinalize_rejectsShortProof() public {
@@ -117,7 +119,7 @@ contract ZKBridgeVerifierTest is Test {
         assertTrue(challenge.isChallenged(DIGEST_1));
 
         // ZK proof finalizes the challenged window
-        bytes memory proof = _buildSimulatedProof();
+        bytes memory proof = _buildSimulatedProof(DIGEST_1);
         zkVerifier.verifyAndFinalize(DIGEST_1, proof, _inputs());
 
         assertTrue(challenge.isFinalized(DIGEST_1));
@@ -133,7 +135,7 @@ contract ZKBridgeVerifierTest is Test {
         uint256 opBal = operator.balance;
         uint256 chBal = challenger.balance;
 
-        bytes memory proof = _buildSimulatedProof();
+        bytes memory proof = _buildSimulatedProof(DIGEST_1);
         zkVerifier.verifyAndFinalize(DIGEST_1, proof, _inputs());
 
         assertEq(operator.balance, opBal + OP_BOND);
@@ -144,14 +146,14 @@ contract ZKBridgeVerifierTest is Test {
         vm.prank(operator);
         challenge.openWindow{value: OP_BOND}(DIGEST_1);
 
-        bytes memory proof = _buildSimulatedProof();
+        bytes memory proof = _buildSimulatedProof(DIGEST_1);
         zkVerifier.verifyAndFinalize(DIGEST_1, proof, _inputs());
 
         // Same proof on a different anchor
         vm.prank(operator);
         challenge.openWindow{value: OP_BOND}(DIGEST_2);
 
-        vm.expectRevert(ZKBridgeVerifier.ProofAlreadyUsed.selector);
+        vm.expectRevert(ZKBridgeVerifier.InvalidProof.selector); // proof bound to DIGEST_1 (C3)
         zkVerifier.verifyAndFinalize(DIGEST_2, proof, _inputs());
     }
 
@@ -169,15 +171,21 @@ contract ZKBridgeVerifierTest is Test {
         challenge.finalizeWithZKProof(DIGEST_1);
     }
 
-    function test_zkVerifier_adminCanCall() public {
+    /// @dev Hardening (red-team 2.3/2.4): finalizeWithZKProof is restricted to
+    ///      the registered ZK verifier ONLY. The admin must NOT be able to
+    ///      bypass proof verification and finalize an arbitrary digest directly.
+    ///      (Previously admin could call it — that bypass is now removed; see
+    ///      OptimisticBridgeChallenge.finalizeWithZKProof: msg.sender == zkVerifier.)
+    function test_zkVerifier_adminCannotBypassVerifier() public {
         vm.prank(operator);
         challenge.openWindow{value: OP_BOND}(DIGEST_1);
 
-        // Admin can also call finalizeWithZKProof
+        // Even the admin cannot finalize directly — only the verifier may.
         vm.prank(admin);
+        vm.expectRevert(OptimisticBridgeChallenge.Unauthorized.selector);
         challenge.finalizeWithZKProof(DIGEST_1);
 
-        assertTrue(challenge.isFinalized(DIGEST_1));
+        assertFalse(challenge.isFinalized(DIGEST_1));
     }
 
     // -----------------------------------------------------------------------
@@ -201,8 +209,13 @@ contract ZKBridgeVerifierTest is Test {
 }
 
 
-/// @notice STARK-mode tests using a separate verifier instance in MODE_STARK.
-contract ZKBridgeVerifierSTARKTest is Test {
+/// @notice STARK mode was permanently disabled in C5 — `_verifySTARK` was a
+///         keccak256 tag check, not a cryptographic STARK verifier. These tests
+///         pin that removal: STARK can neither be finalized through nor switched
+///         into. They register a prover + operator so the revert reached is
+///         genuinely STARKModeDisabled (the dispatch is blocked), not merely the
+///         upstream access-control gates.
+contract ZKBridgeVerifierSTARKDisabledTest is Test {
     OptimisticBridgeChallenge public challenge;
     ZKBridgeVerifier public starkVerifier;
 
@@ -213,19 +226,20 @@ contract ZKBridgeVerifierSTARKTest is Test {
     uint256 constant OP_BOND = 0.01 ether;
 
     bytes32 constant DIGEST_S1 = keccak256("stark-anchor-1");
-    bytes32 constant DIGEST_S2 = keccak256("stark-anchor-2");
-
     bytes32 constant STH_ROOT = keccak256("stark-sth-root");
     bytes32 constant OP_VK_HASH = keccak256("stark-operator-vk");
-    uint64 constant TREE_SIZE = 10;
-    uint64 constant STH_SEQ = 3;
 
     function setUp() public {
         challenge = new OptimisticBridgeChallenge(admin, PERIOD, OP_BOND, 0.001 ether);
+        // Constructing in MODE_STARK is still permitted (no constructor guard),
+        // but every operational path out of it now reverts.
         starkVerifier = new ZKBridgeVerifier(admin, address(challenge), 3); // MODE_STARK
 
-        vm.prank(admin);
+        vm.startPrank(admin);
         challenge.setZKVerifier(address(starkVerifier));
+        starkVerifier.setAuthorizedOperatorVk(OP_VK_HASH, true);
+        starkVerifier.setProver(address(this), true);
+        vm.stopPrank();
 
         vm.deal(operator, 10 ether);
     }
@@ -234,118 +248,38 @@ contract ZKBridgeVerifierSTARKTest is Test {
         return ZKBridgeVerifier.PublicInputs({
             sthRootHash: STH_ROOT,
             operatorVkHash: OP_VK_HASH,
-            treeSize: TREE_SIZE,
-            sthSequence: STH_SEQ
+            treeSize: 10,
+            sthSequence: 3
         });
     }
 
-    function _buildSTARKProofLegacy() internal pure returns (bytes memory) {
-        // Legacy 128B: 4 x 32B layers: proof_hash, fri_0, fri_1, verify_tag
-        bytes32 proofHash = keccak256("stark-test-proof-hash");
-        bytes32 fri0 = keccak256("stark-fri-layer-0");
-        bytes32 fri1 = keccak256("stark-fri-layer-1");
-
-        bytes32 verifyTag = keccak256(abi.encodePacked(
-            STH_ROOT, OP_VK_HASH, TREE_SIZE, STH_SEQ,
-            proofHash, fri0, fri1,
-            "stark-verify"
-        ));
-        return abi.encodePacked(proofHash, fri0, fri1, verifyTag);
-    }
-
-    function _buildSTARKProofV3() internal pure returns (bytes memory) {
-        // V3 FRI-based: header(8B) + pi_hash(32B) + witness_hash(32B) + roots(N*32B) + verify_tag(32B)
-        uint8 numRoots = 2;
-
-        // Build header: version=3, numRoots=2, securityBits=128, reserved=0
-        bytes memory header = abi.encodePacked(uint8(3), numRoots, uint8(128), bytes5(0));
-
-        // Public inputs hash
-        bytes32 piHash = keccak256(abi.encodePacked(
-            STH_ROOT, OP_VK_HASH, TREE_SIZE, STH_SEQ, "stark-public"
-        ));
-
-        // Witness hash and FRI roots (arbitrary for test)
-        bytes32 witnessHash = keccak256("v3-witness-hash");
-        bytes32 root0 = keccak256("v3-fri-root-0");
-        bytes32 root1 = keccak256("v3-fri-root-1");
-
-        // Assemble everything before verify_tag
-        bytes memory preTag = abi.encodePacked(header, piHash, witnessHash, root0, root1);
-
-        bytes32 verifyTag = keccak256(abi.encodePacked(preTag, "stark-verify"));
-
-        return abi.encodePacked(preTag, verifyTag);
-    }
-
-    function test_stark_validProofFinalizes() public {
+    /// @dev Even a well-formed legacy STARK proof can no longer finalize: the
+    ///      dispatch reverts STARKModeDisabled before any tag check.
+    function test_stark_verifyAndFinalize_disabled() public {
         vm.prank(operator);
         challenge.openWindow{value: OP_BOND}(DIGEST_S1);
 
-        starkVerifier.verifyAndFinalize(DIGEST_S1, _buildSTARKProofLegacy(), _starkInputs());
-        assertTrue(challenge.isFinalized(DIGEST_S1));
+        bytes memory anyProof = new bytes(128);
+        vm.expectRevert(ZKBridgeVerifier.STARKModeDisabled.selector);
+        starkVerifier.verifyAndFinalize(DIGEST_S1, anyProof, _starkInputs());
+
+        assertFalse(challenge.isFinalized(DIGEST_S1));
     }
 
-    function test_stark_rejectsInvalidProof() public {
-        vm.prank(operator);
-        challenge.openWindow{value: OP_BOND}(DIGEST_S1);
-
-        bytes memory badProof = new bytes(128);
-        vm.expectRevert(ZKBridgeVerifier.InvalidProof.selector);
-        starkVerifier.verifyAndFinalize(DIGEST_S1, badProof, _starkInputs());
+    /// @dev lockProduction must refuse a STARK-mode verifier outright.
+    function test_stark_lockProduction_disabled() public {
+        vm.prank(admin);
+        vm.expectRevert(ZKBridgeVerifier.STARKModeDisabled.selector);
+        starkVerifier.lockProduction();
     }
 
-    function test_stark_rejectsWrongLength() public {
-        vm.prank(operator);
-        challenge.openWindow{value: OP_BOND}(DIGEST_S1);
-
-        bytes memory shortProof = new bytes(64); // SNARK size, not STARK
-        vm.expectRevert(ZKBridgeVerifier.InvalidProof.selector);
-        starkVerifier.verifyAndFinalize(DIGEST_S1, shortProof, _starkInputs());
-    }
-
-    function test_stark_v3ProofFinalizes() public {
-        vm.prank(operator);
-        challenge.openWindow{value: OP_BOND}(DIGEST_S2);
-
-        bytes memory v3Proof = _buildSTARKProofV3();
-        starkVerifier.verifyAndFinalize(DIGEST_S2, v3Proof, _starkInputs());
-        assertTrue(challenge.isFinalized(DIGEST_S2));
-    }
-
-    function test_stark_v3RejectsWrongInputs() public {
-        vm.prank(operator);
-        challenge.openWindow{value: OP_BOND}(DIGEST_S2);
-
-        bytes memory v3Proof = _buildSTARKProofV3();
-        ZKBridgeVerifier.PublicInputs memory wrongInputs = ZKBridgeVerifier.PublicInputs({
-            sthRootHash: keccak256("wrong-root"),
-            operatorVkHash: OP_VK_HASH,
-            treeSize: TREE_SIZE,
-            sthSequence: STH_SEQ
-        });
-        vm.expectRevert(ZKBridgeVerifier.InvalidProof.selector);
-        starkVerifier.verifyAndFinalize(DIGEST_S2, v3Proof, wrongInputs);
-    }
-
-    function test_stark_bondReturnedOnFinalize() public {
-        vm.prank(operator);
-        challenge.openWindow{value: OP_BOND}(DIGEST_S1);
-
-        uint256 balBefore = operator.balance;
-        starkVerifier.verifyAndFinalize(DIGEST_S1, _buildSTARKProofLegacy(), _starkInputs());
-        assertEq(operator.balance, balBefore + OP_BOND);
-    }
-
-    function test_fuzz_randomSTARKProofRejected(bytes32 r1, bytes32 r2, bytes32 r3, bytes32 r4) public {
-        bytes memory randomProof = abi.encodePacked(r1, r2, r3, r4);
-
-        vm.prank(operator);
-        challenge.openWindow{value: OP_BOND}(keccak256(randomProof));
-
-        try starkVerifier.verifyAndFinalize(keccak256(randomProof), randomProof, _starkInputs()) {
-        } catch {
-        }
+    /// @dev The admin cannot switch any verifier into STARK mode.
+    function test_stark_cannot_switch_into_stark_mode() public {
+        OptimisticBridgeChallenge ch = new OptimisticBridgeChallenge(admin, PERIOD, OP_BOND, 0.001 ether);
+        ZKBridgeVerifier zk = new ZKBridgeVerifier(admin, address(ch), 0); // MODE_SIMULATED
+        vm.prank(admin);
+        vm.expectRevert(ZKBridgeVerifier.STARKModeDisabled.selector);
+        zk.setVerificationMode(3); // MODE_STARK
     }
 }
 
@@ -354,9 +288,21 @@ contract ZKBridgeVerifierSTARKTest is Test {
 // SP1 Verifier Tests
 // =========================================================================
 
+/// @dev Minimal SP1 verifier double: accepts iff the proof's first byte is 0x01.
+contract MockSP1VerifierLocal {
+    function verifyProof(bytes32, bytes calldata, bytes calldata proof)
+        external
+        pure
+        returns (bool)
+    {
+        return proof.length > 0 && proof[0] == 0x01;
+    }
+}
+
 contract ZKBridgeVerifierSP1Test is Test {
     OptimisticBridgeChallenge public challenge;
     ZKBridgeVerifier public sp1Verifier;
+    MockSP1VerifierLocal public mockSP1;
 
     address admin = address(0xAD);
     address operator = address(0xBEEF);
@@ -374,9 +320,14 @@ contract ZKBridgeVerifierSP1Test is Test {
     function setUp() public {
         challenge = new OptimisticBridgeChallenge(admin, PERIOD, OP_BOND, CH_BOND);
         sp1Verifier = new ZKBridgeVerifier(admin, address(challenge), 1); // MODE_SP1
+        mockSP1 = new MockSP1VerifierLocal();
 
-        vm.prank(admin);
+        vm.startPrank(admin);
         challenge.setZKVerifier(address(sp1Verifier));
+        // C3 access control: register the operator key + this test as prover.
+        sp1Verifier.setAuthorizedOperatorVk(OP_VK_HASH, true);
+        sp1Verifier.setProver(address(this), true);
+        vm.stopPrank();
 
         vm.deal(operator, 10 ether);
     }
@@ -390,27 +341,48 @@ contract ZKBridgeVerifierSP1Test is Test {
         });
     }
 
-    // SP1 without configured verifier uses simulated check (>= 128 bytes)
-    function test_sp1_simulated_accepts_128B() public {
+    /// @dev C1: SP1 mode with NO configured verifier must revert, never fall
+    ///      back to a simulated/structure check. (The old "unconfigured SP1
+    ///      accepts a 128-byte blob" path was removed.)
+    function test_sp1_unconfigured_reverts() public {
         vm.prank(operator);
         challenge.openWindow{value: OP_BOND}(DIGEST_1);
 
-        // 128 bytes should pass the simulated SP1 check
         bytes memory proof = new bytes(128);
         for (uint i = 0; i < 128; i++) proof[i] = bytes1(uint8(i + 1));
 
+        vm.expectRevert(ZKBridgeVerifier.SP1VerifierNotConfigured.selector);
         sp1Verifier.verifyAndFinalize(DIGEST_1, proof, _inputs());
-        assertTrue(challenge.isFinalized(DIGEST_1));
+        assertFalse(challenge.isFinalized(DIGEST_1));
     }
 
-    function test_sp1_rejects_short_proof() public {
+    /// @dev A proof the configured SP1 verifier accepts (first byte 0x01)
+    ///      finalizes the window.
+    function test_sp1_configured_validProofFinalizes() public {
+        vm.prank(admin);
+        sp1Verifier.setSP1Verifier(address(mockSP1), keccak256("vk"));
+
         vm.prank(operator);
         challenge.openWindow{value: OP_BOND}(DIGEST_1);
 
-        // 64 bytes is too short for SP1
-        bytes memory shortProof = new bytes(64);
+        bytes memory validProof = hex"01aabbcc";
+        sp1Verifier.verifyAndFinalize(DIGEST_1, validProof, _inputs());
+        assertTrue(challenge.isFinalized(DIGEST_1));
+    }
+
+    /// @dev A proof the configured SP1 verifier rejects (first byte != 0x01)
+    ///      reverts InvalidProof and does not finalize.
+    function test_sp1_rejects_proof_verifier_denies() public {
+        vm.prank(admin);
+        sp1Verifier.setSP1Verifier(address(mockSP1), keccak256("vk"));
+
+        vm.prank(operator);
+        challenge.openWindow{value: OP_BOND}(DIGEST_1);
+
+        bytes memory badProof = hex"00aabbcc"; // first byte 0x00 -> mock returns false
         vm.expectRevert(ZKBridgeVerifier.InvalidProof.selector);
-        sp1Verifier.verifyAndFinalize(DIGEST_1, shortProof, _inputs());
+        sp1Verifier.verifyAndFinalize(DIGEST_1, badProof, _inputs());
+        assertFalse(challenge.isFinalized(DIGEST_1));
     }
 
     function test_setSP1Verifier_updates_storage() public {

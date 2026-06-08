@@ -34,7 +34,7 @@ protocol = LTPProtocol(network)
 # Bridge components
 l1_anchor = L1Anchor(protocol, l1_operator, chain_id="ethereum")
 relayer = Relayer(protocol)
-l2_materializer = L2Materializer(protocol, l2_verifier, chain_id="gsx-l2")
+l2_materializer = L2Materializer(protocol, l2_verifier, chain_id="suwappu-l2")
 
 print(f"  L1 Operator: {l1_operator.label}")
 print(f"  L2 Verifier: {l2_verifier.label}")
@@ -44,7 +44,7 @@ print("\n▸ Step 1: Create Bridge Message")
 msg = BridgeMessage(
     msg_type="token_lock",
     source_chain="ethereum",
-    dest_chain="gsx-l2",
+    dest_chain="suwappu-l2",
     sender="0xAlice",
     recipient="0xBob",
     payload={"token": "ETH", "amount": "1.5"},

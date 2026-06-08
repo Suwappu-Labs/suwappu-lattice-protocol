@@ -41,26 +41,26 @@ interface ITimelock {
 }
 
 /// @title RegisterGatewaySigner
-/// @notice Registers the gateway VM's ML-DSA-65 vkHash on the GSX devnet LTPAnchorRegistry.
+/// @notice Registers the gateway VM's ML-DSA-65 vkHash on the SUWAPPU devnet LTPAnchorRegistry.
 ///         Runs the full governance flow: MultiSig -> Timelock -> Registry.
 ///
 /// Usage (3 steps):
 ///   Step 1 — Submit + confirm (deployer):
 ///     forge script script/RegisterGatewaySigner.s.sol:RegisterGatewaySigner \
-///         --sig "step1_submit()" --rpc-url "$GSX_RPC_URL" \
-///         --private-key "$GSX_DEPLOYER_KEY" --broadcast -vvvv
+///         --sig "step1_submit()" --rpc-url "$SUWAPPU_RPC_URL" \
+///         --private-key "$SUWAPPU_DEPLOYER_KEY" --broadcast -vvvv
 ///
 ///   Step 2 — Confirm (operator):
 ///     forge script script/RegisterGatewaySigner.s.sol:RegisterGatewaySigner \
-///         --sig "step2_confirm(uint256)" <TX_ID> --rpc-url "$GSX_RPC_URL" \
-///         --private-key "$GSX_OPERATOR_KEY" --broadcast -vvvv
+///         --sig "step2_confirm(uint256)" <TX_ID> --rpc-url "$SUWAPPU_RPC_URL" \
+///         --private-key "$SUWAPPU_OPERATOR_KEY" --broadcast -vvvv
 ///
 ///   Step 3 — Execute MultiSig + wait + execute Timelock:
 ///     forge script script/RegisterGatewaySigner.s.sol:RegisterGatewaySigner \
-///         --sig "step3_execute(uint256)" <TX_ID> --rpc-url "$GSX_RPC_URL" \
-///         --private-key "$GSX_DEPLOYER_KEY" --broadcast -vvvv
+///         --sig "step3_execute(uint256)" <TX_ID> --rpc-url "$SUWAPPU_RPC_URL" \
+///         --private-key "$SUWAPPU_DEPLOYER_KEY" --broadcast -vvvv
 contract RegisterGatewaySigner is Script {
-    // GSX Testnet addresses
+    // SUWAPPU Testnet addresses
     address constant MULTISIG = 0x0106A79e9236009a05742B3fB1e3B7a52F44373D;
     address constant TIMELOCK = 0x7C2665F7e68FE635ee8F10aa0130AEBC603a9Db8;
     address constant REGISTRY = 0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4;
