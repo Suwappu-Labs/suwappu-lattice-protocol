@@ -35,6 +35,11 @@ contract SCN004_Invariant is Test {
     uint256 internal constant THRESHOLD = 2;
 
     function setUp() public {
+        // QUARANTINED — cluster-2. LTPMultiSig is deprecated (C6): its constructor
+        // reverts, so this scenario cannot deploy. Skipped — NOT production multisig
+        // coverage; re-target Gnosis Safe 1.4.1.
+        // See docs/security/audits/suwappu/CLUSTER2_QUARANTINE.md
+        vm.skip(true);
         address[] memory owners = new address[](3);
         owners[0] = ALICE; owners[1] = BOB; owners[2] = CAROL;
         ms = new LTPMultiSig(owners, THRESHOLD);

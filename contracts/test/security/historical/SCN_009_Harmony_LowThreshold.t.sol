@@ -47,6 +47,11 @@ contract SCN009_Harmony_LowThreshold is Test {
     address[] internal owners9;
 
     function setUp() public {
+        // QUARANTINED — cluster-2. LTPMultiSig is deprecated (C6): its constructor
+        // reverts, so this scenario cannot deploy. Skipped — NOT production multisig
+        // coverage; re-target Gnosis Safe 1.4.1.
+        // See docs/security/audits/suwappu/CLUSTER2_QUARANTINE.md
+        vm.skip(true);
         // 5 owners — Harmony's configuration
         owners5 = new address[](5);
         owners5[0] = address(0xA1);

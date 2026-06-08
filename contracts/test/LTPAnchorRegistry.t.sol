@@ -888,6 +888,10 @@ contract MultiSigTest is TestSetup {
 
     function setUp() public override {
         super.setUp();
+        // QUARANTINED — cluster-2. LTPMultiSig is deprecated (C6): its constructor
+        // reverts. Skipped — NOT production multisig coverage; re-target Gnosis Safe.
+        // See docs/security/audits/suwappu/CLUSTER2_QUARANTINE.md
+        vm.skip(true);
 
         // Deploy 2-of-3 multi-sig
         address[] memory owners = new address[](3);
@@ -1015,6 +1019,10 @@ contract MultiSigErrorReportTest is TestSetup {
 
     function setUp() public override {
         super.setUp();
+        // QUARANTINED — cluster-2. LTPMultiSig is deprecated (C6): its constructor
+        // reverts. Skipped — NOT production multisig coverage; re-target Gnosis Safe.
+        // See docs/security/audits/suwappu/CLUSTER2_QUARANTINE.md
+        vm.skip(true);
 
         address[] memory owners = new address[](2);
         owners[0] = owner1;
@@ -1156,6 +1164,10 @@ contract TimelockGovernanceTest is TestSetup {
 
     function setUp() public override {
         super.setUp();
+        // QUARANTINED — cluster-2. LTPMultiSig is deprecated (C6): its constructor
+        // reverts. Skipped — NOT production multisig coverage; re-target Gnosis Safe.
+        // See docs/security/audits/suwappu/CLUSTER2_QUARANTINE.md
+        vm.skip(true);
 
         // Deploy 2-of-2 multi-sig
         address[] memory owners = new address[](2);
