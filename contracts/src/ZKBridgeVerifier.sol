@@ -18,8 +18,8 @@ contract ZKBridgeVerifier {
     struct PublicInputs {
         bytes32 sthRootHash;
         bytes32 operatorVkHash;
-        uint64  treeSize;
-        uint64  sthSequence;
+        uint64 treeSize;
+        uint64 sthSequence;
     }
 
     // Verification mode
@@ -44,8 +44,8 @@ contract ZKBridgeVerifier {
     mapping(bytes32 => bool) public verifiedProofs;
 
     // SP1 verifier integration
-    address public sp1Verifier;     // Succinct's on-chain SP1 verifier (or simulated)
-    bytes32 public sp1ProgramVKey;  // Verification key for the SP1 ML-DSA circuit ELF
+    address public sp1Verifier; // Succinct's on-chain SP1 verifier (or simulated)
+    bytes32 public sp1ProgramVKey; // Verification key for the SP1 ML-DSA circuit ELF
 
     /// @notice Authorized operator verification-key hashes (C3 / P3-1). A proof
     ///         is only accepted if its `operatorVkHash` is registered here — a
@@ -60,7 +60,12 @@ contract ZKBridgeVerifier {
     // Events
     // -----------------------------------------------------------------------
 
-    event ProofVerified(bytes32 indexed anchorDigest, bytes32 sthRootHash, bytes32 operatorVkHash, uint64 sthSequence);
+    event ProofVerified(
+        bytes32 indexed anchorDigest,
+        bytes32 sthRootHash,
+        bytes32 operatorVkHash,
+        uint64 sthSequence
+    );
     event ProofRejected(bytes32 indexed anchorDigest, string reason);
     event SP1VerifierUpdated(address indexed verifier, bytes32 indexed vkey);
     event OperatorVkSet(bytes32 indexed operatorVkHash, bool authorized);
@@ -84,11 +89,7 @@ contract ZKBridgeVerifier {
     // Constructor
     // -----------------------------------------------------------------------
 
-    constructor(
-        address _admin,
-        address _challengeContract,
-        uint8 _mode
-    ) {
+    constructor(address _admin, address _challengeContract, uint8 _mode) {
         admin = _admin;
         challengeContract = OptimisticBridgeChallenge(_challengeContract);
         verificationMode = _mode;
@@ -109,7 +110,9 @@ contract ZKBridgeVerifier {
         if (msg.sender != admin) revert Unauthorized();
         if (verificationMode == MODE_SIMULATED) revert SimulatedModeNotAllowedInProduction();
         if (verificationMode == MODE_STARK) revert STARKModeDisabled();
-        if (verificationMode == MODE_SP1 && sp1Verifier == address(0)) revert SP1VerifierNotConfigured();
+        if (verificationMode == MODE_SP1 && sp1Verifier == address(0)) {
+            revert SP1VerifierNotConfigured();
+        }
         productionMode = true;
         emit ProductionModeLocked();
     }
@@ -131,7 +134,10 @@ contract ZKBridgeVerifier {
         if (!isProver[msg.sender]) revert UnauthorizedProver(msg.sender);
 
         // Validate public inputs
-        if (inputs.sthRootHash == bytes32(0) || inputs.operatorVkHash == bytes32(0) || anchorDigest == bytes32(0)) {
+        if (
+            inputs.sthRootHash == bytes32(0) || inputs.operatorVkHash == bytes32(0)
+                || anchorDigest == bytes32(0)
+        ) {
             revert InvalidPublicInputs();
         }
 
@@ -144,10 +150,18 @@ contract ZKBridgeVerifier {
         // Compute proof ID for dedup. C3: bind anchorDigest so a proof cannot be
         // replayed to finalize a DIFFERENT digest (and bind chainid+address so it
         // cannot be replayed onto another deployment).
-        bytes32 proofId = keccak256(abi.encodePacked(
-            block.chainid, address(this), anchorDigest,
-            proofBytes, inputs.sthRootHash, inputs.operatorVkHash, inputs.treeSize, inputs.sthSequence
-        ));
+        bytes32 proofId = keccak256(
+            abi.encodePacked(
+                block.chainid,
+                address(this),
+                anchorDigest,
+                proofBytes,
+                inputs.sthRootHash,
+                inputs.operatorVkHash,
+                inputs.treeSize,
+                inputs.sthSequence
+            )
+        );
         if (verifiedProofs[proofId]) revert ProofAlreadyUsed();
 
         // LTP-A-007: refuse simulated proofs when locked into production.
@@ -182,7 +196,9 @@ contract ZKBridgeVerifier {
         // Finalize on the challenge contract
         challengeContract.finalizeWithZKProof(anchorDigest);
 
-        emit ProofVerified(anchorDigest, inputs.sthRootHash, inputs.operatorVkHash, inputs.sthSequence);
+        emit ProofVerified(
+            anchorDigest, inputs.sthRootHash, inputs.operatorVkHash, inputs.sthSequence
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -204,15 +220,17 @@ contract ZKBridgeVerifier {
 
         // C3: bind anchorDigest into the tag so the proof commits to the exact
         // digest being finalized.
-        bytes32 expectedTag = keccak256(abi.encodePacked(
-            anchorDigest,
-            inputs.sthRootHash,
-            inputs.operatorVkHash,
-            inputs.treeSize,
-            inputs.sthSequence,
-            proofHash,
-            "sim-verify"
-        ));
+        bytes32 expectedTag = keccak256(
+            abi.encodePacked(
+                anchorDigest,
+                inputs.sthRootHash,
+                inputs.operatorVkHash,
+                inputs.treeSize,
+                inputs.sthSequence,
+                proofHash,
+                "sim-verify"
+            )
+        );
 
         return claimedTag == expectedTag;
     }
@@ -225,21 +243,24 @@ contract ZKBridgeVerifier {
     ///      V3 FRI-based: header(8B) + pi_hash(32B) + witness_hash(32B) + roots(N*32B) + verify_tag(32B)
     ///        verify_tag = keccak256(header || pi_hash || witness_hash || roots || "stark-verify")
     ///        pi_hash must match keccak256(sthRootHash || operatorVkHash || treeSize || sthSequence || "stark-public")
-    function _verifySTARK(
-        bytes calldata proofBytes,
-        PublicInputs calldata inputs
-    ) internal pure returns (bool) {
+    function _verifySTARK(bytes calldata proofBytes, PublicInputs calldata inputs)
+        internal
+        pure
+        returns (bool)
+    {
         // Legacy 128B proof (v1)
         if (proofBytes.length == 128) {
             bytes32 claimedTag = bytes32(proofBytes[96:128]);
-            bytes32 expectedTag = keccak256(abi.encodePacked(
-                inputs.sthRootHash,
-                inputs.operatorVkHash,
-                inputs.treeSize,
-                inputs.sthSequence,
-                proofBytes[:96],
-                "stark-verify"
-            ));
+            bytes32 expectedTag = keccak256(
+                abi.encodePacked(
+                    inputs.sthRootHash,
+                    inputs.operatorVkHash,
+                    inputs.treeSize,
+                    inputs.sthSequence,
+                    proofBytes[:96],
+                    "stark-verify"
+                )
+            );
             return claimedTag == expectedTag;
         }
 
@@ -258,22 +279,21 @@ contract ZKBridgeVerifier {
         bytes32 piHash = bytes32(proofBytes[8:40]);
 
         // Verify public_inputs_hash matches declared inputs
-        bytes32 expectedPiHash = keccak256(abi.encodePacked(
-            inputs.sthRootHash,
-            inputs.operatorVkHash,
-            inputs.treeSize,
-            inputs.sthSequence,
-            "stark-public"
-        ));
+        bytes32 expectedPiHash = keccak256(
+            abi.encodePacked(
+                inputs.sthRootHash,
+                inputs.operatorVkHash,
+                inputs.treeSize,
+                inputs.sthSequence,
+                "stark-public"
+            )
+        );
         if (piHash != expectedPiHash) return false;
 
         // Verify tag: keccak256(everything_before_tag || "stark-verify")
         uint256 tagOffset = expectedLen - 32;
         bytes32 claimedTag = bytes32(proofBytes[tagOffset:tagOffset + 32]);
-        bytes32 expectedTag = keccak256(abi.encodePacked(
-            proofBytes[:tagOffset],
-            "stark-verify"
-        ));
+        bytes32 expectedTag = keccak256(abi.encodePacked(proofBytes[:tagOffset], "stark-verify"));
 
         return claimedTag == expectedTag;
     }
@@ -297,25 +317,30 @@ contract ZKBridgeVerifier {
 
         // Encode public values matching circuit commit order. C3: anchorDigest is
         // prepended so the proof cryptographically commits to the exact digest it
-        // finalizes — the SP1 circuit ELF MUST commit these values in this order.
+        // finalizes. P9: block.chainid + address(this) are appended so the proof
+        // also commits to the destination chain + verifier instance (previously
+        // these were only in the dedup proofId, not the SNARK commitment, so a
+        // genuine proof was portable across deployments). The SP1 circuit ELF MUST
+        // commit these seven values IN THIS ORDER.
         // anchor_digest(32B) || sth_root_hash(32B) || operator_vk_hash(32B)
         //   || tree_size(8B BE) || sth_sequence(8B BE)
+        //   || chain_id(32B) || verifier_addr(20B)
         bytes memory publicValues = abi.encodePacked(
-            anchorDigest,            // 32 bytes (C3 binding)
-            inputs.sthRootHash,      // 32 bytes
-            inputs.operatorVkHash,   // 32 bytes
-            inputs.treeSize,         // 8 bytes (uint64 in encodePacked = 8B)
-            inputs.sthSequence       // 8 bytes (uint64 in encodePacked = 8B)
+            anchorDigest, // 32 bytes (C3 binding)
+            inputs.sthRootHash, // 32 bytes
+            inputs.operatorVkHash, // 32 bytes
+            inputs.treeSize, // 8 bytes (uint64 in encodePacked = 8B)
+            inputs.sthSequence, // 8 bytes (uint64 in encodePacked = 8B)
+            uint256(block.chainid), // 32 bytes (P9: bind destination chain)
+            address(this) // 20 bytes (P9: bind this verifier instance)
         );
-        // Total: 112 bytes — matches SP1 circuit commit (32 + 32 + 32 + 8 + 8)
+        // Total: 164 bytes. A new ELF => a new vkey => deploying this change
+        // requires rotating it via setSP1Verifier(newVerifier, newVkey).
 
         // Call SP1 verifier contract: verifyProof(bytes32 vkey, bytes publicValues, bytes proof)
         (bool success, bytes memory returnData) = sp1Verifier.staticcall(
             abi.encodeWithSignature(
-                "verifyProof(bytes32,bytes,bytes)",
-                sp1ProgramVKey,
-                publicValues,
-                proofBytes
+                "verifyProof(bytes32,bytes,bytes)", sp1ProgramVKey, publicValues, proofBytes
             )
         );
         if (!success) return false;

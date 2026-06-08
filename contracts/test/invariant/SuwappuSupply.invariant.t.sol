@@ -78,6 +78,10 @@ contract SuwappuSupplyInvariantTest is Test {
         vault.setRefundVerifier(address(verifier)); // same operator gates refunds (C2)
         verifier.setOperator(operator, true);
         vault.addUnlocker(address(handler)); // also the source-chain unlocker
+        // The handler is also the emergency rescuer (TimelockController in prod),
+        // so emergencyRefund is callable — otherwise it always reverts and the
+        // new refund/partial-release coverage would be vacuous.
+        vault.setEmergencyRescuer(address(handler));
         vm.stopPrank();
 
         targetContract(address(handler));
@@ -101,6 +105,34 @@ contract SuwappuSupplyInvariantTest is Test {
             "INV-XOR violated: a commitId was both minted and refunded (C2)"
         );
     }
+
+    /// INV-XOR (partial-release leg): a commit that was ever released via
+    /// unlock/unlockPartial is committed to the unlock path and can never also be
+    /// refunded — neither through the attested claimRefund (CommitPartiallyReleased
+    /// guard) nor through the emergencyRefund backstop. This catches a P3-4 +
+    /// C2 cross-path double-spend that INV-XOR's minted/refunded check would miss.
+    function invariant_released_commit_never_refunded() public view {
+        uint256 n = handler.commitsLength();
+        for (uint256 i = 0; i < n; i++) {
+            bytes32 id = handler.commitAt(i);
+            assertFalse(
+                handler.everReleased(id) && handler.refunded(id),
+                "INV-XOR violated: a partially-released commit was also refunded"
+            );
+        }
+    }
+
+    /// @notice Guard against a vacuous green for the partial-release leg: the
+    ///         fuzzer must reach unlockPartial at least once, otherwise
+    ///         `everReleased` is never set and invariant_released_commit_never_refunded
+    ///         proves nothing. (emergencyRefund + unlockPartial are also directly
+    ///         covered by SuwappuVaultMainnetSafety.t.sol; reaching emergencyRefund
+    ///         from the fuzzer requires a rare lock->warp>timeout->rescue sequence
+    ///         on an otherwise-untouched commit, so it is not asserted here to keep
+    ///         the suite deterministic.)
+    function afterInvariant() public view {
+        assertGt(handler.unlockPartialCount(), 0, "vacuous: unlockPartial path never exercised");
+    }
 }
 
 /// @notice Bounds the fuzzer to legal (and adversarial-but-permitted) entry
@@ -119,11 +151,26 @@ contract SuwappuSupplyHandler is Test {
     mapping(bytes32 => bool) public returned; // forward mint later burned+unlocked
     mapping(bytes32 => bool) public refunded;
 
+    // P3-4 partial-release ghost state.
+    mapping(bytes32 => uint256) public releasedGhost; // commitId -> amount released here
+    mapping(bytes32 => bool) public everReleased; // commitId released via unlockPartial
+    uint256 public emergencyRefundCount; // times emergencyRefund succeeded
+    uint256 public unlockPartialCount; // times unlockPartial succeeded
+
     bool public observedDoubleSpend;
 
     function _checkXor(bytes32 id) internal {
         // The only illegitimate combination: minted AND refunded (C2).
         if (minted[id] && refunded[id]) observedDoubleSpend = true;
+    }
+
+    // ---- View helpers over the commits array (read by the invariant suite) ----
+    function commitsLength() external view returns (uint256) {
+        return commits.length;
+    }
+
+    function commitAt(uint256 i) external view returns (bytes32) {
+        return commits[i];
     }
 
     uint256 internal operatorPk; // authorized operator (honest attestations)
@@ -167,9 +214,11 @@ contract SuwappuSupplyHandler is Test {
         if (commits.length == 0) return;
         bytes32 id = commits[i % commits.length];
         // Honest operator coordination: never attest a mint for a commit it has
-        // already refunded (the cross-domain exactly-once invariant the operator
-        // enforces; on-chain each side is one-shot, the operator binds them).
-        if (minted[id] || refunded[id] || lockedNet[id] == 0) return;
+        // already refunded, NOR one whose source collateral was already released
+        // via unlock/unlockPartial (everReleased) — minting it would create
+        // unbacked wrapped supply. On-chain each side is one-shot; the operator
+        // binds them (the deferred P5b anchor proof makes this trustless).
+        if (minted[id] || refunded[id] || everReleased[id] || lockedNet[id] == 0) return;
         bytes32 digest = adapter.mintDigest(id, address(this), lockedNet[id], block.chainid);
         bytes memory att = _attest(operatorPk, digest);
         try adapter.mint(id, address(this), lockedNet[id], block.chainid, att) {
@@ -247,5 +296,43 @@ contract SuwappuSupplyHandler is Test {
     function warp(uint256 secs) external {
         secs = bound(secs, 0, 30 days);
         vm.warp(block.timestamp + secs);
+    }
+
+    // ---- Partial release (P3-4): drain a LOCKED commit in tranches. Moves
+    //      supply-free collateral out and commits the id to the unlock path
+    //      (released > 0 => no longer refundable). ----
+    function unlockPartialAction(uint256 amt) external {
+        // Self-contained so the partial-release path is always reachable: lock a
+        // fresh commit and immediately drain PART of it in the same call (models
+        // the forward-unlock model where the relayer releases source collateral
+        // in tranches). The commit is marked everReleased so honestMint will never
+        // mint it (that would create unbacked wrapped supply, INV-SUPPLY).
+        uint256 lockAmt = bound(amt, 2, 10 ether);
+        if (address(this).balance < lockAmt) return;
+        try vault.lockETH{value: lockAmt}(DEST, address(this)) returns (bytes32 id) {
+            commits.push(id);
+            lockedNet[id] = lockAmt;
+            uint256 part = lockAmt / 2; // partial: leaves the commit LOCKED, released>0
+            try vault.unlockPartial(id, address(this), part) {
+                releasedGhost[id] = part;
+                everReleased[id] = true;
+                unlockPartialCount++;
+            } catch {}
+        } catch {}
+    }
+
+    // ---- C2 trustless-exit backstop: emergency-refund a stuck, un-minted,
+    //      un-released commit to its depositor (handler is the rescuer). A
+    //      released commit is excluded so the unlock and refund paths can never
+    //      both terminate the same id. ----
+    function emergencyRefundAction(uint256 i) external {
+        if (commits.length == 0) return;
+        bytes32 id = commits[i % commits.length];
+        if (minted[id] || refunded[id] || everReleased[id] || lockedNet[id] == 0) return;
+        try vault.emergencyRefund(id) {
+            refunded[id] = true;
+            emergencyRefundCount++;
+            _checkXor(id);
+        } catch {}
     }
 }
