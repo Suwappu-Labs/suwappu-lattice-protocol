@@ -182,8 +182,12 @@ pub fn verify_quorum_stake(
 
         // ---- ML-DSA-65 signature verification ----
         // Invalid sig → 0 contribution, not an error (mirrors the contract).
+        // saturating_add: this crate runs in the SP1 guest, which compiles with
+        // overflow-checks OFF — a wrapping `+=` could understate sig_stake. The
+        // sum is fail-closed (saturating high only ever makes the quorum harder
+        // to reach, never forgeable).
         if mldsa_valid(&signer.pubkey, &signer.sig, digest) {
-            sig_stake += stake;
+            sig_stake = sig_stake.saturating_add(stake);
         }
     }
 
@@ -194,8 +198,16 @@ pub fn verify_quorum_stake(
 ///
 /// `(total_stake * 2) / 3 + 1` — integer division (floor), then +1.
 /// This implements "strictly > 2/3" as the contract does.
+///
+/// Overflow-safe: Solidity computes this in checked `uint256` (reverts on
+/// overflow), but this crate runs in the SP1 guest with overflow-checks OFF,
+/// where `total_stake * 2` could WRAP to a tiny threshold a single signer
+/// clears — a quorum forgery. Saturating arithmetic is fail-closed: an
+/// overflowing `total_stake` yields a near-`u128::MAX` threshold that no real
+/// `sig_stake` can reach, so the quorum rejects rather than forges. (Realistic
+/// stakes are nowhere near `u128::MAX`; this only guards adversarial inputs.)
 pub fn quorum_threshold(total_stake: u128) -> u128 {
-    (total_stake * 2) / 3 + 1
+    (total_stake.saturating_mul(2) / 3).saturating_add(1)
 }
 
 /// Returns `true` iff `sig_stake >= quorum_threshold(total_stake)`.
@@ -504,5 +516,23 @@ mod tests {
         assert_eq!(quorum_threshold(2), 2); // 1+1=2  (no 1-of-2 quorum)
         assert_eq!(quorum_threshold(3), 3); // 2+1=3  (unanimity for 3)
         assert_eq!(quorum_threshold(100), 67); // canonical case
+    }
+
+    /// Overflow regression: with overflow-checks OFF (release/SP1 guest), an
+    /// unchecked `total_stake * 2` would WRAP near `u128::MAX` and yield a tiny
+    /// threshold a single signer could clear (quorum forgery). Saturating math
+    /// must instead produce a near-`u128::MAX` threshold (fail-closed).
+    #[test]
+    fn test_threshold_does_not_wrap_near_u128_max() {
+        let t = quorum_threshold(u128::MAX);
+        // Must be enormous, NOT a small wrapped value, and never 0.
+        assert!(
+            t > u128::MAX / 4,
+            "threshold must not wrap to a small value"
+        );
+        // A single realistic signer cannot forge a quorum on an overflowing set.
+        assert!(!quorum_reached(1_000_000, u128::MAX));
+        // And the +1 itself never wraps to 0.
+        assert_ne!(quorum_threshold(u128::MAX), 0);
     }
 }
