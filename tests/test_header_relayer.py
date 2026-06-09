@@ -201,7 +201,7 @@ def test_poll_skips_null_and_malformed_via_parser():
 
 
 def test_poll_monkeypatched_skips_null_unreachable_and_malformed(monkeypatch):
-    """End-to-end poll() over a mix of null / unreachable / malformed / good RPCs."""
+    """Full poll() path over a mix of null / unreachable / malformed / good RPCs."""
     import src.ltp.bridge.header_relayer as hr
 
     good_pk = _pubkey(0)
