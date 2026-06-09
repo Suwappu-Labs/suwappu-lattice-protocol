@@ -49,7 +49,8 @@ New to LTP? Read in this order:
 | **Specification** | [Whitepaper](WHITEPAPER.md) | Full protocol design — three-phase COMMIT / LATTICE / MATERIALIZE |
 | | [Threat Model](THREAT_MODEL.md) | Adversary capabilities and invariants |
 | | [Formal Verification Status](FORMAL_VERIFICATION_STATUS.md) | What's machine-checked vs paper-proven |
-| **Architecture** | [Architecture](design-decisions/ARCHITECTURE.md) | System components, data flow, security layers |
+| **Architecture** | [Bridge Architecture](BRIDGE_ARCHITECTURE.md) | Suwappu bridge: flow, verifier seam, trust model, dual-track roadmap |
+| | [Architecture](design-decisions/ARCHITECTURE.md) | System components, data flow, security layers |
 | | [SUWAPPU DAG / SUWAPPU-DB Integration](design-decisions/SUWAPPU_DAG_DB_INTEGRATION.md) | Cross-repo boundary with the DAG L1 and state substrate |
 | | [Corridor Integration](CORRIDOR_INTEGRATION.md) | Wire format and ABI surface |
 | | [Streaming Protocol](design-decisions/STREAMING_PROTOCOL.md) | Chunked streaming, bandwidth amortization, backpressure |
