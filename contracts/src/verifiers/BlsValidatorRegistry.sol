@@ -60,6 +60,8 @@ contract BlsValidatorRegistry {
     error ZeroStake();
     error BadEpoch(uint256 expected, uint256 got);
     error InvalidPubkeyLength(uint256 index, uint256 len);
+    error DuplicatePubkey(uint256 index);
+    error SetTooLarge();
 
     modifier onlyAdmin() {
         if (msg.sender != admin) revert Unauthorized();
@@ -118,12 +120,21 @@ contract BlsValidatorRegistry {
     {
         if (pubkeys.length != stakes.length) revert LengthMismatch();
         if (pubkeys.length == 0) revert EmptySet();
+        // Liveness cap: BlsQuorumHeaderVerifier addresses signers via a uint256
+        // `signerBitmap`, so validator index >= 256 is unaddressable while still
+        // counting toward totalStake/quorumThreshold (a >256-set could make quorum
+        // permanently unreachable). Cap the set; lift only with a `bytes` bitmap.
+        if (pubkeys.length > 256) revert SetTooLarge();
         uint256 total;
         for (uint256 i = 0; i < pubkeys.length; i++) {
             if (pubkeys[i].length != 48) revert InvalidPubkeyLength(i, pubkeys[i].length);
             if (stakes[i] == 0) revert ZeroStake();
             bytes32 pkHash = keccak256(pubkeys[i]);
-            // allow re-installation at same epoch only for genesis path
+            // Mirror GsxDagValidatorRegistry's dedup invariant: a duplicate pubkey
+            // would let one keypair contribute twice to totalStake AND to the on-chain
+            // aggregate pubkey, allowing a single key to satisfy a quorum alone.
+            // stakeOf[epoch][pkHash] == 0 is the "not yet registered" sentinel.
+            if (stakeOf[epoch][pkHash] != 0) revert DuplicatePubkey(i);
             stakeOf[epoch][pkHash] = stakes[i];
             blsPubkey[epoch][i] = pubkeys[i];
             total += stakes[i];
