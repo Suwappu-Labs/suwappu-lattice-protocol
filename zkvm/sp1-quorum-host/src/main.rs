@@ -246,13 +246,11 @@ async fn main() {
     // Build the ProverClient (CPU mode)
     // -----------------------------------------------------------------------
     let client = ProverClient::builder().cpu().build().await;
-    let pk = client
-        .setup(sp1_sdk::Elf::Static(ELF))
-        .await
-        .expect("guest ELF setup failed");
 
     // -----------------------------------------------------------------------
     // EXECUTE MODE — 3-of-4 quorum (must succeed, commit expected PV)
+    // Execute does NOT need a proving key — it is pure RISC-V simulation.
+    // We run execute BEFORE setup() so the fast path completes first.
     // -----------------------------------------------------------------------
     println!("--- EXECUTE MODE (3-of-4 quorum, must succeed) ---");
 
@@ -322,11 +320,19 @@ async fn main() {
     // ML-DSA-65 x3 inside RISC-V is a large circuit. On a CPU-only macOS
     // machine this may OOM or take >30 minutes. We attempt it and defer
     // gracefully if it fails.
+    // setup() computes the proving key (expensive — may take several minutes).
     // -----------------------------------------------------------------------
     println!("--- PROOF GENERATION (compressed) ---");
     println!(
         "Note: ML-DSA-65 x3 + blake3 inside RISC-V is a large circuit — may be slow/OOM on CPU."
     );
+    println!("  Running setup() to compute proving key...");
+
+    let pk = client
+        .setup(sp1_sdk::Elf::Static(ELF))
+        .await
+        .expect("guest ELF setup failed");
+    println!("  setup() complete.");
 
     let stdin_proof = build_stdin(&inputs_3of4);
 
