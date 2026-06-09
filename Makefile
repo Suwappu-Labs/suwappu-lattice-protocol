@@ -9,10 +9,10 @@
 # ── Python Tests ────────────────────────────────────────────────────────
 
 test-python:
-	pytest tests/ -v --ignore=tests/test_contract_integration.py
+	pytest tests/ -v --ignore=tests/test_contract_integration.py --ignore=tests/test_header_relayer_integration.py
 
 test-python-fast:
-	pytest tests/ -x -q --ignore=tests/test_contract_integration.py
+	pytest tests/ -x -q --ignore=tests/test_contract_integration.py --ignore=tests/test_header_relayer_integration.py
 
 # ── Solidity Tests ──────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ _deploy-local:
 		--rpc-url http://localhost:8545 --broadcast 2>/dev/null
 
 test-integration:
-	pytest tests/test_contract_integration.py -v
+	pytest tests/test_contract_integration.py tests/test_header_relayer_integration.py -v
 
 _anvil-stop:
 	@echo "Stopping anvil..."
