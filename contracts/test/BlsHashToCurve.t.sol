@@ -24,11 +24,24 @@ import {BlsHashToCurve} from "../src/crypto/BlsHashToCurve.sol";
 ///         (coordination required for uncompressed-key storage-layout change).
 ///
 ///         Run with: FOUNDRY_PROFILE=prague forge test --match-contract BlsHashToCurve
+///
+///         Tests that depend on EIP-2537 (all hashToG2 tests, the G1ADD smoke)
+///         are skipped via vm.skip() when run under a non-prague profile (e.g.
+///         default/cancun CI). Tests that do not use EIP-2537 precompiles (DST
+///         sanity checks, expand_message_xmd) run on any profile.
 contract BlsHashToCurveTest is Test {
     using stdJson for string;
 
-    // EIP-2537 precompile smoke address
+    // EIP-2537 precompile probe address
     address internal constant BLS12_G1ADD = address(0x0b);
+
+    // G1 generator in EIP-2537 128-byte form; used to probe EIP-2537 availability
+    bytes internal constant G1_GEN =
+        hex"0000000000000000000000000000000017f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb"
+        hex"0000000000000000000000000000000008b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1";
+
+    // Set in setUp() -- true only when EIP-2537 returns a non-empty result
+    bool internal eip2537Active;
 
     // -------------------------------------------------------------------------
     // Inline golden vectors (py_ecc, EIP-2537 256-byte encoding)
@@ -53,35 +66,33 @@ contract BlsHashToCurveTest is Test {
     // solhint-enable max-line-length
 
     // -------------------------------------------------------------------------
-    // Pre-requisite: EIP-2537 smoke (fails fast if prague not active)
+    // setUp: probe EIP-2537 availability
     // -------------------------------------------------------------------------
 
-    /// @notice Prerequisite: G1ADD (0x0b) must succeed under this profile.
-    ///         If this fails, EIP-2537 precompiles are not active -- run under
-    ///         FOUNDRY_PROFILE=prague.
-    function test_prerequisite_eip2537Active() external view {
-        bytes memory g1Gen =
-            hex"0000000000000000000000000000000017f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb0000000000000000000000000000000008b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1";
-        (bool ok,) = BLS12_G1ADD.staticcall(abi.encodePacked(g1Gen, g1Gen));
-        assertTrue(ok, "EIP-2537 G1ADD not active - run under FOUNDRY_PROFILE=prague");
+    function setUp() external {
+        // Probe G1ADD (0x0b): under prague it returns 128 bytes; under cancun it
+        // returns 0 bytes (empty account call). Gate all EIP-2537-dependent tests.
+        bytes memory input = abi.encodePacked(G1_GEN, G1_GEN);
+        (, bytes memory result) = BLS12_G1ADD.staticcall(input);
+        eip2537Active = result.length == 128;
     }
 
     // -------------------------------------------------------------------------
-    // expand_message_xmd unit test (no EIP-2537 needed; works on any profile)
+    // expand_message_xmd unit test (no EIP-2537; runs on any profile)
     // -------------------------------------------------------------------------
 
-    /// @notice Verify expand_message_xmd produces the expected 256-byte output
-    ///         for MSG_0. Cross-checked against the Python RFC 9380 reference.
+    /// @notice Verify expand_message_xmd produces the correct 256-byte output.
+    ///         Cross-checked against the Python RFC 9380 reference implementation.
     ///         Python: expand_message_xmd(MSG_0, DST_SIG, 256)
-    ///           b_1 (bytes 0..31)  = 6511a9bc...18e8f...
-    ///           b_8 (bytes 224..255) = 1ffffaaf...da6de...
+    ///           b_1 (bytes  0..31)  = 6511a9bc...18e8f
+    ///           b_8 (bytes 224..255) = d1d9e18a...3dbae
     function test_expandMessageXmd_msg0_crossCheck() external view {
         bytes memory result = BlsHashToCurveHarness(address(this)).expandMessageXmd(MSG_0);
         assertEq(result.length, 256, "expand_message_xmd: wrong length");
 
         // b_1 = SHA-256(b_0 || 0x01 || DST_prime)
         // forge-lint: disable-next-line(unsafe-typecast)
-        bytes32 first32 = bytes32(result); // result is 256-byte expand_message_xmd output; take first 32
+        bytes32 first32 = bytes32(result); // result is 256-byte output; take first 32B
         assertEq(
             first32,
             // forge-lint: disable-next-line(unsafe-typecast)
@@ -91,14 +102,11 @@ contract BlsHashToCurveTest is Test {
             "expand_message_xmd: b_1 mismatch vs Python"
         );
 
-        // b_8 (last 32 bytes, offset 224)
+        // b_8 at bytes 224..255 (last 32 bytes, i=8)
         bytes32 last32;
         assembly {
             last32 := mload(add(add(result, 32), 224))
         }
-        // b_8 is at bytes 224..255 (last 32 bytes of the 256-byte output, i=8).
-        // b_7 (bytes 192..223) = 1ffffaaf...
-        // b_8 (bytes 224..255) = d1d9e18a...  <- correct value
         assertEq(
             last32,
             // forge-lint: disable-next-line(unsafe-typecast)
@@ -110,30 +118,45 @@ contract BlsHashToCurveTest is Test {
     }
 
     // -------------------------------------------------------------------------
-    // Golden-vector tests (the load-bearing assertions, require prague EVM)
+    // Golden-vector tests (require EIP-2537 / prague; skip otherwise)
     // -------------------------------------------------------------------------
 
     /// @notice LOAD-BEARING GATE: hashToG2(MSG_0) must byte-match py_ecc vector.
     ///         Proves the on-chain H2C kernel matches the Python signer.
-    function test_hashToG2_golden_msg0() external view {
+    ///         Skipped when EIP-2537 precompiles are not active (non-prague profile).
+    function test_hashToG2_golden_msg0() external {
+        if (!eip2537Active) {
+            vm.skip(true);
+            return;
+        }
         bytes memory result = BlsHashToCurveHarness(address(this)).hashToG2(MSG_0);
         assertEq(result.length, 256, "hashToG2: wrong output length");
         assertEq(result, EXPECTED_G2_0, "hashToG2(MSG_0): byte mismatch with py_ecc golden vector");
     }
 
     /// @notice LOAD-BEARING GATE: hashToG2(MSG_1) must byte-match py_ecc vector.
-    function test_hashToG2_golden_msg1() external view {
+    ///         Skipped when EIP-2537 precompiles are not active (non-prague profile).
+    function test_hashToG2_golden_msg1() external {
+        if (!eip2537Active) {
+            vm.skip(true);
+            return;
+        }
         bytes memory result = BlsHashToCurveHarness(address(this)).hashToG2(MSG_1);
         assertEq(result.length, 256, "hashToG2: wrong output length");
         assertEq(result, EXPECTED_G2_1, "hashToG2(MSG_1): byte mismatch with py_ecc golden vector");
     }
 
     // -------------------------------------------------------------------------
-    // Fixture-file redundancy check
+    // Fixture-file redundancy check (require EIP-2537; skip otherwise)
     // -------------------------------------------------------------------------
 
     /// @notice Load vectors from JSON fixture and re-assert golden match.
-    function test_hashToG2_fixtureFile_msg0() external view {
+    ///         Skipped when EIP-2537 precompiles are not active (non-prague profile).
+    function test_hashToG2_fixtureFile_msg0() external {
+        if (!eip2537Active) {
+            vm.skip(true);
+            return;
+        }
         string memory json = vm.readFile("test/fixtures/bls/h2c_vectors.json");
         bytes memory fixtureMsg = json.readBytes(".vectors[0].msg");
         bytes memory fixtureG2 = json.readBytes(".vectors[0].g2_eip2537");
@@ -143,7 +166,11 @@ contract BlsHashToCurveTest is Test {
         assertEq(result, fixtureG2, "hashToG2(fixture msg_0): byte mismatch");
     }
 
-    function test_hashToG2_fixtureFile_msg1() external view {
+    function test_hashToG2_fixtureFile_msg1() external {
+        if (!eip2537Active) {
+            vm.skip(true);
+            return;
+        }
         string memory json = vm.readFile("test/fixtures/bls/h2c_vectors.json");
         bytes memory fixtureMsg = json.readBytes(".vectors[1].msg");
         bytes memory fixtureG2 = json.readBytes(".vectors[1].g2_eip2537");
@@ -154,7 +181,7 @@ contract BlsHashToCurveTest is Test {
     }
 
     // -------------------------------------------------------------------------
-    // DST sanity checks
+    // DST sanity checks (no EIP-2537; runs on any profile)
     // -------------------------------------------------------------------------
 
     /// @notice Verify DST_SIG bytes match the expected ASCII string.
@@ -197,8 +224,6 @@ contract BlsHashToCurveTest is Test {
 // -------------------------------------------------------------------------
 
 /// @dev Minimal harness that wraps BlsHashToCurve internal functions.
-///      Deployed implicitly by the test framework; accessed via address(this)
-///      delegation above.
 contract BlsHashToCurveHarness {
     function hashToG2(bytes memory msg) external view returns (bytes memory) {
         return BlsHashToCurve.hashToG2(msg);
