@@ -31,9 +31,11 @@
 
 use sha3::{Digest, Keccak256};
 
-// ml-dsa 0.1.1 re-exports Verifier from the `ml_dsa` crate root directly.
-// (In rc.8, it was nested under `ml_dsa::signature::Verifier`.)
-use ml_dsa::{EncodedSignature, EncodedVerifyingKey, MlDsa65, Signature, Verifier, VerifyingKey};
+// In rc.8, `Verifier` lives under `ml_dsa::signature` (not re-exported from root).
+// This matches the import style used in the SP1 guest (sp1-mldsa-verifier/src/main.rs).
+use ml_dsa::{
+    signature::Verifier, EncodedSignature, EncodedVerifyingKey, MlDsa65, Signature, VerifyingKey,
+};
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -208,22 +210,23 @@ pub fn quorum_reached(sig_stake: u128, total_stake: u128) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // ml-dsa 0.1.1 API note:
-    //   - `SigningKey::<MlDsa65>::from_seed(&seed)` (the `KeyGen` trait and
-    //     `MlDsa65::from_seed` from rc.8 are replaced by a direct inherent method).
-    //   - `Keypair`, `Signer` are re-exported from `ml_dsa` root (not `ml_dsa::signature`).
-    use ml_dsa::{Keypair, MlDsa65, Signer, SigningKey, B32};
+    // rc.8 API: KeyGen trait provides MlDsa65::from_seed; Keypair/Signer live
+    // under ml_dsa::signature.  Mirrors the exact import style of the SP1 guest.
+    use ml_dsa::{
+        signature::{Keypair, Signer},
+        KeyGen, MlDsa65, SigningKey, B32,
+    };
 
     // ---- Key-generation helpers -------------------------------------------
 
     /// Generate a real ML-DSA-65 keypair from a deterministic 32-byte seed,
     /// and return `(pubkey_bytes: Vec<u8>, sk)`.
     ///
-    /// Uses `SigningKey::<MlDsa65>::from_seed` — deterministic, no RNG required,
-    /// so tests are reproducible without a `getrandom` dependency.
+    /// Uses `MlDsa65::from_seed` (the `KeyGen` trait's deterministic path) —
+    /// no RNG required, tests are fully reproducible.
     fn make_keypair(seed_byte: u8) -> (Vec<u8>, SigningKey<MlDsa65>) {
         let seed: B32 = [seed_byte; 32].into();
-        let sk = SigningKey::<MlDsa65>::from_seed(&seed);
+        let sk = MlDsa65::from_seed(&seed);
         let vk_bytes = sk.verifying_key().encode().to_vec();
         (vk_bytes, sk)
     }

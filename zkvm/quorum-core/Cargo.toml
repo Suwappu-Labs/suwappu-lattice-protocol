@@ -10,13 +10,12 @@ description = "GSX-DAG validator-quorum verification core for Path C (SP1 Groth1
 # setup of the sibling zkvm/sp1-mldsa-verifier.
 
 [dependencies]
-# Same ML-DSA-65 crate used by the SP1 guest — guarantees byte-identical
-# encoding/verification semantics when this logic moves in-circuit (Slice 2).
-# ml-dsa 0.1.0-rc.8 is the version used by the sp1-mldsa-verifier guest; we
-# allow 0.1.x stable because rc.8 doesn't compile against pkcs8 >=0.11.0
-# (stable), but 0.1.1 has an identical API for all types we use.  The SP1
-# guest locks its own Cargo.lock to rc.8 + pkcs8-rc.11 which is consistent.
-ml-dsa = { version = "0.1", default-features = true }
+# Exact same ML-DSA-65 crate the SP1 guest uses (sp1-mldsa-verifier/Cargo.toml).
+# `default-features = false` drops the `pkcs8` feature (which we never use and
+# which requires pkcs8 0.11.0-rc.11; the stable 0.11.0 breaks it).  `alloc`
+# is required for `VerifyingKey::decode`, `Signature::encode/decode`, and the
+# test helper `sk.verifying_key()` via the `KeypairRef` blanket impl.
+ml-dsa = { version = "=0.1.0-rc.8", default-features = false, features = ["alloc"] }
 
 # Keccak256 for pkHash, matching Solidity keccak256(pubkey).
 # NOTE: Keccak256 != Sha3_256 — they differ in domain-separation padding.
