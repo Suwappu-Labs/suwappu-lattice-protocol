@@ -1,4 +1,6 @@
-# P11 — GSX-DAG Consensus Light Client (design spec; the real end-to-end-PQ trust root)
+# P11 — GSX-DAG Quorum Header Oracle [DESIGN — UNBUILT, NOT-PRESENT]
+
+> **Naming note (2026-06-08):** the shipped contract is `GsxDagQuorumHeaderOracle`, a validator-quorum SIDE-ATTESTATION (sync-committee trust class, honest >2/3 stake) — **not** a consensus light client. An end-to-end-PQ consensus light client is the *unbuilt future end-state* this doc sketches; the present system is **not** one. See `NEXT_STEPS_SOURCE_SIDE.md` for honest current status.
 
 Date: 2026-06-08. Status: **DESIGN SPEC** (no code). Companion to P10 (source-event proof) and
 P5b (on-chain PQ). Grounded in a read of the actual `gsx-dag` consensus crates.
