@@ -1,0 +1,22 @@
+[package]
+name = "quorum-core"
+version = "0.1.0"
+edition = "2021"
+description = "GSX-DAG validator-quorum verification core for Path C (SP1 Groth16 circuit, Slice 1)"
+
+# IMPORTANT: this crate is intentionally a standalone workspace so it can be
+# compiled natively (for tests + host integration) AND later reused inside the
+# SP1 zkVM guest without pulling in any std-only dependencies.  Match the
+# setup of the sibling zkvm/sp1-mldsa-verifier.
+
+[dependencies]
+# Exact same ML-DSA-65 crate the SP1 guest uses (sp1-mldsa-verifier/Cargo.toml).
+# `default-features = false` drops the `pkcs8` feature (which we never use and
+# which requires pkcs8 0.11.0-rc.11; the stable 0.11.0 breaks it).  `alloc`
+# is required for `VerifyingKey::decode`, `Signature::encode/decode`, and the
+# test helper `sk.verifying_key()` via the `KeypairRef` blanket impl.
+ml-dsa = { version = "=0.1.0-rc.8", default-features = false, features = ["alloc"] }
+
+# Keccak256 for pkHash, matching Solidity keccak256(pubkey).
+# NOTE: Keccak256 != Sha3_256 — they differ in domain-separation padding.
+sha3 = "0.10"

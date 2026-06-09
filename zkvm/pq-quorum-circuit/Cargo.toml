@@ -1,0 +1,24 @@
+[package]
+name = "pq-quorum-circuit"
+version = "0.1.0"
+edition = "2021"
+description = "Track B Phase 1 — hash-based post-quantum quorum circuit scaffold (leanXMSS + leanMultisig → Spartan-WHIR)"
+
+# Standalone workspace, same pattern as quorum-core and sp1-mldsa-verifier.
+# This crate compiles natively for testing; the WHIR prover itself is an
+# external process (leanMultisig) that runs outside this workspace.
+
+[dependencies]
+# REUSED: quorum-core for threshold math, dedup logic, and the Validator type.
+# The ML-DSA sig-verify path inside quorum-core is NOT called; we only call
+# quorum_threshold(), quorum_reached(), keccak256(), and use Validator.
+quorum-core = { path = "../quorum-core" }
+
+# Keccak256 for validatorSetRoot Merkle leaf hashing.
+sha3 = "0.10"
+
+# Serialization for PublicInputs / Witness (off-chain prover feed).
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+# No extra dev-deps needed; the logic tests only exercise quorum-core + stubs.
