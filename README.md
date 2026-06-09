@@ -28,6 +28,47 @@ Diagrams of LTP, SUWAPPU DAG, SUWAPPU-DB, and the ecosystem atlas live in [`docs
 - Mermaid sources: [LTP](docs/visuals/mermaid/ltp.md) · [SUWAPPU DAG](docs/visuals/mermaid/suwappu-dag.md) · [SUWAPPU DB](docs/visuals/mermaid/suwappu-db.md)
 - Excalidraw sources: [LTP](docs/visuals/excalidraw/ltp.excalidraw) · [SUWAPPU DAG](docs/visuals/excalidraw/suwappu-dag.excalidraw) · [SUWAPPU DB](docs/visuals/excalidraw/suwappu-db.excalidraw)
 
+## Bridge Architecture
+
+The Suwappu bridge moves value between chains through a validator-quorum
+side-attestation: a `>2/3`-stake quorum of GSX-DAG validators signs a header
+attestation, an off-chain relayer aggregates the signatures, and a destination
+verifier re-checks every signature + the `>2/3`-stake threshold on-chain before
+finalizing. The relayer is liveness-trusted but **cannot forge** — the oracle
+enforces all invariants independently.
+
+```mermaid
+sequenceDiagram
+    participant SC as Source Chain
+    participant V as GSX-DAG Validators
+    participant R as Relayer
+    participant VF as Destination Verifier
+    participant DC as Destination Chain
+
+    SC->>SC: User locks value<br/>(SuwappuVault.lockETH/lockERC20)
+    V->>V: Sign header digest with ML-DSA-65
+    V-->>R: Per-validator HeaderAttestation
+    R->>VF: submitHeader(blockNumber, stateRoot,<br/>epoch, pubkeys[], sigs[])
+    VF->>VF: Re-verify every sig, dedup, >2/3 stake
+    VF-->>DC: Header finalized
+    DC-->>DC: mint / release to recipient
+```
+
+**Current status (honest):** What ships live today is a single-key ECDSA custody
+model. The trust-minimized machinery — ML-DSA native-precompile path on the GSX-DAG
+EVM (post-quantum), BLS-aggregate path on stock EVMs (trust-minimized, classical),
+and hash-based PQ proof research (Track B) — is built but unwired; source-side
+validator signing is not yet implemented. Only the native ML-DSA precompile path
+(0x0101 on suwappu-revm) and the Track B hash-based PQ path are post-quantum; BLS
+and SP1-Groth16 are classical. Independent audit + funded bug bounty are required
+before any real funds.
+
+See [`docs/BRIDGE_ARCHITECTURE.md`](docs/BRIDGE_ARCHITECTURE.md) for the full
+architecture reference including all three verifier paths, the trust model, the
+iron triangle, and the dual-track roadmap.
+
+---
+
 ## The Problem
 
 Every existing protocol -- TCP/IP, HTTP, FTP, QUIC -- operates on the same
