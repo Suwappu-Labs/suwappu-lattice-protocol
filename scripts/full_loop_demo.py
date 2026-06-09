@@ -274,87 +274,37 @@ def send_tx_data(w3: "Web3", to: str, data: bytes, label: str) -> dict:  # type:
     return receipt
 
 
-# ── Polling ───────────────────────────────────────────────────────────────────
+# ── Relayer quorum accumulator ────────────────────────────────────────────────
 
 
-def poll_attestations(
+def run_relayer_until_quorum(
+    relayer: "HeaderRelayer",  # type: ignore[name-defined]
     validator_urls: list[str],
     min_quorum: int = 3,
     max_rounds: int = 100,
     sleep_s: float = 0.4,
-) -> tuple[int, bytes, list[bytes], list[bytes], int]:
+) -> tuple["AggregatedHeader", int]:  # type: ignore[name-defined]
     """
-    Accumulate attestations until >= min_quorum share the same (block, root).
+    Drive the shipped HeaderRelayer until it aggregates >= min_quorum signers.
 
-    Returns (block_number, state_root_bytes, pubkeys_sorted, sigs_sorted, rounds).
-    Pubkeys and sigs are sorted by keccak256(pubkey) ascending (contract order).
+    Uses relayer.poll() + relayer.aggregate() accumulating across rounds so
+    that validators whose block counters diverge by a round still converge.
+    Returns (AggregatedHeader, rounds_taken).
     """
-    import requests
-    from eth_hash.auto import keccak
-
-    # Accumulate: keyed by (block_number, state_root_hex) -> {pubkey_hex: sig_hex}
-    # De-duplicate by pubkey — latest signature wins (same digest each block).
-    groups: dict[tuple[int, str], dict[str, str]] = {}
-
+    flat = []
     for round_num in range(1, max_rounds + 1):
-        for url in validator_urls:
-            try:
-                resp = requests.post(
-                    url,
-                    json={
-                        "jsonrpc": "2.0",
-                        "id": 1,
-                        "method": "gsx_getHeaderAttestation",
-                        "params": [],
-                    },
-                    timeout=5,
-                    headers={"content-type": "application/json"},
-                )
-                resp.raise_for_status()
-                view = resp.json().get("result")
-                if view is None:
-                    continue
-                bn = int(view["block_number"])
-                sr = str(view["state_root"])
-                pk = str(view["pubkey"])
-                sig = str(view["signature"])
-                key = (bn, sr)
-                groups.setdefault(key, {})[pk] = sig
-            except Exception as exc:
-                logger.debug("Poll error from %s: %s", url, exc)
-
-        # Check if any group has >= min_quorum
-        for (bn, sr_hex), signer_map in groups.items():
-            if len(signer_map) >= min_quorum:
-                logger.info(
-                    "Quorum achieved: block=%d root=%s signers=%d (round=%d)",
-                    bn,
-                    sr_hex[:18] + "...",
-                    len(signer_map),
-                    round_num,
-                )
-                sr_clean = sr_hex[2:] if sr_hex.startswith("0x") else sr_hex
-                sr_bytes = bytes.fromhex(sr_clean)
-                pairs = list(signer_map.items())
-                # Sort by keccak256(pubkey) ascending — matches contract dedup order
-                pairs.sort(
-                    key=lambda p: keccak(bytes.fromhex(p[0][2:] if p[0].startswith("0x") else p[0]))
-                )
-                pubkeys = [
-                    bytes.fromhex(pk_hex[2:] if pk_hex.startswith("0x") else pk_hex)
-                    for pk_hex, _ in pairs
-                ]
-                sigs = [
-                    bytes.fromhex(sig_hex[2:] if sig_hex.startswith("0x") else sig_hex)
-                    for _, sig_hex in pairs
-                ]
-                return bn, sr_bytes, pubkeys, sigs, round_num
-
+        flat += relayer.poll(validator_urls)
+        agg = relayer.aggregate(flat)
+        if agg is not None and agg.signer_count >= min_quorum:
+            logger.info(
+                "HeaderRelayer quorum: block=%d signers=%d (round=%d)",
+                agg.block_number,
+                agg.signer_count,
+                round_num,
+            )
+            return agg, round_num
         time.sleep(sleep_s)
-
-    raise RuntimeError(
-        f"No quorum of >= {min_quorum} validators aligned after {max_rounds} poll rounds"
-    )
+    raise RuntimeError(f"No quorum of >= {min_quorum} after {max_rounds} relayer poll rounds")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -466,33 +416,31 @@ def main() -> int:  # noqa: C901
         assert receipt_bootstrap["status"] == 1, "bootstrapEpoch0 failed"
         print(f"  bootstrapEpoch0 success (status={receipt_bootstrap['status']})")
 
-        # Read current epoch from registry to pass to submitHeader
-        epoch_raw = eth_call_raw(w3, registry_addr, abi_encode_current_epoch())
-        epoch = int.from_bytes(epoch_raw[:32], "big") if len(epoch_raw) >= 32 else 0
-        print(f"  currentEpoch = {epoch}")
+        # currentEpoch is read on-chain by relayer.submit() — no need to pass it here.
 
-        # ── Step 5: poll until quorum ─────────────────────────────────────────
-        print("\n[5] Polling validators for quorum (>= 3 on same header)...")
-        block_number, state_root, pubkeys, sigs, poll_rounds = poll_attestations(
-            VALIDATOR_URLS, min_quorum=3, max_rounds=100, sleep_s=0.4
+        # ── Step 5: drive the shipped HeaderRelayer until quorum ─────────────
+        print("\n[5] Running HeaderRelayer.poll() + aggregate() until >= 3 signers...")
+        from ltp.bridge.header_relayer import HeaderRelayer
+
+        relayer = HeaderRelayer()
+        agg, poll_rounds = run_relayer_until_quorum(
+            relayer, VALIDATOR_URLS, min_quorum=3, max_rounds=100, sleep_s=0.4
         )
+        block_number = agg.block_number
+        state_root = agg.state_root
         print(f"  Quorum found in {poll_rounds} poll round(s)")
         print(f"  block_number = {block_number}")
         print(f"  state_root   = 0x{state_root.hex()}")
-        print(f"  signers      = {len(pubkeys)}")
+        print(f"  signers      = {agg.signer_count}")
 
-        # ── Step 6: submitHeader ──────────────────────────────────────────────
-        print("\n[6] Submitting header to oracle...")
-        submit_data = abi_encode_submit_header(
-            block_number,
-            state_root,
-            epoch,
-            pubkeys,
-            sigs,
-        )
-        receipt_submit = send_tx_data(w3, oracle_addr, submit_data, "submitHeader")
-
-        print(f"  submitHeader tx status = {receipt_submit.get('status', 'unknown')}")
+        # ── Step 6: submit via HeaderRelayer.submit() ─────────────────────────
+        print("\n[6] HeaderRelayer.submit() -> oracle.submitHeader()...")
+        # relayer.submit() reads epoch on-chain via registry() + currentEpoch()
+        # and calls oracle.submitHeader() via fn.transact() — requires default_account
+        # + signing middleware (both set in make_web3()).
+        receipt_submit = relayer.submit(w3, oracle_addr, agg)
+        receipt_status = receipt_submit.get("status")
+        print(f"  submitHeader tx status = {receipt_status}")
 
         # ── Step 7: assert finalization ───────────────────────────────────────
         print("\n[7] Reading back headerStateRoot...")
@@ -508,7 +456,7 @@ def main() -> int:  # noqa: C901
         print(f"  state_root from devnet = 0x{state_root.hex()}")
 
         state_root32 = state_root.rjust(32, b"\x00")
-        finalized = receipt_submit.get("status") == 1 and readback_bytes == state_root32
+        finalized = receipt_status == 1 and readback_bytes == state_root32
 
         if finalized:
             print("\n" + "=" * 70)
@@ -519,11 +467,20 @@ def main() -> int:  # noqa: C901
             print(f"  Finalized state_root:     0x{state_root.hex()}")
             print(f"  headerStateRoot readback: 0x{readback_bytes.hex()}")
             print(f"  Poll rounds to quorum:    {poll_rounds}")
-            print(f"  Signers:                  {len(pubkeys)}")
-            print(f"  submitHeader tx status:   {receipt_submit.get('status')}")
+            print(f"  Signers:                  {agg.signer_count}")
+            print(f"  submitHeader tx status:   {receipt_status}")
+            print()
+            print("HONEST SCOPE NOTE:")
+            print(
+                "  This proves source->relay->destination native-PQ finalization. NOT a fund-safe"
+            )
+            print(
+                "  lock->mint: state_root is an opaque BLAKE3 L1 anchor;"
+                " storage-proof corridor unsupplied."
+            )
             return 0
 
-        if receipt_submit.get("status") != 1:
+        if receipt_status != 1:
             print("\n" + "=" * 70)
             print("RESULT: NO — submitHeader REVERTED (status=0)")
             print("=" * 70)
