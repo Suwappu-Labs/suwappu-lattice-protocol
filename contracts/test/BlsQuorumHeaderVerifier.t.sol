@@ -25,7 +25,7 @@ import {BlsQuorumHeaderVerifier} from "../src/verifiers/BlsQuorumHeaderVerifier.
 //   - G1ADD (0x0b): concatenates two 48-byte "G1 points"; the mock returns their
 //     scalar sum mod MOCK_ORDER in 48 bytes. Soundness: the aggregate pubkey is
 //     the sum of signing validators' individual scalars.
-//   - BLS_PAIRING (0x10): checks e(aggSig, G2Gen) == e(H(digest), aggPubkey) by
+//   - BLS_PAIRING_CHECK (0x0f): checks e(aggSig, G2Gen) == e(H(digest), aggPubkey) by
 //     verifying aggSig == aggPubkey_scalar * H(digest)_scalar (mod MOCK_ORDER).
 //     This is exactly the BLS correctness relation in the scalar model.
 //
@@ -81,7 +81,7 @@ contract MockBlsG1Add {
     }
 }
 
-/// @notice Mock BLS12-381 PAIRING check (etched at 0x10).
+/// @notice Mock BLS12-381 PAIRING check (etched at 0x0f).
 /// @dev In the scalar model, verifies: aggSig == aggPk_scalar * H(digest) mod ORDER.
 ///      Input layout: aggPubkey (48 bytes) || digest (32 bytes) || aggregateSig (48 bytes).
 ///      Total input = 128 bytes.
@@ -178,8 +178,8 @@ contract BlsQuorumHeaderVerifierTest is Test {
         // ---- Etch mock precompiles ----
         // BLS_G1ADD at 0x0b (EIP-2537 G1ADD address)
         vm.etch(address(0x0b), address(new MockBlsG1Add()).code);
-        // BLS_PAIRING at 0x10 (EIP-2537 PAIRING address)
-        vm.etch(address(0x10), address(new MockBlsPairing()).code);
+        // BLS_PAIRING_CHECK at 0x0f (EIP-2537 final-spec PAIRING address)
+        vm.etch(address(0x0f), address(new MockBlsPairing()).code);
 
         registry = new BlsValidatorRegistry(admin, NETWORK_ID);
         verifier = new BlsQuorumHeaderVerifier(registry, GSXDAG_CHAIN);

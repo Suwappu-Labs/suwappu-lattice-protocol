@@ -34,7 +34,7 @@ import {BlsValidatorRegistry} from "./BlsValidatorRegistry.sol";
 ///
 ///      EIP-2537 STATUS — TOOLING BLOCKER (PENDING):
 ///        - Real BLS12-381 verification uses the EIP-2537 precompiles
-///          (G1ADD: 0x0b, G1MUL: 0x0c, G2ADD: 0x0d, BLS12_PAIRING: 0x10, etc.),
+///          (G1ADD: 0x0b, G1MUL: 0x0c, G2ADD: 0x0d, BLS12_PAIRING_CHECK: 0x0f, etc.),
 ///          which shipped in Ethereum Pectra (prague EVM). These precompiles are
 ///          deployed on Ethereum mainnet post-Pectra but require evm_version=prague
 ///          and — critically — test vectors with a valid BLS12-381 aggregate
@@ -47,7 +47,7 @@ import {BlsValidatorRegistry} from "./BlsValidatorRegistry.sol";
 ///          expand_message_xmd + map + cofactor-clear (~80k gas), which is
 ///          substantial but solvable.
 ///        - THEREFORE: the BLS pairing is verified via a MOCK precompile etched at
-///          the EIP-2537 PAIRING address (0x10). The mock uses a homomorphic scalar
+///          the EIP-2537 PAIRING_CHECK address (0x0f). The mock uses a homomorphic scalar
 ///          model (see MockBlsPairing below and in BlsQuorumHeaderVerifier.t.sol)
 ///          that is STRUCTURALLY CORRECT (aggregate pairing check fails if wrong
 ///          pubkeys or wrong aggregate sig) but is NOT a real BLS12-381 pairing.
@@ -84,17 +84,32 @@ import {BlsValidatorRegistry} from "./BlsValidatorRegistry.sol";
 ///          different aggPubkey on-chain -> pairing fails (InvalidAggregateSig).
 ///        - Both failure modes tested in BlsQuorumHeaderVerifier.t.sol.
 contract BlsQuorumHeaderVerifier is ISourceHeaderOracle {
-    // ---- EIP-2537 precompile addresses (Ethereum Pectra / prague EVM) ----
-    // G1ADD:     0x0b — BLS12_381_G1ADD
-    // G1MSM:     0x0c — BLS12_381_G1MSM  (multi-scalar multiply; not used here)
-    // G2ADD:     0x0d — BLS12_381_G2ADD  (not used; sigs in G2 variant optional)
-    // PAIRING:   0x10 — BLS12_381_PAIRING
-    // Note: in tests, 0x0b and 0x10 are etched with mock contracts (see
+    // ---- EIP-2537 precompile addresses (final spec, Ethereum Pectra / prague) ----
+    // G1ADD:        0x0b — BLS12_G1ADD
+    // G1MSM:        0x0c — BLS12_G1MSM  (multi-scalar multiply; not used here)
+    // G2ADD:        0x0d — BLS12_G2ADD  (not used; sigs in G2 variant optional)
+    // PAIRING_CHECK:0x0f — BLS12_PAIRING_CHECK   (0x10 is MAP_FP_TO_G1, NOT pairing)
+    // Note: in tests, 0x0b and 0x0f are etched with mock contracts (see
     //       BlsQuorumHeaderVerifier.t.sol). On Prague mainnet they are the real
     //       EIP-2537 precompiles, but the MockBls test vectors won't be valid
     //       BLS12-381 points — a separate real-vectors test suite is PENDING.
+    //
+    // ============================ SECURITY: REAL-WIRING BLOCKERS ============================
+    // The mock test suite proves registry-binding + set-consistency ONLY. Before wiring the
+    // REAL EIP-2537 precompiles and deploying with value, ALL of the following MUST land
+    // (adversarial review 2026-06-09, ref PR #21 — the mock cannot exhibit these):
+    //   1. ROGUE-KEY ATTACK (HIGH). Bare-aggregate BLS verify e(aggPk,H(m))==e(g,aggSig) is
+    //      forgeable: a registrant can set roguePk = targetPk - Σ(otherPks). FIX: require a
+    //      proof-of-possession per pubkey at registration in BlsValidatorRegistry, OR switch
+    //      this verifier to message augmentation H(pk‖m). Neither exists yet.
+    //   2. G1ADD input format: real EIP-2537 G1ADD takes 256 bytes (two 128-byte UNCOMPRESSED
+    //      G1 points). The registry stores 48-byte COMPRESSED keys; needs uncompressed storage
+    //      or on-chain decompression (no decompression precompile exists).
+    //   3. Validator-set cap: `signerBitmap` is uint256 ⇒ index ≥ 256 is unaddressable. The
+    //      registry now caps validatorCount ≤ 256 (liveness); widen to a `bytes` bitmap to lift.
+    // =======================================================================================
     address public constant BLS_G1ADD = address(0x0b);
-    address public constant BLS_PAIRING = address(0x10);
+    address public constant BLS_PAIRING = address(0x0f);
 
     bytes32 public constant HEADER_DOMAIN = keccak256("SUWAPPU_GSXDAG_HEADER_V1");
 
