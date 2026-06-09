@@ -51,6 +51,9 @@ docs/superpowers/
 # Bridge execution outputs
 bridge_results*.json
 bridge_operator_keypair.json
+# Any keypair JSON anywhere (private dk/sk material must never be committed)
+*keypair*.json
+deploy/*keypair*.json
 
 # Solidity / Foundry (contracts/)
 contracts/out/
