@@ -24,10 +24,26 @@ After the header-attestation loop (validators sign → relayer aggregates → or
 2. **Provable source state.** `StorageProofSourceLockVerifier` proves a lock commit via an
    `eth_getProof` keccak-MPT storage proof. But gsx-dag's state root is **not** a keccak-MPT:
    `gsx_db_substrate.rs:241-253` computes it as `StateTree::from_state(&state).root()` — a
-   **BLAKE3 `StateTree`** over the balance map (`gsxdb-state`). And gsx-db's Merkle
-   *inclusion-proof* API is still stubbed (`burn_nullifier.rs`: "full Merkle inclusion proof
-   verification lands in G2.2 phase 3"). So a commit's inclusion in the gsx-dag state cannot
-   be proven on the destination today — the header attestation only carries the *root*, opaque.
+   **BLAKE3 `StateTree`** over the balance map (`gsxdb-state`). The gap is **not** a missing
+   inclusion-proof primitive (see correction below); it is that (a) gsx-dag does not yet
+   **expose** that proof to a relayer, and (b) the destination has no on-chain BLAKE3-StateTree
+   verifier (the `0x0102` BLAKE3 precompile exists only in suwappu-revm; a stock EVM can't
+   re-hash the path). The header attestation today carries only the *root*, opaque.
+
+   > **CORRECTION (2026-06-08, grounded — supersedes an earlier draft claim).** An earlier
+   > version of this doc said gsx-db's inclusion proofs are "stubbed (G2.2 phase 3)," inferred
+   > from a stale comment in gsx-dag's `burn_nullifier.rs`. **That is false.** The BLAKE3
+   > `StateTree` already exposes a public inclusion-proof API — `pub use tree::{Commitment,
+   > Proof, ProofStep, StateTree}` with `StateTree::root()`/`verify()` and `ProofStep{byte,
+   > siblings}` — and it is present in the **exact pinned revision gsx-dag compiles**
+   > (`gsxdb-state` v0.1.0, commit `2fee806`, in `GlobalSettlementNetwork/gsx-db`). So **no
+   > dependency migration is required** to get inclusion proofs; the primitive is already in
+   > the binary. Separately, gsx-db has since rebranded to `Suwappu-Labs/suwappu-db`
+   > (`gsxdb`→`suwappudb`) and gsx-dag still pins the old `GlobalSettlementNetwork` tag — a
+   > **stale-pin cleanup**, independent of this gap. And the gsx-dag CI red is a **separate
+   > missing-secret** issue (`ssh-private-key argument is empty`), which a `Cargo.toml`
+   > repoint does **not** fix — that needs a CI workflow change (token-fetch) or the deploy-key
+   > secret. Three distinct things; don't conflate them.
 
 > **Important scoping correction (grounded):** Gap 2 is **already solved for *external-EVM*
 > source chains** (e.g. a lock on Base). Those have a keccak-MPT, so the merged
@@ -104,11 +120,15 @@ overclaim this project has been corrected on.
 
 ## 3. Concrete next steps (in dependency order)
 
-1. **Unblock the inclusion proof in gsx-db (prereq for both 2 & 3).** Implement the stubbed
-   `StateTree` Merkle **inclusion-proof API** (`gsxdb-state`) — `prove(key) -> path` +
-   `verify(root, key, value, path)`. Without it neither a Solidity BLAKE3 verifier nor an SP1
-   inclusion circuit has a proof to consume. This is the single highest-leverage source-side
-   unblock; it's already on the gsx-dag backlog ("G2.2 phase 3").
+1. **Expose the (already-existing) inclusion proof through gsx-dag (prereq for both 2 & 3).**
+   The `StateTree` proof API already exists in the pinned `gsxdb-state` (`Proof`/`ProofStep`,
+   `root()`/`verify()`) — no implementation needed. The unblock is to **surface** it: a
+   `gsx_getStateProof(key)` RPC that returns the `Proof` against the current state root (which
+   matches the latest header attestation's `stateRoot`), so a relayer can carry
+   `{header attestation + inclusion proof}` to the destination. Historical-round proofs need a
+   snapshot (`snapshot.rs` exists); latest-header proofs are immediately feasible. (Stale-pin
+   cleanup — repoint gsx-dag from `GlobalSettlementNetwork/gsx-db` to `Suwappu-Labs/suwappu-db`
+   — is independent and can ride a separate PR.)
 2. **Build the SP1 quorum+inclusion circuit (Path C).** A `zkvm/` Rust program reusing
    `gsx_crypto::mldsa::verify` + `gsx_consensus::bridge_header` (the exact preimage) + the new
    `StateTree::verify`. Public-input layout must bind `networkId`, `commitId`, `recipient`,
