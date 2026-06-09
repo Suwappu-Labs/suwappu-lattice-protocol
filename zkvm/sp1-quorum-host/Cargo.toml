@@ -1,0 +1,21 @@
+[package]
+name = "sp1-quorum-host"
+version = "0.1.0"
+edition = "2021"
+description = "SP1 host: execute/prove the sp1-quorum-verifier circuit for GSX-DAG bridge"
+
+[[bin]]
+name = "sp1-quorum-host"
+path = "src/main.rs"
+
+[dependencies]
+sp1-sdk = "=6.0.2"
+# Same ML-DSA crate the guest uses (deterministic key generation for tests)
+ml-dsa = { version = "=0.1.0-rc.8", default-features = false, features = ["alloc"] }
+# Keccak256 for pkHash + validator_set_root (must match guest encoding)
+sha3 = "0.10"
+# BLAKE3 for header_digest cross-check
+blake3 = "1"
+# Hex output for the cross-check report
+hex = "0.4"
+tokio = { version = "1", features = ["full"] }

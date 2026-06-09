@@ -1,0 +1,14 @@
+[package]
+name = "sp1-quorum-verifier"
+version = "0.1.0"
+edition = "2021"
+description = "SP1 zkVM circuit: proves GSX-DAG validator quorum over a header attestation"
+
+[dependencies]
+sp1-zkvm = "4.0"
+# Quorum verification logic (ML-DSA-65 verify + sortedness + threshold)
+quorum-core = { path = "../quorum-core" }
+# BLAKE3 for header_digest; pure-Rust, works in no_std + RISC-V
+blake3 = { version = "1", default-features = false }
+# Keccak256 for validator_set_root — same sha3 crate quorum-core uses
+sha3 = "0.10"
