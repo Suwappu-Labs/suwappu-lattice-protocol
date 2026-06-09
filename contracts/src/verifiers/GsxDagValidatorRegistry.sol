@@ -39,6 +39,9 @@ contract GsxDagValidatorRegistry {
     mapping(uint256 => mapping(bytes32 => uint256)) public stakeOf;
     /// epoch => total stake of that epoch's set
     mapping(uint256 => uint256) public totalStake;
+    /// epoch => sorted pkHashes array (strictly-increasing order, same as install order).
+    /// Stored to support canonical validator-set-root computation for SP1 quorum proofs.
+    mapping(uint256 => bytes32[]) private _pkHashesByEpoch;
 
     event EpochBootstrapped(uint256 indexed epoch, uint256 validatorCount, uint256 totalStake);
     event EpochTransitioned(uint256 indexed fromEpoch, uint256 indexed toEpoch, uint256 sigStake);
@@ -147,6 +150,40 @@ contract GsxDagValidatorRegistry {
 
     // ---- internals ----
 
+    // ---- validator-set-root (SP1 quorum proof binding) ----
+
+    /// @notice Canonical root for the CURRENT epoch's validator set.
+    ///         Canonical encoding: keccak256 of the concatenation of
+    ///         pkHash_i(32 bytes) || stake_i(32 bytes, uint256 BE) for each
+    ///         validator in strictly-increasing pkHash order (= install order).
+    ///         The SP1 quorum guest computes the identical root and commits it
+    ///         as a public value, binding the proof to the on-chain set.
+    function currentValidatorSetRoot() external view returns (bytes32) {
+        return validatorSetRoot(currentEpoch);
+    }
+
+    /// @notice Canonical root for the validator set of `epoch`.
+    function validatorSetRoot(uint256 epoch) public view returns (bytes32) {
+        bytes32[] storage hashes = _pkHashesByEpoch[epoch];
+        uint256 n = hashes.length;
+        // preimage: n × (pkHash(32) || stake(32)) = n × 64 bytes
+        bytes memory preimage = new bytes(n * 64);
+        for (uint256 i = 0; i < n; i++) {
+            bytes32 h = hashes[i];
+            uint256 s = stakeOf[epoch][h];
+            uint256 offset = i * 64;
+            // write pkHash at [offset..offset+32]
+            assembly {
+                mstore(add(add(preimage, 0x20), offset), h)
+            }
+            // write stake (uint256) at [offset+32..offset+64]
+            assembly {
+                mstore(add(add(preimage, 0x20), add(offset, 32)), s)
+            }
+        }
+        return keccak256(preimage);
+    }
+
     function _installSet(uint256 epoch, bytes32[] calldata pkHashes, uint256[] calldata stakes)
         internal
     {
@@ -159,6 +196,7 @@ contract GsxDagValidatorRegistry {
             last = pkHashes[i];
             if (stakes[i] == 0) revert ZeroStake();
             stakeOf[epoch][pkHashes[i]] = stakes[i];
+            _pkHashesByEpoch[epoch].push(pkHashes[i]);
             total += stakes[i];
         }
         totalStake[epoch] = total;

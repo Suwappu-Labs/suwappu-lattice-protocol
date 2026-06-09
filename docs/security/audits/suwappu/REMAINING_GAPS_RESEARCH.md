@@ -55,6 +55,24 @@ After the header-attestation loop (validators sign → relayer aggregates → or
 
 ## 1. The unifying answer: one SP1 proof for *both* gaps
 
+> **EMPIRICAL CORRECTION (2026-06-09, from actually building it — supersedes the optimism below).**
+> The single-guest version of this does **NOT work on current SP1 (v4/v6)**. We built the guest
+> (`zkvm/sp1-quorum-verifier`, wrapping `quorum-core`) and ran it: it compiles to a RISC-V ELF, but
+> **executing the quorum OOMs** — SP1's zkVM hard-caps the guest heap at **2 GB** (`0x78000000`,
+> `sp1-zkvm/src/syscalls/memory.rs`), and **ML-DSA-65 × 3 signers** exceeds it (each
+> `VerifyingKey::decode` + `Signature::decode` allocates large lattice structures). A **single** ML-DSA
+> verify fits (the existing `sp1-mldsa-verifier` and the public Dilithium-ZK demo both prove ONE sig) —
+> but an N-signer quorum in one guest hits the wall. So "one SP1 proof of the whole quorum" is
+> **infeasible as a single circuit today.** Viable routes: **(i) SP1 proof aggregation** — prove each
+> signature in its own guest (each fits) and recursively aggregate to one on-chain proof (much more
+> complex; not built); or **(ii) the native `0x0101` precompile path (§2 Path A)** — already built and
+> green (suwappu-revm #2), and it is *both* trust-minimized AND post-quantum, where ZK is neither
+> feasible-here nor PQ. **Net: Path A is now the recommended PQ route for the quorum; Path C single-guest
+> is shelved pending aggregation.** What we DID land from the Path-C attempt is reusable on either route:
+> `quorum-core` (the verification logic), `GsxDagValidatorRegistry.currentValidatorSetRoot()`, and
+> `Sp1QuorumVerifier.sol` (the on-chain verifier + binding, 9 forge tests green — ready for an aggregated
+> proof if one is ever produced).
+
 The strongest 2024–2026 result is that both gaps collapse into a **single ZK proof**, because
 gsx-dag is already a Rust program and SP1 compiles ordinary Rust to a provable circuit.
 
