@@ -22,12 +22,12 @@ jobs:
     continue-on-error: true
     steps:
       - name: Checkout gsx-lattice-protocol
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: gsx-lattice-protocol
 
       - name: Checkout gsx-dag (sibling layout)
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: GlobalSettlementNetwork/gsx-dag
           path: gsx-dag
