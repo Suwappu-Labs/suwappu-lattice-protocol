@@ -119,7 +119,7 @@ dev = [
     "pip-audit>=2.7.0,<3.0",
     "pdoc>=14.0,<16.0",
     # Track 2 — lint / type / pre-commit toolchain
-    "ruff>=0.15.16,<0.16",
+    "ruff>=0.15.17,<0.16",
     "mypy>=1.13,<2",
     "pre-commit>=4.6.0,<5",
 ]
