@@ -120,7 +120,7 @@ dev = [
     "pdoc>=14.0,<16.0",
     # Track 2 — lint / type / pre-commit toolchain
     "ruff>=0.15.16,<0.16",
-    "mypy>=1.13,<2",
+    "mypy>=2.1.0,<3",
     "pre-commit>=4.6.0,<5",
 ]
 
