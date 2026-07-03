@@ -61,6 +61,7 @@ New to LTP? Read in this order:
 | | [Operator Runbook](OPERATOR_RUNBOOK.md) | Day-2 operations, key rotation, on-call |
 | | [Bridge MVP Scope](bridge-mvp-scope.md) | L1-L2 cross-chain bridge scope |
 | | [Deployed Contracts](DEPLOYED_CONTRACTS.md) | Current registry addresses and governance topology |
+| | [Validator Readiness](VALIDATOR_READINESS.md) | Path to external testnet validators — phases, owners, checklist |
 | **Security** | [Security Audit (2026-05-15)](security/audits/internal/SECURITY_AUDIT_2026-05-15.md) | Most recent independent audit |
 | | [Security Review (2026-02-24)](security/audits/internal/SECURITY_REVIEW-2-24-2026.md) | Formal security review |
 | | [Shard Exposure Analysis](security/audits/internal/001-lattice-key-shard-exposure.md) | Attack chain analysis and Option A-D comparison |

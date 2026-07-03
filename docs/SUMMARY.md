@@ -54,6 +54,7 @@
 * [Operator Runbook](OPERATOR_RUNBOOK.md)
 * [Bridge MVP Scope](bridge-mvp-scope.md)
 * [Deployed Contracts](DEPLOYED_CONTRACTS.md)
+* [Validator Readiness](VALIDATOR_READINESS.md)
 
 ## Reviews
 

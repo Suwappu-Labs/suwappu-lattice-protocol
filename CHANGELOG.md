@@ -25,6 +25,13 @@ public-surface promise and the cross-version compatibility matrix.
   outcomes are recorded in this changelog)
 - `.github/ISSUE_TEMPLATE/config.yml` — routes vulnerability reports to
   private security advisories instead of public issues
+- Hardened corridor roster loading: `ltp.corridor.load_corridor_roster` /
+  `validate_roster` enforce quorum size, distinct authorities/keys,
+  corridor-id consistency, and mandatory Proof-of-Possession (LTP-A-015);
+  roster template at `config/corridor-roster.template.json`
+- `docs/VALIDATOR_READINESS.md` — phased checklist from team-operated
+  testnet to external validators, with this-repo vs `suwappu-dag`
+  ownership boundaries
 - Security hardening: LTP-A-001 (Option E + Slither/Echidna/Foundry-invariant
   suite), LTP-A-005 (Option C-3 owner-signed binding + on-chain dispute),
   LTP-A-006 (Option E independent arbiter + time-decay paths),

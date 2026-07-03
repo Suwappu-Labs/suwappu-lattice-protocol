@@ -89,6 +89,11 @@ from .envelope import (
     EnvelopeSizeError,
     OnChainCommitment,
 )
+from .roster import (
+    RosterValidationError,
+    load_corridor_roster,
+    validate_roster,
+)
 from .state_anchor import (
     GENESIS_PARENT,
     AuthScheme,
@@ -116,6 +121,10 @@ __all__ = [
     "BLS_CORRIDOR_DST",
     # digest
     "sha3_256_domain",
+    # roster
+    "RosterValidationError",
+    "load_corridor_roster",
+    "validate_roster",
     # attestation
     "AttestationPayload",
     "WitnessSignature",

@@ -1,0 +1,15 @@
+{
+  "_comment": "Corridor roster template — the trusted 7-of-9 membership. Replace every member with the real values from your onboarding packet, then load with ltp.corridor.load_corridor_roster(path). Placeholder keys below are deliberately identical so this template can NEVER pass validation as-is. bls_public_key: 48-byte compressed G1, hex. pop: 96-byte BLS Proof-of-Possession over (DOMAIN_TAG_CORRIDOR_POP || bls_public_key), hex — mandatory.",
+  "id": 0,
+  "members": [
+    { "authority": 0, "corridor": 0, "bls_public_key": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "pop": "" },
+    { "authority": 1, "corridor": 0, "bls_public_key": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "pop": "" },
+    { "authority": 2, "corridor": 0, "bls_public_key": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "pop": "" },
+    { "authority": 3, "corridor": 0, "bls_public_key": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "pop": "" },
+    { "authority": 4, "corridor": 0, "bls_public_key": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "pop": "" },
+    { "authority": 5, "corridor": 0, "bls_public_key": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "pop": "" },
+    { "authority": 6, "corridor": 0, "bls_public_key": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "pop": "" },
+    { "authority": 7, "corridor": 0, "bls_public_key": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "pop": "" },
+    { "authority": 8, "corridor": 0, "bls_public_key": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "pop": "" }
+  ]
+}
