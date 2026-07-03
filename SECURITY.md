@@ -2,17 +2,18 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in the Entanglement Transfer Protocol,
+If you discover a security vulnerability in the Lattice Transfer Protocol,
 please report it responsibly.
 
-**Preferred:** Open a private report via GitHub Private Vulnerability Reporting:
+**Primary channel:** GitHub Private Vulnerability Reporting:
 <https://github.com/Suwappu-Labs/suwappu-lattice-protocol/security/advisories/new>
 
-**Email:** layerinfinite@gmail.com
+**Interim email fallback** (only if the advisory form is unavailable):
+layerinfinite@gmail.com — this will be replaced by a `security@` alias;
+until that alias is announced here, treat the GitHub advisory form as the
+canonical channel.
 
-> Note: the branded alias `security@suwappu.network` is aspirational and not
-> yet live — mail sent there may not route. Use the GitHub advisory link or
-> the email above until the branded alias is announced as active.
+Do **not** open public issues for security vulnerabilities.
 
 Please include:
 - Description of the vulnerability
@@ -22,6 +23,26 @@ Please include:
 
 We will acknowledge receipt within 48 hours and provide a detailed response
 within 7 days.
+
+## Bug Bounty
+
+LTP is still undergoing security audits and does **not** have an active bug
+bounty program yet. Vulnerability reports are welcome and credited in the
+release notes (with your permission), but submissions are not eligible for
+monetary rewards until audits have concluded and a funded program is
+announced in this file.
+
+## Safe Harbor
+
+We consider good-faith security research conducted under this policy to be
+authorized. If you make a good-faith effort to comply with this policy —
+testing only against infrastructure you control (local nodes, your own
+testnet deployments), avoiding privacy violations, data destruction, and
+service degradation, and reporting findings promptly through the private
+channel above — we will not initiate legal action against you for your
+research and will work with you on coordinated disclosure. This safe harbor
+does not extend to testing against third-party systems or the deployed
+testnet contracts' operator infrastructure.
 
 ## Scope
 
@@ -78,6 +99,10 @@ MultiSig (2-of-2) → TimelockController (60s testnet / 24-48h production) → L
 - **TimelockController** — OpenZeppelin time-delayed governance between MultiSig and Registry.
 
 ### Deployed Contract Addresses (SUWAPPU Testnet — Chain ID `103115120`)
+
+The canonical, always-current registry is
+[docs/DEPLOYED_CONTRACTS.md](docs/DEPLOYED_CONTRACTS.md); the table below
+is a convenience snapshot.
 
 | Contract | Address |
 |----------|---------|
