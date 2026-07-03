@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability (do NOT open a public issue)
+    url: https://github.com/Suwappu-Labs/suwappu-lattice-protocol/security/advisories/new
+    about: Report vulnerabilities privately via GitHub Security Advisories. See SECURITY.md for scope and disclosure policy.
+  - name: Documentation
+    url: https://github.com/Suwappu-Labs/suwappu-lattice-protocol/blob/main/docs/README.md
+    about: Persona-routed docs landing — whitepaper, threat model, operator runbook, deployment guide.

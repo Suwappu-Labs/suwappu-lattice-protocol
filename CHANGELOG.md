@@ -19,6 +19,11 @@ public-surface promise and the cross-version compatibility matrix.
   operator, cryptographer, compliance auditor, contributor)
 - Auto-generated Python API reference via `pdoc` — `make docs-api` target
 - Cross-version compatibility matrix in `docs/STABILITY_PROMISES.md`
+- Going-public gap analysis vs. Tempo, Arc, and Robinhood Chain —
+  `docs/plans/2026-07-03-going-public-gap-analysis.md` (benchmark research,
+  P0 publication blockers, owner decision list)
+- `.github/ISSUE_TEMPLATE/config.yml` — routes vulnerability reports to
+  private security advisories instead of public issues
 - Security hardening: LTP-A-001 (Option E + Slither/Echidna/Foundry-invariant
   suite), LTP-A-005 (Option C-3 owner-signed binding + on-chain dispute),
   LTP-A-006 (Option E independent arbiter + time-decay paths),
@@ -27,6 +32,10 @@ public-surface promise and the cross-version compatibility matrix.
 
 ### Changed
 - `CHANGELOG.md` entries now flag breaking changes inline with `**[BREAKING]**`
+- `config/suwappu-testnet.env.template` RPC URL replaced with a placeholder
+  (was an internal AWS ELB hostname)
+- `CONTRIBUTING.md` clone instructions now point at the correct repository slug
+- `.superpowers/` agent scratch state untracked and gitignored
 
 ### Known issues
 - LICENSE discrepancy: repo file declares Elastic 2.0 while `pyproject.toml`

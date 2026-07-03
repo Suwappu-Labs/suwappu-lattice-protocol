@@ -16,8 +16,8 @@ for contributing to the project.
 
 ```bash
 # Clone the repository
-git clone https://github.com/Suwappu-Labs/Entanglement-Transfer-Protocol.git
-cd Entanglement-Transfer-Protocol
+git clone https://github.com/Suwappu-Labs/suwappu-lattice-protocol.git
+cd suwappu-lattice-protocol
 
 # Install in development mode (includes test deps + real PQ crypto)
 pip install -e ".[dev]"
