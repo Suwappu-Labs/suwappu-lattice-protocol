@@ -19,9 +19,10 @@ public-surface promise and the cross-version compatibility matrix.
   operator, cryptographer, compliance auditor, contributor)
 - Auto-generated Python API reference via `pdoc` — `make docs-api` target
 - Cross-version compatibility matrix in `docs/STABILITY_PROMISES.md`
-- Going-public gap analysis vs. Tempo, Arc, and Robinhood Chain —
-  `docs/plans/2026-07-03-going-public-gap-analysis.md` (benchmark research,
-  P0 publication blockers, owner decision list)
+- Going-public gap analysis vs. Tempo, Arc, and Robinhood Chain (benchmark
+  research, P0 publication blockers, owner decision list; the internal
+  planning tree it lived in was subsequently removed pre-publication —
+  outcomes are recorded in this changelog)
 - `.github/ISSUE_TEMPLATE/config.yml` — routes vulnerability reports to
   private security advisories instead of public issues
 - Security hardening: LTP-A-001 (Option E + Slither/Echidna/Foundry-invariant
@@ -36,6 +37,14 @@ public-surface promise and the cross-version compatibility matrix.
   (was an internal AWS ELB hostname)
 - `CONTRIBUTING.md` clone instructions now point at the correct repository slug
 - `.superpowers/` agent scratch state untracked and gitignored
+
+### Removed
+- Internal working trees removed ahead of the public release: `docs/plans/`
+  (session roadmaps and planning docs), `docs/compliance/fedramp-high/`
+  (readiness package — now maintained privately, available to auditors on
+  request), `docs/Proposed-MoveVM-DID.docx`, `CODE_IMPROVEMENTS.md`, and the
+  root `ETP-LTP-Dual.png`; `run_trust_layer.py` moved to
+  `examples/run_trust_layer.py`
 
 ### Fixed
 - LICENSE discrepancy resolved (GLO-785): code is Elastic License 2.0

@@ -44,7 +44,7 @@ These behaviors are explicitly stable across MINOR releases:
 | Knob | Where | Promise |
 |---|---|---|
 | `LTP_ENV=production` | env var | Causes `ltp.bls` import to assert that the `blst` backend is available |
-| `ETP_DEPLOYMENT_PROFILE=fedramp-high` | env var | Causes `deploy/preflight_gateway.py` to fail closed on the FedRAMP gate list documented in `docs/compliance/fedramp-high/` |
+| `ETP_DEPLOYMENT_PROFILE=fedramp-high` | env var | Causes `deploy/preflight_gateway.py` to fail closed on its FedRAMP-High gate list (the checks live in `deploy/preflight_gateway.py`) |
 | `--strict` in CI `pip-audit` | `.github/workflows/contracts.yml` | Reports HIGH/CRITICAL CVEs in installed deps; continue-on-error so a fresh transitive CVE doesn't stall PRs |
 
 ## Deprecation policy
@@ -66,7 +66,6 @@ Each MAJOR or MINOR release publishes:
 | Tagged git release | `git tag vX.Y.Z` | Annotated tag on `main` |
 | Python sdist + wheel | (release pipeline) | Signed once the release pipeline is wired |
 | Contract ABIs | `contracts/abi/*.json` | Updated whenever a contract MAJOR or MINOR bumps |
-| FedRAMP evidence bundle | `docs/compliance/fedramp-high/release-evidence.md` | Template per the compliance overlay; filled in at release time |
 | SBOM (CycloneDX) | (release pipeline) | Generated on each tag; format is CycloneDX 1.5 JSON |
 
 ## Cross-version compatibility matrix

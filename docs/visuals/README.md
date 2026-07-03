@@ -185,7 +185,6 @@ flowchart TB
 ```
 
 - Threat model: [`THREAT_MODEL.md`](../THREAT_MODEL.md)
-- FedRAMP trust boundary: [`compliance/fedramp-high/trust-boundary.md`](../compliance/fedramp-high/trust-boundary.md)
 - Mermaid source: [`mermaid/trust-boundary.md`](./mermaid/trust-boundary.md)
 
 ## DKG ceremony + threshold BLS
@@ -204,7 +203,6 @@ sequenceDiagram
   Note over P: Sign: any 7 of 9 partial σ → aggregate σ
 ```
 
-- Specs: [`plans/2026-05-09-threshold-dkg-spec.md`](../plans/2026-05-09-threshold-dkg-spec.md), [`plans/2026-05-11-threshold-bls-signing-spec.md`](../plans/2026-05-11-threshold-bls-signing-spec.md)
 - Mermaid source: [`mermaid/dkg-ceremony.md`](./mermaid/dkg-ceremony.md)
 
 ## Corridor 7-of-9 BLS quorum

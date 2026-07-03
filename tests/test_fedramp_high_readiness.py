@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from deploy import preflight_gateway as preflight
@@ -206,25 +205,6 @@ def test_fedramp_high_compliance_config_requires_hsm_siem_and_rotation():
     assert violations == []
 
 
-def test_evidence_manifest_has_existing_paths_and_commands():
-    manifest_path = REPO_ROOT / "docs/compliance/fedramp-high/evidence-manifest.json"
-    manifest = json.loads(manifest_path.read_text())
-
-    assert manifest["deployment_profile"] == "fedramp-high"
-    assert {
-        "suwappu-lattice-protocol",
-        "suwappu-dag",
-        "suwappu-db",
-    }.issubset(set(manifest["required_release_repositories"]))
-
-    for entry in manifest["evidence"]:
-        assert entry["control_ids"], entry["id"]
-        assert entry["owner"], entry["id"]
-        assert entry["status"], entry["id"]
-        assert entry["test_command"], entry["id"]
-        assert (REPO_ROOT / entry["evidence_path"]).exists(), entry["evidence_path"]
-
-
 def test_suwappu_integration_doc_preserves_cross_repo_boundaries():
     doc = (REPO_ROOT / "docs/design-decisions/SUWAPPU_DAG_DB_INTEGRATION.md").read_text()
     lower = doc.lower()
@@ -233,13 +213,3 @@ def test_suwappu_integration_doc_preserves_cross_repo_boundaries():
     assert "`suwappu-db` provides state mutation" in doc
     assert "cannot mutate SUWAPPU-DB state" in doc
     assert "exact commits or tags" in doc
-
-
-def test_release_evidence_requires_exact_cross_repo_commits():
-    doc = (REPO_ROOT / "docs/compliance/fedramp-high/release-evidence.md").read_text()
-    assert "suwappu-lattice-protocol commit/tag" in doc
-    assert "suwappu-dag commit/tag" in doc
-    assert "suwappu-db commit/tag" in doc
-    assert "SBOM" in doc
-    assert "Semgrep" in doc
-    assert "Provenance" in doc or "provenance" in doc

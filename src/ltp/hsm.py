@@ -158,7 +158,7 @@ class SoftwareHSM(HSMBackend):
                 "SoftwareHSM cannot be used in production "
                 "(LTP_ENV=production + ETP_HSM_PROVIDER=software). "
                 "Configure a PKCS#11 HSM or cloud KMS backend; see "
-                "docs/compliance/fedramp-high/trust-boundary.md."
+                "docs/OPERATOR_RUNBOOK.md (key management)."
             )
         # key_id → {"type": "kem"|"dsa", "public": bytes, "private": wrapped}
         # LTP-A-032 (Phase 3): the "private" entry holds a KeyVault-wrapped

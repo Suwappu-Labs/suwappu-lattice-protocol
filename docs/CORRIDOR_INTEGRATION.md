@@ -102,7 +102,7 @@ After the corridor produces a verified `CorridorAttestation`, the natural next s
 - [`contracts/abi/LTPAnchorRegistry.json`](../contracts/abi/LTPAnchorRegistry.json) for the ABI
 - [`examples/verify_anchor_from_js.mjs`](../examples/verify_anchor_from_js.mjs) for the JS read-side equivalent
 
-The current on-chain contract does **not** re-verify the BLS aggregate; it trusts the relayer to submit valid anchors. Fraud-proof / on-chain BLS verification is tracked in `docs/plans/2026-05-11-production-roadmap.md`.
+The current on-chain contract does **not** re-verify the BLS aggregate; it trusts the relayer to submit valid anchors. Fraud-proof / on-chain BLS verification is on the project roadmap (see [ROADMAP.md](../ROADMAP.md)).
 
 ## Common gotchas
 

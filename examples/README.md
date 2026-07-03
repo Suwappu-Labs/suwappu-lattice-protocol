@@ -79,7 +79,7 @@ PYTHONPATH=. python examples/quickstart.py
 for f in examples/*.py; do echo "=== $f ===" && PYTHONPATH=. python3 "$f" && echo ""; done
 
 # Run the full demo (covers everything)
-PYTHONPATH=. python run_trust_layer.py
+PYTHONPATH=. python examples/run_trust_layer.py
 ```
 
 ## Key Concepts

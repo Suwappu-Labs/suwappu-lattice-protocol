@@ -252,12 +252,12 @@ v6 (Apr 14)   Base Sepolia L2 deployment   Bidirectional bridge
 
 ```bash
 # Clone and install
-git clone https://github.com/Suwappu-Labs/Entanglement-Transfer-Protocol.git
-cd Entanglement-Transfer-Protocol
+git clone https://github.com/Suwappu-Labs/suwappu-lattice-protocol.git
+cd suwappu-lattice-protocol
 pip install -e ".[dev]"
 
 # Run the demo
-python run_trust_layer.py
+python examples/run_trust_layer.py
 
 # Run all tests
 pytest tests/ -v
@@ -332,7 +332,6 @@ See [docs/README.md](docs/README.md) for the full documentation index.
 | [Architecture](docs/design-decisions/ARCHITECTURE.md) | System components and data flow |
 | [Visuals](docs/visuals/README.md) | Inline-Mermaid diagrams (LTP, SUWAPPU DAG, SUWAPPU-DB, anchor lifecycle, trust boundary, DKG) |
 | [SUWAPPU DAG and SUWAPPU-DB Integration](docs/design-decisions/SUWAPPU_DAG_DB_INTEGRATION.md) | Cross-repo boundary with the DAG L1 and state substrate |
-| [Production Roadmap](docs/plans/2026-05-11-production-roadmap.md) | Current milestones (2026-05-11) |
 | [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) | Docker, Kubernetes, CI/CD |
 | [Bridge MVP](docs/bridge-mvp-scope.md) | Cross-chain bridge scope |
 | [Security Review](docs/security/audits/internal/SECURITY_REVIEW-2-24-2026.md) | Formal security analysis |

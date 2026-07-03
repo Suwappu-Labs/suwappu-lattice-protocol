@@ -149,7 +149,6 @@ line-length = 100
 target-version = "py312"
 extend-exclude = [
     "docs/security/audits/external/whitepaper-reviews",
-    "docs/plans/archive",
     "out",          # foundry build artifacts
     "broadcast",    # foundry deployment logs
 ]

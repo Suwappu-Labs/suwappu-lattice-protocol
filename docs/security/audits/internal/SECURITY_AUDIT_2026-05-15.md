@@ -718,4 +718,4 @@ A future contributor adding a new security-critical contract should:
 - `docs/security/audits/internal/001-lattice-key-shard-exposure.md` — shard exposure analysis (Option C recommended, not yet deployed)
 - `docs/FORMAL_VERIFICATION_STATUS.md` — Verifpal symbolic model status
 - `docs/CORRIDOR_INTEGRATION.md` — cross-language interop guarantees
-- `docs/compliance/fedramp-high/` — FedRAMP-High readiness overlay
+- FedRAMP-High readiness overlay — maintained privately (removed from the public tree pre-publication)

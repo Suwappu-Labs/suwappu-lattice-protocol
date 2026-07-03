@@ -22,7 +22,6 @@ across deploys — see [`docs/STABILITY_PROMISES.md`](docs/STABILITY_PROMISES.md
 | Deployed-contract record | `docs/DEPLOYED_CONTRACTS.md` |
 | Operator runbook | `docs/OPERATOR_RUNBOOK.md` |
 | Persona docs | `docs/personas/` |
-| Compliance evidence | `docs/compliance/fedramp-high/` |
 
 ## How to verify a change
 
@@ -59,8 +58,8 @@ rejected:
 - **SHA-pin every new GitHub Action** by commit SHA, not tag (audit
   finding LTP-A-025).
 - **Never change a deployed-contract address** in
-  `docs/DEPLOYED_CONTRACTS.md` without an upgrade plan under `plans/`.
-  CODEOWNERS routes contract changes to the work account.
+  `docs/DEPLOYED_CONTRACTS.md` without a written upgrade plan attached to
+  the PR. CODEOWNERS routes contract changes to the work account.
 - **`make contracts-secaudit` must be green** before suggesting any
   change under `contracts/`.
 - **Licensing is settled (GLO-785, 2026-07-03):** code is Elastic-2.0,

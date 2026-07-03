@@ -153,8 +153,8 @@ internals here.
 
 ## Government Readiness Evidence
 
-The FedRAMP High readiness package for this repo lives under
-`docs/compliance/fedramp-high/`. For cross-repo release evidence, attach:
+The FedRAMP High readiness package for this repo is maintained privately
+and is available to auditors on request. For cross-repo release evidence, attach:
 
 - `suwappu-lattice-protocol`: pytest, Foundry, simulator, SBOM, dependency scan,
   Semgrep, signed artifacts, provenance, and POA&M.

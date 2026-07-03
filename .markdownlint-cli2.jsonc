@@ -51,7 +51,6 @@
     ],
 
     "ignores": [
-        "docs/plans/archive/**",
         "docs/design-decisions/Reviews/**",
         "docs/api/python/**",
         "node_modules/**"

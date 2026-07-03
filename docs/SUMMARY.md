@@ -35,17 +35,6 @@
 
 * [Python API Reference](api/README.md)
 
-## Plans & Specs
-
-* [Production Roadmap (2026-05-11)](plans/2026-05-11-production-roadmap.md)
-* [Session Roadmap (2026-05-11)](plans/2026-05-11-session-roadmap.md)
-* [Committee Formation & Epoch Management](plans/2026-05-08-committee-formation-epoch-management.md)
-* [Threshold DKG Spec](plans/2026-05-09-threshold-dkg-spec.md)
-* [Threshold DKG Plan](plans/2026-05-10-threshold-dkg-plan.md)
-* [Threshold BLS Signing Spec](plans/2026-05-11-threshold-bls-signing-spec.md)
-* [Threshold BLS Signing Plan](plans/2026-05-12-threshold-bls-signing-plan.md)
-* [Gate 5 + Gate 6 Closure (2026-05-15)](plans/2026-05-15-gate-5-6-closure.md)
-
 ## Security
 
 * [Threat Model](THREAT_MODEL.md)
@@ -66,17 +55,6 @@
 * [Bridge MVP Scope](bridge-mvp-scope.md)
 * [Deployed Contracts](DEPLOYED_CONTRACTS.md)
 
-## Compliance — FedRAMP High
-
-* [Readiness Overview](compliance/fedramp-high/README.md)
-* [Control Matrix](compliance/fedramp-high/control-matrix.md)
-* [Release Evidence](compliance/fedramp-high/release-evidence.md)
-* [System Boundary](compliance/fedramp-high/system-boundary.md)
-* [Assessment Boundary](compliance/fedramp-high/assessment-boundary.md)
-* [Trust Boundary](compliance/fedramp-high/trust-boundary.md)
-* [Data Flow](compliance/fedramp-high/data-flow.md)
-* [SSP Narratives](compliance/fedramp-high/ssp-narratives.md)
-
 ## Reviews
 
 * [Review #1 — Formal](security/audits/external/whitepaper-reviews/001/001-Formal-Whitepaper-Review.md)
@@ -85,9 +63,3 @@
 * [Review #2 — Mathematical](security/audits/external/whitepaper-reviews/002/002-Mathematical-Review.md)
 * [Review #3 — Formal](security/audits/external/whitepaper-reviews/003/003-Formal-Whitepaper-Review.md)
 * [Eastern Research Landscape](security/audits/external/whitepaper-reviews/004/004-Eastern-Research-Landscape.md)
-
-## Archive
-
-* [2024-02 Production Plan (superseded)](plans/archive/2024-02-production-plan.md)
-* [DID Expansion Plan (superseded)](plans/archive/did-expansion-plan.md)
-* [Gateway VM Plan (superseded)](plans/archive/ltp-gateway-vm-plan.md)

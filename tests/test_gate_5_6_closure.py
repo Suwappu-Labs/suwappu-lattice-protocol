@@ -20,8 +20,7 @@ What this proves at the integration surface:
 3. The corridor wire format preserves every byte that matters for
    cross-language verification.
 
-What this intentionally does NOT prove (deferred to follow-up tracks per
-`docs/plans/2026-05-15-gate-5-6-closure.md`):
+What this intentionally does NOT prove (deferred to follow-up tracks):
 - Real libp2p P2P transport between validators (FakeDKGTransport /
   in-process Mysticeti backend is used).
 - Live multi-machine deploy (single-process simulation).

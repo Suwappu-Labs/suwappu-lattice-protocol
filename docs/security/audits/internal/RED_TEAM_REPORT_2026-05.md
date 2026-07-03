@@ -681,7 +681,7 @@ of THIS report (NOT for the LTP code itself):
 - Threat model: [`/docs/THREAT_MODEL.md`](../../../THREAT_MODEL.md).
 - Formal verification status: [`/docs/FORMAL_VERIFICATION_STATUS.md`](../../../FORMAL_VERIFICATION_STATUS.md).
 - Operator runbook: [`/docs/OPERATOR_RUNBOOK.md`](../../../OPERATOR_RUNBOOK.md).
-- FedRAMP-High compliance package: [`/docs/compliance/fedramp-high/`](../../../compliance/fedramp-high/).
+- FedRAMP-High compliance package: maintained privately (removed from the public tree pre-publication).
 
 **Repeated disclaimer.** This report is an internal red-team
 self-assessment. It is not third-party assurance. It is

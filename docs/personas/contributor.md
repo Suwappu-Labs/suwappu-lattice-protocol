@@ -22,8 +22,9 @@ minutes if you have Python 3.10+ and Foundry installed.
 4. **[examples/README.md](../../examples/README.md)** — runnable
    examples that double as tutorial content. Adding an example is one
    of the most welcome forms of contribution.
-5. **[plans/](../plans/)** — every roadmap and design plan. If you're
-   thinking about a non-trivial change, find or open a plan first.
+5. **[ROADMAP.md](../../ROADMAP.md)** — current milestones. If you're
+   thinking about a non-trivial change, open an issue to discuss the
+   plan first.
 
 ## Workflow in one screen
 

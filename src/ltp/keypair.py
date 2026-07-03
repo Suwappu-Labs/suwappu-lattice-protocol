@@ -346,8 +346,8 @@ class KeyRegistry:
 
     Decouples key storage from the protocol instance so that multiple
     protocol instances (e.g. sender on L1, receiver on L2) can share the
-    same registry.  This resolves CODE_IMPROVEMENTS #3 — previously,
-    _sender_keypairs was scoped to a single LTPProtocol instance.
+    same registry.  Previously, _sender_keypairs was scoped to a single
+    LTPProtocol instance.
     """
 
     def __init__(self) -> None:
