@@ -37,9 +37,11 @@ public-surface promise and the cross-version compatibility matrix.
 - `CONTRIBUTING.md` clone instructions now point at the correct repository slug
 - `.superpowers/` agent scratch state untracked and gitignored
 
-### Known issues
-- LICENSE discrepancy: repo file declares Elastic 2.0 while `pyproject.toml`
-  declares MIT — resolution pending in Linear GLO-785
+### Fixed
+- LICENSE discrepancy resolved (GLO-785): code is Elastic License 2.0
+  everywhere — `pyproject.toml` and the README badge now match the
+  `LICENSE` file; spec/docs remain CC BY-ND 4.0 per `LICENSE-SPEC`
+  (confirmed intentional)
 
 ## [5.0.0] - 2026-03-25
 

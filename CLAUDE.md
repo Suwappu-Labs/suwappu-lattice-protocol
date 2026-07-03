@@ -63,8 +63,10 @@ rejected:
   CODEOWNERS routes contract changes to the work account.
 - **`make contracts-secaudit` must be green** before suggesting any
   change under `contracts/`.
-- **License field in `pyproject.toml`** — do NOT touch. Resolution is
-  pending in Linear GLO-785.
+- **Licensing is settled (GLO-785, 2026-07-03):** code is Elastic-2.0,
+  spec/docs are CC BY-ND 4.0. Keep `LICENSE`, `LICENSE-SPEC`,
+  `pyproject.toml`, and the README badge in agreement; do not relicense
+  without an owner decision.
 
 ## Common gotchas
 

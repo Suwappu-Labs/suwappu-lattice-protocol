@@ -7,10 +7,10 @@ name = "ltp"
 version = "3.0.0"
 description = "Lattice Transfer Protocol — post-quantum cryptographic data transfer"
 readme = "README.md"
-# NOTE: The repository LICENSE file is Elastic License 2.0 while this
-# field declares MIT. The discrepancy is tracked in Linear and must be
-# resolved by the project lead before publishing to PyPI.
-license = "MIT"
+# Code license: Elastic License 2.0 (matches the repository LICENSE file).
+# Spec/docs are separately licensed CC BY-ND 4.0 — see LICENSE-SPEC.
+# Decision recorded in Linear GLO-785 (2026-07-03).
+license = "Elastic-2.0"
 requires-python = ">=3.10"
 keywords = [
     "post-quantum",

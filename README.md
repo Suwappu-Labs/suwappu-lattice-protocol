@@ -8,7 +8,7 @@
 
 [![Tests](https://img.shields.io/badge/tests-2,800+_passing-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.10+-blue)]()
-[![License](https://img.shields.io/badge/license-MIT-green)]()
+[![License](https://img.shields.io/badge/license-Elastic--2.0-green)](LICENSE)
 [![Version](https://img.shields.io/badge/version-3.0.0-orange)]()
 [![Post-Quantum](https://img.shields.io/badge/crypto-post--quantum-purple)]()
 [![Claude Code](https://img.shields.io/badge/Claude_Code-supported-blueviolet)](CLAUDE.md)
@@ -319,7 +319,7 @@ Entanglement-Transfer-Protocol/
 ├── CHANGELOG.md                # Version history
 ├── CONTRIBUTING.md             # Contribution guidelines
 ├── SECURITY.md                 # Security policy
-└── LICENSE                     # MIT License
+└── LICENSE                     # Elastic License 2.0 (code)
 ```
 
 ## Documentation
@@ -428,4 +428,14 @@ artifact in the meantime.
 
 ## License
 
-MIT License. See [LICENSE](LICENSE).
+- **Code** (`src/`, `contracts/`, tooling): [Elastic License 2.0](LICENSE).
+  Source-available — you may use, copy, modify, and redistribute, but you
+  may not provide the software to others as a managed service or
+  circumvent its license-key functionality. This is a deliberate choice
+  (recorded 2026-07-03): the protocol source is open for review, audit,
+  and self-hosting, while reserving managed-service rights.
+- **Specification and documentation** (`docs/`): [CC BY-ND 4.0](LICENSE-SPEC).
+  Redistribute freely with attribution; the normative spec text may not
+  be republished in modified form — implement the protocol from it, and
+  send corrections upstream as pull requests so there is exactly one
+  normative text.

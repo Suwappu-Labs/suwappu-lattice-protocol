@@ -19,8 +19,9 @@ registry (contracts/), and the LTP-corridor-v1 wire format.
 - Do NOT skip hooks with `--no-verify`.
 - Do NOT change a deployed-contract address in docs/DEPLOYED_CONTRACTS.md
   without an upgrade plan under plans/. CODEOWNERS will block it.
-- Do NOT touch the `license` field in pyproject.toml. Resolution is
-  pending in Linear GLO-785.
+- Licensing is settled (GLO-785, 2026-07-03): code Elastic-2.0, spec/docs
+  CC BY-ND 4.0. Keep LICENSE, LICENSE-SPEC, pyproject.toml, and the
+  README badge in agreement; do not relicense without an owner decision.
 - SHA-pin every new GitHub Action — pin by commit SHA, not by tag (audit
   finding LTP-A-025).
 - Before suggesting changes under contracts/, ensure
