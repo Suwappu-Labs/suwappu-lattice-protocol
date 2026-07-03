@@ -1,4 +1,4 @@
-# ETP Bridge MVP — L1↔L2 Cross-Chain Transfer via Lattice Protocol
+# LTP Bridge MVP — L1↔L2 Cross-Chain Transfer via Lattice Protocol
 
 ## Problem Statement
 
@@ -10,9 +10,9 @@ The root causes are consistent:
 - **Broken commitment verification** (Nomad: bad Merkle root init → $190M)
 - **No quantum resistance** (all current bridges use ECDSA/EdDSA — broken by CRQC)
 
-ETP's primitives directly address each of these:
+LTP's primitives directly address each of these:
 
-| Bridge Weakness | ETP Primitive |
+| Bridge Weakness | LTP Primitive |
 |---|---|
 | Key compromise → full drain | ML-KEM forward secrecy (fresh encapsulation per message) |
 | Forged attestations | ML-DSA-65 signatures on CT-style Merkle log |
@@ -39,9 +39,9 @@ flowchart LR
     COMMIT --> LATTICE --> MAT
 ```
 
-### Phase Mapping: ETP → Bridge
+### Phase Mapping: LTP → Bridge
 
-| ETP Phase | Bridge Operation | What Happens |
+| LTP Phase | Bridge Operation | What Happens |
 |---|---|---|
 | **COMMIT** | Lock & Attest on L1 | User locks tokens in L1 contract. Bridge operator erasure-encodes the lock event (amount, recipient, nonce), encrypts shards with a fresh CEK, distributes to DA nodes, and appends a signed commitment record to the Merkle log. |
 | **LATTICE** | Relay Sealed Key | The bridge operator seals a LatticeKey (containing entity_id + CEK + commitment_ref) to the L2 verifier's ML-KEM public key. Only this ~1.3KB sealed blob crosses the chain gap. The relay is untrusted — it cannot read or forge the sealed key. |
@@ -66,7 +66,7 @@ class BridgeMessage:
 
 @dataclass
 class BridgeCommitment:
-    """The L1-side commitment: wraps ETP CommitmentRecord with bridge metadata."""
+    """The L1-side commitment: wraps LTP CommitmentRecord with bridge metadata."""
     message: BridgeMessage
     entity_id: str
     commitment_ref: str

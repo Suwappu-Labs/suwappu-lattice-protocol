@@ -1,7 +1,7 @@
-# ETP Observability Stack
+# LTP Observability Stack
 
 Local Prometheus + AlertManager + Grafana stack for monitoring one or
-more ETP / LTP nodes. Built for both developer laptops and production
+more LTP nodes. Built for both developer laptops and production
 bastions.
 
 ## Visuals
@@ -25,7 +25,7 @@ deploy/observability/
 │   └── alertmanager.yml  # routing (pagerduty / slack / webhook)
 └── grafana/
     ├── dashboards/
-    │   └── etp-node.json # "ETP / LTP Node Health" dashboard
+    │   └── etp-node.json # "LTP Node Health" dashboard
     └── provisioning/
         ├── datasources/prometheus.yml
         └── dashboards/default.yml
@@ -51,8 +51,8 @@ Endpoints:
 
 On first Grafana login you'll be prompted to set a new password.
 
-The `ETP` folder under `Dashboards` is provisioned with
-**ETP / LTP Node Health** — five rows covering node health, Merkle log &
+The `LTP` folder under `Dashboards` is provisioned with
+**LTP Node Health** — five rows covering node health, Merkle log &
 audit, gateway, cross-chain bridge, and gossip / security events.
 
 ## Pointing at a real node

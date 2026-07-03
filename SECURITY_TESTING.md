@@ -32,7 +32,7 @@ these explicit rules:
 1. **Owned systems only.** Tests target code and infrastructure owned
    by Suwappu Labs — primarily this repository
    (`suwappu-lattice-protocol`) and its sibling repositories (`suwappu-dag`,
-   `suwappu-db`, `ETP`). No third-party systems are probed.
+   `suwappu-db`, `LTP`). No third-party systems are probed.
 2. **Isolated environments.** Contract-layer tests run in Foundry's
    local EVM, on `anvil`, or as Foundry mainnet-fork tests
    (`forge test --fork-url`). Mainnet-fork tests **never** broadcast

@@ -1,6 +1,6 @@
 # Examples
 
-Self-contained code examples demonstrating ETP's capabilities, organized by complexity.
+Self-contained code examples demonstrating LTP's capabilities, organized by complexity.
 
 ## Visuals
 
@@ -38,9 +38,9 @@ net = CommitmentNetwork()
 [net.add_node(f"n{i}", "us") for i in range(3)]
 proto = LTPProtocol(net)
 
-eid, rec, cek = proto.commit(Entity(b"Hello ETP!", "text/plain"), alice)
+eid, rec, cek = proto.commit(Entity(b"Hello LTP!", "text/plain"), alice)
 sealed = proto.lattice(eid, rec, cek, bob)
-print(proto.materialize(sealed, bob))  # b'Hello ETP!'
+print(proto.materialize(sealed, bob))  # b'Hello LTP!'
 ```
 
 ## Examples by Complexity

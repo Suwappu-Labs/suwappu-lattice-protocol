@@ -1,6 +1,6 @@
-# Contributing to the Entanglement Transfer Protocol
+# Contributing to the Lattice Transfer Protocol
 
-Thank you for your interest in contributing to ETP. This document provides guidelines
+Thank you for your interest in contributing to LTP. This document provides guidelines
 for contributing to the project.
 
 ## Prerequisites

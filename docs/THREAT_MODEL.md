@@ -1,11 +1,11 @@
-# Threat Model — Entanglement Transfer Protocol
+# Threat Model — Lattice Transfer Protocol
 
 **Version:** 1.0
 **Date:** 2026-03-29
 **Framework:** STRIDE + PQC-specific threat categories
 
 This document identifies assets, threat sources, and categorized threats for the
-Entanglement Transfer Protocol (ETP/LTP). For the full protocol specification,
+Lattice Transfer Protocol (LTP). For the full protocol specification,
 see the [Whitepaper](WHITEPAPER.md). For implementation details, see the
 [Architecture](design-decisions/ARCHITECTURE.md).
 
@@ -13,7 +13,7 @@ see the [Whitepaper](WHITEPAPER.md). For implementation details, see the
 
 ## 1. Protocol Overview
 
-ETP transfers data via three phases:
+LTP transfers data via three phases:
 
 1. **COMMIT** — Sender erasure-codes content into n shards, encrypts each with a
    random CEK via AEAD, distributes encrypted shards to commitment nodes, and
@@ -129,7 +129,7 @@ ETP transfers data via three phases:
 These threats are explicitly NOT addressed by this threat model:
 
 - **Operating system compromise** — if the host OS is compromised, all bets are off
-- **Hardware attacks** — physical access to machines running ETP nodes
+- **Hardware attacks** — physical access to machines running LTP nodes
 - **Social engineering** — phishing for governance keys, etc.
 - **Denial of service at the network layer** — DDoS on node infrastructure
 - **Bugs in Python stdlib** — report to Python Security Response Team

@@ -320,7 +320,7 @@ The three phases provide cumulative security guarantees, formalized in §3.3:
 | **LATTICE** | Signed commitment binds sender | ML-KEM-768 sealed to receiver (IND-CCA2) | Fresh encapsulation per transfer | Theorems 5, 8 (§3.3.3, §3.3.6) |
 | **MATERIALIZE** | Signature + Merkle root verified | Plaintext reconstructed by receiver only | Preserved (ephemeral shared secret discarded) | Theorems 6, 7 (§3.3.4, §3.3.5) |
 
-This follows the pattern established by the Noise Protocol Framework [Perrin, 2018], where security properties are tracked per-message through the handshake. ETP's three phases correspond to a three-message protocol with strictly increasing security guarantees.
+This follows the pattern established by the Noise Protocol Framework [Perrin, 2018], where security properties are tracked per-message through the handshake. LTP's three phases correspond to a three-message protocol with strictly increasing security guarantees.
 
 ### Phase 1: COMMIT
 
@@ -968,7 +968,7 @@ $\mathsf{Adv}^{\text{AUTH}}_{\text{AEAD}}$ is the AEAD authentication advantage.
 
 #### 3.3.3 Transfer Confidentiality (IND-CPA)
 
-**ML-KEM-768 Security Parameters.** The sealed lattice key's confidentiality reduces to the Module-LWE problem with parameters (k=3, q=3329, η₁=2, η₂=2), achieving NIST Security Level 3 — equivalent to AES-192 against quantum adversaries. The IND-CCA2 property is obtained via the Fujisaki-Okamoto transform applied to an IND-CPA-secure K-PKE scheme [Bos et al., 2017; FIPS 203 §4]. The recent formal verification of Signal's PQXDH protocol [Bhargavan et al., USENIX Security 2024] — the first machine-checked post-quantum security proof of a real-world protocol using CryptoVerif — identified a KEM binding property requirement: the KEM ciphertext must be bound to the encapsulation key. ETP satisfies this property because the sealed lattice key includes the entity_id (which is derived from the sender's verification key) alongside the KEM ciphertext.
+**ML-KEM-768 Security Parameters.** The sealed lattice key's confidentiality reduces to the Module-LWE problem with parameters (k=3, q=3329, η₁=2, η₂=2), achieving NIST Security Level 3 — equivalent to AES-192 against quantum adversaries. The IND-CCA2 property is obtained via the Fujisaki-Okamoto transform applied to an IND-CPA-secure K-PKE scheme [Bos et al., 2017; FIPS 203 §4]. The recent formal verification of Signal's PQXDH protocol [Bhargavan et al., USENIX Security 2024] — the first machine-checked post-quantum security proof of a real-world protocol using CryptoVerif — identified a KEM binding property requirement: the KEM ciphertext must be bound to the encapsulation key. LTP satisfies this property because the sealed lattice key includes the entity_id (which is derived from the sender's verification key) alongside the KEM ciphertext.
 
 **Definition (TCONF game).** Transfer confidentiality is defined via an IND-CPA-style
 indistinguishability game adapted for LTP's commit-lattice-materialize structure:
@@ -1121,7 +1121,7 @@ primary confidentiality guarantee against adversaries who may know or guess cand
 The MDS threshold secrecy property provides a second line of defense for the specific case
 where an adversary has obtained the CEK but controls fewer than $k$ commitment nodes.
 
-**Formal basis.** The threshold secrecy of ETP's erasure coding follows from the MDS (Maximum Distance Separable) property of Reed-Solomon codes over GF(2⁸), first connected to secret sharing by McEliece and Sarwate [1981]. Any k−1 shards leave exactly one degree of freedom in the polynomial coefficient space, revealing zero information about the entity content in the Shannon sense. This is information-theoretic security — it holds regardless of the adversary's computational power, including against quantum adversaries.
+**Formal basis.** The threshold secrecy of LTP's erasure coding follows from the MDS (Maximum Distance Separable) property of Reed-Solomon codes over GF(2⁸), first connected to secret sharing by McEliece and Sarwate [1981]. Any k−1 shards leave exactly one degree of freedom in the polynomial coefficient space, revealing zero information about the entity content in the Shannon sense. This is information-theoretic security — it holds regardless of the adversary's computational power, including against quantum adversaries.
 
 **In LTP's context:** Even if an adversary compromises $k - 1$ commitment nodes and decrypts
 the AEAD ciphertexts (by also obtaining the CEK) without prior knowledge of the entity,

@@ -1,11 +1,11 @@
-# ETP Deployment Guide
+# LTP Deployment Guide
 
 ```mermaid
 flowchart LR
     S1["Stage 1\nLocal Dev"] --> S2["Stage 2\nContainerized"] --> S3["Stage 3\nCI/CD"] --> S4["Stage 4\nKubernetes"] --> S5["Stage 5\nKey Management"] --> S6["Stage 6\nMonitoring"] --> S7["Stage 7\nChecklist"]
 ```
 
-Concrete steps to deploy the Entanglement Transfer Protocol from local dev to production infrastructure. See [STABILITY_PROMISES.md](./STABILITY_PROMISES.md) for the version-skew tolerances and [ROADMAP.md](../ROADMAP.md) for the current roadmap.
+Concrete steps to deploy the Lattice Transfer Protocol from local dev to production infrastructure. See [STABILITY_PROMISES.md](./STABILITY_PROMISES.md) for the version-skew tolerances and [ROADMAP.md](../ROADMAP.md) for the current roadmap.
 
 ---
 
@@ -357,7 +357,7 @@ jobs:
 
 ```yaml
 # .github/workflows/release.yml
-name: ETP Release
+name: LTP Release
 
 on:
   push:
@@ -670,7 +670,7 @@ set -euo pipefail
 OPERATOR_KEY_ID=$(aws kms create-key \
   --key-spec ML_DSA_65 \
   --key-usage SIGN_VERIFY \
-  --description "ETP operator STH signing key" \
+  --description "LTP operator STH signing key" \
   --query 'KeyMetadata.KeyId' --output text)
 
 aws kms create-alias \
@@ -717,7 +717,7 @@ For environments where you want to avoid direct KMS API calls on the signing hot
 # scripts/keygen-local.sh — Generate locally, protect at rest with KMS
 set -euo pipefail
 
-echo "Generating ETP operator keys..."
+echo "Generating LTP operator keys..."
 
 # Operator ML-DSA signing key (for STH signatures)
 python3 -c "

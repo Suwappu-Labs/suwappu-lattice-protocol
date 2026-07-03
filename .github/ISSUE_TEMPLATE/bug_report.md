@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in the Entanglement Transfer Protocol
+about: Report a bug in the Lattice Transfer Protocol
 title: "[Bug] "
 labels: bug
 assignees: ''
@@ -28,7 +28,7 @@ assignees: ''
 
 - Python version:
 - OS:
-- ETP version:
+- LTP version:
 
 ## Additional Context
 

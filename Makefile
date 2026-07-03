@@ -1,4 +1,4 @@
-# ETP Development Makefile
+# LTP Development Makefile
 # ========================
 # Quick commands for testing, building, and deployment verification.
 

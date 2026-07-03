@@ -1,6 +1,6 @@
-# ETP / LTP Operator Runbook
+# LTP Operator Runbook
 
-Operational guide for running an Entanglement Transfer Protocol node in
+Operational guide for running an Lattice Transfer Protocol node in
 production. This document complements `docs/DEPLOYMENT_GUIDE.md` and the
 alerts defined in `deploy/observability/prometheus/alerts.yml`.
 
@@ -49,7 +49,7 @@ key bytes on disk.
 
 ```bash
 aws kms create-key \
-    --description "ETP node signing key" \
+    --description "LTP node signing key" \
     --key-usage SIGN_VERIFY \
     --key-spec ECC_NIST_P384
 
@@ -174,7 +174,7 @@ only after out-of-band confirmation.
 ```ini
 # /etc/systemd/system/etp-node.service
 [Unit]
-Description=ETP / LTP node
+Description=LTP node
 After=network-online.target
 Wants=network-online.target
 
@@ -240,7 +240,7 @@ docker-compose up -d
 - Grafana:    `http://localhost:3000` (admin / admin, change on first login)
 - AlertManager: `http://localhost:9093`
 
-The dashboard `ETP / LTP Node Health` is auto-provisioned under the `ETP`
+The dashboard `LTP Node Health` is auto-provisioned under the `LTP`
 folder. Edit `deploy/observability/prometheus/prometheus.yml` to add
 your production node endpoints.
 
@@ -446,7 +446,7 @@ Quarterly rotation schedule (or on-demand after a suspected compromise):
 
 ```bash
 # 1. Create a new KMS key version
-aws kms create-key --description "ETP node signer (Q2 2026)" ...
+aws kms create-key --description "LTP node signer (Q2 2026)" ...
 
 # 2. Update /etc/etp/node.env with the new key id
 #    KEEP the old key id in ETP_KMS_KEY_IDS_PREVIOUS for signature verification

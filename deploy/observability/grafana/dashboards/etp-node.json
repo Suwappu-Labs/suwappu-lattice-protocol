@@ -753,7 +753,7 @@
   "time": {"from": "now-1h", "to": "now"},
   "timepicker": {},
   "timezone": "browser",
-  "title": "ETP / LTP Node Health",
+  "title": "LTP Node Health",
   "uid": "etp-node-health",
   "version": 1,
   "weekStart": ""

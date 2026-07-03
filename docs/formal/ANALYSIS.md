@@ -1,4 +1,4 @@
-# Formal Protocol Analysis — ETP
+# Formal Protocol Analysis — LTP
 
 **Date:** 2026-03-29
 **Tool:** [Verifpal](https://verifpal.com/) v0.27+
@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document presents a formal symbolic analysis of the Entanglement Transfer
+This document presents a formal symbolic analysis of the Lattice Transfer
 Protocol's three-phase COMMIT / LATTICE / MATERIALIZE lifecycle using Verifpal.
 
 ## Model Design
@@ -19,7 +19,7 @@ and inject messages on any channel.
 
 ### Cryptographic Abstractions
 
-| ETP Primitive | Verifpal Model | Rationale |
+| LTP Primitive | Verifpal Model | Rationale |
 |---------------|---------------|-----------|
 | ML-KEM-768 | Diffie-Hellman key exchange (`G^a`, `ga^b`) | Semantically equivalent for confidentiality under symbolic model |
 | ML-DSA-65 | `SIGN` / `SIGNVERIF` | Built-in signature primitives |

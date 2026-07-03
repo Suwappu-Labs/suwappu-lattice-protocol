@@ -1,6 +1,6 @@
 # Release Engineering
 
-How to cut a new release of the Entanglement Transfer Protocol.
+How to cut a new release of the Lattice Transfer Protocol.
 
 The release pipeline is fully automated by
 [`.github/workflows/release.yml`](../.github/workflows/release.yml) and

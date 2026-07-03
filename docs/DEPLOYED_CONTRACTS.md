@@ -1,4 +1,4 @@
-# ETP Deployed Contracts and Wallets
+# LTP Deployed Contracts and Wallets
 
 **Author:** Javier Calderon Jr, CTO — Suwappu (SUWAPPU)
 **Last Updated:** April 27, 2026
@@ -17,6 +17,10 @@ The deployer wallet deployed all contracts on both chains. After deployment, adm
 ---
 
 ## SUWAPPU Testnet — Chain ID `103115120`
+
+SUWAPPU Testnet has no public block explorer yet; verify these addresses
+against the chain directly via `eth_getCode` / `version()` calls on your
+configured RPC endpoint (see `config/suwappu-testnet.env.template`).
 
 ### Registry (v5, deployed block 687,609)
 
@@ -49,6 +53,10 @@ The deployer wallet deployed all contracts on both chains. After deployment, adm
 ---
 
 ## Base Sepolia — Chain ID `84532`
+
+All Base Sepolia addresses are independently verifiable on
+[Basescan (Sepolia)](https://sepolia.basescan.org) — paste an address to
+check deployed bytecode, verified source, and the admin-transfer history.
 
 ### Registry (v6, deployed block 39,835,640)
 

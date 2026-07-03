@@ -1,15 +1,15 @@
 <div align="center">
 
-# Entanglement Transfer Protocol
+# Lattice Transfer Protocol
 
 ## A Post-Quantum Cryptographic Data Transfer Protocol
 
 > *"Don't move the data. Transfer the proof. Reconstruct the truth."*
 
-[![Tests](https://img.shields.io/badge/tests-2,800+_passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-4,000+_passing-brightgreen)](tests/)
 [![Python](https://img.shields.io/badge/python-3.10+-blue)]()
 [![License](https://img.shields.io/badge/license-Elastic--2.0-green)](LICENSE)
-[![Version](https://img.shields.io/badge/version-3.0.0-orange)]()
+[![Version](https://img.shields.io/badge/version-3.0.0-orange)](CHANGELOG.md)
 [![Post-Quantum](https://img.shields.io/badge/crypto-post--quantum-purple)]()
 [![Claude Code](https://img.shields.io/badge/Claude_Code-supported-blueviolet)](CLAUDE.md)
 [![Cursor](https://img.shields.io/badge/Cursor-supported-black)](.cursorrules)
@@ -38,7 +38,7 @@ Point B.** This chains us to three unsolvable constraints:
 2. **Geography** -- further = slower, always
 3. **Compute** -- larger payloads demand more processing at both ends
 
-ETP rejects this assumption. Data transfer is not about moving bits. It is about
+LTP rejects this assumption. Data transfer is not about moving bits. It is about
 transferring the *ability to reconstruct* a deterministic output at a destination,
 verified by an immutable commitment.
 
@@ -269,7 +269,7 @@ cd contracts && forge test -vvv
 ## Project Structure
 
 ```
-Entanglement-Transfer-Protocol/
+suwappu-lattice-protocol/
 ├── src/ltp/                    # Core protocol library (60+ modules)
 │   ├── protocol.py             # Three-phase COMMIT/LATTICE/MATERIALIZE
 │   ├── primitives.py           # ML-KEM-768, ML-DSA-65, AEAD, hashing
@@ -424,6 +424,21 @@ GitHub Actions billing is currently disabled for this organization, so
 the two workflows above are committed ready-to-run but will not execute
 until billing is restored; the committed SBOM is the value-today
 artifact in the meantime.
+
+## Verifying Releases
+
+- **SBOM:** a CycloneDX software bill of materials is committed at
+  [`sbom/suwappu-lattice-protocol.cdx.json`](sbom/suwappu-lattice-protocol.cdx.json)
+  and regenerated per release by the SBOM workflow; releases attach a fresh
+  copy as an asset.
+- **Checksums:** release assets ship with SHA-256 checksums — verify with
+  `sha256sum -c` before use.
+- **Signatures:** artifact signing (GPG / Sigstore) is planned and will be
+  documented here once the release pipeline is wired for it; see
+  [docs/RELEASE_ENGINEERING.md](docs/RELEASE_ENGINEERING.md) for current
+  release mechanics.
+- **Test counts:** the badge above is a static claim — verify locally with
+  `make test-python` (Python) and `make test-contracts` (Solidity).
 
 ## License
 

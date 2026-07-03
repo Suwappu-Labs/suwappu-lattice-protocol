@@ -45,7 +45,7 @@ def create_app(config: Optional[GatewayConfig] = None) -> FastAPI:
 
     app = FastAPI(
         title="ETP API Gateway",
-        description="Entanglement Transfer Protocol — unified REST API",
+        description="Lattice Transfer Protocol — unified REST API",
         version="1.0.0",
         docs_url=None,
         redoc_url=None,
