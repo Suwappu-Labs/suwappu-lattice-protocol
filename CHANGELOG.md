@@ -54,6 +54,13 @@ public-surface promise and the cross-version compatibility matrix.
   `examples/run_trust_layer.py`
 
 ### Fixed
+- All `examples/*.py` now run as documented (`python examples/<name>.py`)
+  from any working directory — added a repo-root import shim; previously
+  every example required an undocumented `PYTHONPATH=.`
+- `examples/run_trust_layer.py` and `examples/signed_envelopes.py` fixed
+  under the LTP-A-032 Phase 4c implicit-HSM default: the demos inspect
+  raw key material, so they explicitly opt out (with an explanation of
+  why production code should not)
 - LICENSE discrepancy resolved (GLO-785): code is Elastic License 2.0
   everywhere — `pyproject.toml` and the README badge now match the
   `LICENSE` file; spec/docs remain CC BY-ND 4.0 per `LICENSE-SPEC`

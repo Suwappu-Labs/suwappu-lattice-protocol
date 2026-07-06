@@ -9,6 +9,13 @@ Usage:
     PYTHONPATH=. python examples/streaming.py
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(
+    0, str(Path(__file__).resolve().parents[1])
+)  # repo root, so `src.ltp` imports work no matter where you run from
+
 from src.ltp import KeyPair, reset_poc_state
 from src.ltp.streaming import EntityStream, StreamConfig, StreamState
 

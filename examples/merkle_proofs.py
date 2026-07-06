@@ -11,6 +11,13 @@ Usage:
     PYTHONPATH=. python examples/merkle_proofs.py
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(
+    0, str(Path(__file__).resolve().parents[1])
+)  # repo root, so `src.ltp` imports work no matter where you run from
+
 from src.ltp import (
     CommitmentNetwork,
     Entity,

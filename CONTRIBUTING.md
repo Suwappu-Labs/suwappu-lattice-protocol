@@ -3,6 +3,17 @@
 Thank you for your interest in contributing to LTP. This document provides guidelines
 for contributing to the project.
 
+## Licensing of Contributions
+
+Inbound = outbound: by contributing, you agree that your contributions are
+licensed under the same terms as the material they modify — code under the
+[Elastic License 2.0](LICENSE), specification and documentation under
+[CC BY-ND 4.0](LICENSE-SPEC). There is no CLA; instead we require the
+[Developer Certificate of Origin](https://developercertificate.org/):
+sign off each commit with `git commit -s`, which adds a
+`Signed-off-by: Your Name <you@example.com>` line certifying you have the
+right to submit the work under these licenses.
+
 ## Prerequisites
 
 - **Python 3.10+** (3.12 recommended)
@@ -42,7 +53,7 @@ forge test -vvv
 
 ## Running Tests
 
-### Python Tests (1,167 tests)
+### Python Tests (4,000+ tests)
 
 ```bash
 # Run all tests
@@ -84,7 +95,7 @@ cd contracts && forge script script/Deploy.s.sol --rpc-url http://localhost:8545
 cd .. && pytest tests/test_contract_integration.py -v
 ```
 
-All 1,251+ tests should pass. If any fail on a clean checkout, please open an issue.
+All 4,100+ tests (Python + Solidity) should pass. If any fail on a clean checkout, please open an issue.
 
 ## Code Style
 
@@ -143,7 +154,8 @@ All 1,251+ tests should pass. If any fail on a clean checkout, please open an is
 
 ### PR Checklist
 
-- [ ] All 1,251+ tests pass (Python + Solidity)
+- [ ] All tests pass (Python + Solidity)
+- [ ] Commits are DCO signed-off (`git commit -s`)
 - [ ] New code has corresponding tests
 - [ ] No external dependencies added to core library
 - [ ] Type annotations on public API

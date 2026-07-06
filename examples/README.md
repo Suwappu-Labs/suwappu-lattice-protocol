@@ -73,13 +73,13 @@ print(proto.materialize(sealed, bob))  # b'Hello LTP!'
 
 ```bash
 # Run any example
-PYTHONPATH=. python examples/quickstart.py
+python examples/quickstart.py
 
 # Run all examples
-for f in examples/*.py; do echo "=== $f ===" && PYTHONPATH=. python3 "$f" && echo ""; done
+for f in examples/*.py; do echo "=== $f ===" && python3 "$f" && echo ""; done
 
 # Run the full demo (covers everything)
-PYTHONPATH=. python examples/run_trust_layer.py
+python examples/run_trust_layer.py
 ```
 
 ## Key Concepts

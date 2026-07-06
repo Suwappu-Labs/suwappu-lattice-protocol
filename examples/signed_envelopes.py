@@ -12,6 +12,21 @@ Usage:
     python examples/signed_envelopes.py
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(
+    0, str(Path(__file__).resolve().parents[1])
+)  # repo root, so `src.ltp` imports work no matter where you run from
+
+import os
+
+# This demo inspects and passes raw key material (kp.sk) for pedagogy.
+# Production code keeps the LTP-A-032 default (implicit SoftwareHSM),
+# where private keys never leave the HSM boundary — use KeyPair.sign()
+# and KeyPair.decaps() instead of touching .sk/.dk directly.
+os.environ.setdefault("LTP_KEYPAIR_IMPLICIT_HSM", "0")
+
 import time
 
 from src.ltp import CommitmentNetwork, Entity, KeyPair, LTPProtocol, reset_poc_state
