@@ -22,12 +22,12 @@ jobs:
     continue-on-error: true
     steps:
       - name: Checkout suwappu-lattice-protocol
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           path: suwappu-lattice-protocol
 
       - name: Checkout suwappu-dag (sibling layout)
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           repository: Suwappu-Labs/suwappu-dag
           path: suwappu-dag
