@@ -8,7 +8,7 @@
 
 [![Tests](https://img.shields.io/badge/tests-2,800+_passing-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.10+-blue)]()
-[![License](https://img.shields.io/badge/license-MIT-green)]()
+[![License](https://img.shields.io/badge/license-Elastic_2.0-blue)](LICENSE)
 [![Version](https://img.shields.io/badge/version-3.0.0-orange)]()
 [![Post-Quantum](https://img.shields.io/badge/crypto-post--quantum-purple)]()
 [![Claude Code](https://img.shields.io/badge/Claude_Code-supported-blueviolet)](CLAUDE.md)
@@ -319,7 +319,8 @@ Entanglement-Transfer-Protocol/
 ├── CHANGELOG.md                # Version history
 ├── CONTRIBUTING.md             # Contribution guidelines
 ├── SECURITY.md                 # Security policy
-└── LICENSE                     # MIT License
+├── LICENSE                     # Elastic License 2.0 (code)
+└── LICENSE-SPEC                # CC BY-ND 4.0 (spec and docs/)
 ```
 
 ## Documentation
@@ -429,4 +430,6 @@ artifact in the meantime.
 
 ## License
 
-MIT License. See [LICENSE](LICENSE).
+Code is licensed under the Elastic License 2.0 — see [LICENSE](LICENSE).
+The LTP specification and documentation (`docs/`) are licensed under
+Creative Commons Attribution-NoDerivatives 4.0 — see [LICENSE-SPEC](LICENSE-SPEC).
