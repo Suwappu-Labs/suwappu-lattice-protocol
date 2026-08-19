@@ -3,7 +3,7 @@
 **Status:** Proposal
 **Date:** 2026-03-13
 **Authors:** LTP Core Team
-**Relates to:** Whitepaper §5.2, §5.3, §5.4, §5.5, Open Questions 6 & 8
+**Relates to:** Whitepaper §5.2, §5.3, §5.4, §5.5, §12 Open Question 4
 
 ---
 
@@ -19,10 +19,10 @@ LTP's current enforcement layer provides:
 These mechanisms are solid for a v1 system. However, the whitepaper itself
 acknowledges two critical gaps:
 
-1. **Open Question 6:** The storage proof challenge-response (§5.2.2) is a
+1. **Open Question 4:** The storage proof challenge-response (§5.2.2) is a
    statistical deterrent, not a cryptographic guarantee. A node with a
    co-located proxy 5ms away defeats the time bound.
-2. **Open Question 8:** Slashing is hardcoded to audit failures. Future
+2. **Beyond the paper:** Slashing is hardcoded to audit failures. Future
    enforcement may need custom conditions (data withholding, censorship,
    incorrect oracle feeds).
 
@@ -472,7 +472,7 @@ stateDiagram-v2
 
 | Mechanism | Phase | Effort | Impact | Gap Addressed |
 |-----------|-------|--------|--------|---------------|
-| PDP Storage Proofs | Growth | Medium | Critical | Open Question 6 |
+| PDP Storage Proofs | Growth | Medium | Critical | Open Question 4 |
 | Programmable Slashing | Growth | Medium | High | Extensibility |
 | Intersubjective Disputes | Maturity | High | High | Subjective violations |
 | VDF-Enhanced Audits | Maturity | High | Medium | Timing guarantees |

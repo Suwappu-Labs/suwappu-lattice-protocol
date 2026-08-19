@@ -2458,10 +2458,10 @@ Two things are worth reading off this table.
 **Encode cost scales with $n$, not with $n \cdot k$.** Each of the $n$ output shards is a
 $k$-term linear combination over chunks of size $D/k$, so the total work is
 $n \cdot k \cdot (D/k) = n \cdot D$ — independent of $k$. The measurement confirms the
-prediction: throughput falls by $6.7\times$ between $n=8$ and $n=64$, against a predicted
-$8\times$, with the shortfall attributable to per-shard fixed costs that amortize better at
-larger $n$. Throughput is flat across entity size within each parameter set, as a linear
-model requires.
+prediction: encode throughput falls by $6.4\times$ (64 KiB) to $6.8\times$ (256 KiB) between
+$n=8$ and $n=64$, against a predicted $8\times$, with the shortfall attributable to
+per-shard fixed costs that amortize better at larger $n$. Throughput is flat across entity
+size within each parameter set, as a linear model requires.
 
 **Decode is roughly twice as fast as encode** at matched parameters, because decoding
 produces $k$ chunks rather than $n$ shards, and $k < n$ by construction. The

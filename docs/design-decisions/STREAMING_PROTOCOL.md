@@ -3,7 +3,7 @@
 **Status:** Proposal
 **Date:** 2026-03-13
 **Authors:** LTP Core Team
-**Relates to:** Whitepaper §2.1, §3.1, §3.3, Open Questions 4 & 5
+**Relates to:** Whitepaper §2.1, §3.1, §3.3, §12 Open Questions 2 & 3
 
 ---
 
@@ -21,10 +21,10 @@ MATERIALIZE:  unseal → fetch_encrypted_shards → decrypt → ErasureCoder.dec
 This works well for discrete objects (messages, documents, images) but
 creates two problems acknowledged in the whitepaper:
 
-1. **Open Question 4:** "Bandwidth for initial shard distribution: The commit
+1. **Open Question 2:** "Bandwidth for initial shard distribution: The commit
    phase still requires distributing n shards. Can this be amortized or
    pipelined?"
-2. **Open Question 5:** "Real-time streaming: Can LTP support continuous
+2. **Open Question 3:** "Real-time streaming: Can LTP support continuous
    entity streams (video, telemetry), or is it inherently batch-oriented?"
 
 This document proposes a chunked streaming extension that addresses both
@@ -223,7 +223,7 @@ of each chunk before sending the next.
 
 ---
 
-## Bandwidth Amortization (Open Question 4)
+## Bandwidth Amortization (Open Question 2)
 
 ### Problem
 

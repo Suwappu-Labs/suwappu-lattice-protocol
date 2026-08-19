@@ -75,7 +75,7 @@ so that rewrite has a target to build against.
 
 ## 3. What is NOT changed by this document
 
-- LTP's whitepaper text (§5.5, §10 Open Question 1) is unchanged — it correctly stays
+- LTP's whitepaper text (§5.5, §12 Resolved Questions) is unchanged — it correctly stays
   token-agnostic at the protocol-spec level. Only *Suwappu's specific deployment* of LTP
   is declared to use SUWP.
 - SUWP's Seasons distribution mechanics (`SEASONS_TOKENOMICS.md`) are unchanged.

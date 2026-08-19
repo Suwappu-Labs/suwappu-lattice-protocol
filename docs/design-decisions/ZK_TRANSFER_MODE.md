@@ -3,7 +3,7 @@
 **Status:** Proposal
 **Date:** 2026-03-13
 **Authors:** LTP Core Team
-**Relates to:** Whitepaper §3.2, §3.2.1–§3.2.4, §3.3.3, §10 Open Question 8
+**Relates to:** Whitepaper §3.2, §3.2.1–§3.2.4, §3.3.3, §12 Open Question 6
 
 ---
 
@@ -200,7 +200,7 @@ one entity and later claim it was a different one.
 
 ## 5. Content-Property Proofs
 
-> This section addresses Open Question 8(a): circuit composition for application-layer
+> This section addresses Open Question 6(a): circuit composition for application-layer
 > predicates.
 
 R_ZK as specified proves only commitment consistency — that `blind_id` is bound to a
@@ -271,7 +271,7 @@ ceremonies), or migrate to STARKs which require no trusted setup at all.
 
 ## 6. Post-Quantum Upgrade Path
 
-> This section addresses Open Question 8(b): replacing BLS12-381 with a post-quantum
+> This section addresses Open Question 6(b): replacing BLS12-381 with a post-quantum
 > proof system.
 
 > **WARNING:** Current ZK mode (Groth16/BLS12-381) is broken by a cryptographically

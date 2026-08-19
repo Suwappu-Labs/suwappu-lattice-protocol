@@ -77,7 +77,7 @@ open Suwappu.LTP.Commitment
 #print axioms Suwappu.LTP.Erasure.decodable_monotone
 #print axioms Suwappu.LTP.Erasure.loss_budget
 
--- Access-policy algebra (Paper §2.2.1, §8.4)
+-- Access-policy algebra (Paper §2.2.1, §10.4)
 #print axioms Suwappu.LTP.Policy.countOk_antitone
 #print axioms Suwappu.LTP.Policy.permits_antitone_count
 #print axioms Suwappu.LTP.Policy.one_time_exhausts

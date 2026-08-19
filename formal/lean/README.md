@@ -31,7 +31,7 @@ strength. A cold `lake build` takes seconds.
 | `loss_budget` / `decodable_monotone` | `Ltp/Erasure.lean` | Losing up to n−k shards is survivable; losing shards never helps |
 | `permits_antitone_count` / `one_time_exhausts` | `Ltp/Policy.lean` | The §2.2.1 access-policy count check cannot wedge, and one-time keys are one-time |
 | `minimal_is_sound` | `Ltp/Policy.lean` | The mandated fail-closed mode ("reject any policy other than unrestricted") never over-grants |
-| `attenuate_no_amplify` | `Ltp/Policy.lean` | Macaroon-style attenuation never grants what the parent policy denies (the §8.4 capability claim) |
+| `attenuate_no_amplify` | `Ltp/Policy.lean` | Macaroon-style attenuation never grants what the parent policy denies (the §10.4 capability claim) |
 | `supermajority_safety` / `supermajority_liveness` | `Ltp/Governance.lean` | Classical BFT bounds for §5.1 governance: two 2/3 supermajorities share an honest voter when < n/3 are Byzantine; < n/3 unavailable still leaves a supermajority |
 | `safety_bound_tight` | `Ltp/Governance.lean` | Concrete counterexample at exactly n/3 Byzantine — the hypothesis cannot be weakened to ≤ |
 | `vector1_matches` / `vector2_matches` / `vector2_framing` | `Ltp/TestVectors.lean` | Both §2.1.1 interoperability test vectors recomputed in-kernel over a from-scratch GF(2⁸) (0x11D) and `decide`d byte-for-byte — the paper, the Lean kernel, and `src/ltp/erasure.py` are three independent computations agreeing on the same constants |

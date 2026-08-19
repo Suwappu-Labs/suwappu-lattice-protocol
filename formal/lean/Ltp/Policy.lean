@@ -23,7 +23,7 @@ Four properties the paper relies on but never argues:
    non-enforcing implementation is *safe*: it never grants access a
    fully-enforcing implementation would deny. This is the actual safety
    content of that MUST, formalised.
-4. `attenuate_no_amplify` — macaroon-style attenuation (§8.4's comparison
+4. `attenuate_no_amplify` — macaroon-style attenuation (§10.4's comparison
    to capability systems): tightening a policy's window or count bound
    never grants access the original denied. Delegation that only
    attenuates cannot amplify authority.
@@ -125,7 +125,7 @@ theorem minimal_is_sound (p : Policy) (now count : Nat)
 
 /-- `q` attenuates `p` when every bound in `q` is at least as tight:
 the window is narrower and the count budget is no larger. This is the
-partial order under which macaroon-style delegation operates (§8.4). -/
+partial order under which macaroon-style delegation operates (§10.4). -/
 def Attenuates (q p : Policy) : Prop :=
   (∀ lo, p.notBefore = some lo → ∃ lo', q.notBefore = some lo' ∧ lo ≤ lo')
     ∧ (∀ hi, p.notAfter = some hi → ∃ hi', q.notAfter = some hi' ∧ hi' ≤ hi)
@@ -135,7 +135,7 @@ def Attenuates (q p : Policy) : Prop :=
 /-- **Attenuation never grants what the parent denies.** If the
 attenuated policy `q` permits an action, the original `p` permits it
 too — delegating a capability can only shrink authority. The whitepaper
-stakes its §8.4 capability-system comparison on exactly this shape and
+stakes its §10.4 capability-system comparison on exactly this shape and
 never states it; here it is. -/
 theorem attenuate_no_amplify (q p : Policy) (hatt : Attenuates q p)
     (now count : Nat) (h : permits q now count = true) :

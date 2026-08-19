@@ -3,13 +3,13 @@
 **Status:** Proposal
 **Date:** 2026-03-13
 **Authors:** LTP Core Team
-**Relates to:** Whitepaper §5.1, §5.2, §5.5, Open Question 7
+**Relates to:** Whitepaper §5.1, §5.2, §5.5, §12 Open Question 5
 
 ---
 
 ## Context
 
-Open Question 7 asks: *"How do independently bootstrapped LTP networks discover and trust each other's commitment nodes?"*
+Open Question 5 asks: *"How do independently bootstrapped LTP networks discover and trust each other's commitment nodes?"*
 
 Each LTP deployment operates as a self-contained network:
 - Its own `CommitmentLog` (append-only, hash-chained)
