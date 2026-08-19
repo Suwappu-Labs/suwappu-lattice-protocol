@@ -165,6 +165,7 @@ ML-DSA-65 · SHA3-256 · BLAKE3 · Certificate Transparency · Reed-Solomon codi
     - [11.3 Secure Messaging](#113-secure-messaging)
     - [11.4 State Synchronization](#114-state-synchronization)
     - [11.5 High-Latency Link Optimization](#115-high-latency-link-optimization)
+    - [11.6 Where LTP Is the Wrong Tool](#116-where-ltp-is-the-wrong-tool)
 - [12. Open Questions](#12-open-questions)
 - [13. Conclusion](#13-conclusion)
 
@@ -174,6 +175,7 @@ ML-DSA-65 · SHA3-256 · BLAKE3 · Certificate Transparency · Reed-Solomon codi
 
 - [Appendix A: High-Latency Link Optimization (Thought Experiment)](#appendix-a-high-latency-link-optimization-thought-experiment)
 - [Appendix B: Conformance Requirements](#appendix-b-conformance-requirements)
+- [Appendix C: Companion Documents](#appendix-c-companion-documents)
 - [Revision History](#revision-history)
 
 ---
@@ -3195,27 +3197,75 @@ framing in §10.7.
 
 ## 11. Use Cases
 
+Each use case below states the parameters it implies and whether the break-even analysis of
+§6.4 actually works out for it. A use case that does not clear $N > \rho$ receivers is not
+one LTP improves, and we say so.
+
 ### 11.1 Large File Fan-Out
-A 50 GB dataset is committed once. Any number of receivers can materialize it by each receiving
-a 1,423-byte sealed lattice key (ML-KEM-768). Each receiver's materialization time is
-dominated by local shard fetching from nearby nodes — not by the sender's bandwidth or
-availability. For N receivers, direct transfer costs O(50GB × N). LTP costs O(50GB ×
-replication) for the commit plus O(1,423B × N) for the keys — amortized cost per receiver
-approaches zero as N grows.
+
+*The canonical case — the one LTP is designed for.*
+
+A 50 GB dataset is committed once. Any number of receivers materialize it, each receiving a
+1,423-byte sealed lattice key. Each receiver's materialization time is dominated by local
+shard fetching from nearby nodes, not by the sender's bandwidth or availability.
+
+| | Direct transfer | LTP |
+|---|---|---|
+| Sender upload | $50\text{ GB} \times N$ | $50\text{ GB} \times \rho$ (once) |
+| Sender→receiver path | $50\text{ GB} \times N$ | $1{,}423\text{ B} \times N$ |
+| At $N = 100$, $\rho = 6$ | 5,000 GB | 300 GB + 142 KB |
+
+**Fit: strong.** Break-even at $N > 6$; at $N = 100$ the sender moves $16\times$ less data
+and can go offline immediately after commit. Suggested parameters: $n=32, k=16, r=3$ across
+$\geq 3$ regions, which gives $\rho = 6$ and tolerates the loss of 16 shard indices.
 
 ### 11.2 Immutable Audit Trail
-Every data transfer is permanently recorded. A compliance system can verify: "Entity X was
-committed by Sender A at time T and lattice-linked with Receiver B." No party can deny or alter this.
+
+A compliance system verifies: "Entity X was committed by Sender A at time T, and its
+commitment record is at position $i$ of the log." The ML-DSA-65 signature makes this
+non-repudiable (Theorem 6), and the record's inline verification key means an auditor who
+holds no prior state about Sender A can still check it (§2.1.3).
+
+**Fit: strong, for a reason unrelated to bandwidth.** The value here is the append-only log
+and the signature, not the $O(1)$ path — this use case would work with $N = 1$. Note the
+limit of the claim: the log proves a commitment *existed*, not that any receiver ever
+materialized it, and if shards are evicted past their TTL the record survives while the
+content does not (§5.4.4). Deployments needing "the content is still retrievable" must fund
+storage renewal, not just retain the record.
 
 ### 11.3 Secure Messaging
-A message is committed and lattice-linked. The lattice key is the message notification. The
-content never traverses the public internet as a readable payload. Even if intercepted, the
-lattice key alone is useless.
+
+A message is committed and lattice-linked; the lattice key serves as the notification. The
+content never traverses the sender→receiver path as a readable payload, and an intercepted
+lattice key is opaque without the receiver's decapsulation key.
+
+**Fit: weak for typical messaging, and we would not recommend LTP for it.** Messages are
+small and usually have one recipient, so $N = 1 < \rho$: LTP moves *more* total data than
+sending the message directly, adds three round trips, and adds a 1,423-byte key to a payload
+that may be smaller than the key. It also inherits the low-entropy confidentiality problem —
+a short message drawn from a predictable set is fingerprinted by its EntityID unless ZK mode
+is used (§3.3.3), and ZK mode is not post-quantum (§3.4). The case becomes reasonable only
+for large attachments fanned out to many recipients, which is §11.1 wearing different
+clothes. Purpose-built protocols (Signal, MLS) are the right tool for messaging.
 
 ### 11.4 State Synchronization
-Two distributed systems synchronize state by exchanging lattice keys. Each system materializes
-the other's state from the commitment network. This is faster than traditional replication because
-shards are fetched locally, and only the delta (new entity) needs materialization.
+
+Two distributed systems synchronize by exchanging lattice keys, each materializing the
+other's state from the commitment network.
+
+**Fit: conditional on committing deltas rather than snapshots.** Because LTP does not
+deduplicate (§1.2), committing a full state snapshot on every sync pays $D\rho$ storage
+*per sync* — the version-control anti-pattern of §6.4's deduplication table. The workable
+shape is to compute the delta at the application layer, commit the delta as its own entity,
+and chain it to its predecessor via the version chain of §4.2. Done that way, $D$ is the
+delta size and the economics work; done naively, storage grows without bound.
+
+In the SUWAPPU stack, the state being synchronized is the SUWAPPU-DB state root produced
+after SUWAPPU DAG ordering. The flow is one-directional: DAG-ordered blocks update
+SUWAPPU-DB through its `suwappudb-bridge` capability gate; SUWAPPU-DB emits state roots and
+anchors; LTP corridor super-nodes attest those anchors; receivers materialize
+committed snapshots or deltas with lattice keys. A lattice key can authorize
+materialization, but it cannot directly mutate SUWAPPU-DB state.
 
 In the SUWAPPU stack, the state being synchronized is the SUWAPPU-DB state root produced
 after SUWAPPU DAG ordering. The flow is one-directional: DAG-ordered blocks update
@@ -3230,6 +3280,26 @@ materialization, but it cannot directly mutate SUWAPPU-DB state.
 maintain the technical focus of the main document. The two properties it demonstrates —
 sender-independence and geographic optimization — are the same properties illustrated by
 the grounded scenarios in §§11.1–11.4.*
+
+### 11.6 Where LTP Is the Wrong Tool
+
+A protocol paper that lists only favourable use cases is not being useful. These are cases
+where LTP is a worse choice than the obvious alternative, and the reason is structural
+rather than a matter of tuning.
+
+| Workload | Why LTP is wrong | Use instead |
+|----------|------------------|-------------|
+| **Single-recipient transfer of a small payload** | $N=1 < \rho$, so total bandwidth is $(\rho+1)\times$ direct, and three phases replace one. The sealed key alone may exceed the payload. | Direct transfer over TLS |
+| **Low-latency request/response** | The three phases serialize: commit must complete before the key is sealed, and the record must be fetched before shards. Round trips are additive, not amortizable. | Direct RPC |
+| **Mutable shared state** | Every mutation is a new entity with a new EntityID and a full $D\rho$ storage cost. Immutability is the design, so "updating" is append-only by construction (§4.2). | A database |
+| **High-churn versioned data committed as snapshots** | No deduplication (§1.2), so $M$ commits of near-identical content cost $M \cdot D\rho$. | Git, or delta-encode before committing (§11.4) |
+| **Low-entropy or enumerable content on a public log** | EntityID fingerprinting succeeds with advantage 1 (§3.3.3). ZK mode fixes it but is not post-quantum (§3.4). | Raise entity min-entropy, or a different protocol |
+| **Deployments needing on-chain verification of attestations today** | The registry does not verify the corridor's BLS aggregate on-chain, and the deployed ZK verifier performs no cryptographic check (§8.4). | Wait for the roadmap, or verify off-chain |
+| **Anything requiring guaranteed retention** | Shards have a TTL and availability is probabilistic; the record outlives the content (§5.4.4). Immutability is guaranteed, availability is purchased. | Fund renewal explicitly, or use archival storage |
+
+The unifying principle: **LTP trades single-transfer efficiency for fan-out efficiency,
+provenance, and immutability.** Where a workload has none of the latter three to gain, the
+trade is pure cost.
 
 ---
 
@@ -3483,6 +3553,29 @@ above, and it is the reason §2.1.1 is specified to the byte.
 
 ---
 
+## Appendix C: Companion Documents {#appendix-c-companion-documents}
+
+This paper is one document in a larger set, and several of its claims are stated in full
+elsewhere. Readers evaluating LTP seriously should not stop here — in particular, the trust
+analysis of the settlement surface (§8.4) is summarized here and argued at length in
+`BRIDGE_TRUST_MODEL.md`.
+
+| Document | What it adds beyond this paper |
+|----------|-------------------------------|
+| `docs/THREAT_MODEL.md` | STRIDE analysis with 24 catalogued threats, likelihood/impact ratings, and an explicit out-of-scope list. §3.1's threat table is a summary of it. |
+| `docs/BRIDGE_TRUST_MODEL.md` | The full adversarial analysis of the deployed bridge and ZK verifier, including the concrete attacks the simulated verification mode permits. **Read before relying on the settlement surface.** |
+| `docs/FORMAL_VERIFICATION_STATUS.md` | The authoritative record of what is machine-checked, with the scope limits of each artifact class. |
+| `formal/lean/README.md` | The Lean development, including its "What is NOT proved" section and the negative result on the 1,600-byte constant (§8.6). |
+| `docs/CORRIDOR_INTEGRATION.md` | The corridor wire format, DST constants, and cross-language invariants summarized in §8.3. |
+| `docs/DEPLOYED_CONTRACTS.md` | Deployed addresses, chains, block heights, and governance parameters behind §8.5. |
+| `docs/STABILITY_PROMISES.md` | Which constructs in this paper are frozen public surface and which may change — the normative complement to §2.3.4's "deferred specification items". |
+| `docs/design-decisions/` | Design proposals for streaming, enforcement, federation, ZK mode, and commitment-network backends — several correspond to items §12 still lists as open. |
+| `docs/security/audits/` | Internal audit findings and the external whitepaper review rounds that shaped this document. |
+| `docs/compliance/fedramp-high/` | The control matrix and trust-boundary analysis, including the distinction between *using FIPS-approved algorithms* and *running a FIPS 140-3 validated module* — a distinction this paper's §1.3 relies on but does not itself establish. |
+| `scripts/benchmark_whitepaper.py` | Reproduces every measurement in §7. |
+
+---
+
 ## Revision History
 
 > **Section numbers in historical entries refer to the numbering in effect at that
@@ -3497,7 +3590,7 @@ above, and it is the reason §2.1.1 is specified to the byte.
 | 0.1.0-draft | 2026-02-24 | Initial draft; reviewed by external review rounds 001–003 (formal + mathematical) and 004 (research landscape), `docs/security/audits/external/whitepaper-reviews/`. |
 | 0.1.0-draft (rev) | 2026-03-29 | Post-review corrections: test-vector arithmetic, BHT collision bound (~85-bit), cost-model expansion factor ρ = nr/k, nonce-derivation invariant, TCONF log binding, ZK-mode specification, theorem-numbering note. |
 | 0.2.0 | 2026-08-17 | Publication revision: threshold-secrecy claims conditioned per §3.3.5 throughout; erasure-coding spec re-baselined to the reference implementation (consecutive evaluation points, length-prefix framing) with regenerated test vectors — the evaluation points were re-baselined from the unimplemented powers-of-α scheme to the implemented consecutive-points scheme (α_i = i+1), test vectors regenerated from the reference implementation, superseding the §2.1.1 arithmetic checked in review rounds 001–002; the `encoding_params` `eval` label string is retained verbatim for record-hash compatibility; commitment-record size corrected; KEM-binding claim corrected to a disclosed limitation with planned mitigation; normative conflicts resolved (low-entropy × quantum threat model; extension registry created; log hash primitive unified on BLAKE3-256); disclosure paragraphs for deferred wire formats, hybrid KEM, regulatory posture, forward-secrecy caveats, key-rotation gap; machine-checked verification status section added (§3.3.8) covering the 52 Lean 4 theorems — including both §2.1.1 test vectors recomputed inside the Lean kernel — and the first recorded Verifpal run (2 confidentiality queries verified, 2 authentication replay findings disclosed with planned mitigation); literature positioning updated per the 2026-08-16 research round (X-BIND KEM-binding taxonomy, NIST IR 8547 transition posture, XChaCha20-Poly1305 standardization status); bibliography unified into a single consistent numbered style (37 references, every in-text citation resolves to exactly one entry and vice versa — previously three incompatible citation conventions coexisted and two citations, Cremers–Dax–Medinger and Schmieg, were referenced in §3.3 but absent from every reference list); FIPS 203/204, RFC 9180, NIST IR 8547, and X-Wing given first-class bibliography entries; new §8.9 positions LTP's corridor quorum against Data Availability Sampling (Al-Bassam et al., Danksharding, Hall-Andersen–Simkin–Wagner); §8.4 adds Signal's Sealed Sender as the closest KEM-bound-envelope precedent, and §8.7's constant-size-capability contribution claim is rescoped accordingly to the specific bundle rather than the underlying primitive; missing §8.8 TOC entry restored. |
-| 0.3.0 | 2026-08-19 | Implementation-reconciliation and evaluation revision. **Corrections against the reference implementation:** the canonical hash is SHA3-256, not BLAKE3-256 — EntityIDs, commitment records, Merkle roots and tree heads are all `sha3-256:`-prefixed, and the previously undocumented dual-lane architecture (FIPS-approved canonical lane, BLAKE3 internal lane) is now specified in a new §1.3 with the 17x throughput measurement that motivates it; shard nonces are HKDF-derived rather than bare-hash-derived, and AEAD associated data binds each shard to its (entity, index) position (§2.1.1); the sealed lattice key is 1,423 B, not ~1,300 B, corrected at every occurrence; the commitment record is 5,824 B, not ~3.5 KB — the earlier figure omitted the inline 1,952-byte verification key, which with the signature accounts for 90.3% of the record (§2.1.3); the claim of 'no X25519 or Ed25519' is corrected to disclose the opt-in ML-DSA-65 + Ed25519 composite signature mode (§8.2); the post-quantum claim is rescoped from 'standard mode' to a per-surface table (new §3.4) that discloses the corridor's BLS12-381 attestation quorum as a second non-PQ surface alongside ZK mode. **New sections:** §7 Empirical Evaluation supplies the benchmarks external review round 003 requested and 0.2.0 shipped without — post-quantum primitive latencies, both hash lanes, erasure throughput at two parameter sets, end-to-end phase timings, exact artifact sizes, and a threats-to-validity subsection; the O(1) sender-receiver invariant is now measured (byte-identical sealed keys across entity sizes) and the COMMIT breakdown shows cryptography at 0.1-0.7% against erasure coding at 99.3-99.9%; all figures are reproducible via `scripts/benchmark_whitepaper.py`. §8 Reference Implementation and Deployment Status inventories the subsystems the paper does not specify (DAG-BFT consensus, multi-VM execution, bridge, federation, enforcement, compliance, economics), specifies the corridor surface §10.9 previously compared to DAS without defining (§8.3, including the safety/liveness asymmetry at 7-of-9), discloses the on-chain settlement trust assumptions (§8.4: the registry does not verify the BLS aggregate on-chain, the deployed ZK verifier runs in a simulated mode with no cryptographic check, dispute resolution is arbitration rather than verification, bonds are zero), records testnet deployment status (§8.5), and consolidates every known paper-implementation divergence into a single table (§8.6). New §5.4.1.2 addresses the software-monoculture and common-cause failure gap review 003 raised and 0.2.0 left open, with a multiplicative bound showing p_sw dominates the geographic model at nine-nines figures. New Notation table and new Appendix B consolidating 36 conformance requirements. **Structural:** sections 8-11 renumbered to 10-13 to seat the two new sections; cross-reference errors fixed (KEM-binding gap cited §3.3.2, is §3.3.3; shard TTL cited §5.3, is §5.4.4; corridor quorum cited §5.1, now §8.3); Open Questions expanded from 6 to 10, adding post-quantum aggregate signatures, a conformant fast erasure backend, an independent second implementation, and normative identity-key distribution; a size-bound note discloses the divergence between the Lean model's proved 1,220-1,250 B interval and the implemented 1,423 B; a reading caution added to the §9 comparison table acknowledging its structural bias. |
+| 0.3.0 | 2026-08-19 | Implementation-reconciliation and evaluation revision. **Corrections against the reference implementation:** the canonical hash is SHA3-256, not BLAKE3-256 — EntityIDs, commitment records, Merkle roots and tree heads are all `sha3-256:`-prefixed, and the previously undocumented dual-lane architecture (FIPS-approved canonical lane, BLAKE3 internal lane) is now specified in a new §1.3 with the 17x throughput measurement that motivates it; shard nonces are HKDF-derived rather than bare-hash-derived, and AEAD associated data binds each shard to its (entity, index) position (§2.1.1); the sealed lattice key is 1,423 B, not ~1,300 B, corrected at every occurrence; the commitment record is 5,824 B, not ~3.5 KB — the earlier figure omitted the inline 1,952-byte verification key, which with the signature accounts for 90.3% of the record (§2.1.3); the claim of 'no X25519 or Ed25519' is corrected to disclose the opt-in ML-DSA-65 + Ed25519 composite signature mode (§8.2); the post-quantum claim is rescoped from 'standard mode' to a per-surface table (new §3.4) that discloses the corridor's BLS12-381 attestation quorum as a second non-PQ surface alongside ZK mode. **New sections:** §7 Empirical Evaluation supplies the benchmarks external review round 003 requested and 0.2.0 shipped without — post-quantum primitive latencies, both hash lanes, erasure throughput at two parameter sets, end-to-end phase timings, exact artifact sizes, and a threats-to-validity subsection; the O(1) sender-receiver invariant is now measured (byte-identical sealed keys across entity sizes) and the COMMIT breakdown shows cryptography at 0.1-0.7% against erasure coding at 99.3-99.9%; all figures are reproducible via `scripts/benchmark_whitepaper.py`. §8 Reference Implementation and Deployment Status inventories the subsystems the paper does not specify (DAG-BFT consensus, multi-VM execution, bridge, federation, enforcement, compliance, economics), specifies the corridor surface §10.9 previously compared to DAS without defining (§8.3, including the safety/liveness asymmetry at 7-of-9), discloses the on-chain settlement trust assumptions (§8.4: the registry does not verify the BLS aggregate on-chain, the deployed ZK verifier runs in a simulated mode with no cryptographic check, dispute resolution is arbitration rather than verification, bonds are zero), records testnet deployment status (§8.5), and consolidates every known paper-implementation divergence into a single table (§8.6). New §5.4.1.2 addresses the software-monoculture and common-cause failure gap review 003 raised and 0.2.0 left open, with a multiplicative bound showing p_sw dominates the geographic model at nine-nines figures. New §11.6 states where LTP is the wrong tool, and §§11.1-11.4 now carry concrete parameters and an honest per-case fit assessment. New Notation table, new Appendix B consolidating 36 conformance requirements, and new Appendix C mapping the companion documents the paper depends on but had never cited. **Structural:** sections 8-11 renumbered to 10-13 to seat the two new sections; cross-reference errors fixed (KEM-binding gap cited §3.3.2, is §3.3.3; shard TTL cited §5.3, is §5.4.4; corridor quorum cited §5.1, now §8.3); Open Questions expanded from 6 to 10, adding post-quantum aggregate signatures, a conformant fast erasure backend, an independent second implementation, and normative identity-key distribution; a size-bound note discloses the divergence between the Lean model's proved 1,220-1,250 B interval and the implemented 1,423 B; a reading caution added to the §9 comparison table acknowledging its structural bias. |
 
 ---
 
