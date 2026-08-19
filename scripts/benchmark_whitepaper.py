@@ -153,7 +153,9 @@ def measure_commit_breakdown() -> dict:
             3,
             1,
         )
-        encrypted = [ShardEncryptor.encrypt_shard(cek, entity_id, s, i) for i, s in enumerate(shards)]
+        encrypted = [
+            ShardEncryptor.encrypt_shard(cek, entity_id, s, i) for i, s in enumerate(shards)
+        ]
         hash_ms = median_ms(lambda: [ltp.canonical_hash(s) for s in encrypted], 5, 1)
         sign_ms = median_ms(lambda: sender.sign(b"x" * 462), 20, 3)
 
@@ -224,9 +226,7 @@ def measure_artifacts() -> dict:
         "not_after": 1740508800,
         "max_materializations": 1,
     }
-    sealed_policy = proto.lattice(
-        small_id, small_record, small_cek, receiver, access_policy=policy
-    )
+    sealed_policy = proto.lattice(small_id, small_record, small_cek, receiver, access_policy=policy)
 
     inner = LatticeKey(
         entity_id=small_id,
@@ -276,9 +276,7 @@ def main() -> int:
             "machine": platform.machine(),
             "cpu_count": os.cpu_count(),
             "security_profile": str(ltp.get_security_profile()),
-            "erasure_backend": os.environ.get(
-                "LTP_ERASURE_BACKEND", "pure-python (conformant)"
-            ),
+            "erasure_backend": os.environ.get("LTP_ERASURE_BACKEND", "pure-python (conformant)"),
         },
         "primitives": measure_primitives(),
         "erasure": measure_erasure(),
