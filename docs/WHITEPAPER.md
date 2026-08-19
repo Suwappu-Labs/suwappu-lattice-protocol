@@ -2532,10 +2532,11 @@ byte-identical on materialization:
 | $n=64, k=32$ | 256 KiB | 3,099 ms | 0.233 ms | 1,494 ms | 1,423 B |
 
 **The LATTICE phase is constant.** Across a 4× range of entity size and an 8× range of $n$,
-it stays within 0.233–0.254 ms and the sealed key stays byte-identical at 1,423. This is the
-paper's central structural claim — that the sender→receiver path is $O(1)$ in entity size —
-observed directly rather than argued. It is the one headline claim these measurements
-actually settle.
+it stays under 0.3 ms in every configuration and across repeated runs (0.218–0.284 ms
+observed), while the sealed key stays byte-identical at 1,423. The timing varies with host
+noise; the size does not vary at all. This is the paper's central structural claim — that
+the sender→receiver path is $O(1)$ in entity size — observed directly rather than argued,
+and it is the one headline claim these measurements actually settle.
 
 **Where the time goes.** Decomposing COMMIT on a 256 KiB entity:
 
