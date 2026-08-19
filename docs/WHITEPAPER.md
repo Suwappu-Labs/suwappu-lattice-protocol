@@ -2587,14 +2587,14 @@ surprised by several of them.
 | Core three-phase protocol, erasure coding, shard encryption, keys | — | Specified in §§1–2 |
 | CT-style Merkle log with STHs, inclusion and consistency proofs | ~1,000 LOC | Specified in §5.1.4 |
 | **DAG-BFT consensus engine** (Mysticeti-inspired; $f=(n-1)/3$, $2f+1$ quorums) | ~1,600 LOC | **Not specified here.** §5.1.2 argues LTP *does not require* BFT consensus; that remains true of the storage layer, but the SDK ships an engine for deployments that want ordered commitment. |
-| **Multi-VM execution layer**, committee formation, DKG with threshold BLS | ~5,100 LOC | **Not specified here.** |
+| **Multi-VM execution layer**, committee formation, DKG with threshold BLS | ~5,400 LOC | **Not specified here.** |
 | **Corridor** (`LTP-corridor-v1`) — attestation, DA SLA, DID, state anchors | ~2,100 LOC | §8.3 below; wire format deliberately non-normative in this paper |
 | **L1↔L2 bridge** with fraud proofs, challenge games, SP1 + RISC Zero provers | ~3,000 LOC | §8.4 below |
 | Node runtime: gossip, handshake, peer management, admission, audit scheduling | ~4,700 LOC | Operational surface for §5 |
 | Enforcement: PDP, programmable slashing, VDF-backed audits, dispute resolution | ~1,500 LOC | §5.2's audit protocol, considerably extended |
 | Compliance: FIPS provider, RBAC, geo-fencing, GDPR deletion proofs, SIEM, HSM | ~1,700 LOC | Referenced in §10.8's regulatory paragraph |
 | Economics engine: three-phase issuance, vesting, slashing tiers, fee split | ~870 LOC | **Contradicts §5.5**, which declines to specify economics — see §8.6 |
-| Federation, streaming, ZK (Pedersen, Sigma, FRI/STARK), storage backends, observability | ~7,000 LOC | Several correspond to items §12 still lists as open |
+| Federation, streaming, ZK (Pedersen, Sigma, FRI/STARK), storage backends, observability | ~7,800 LOC | Several correspond to items §12 still lists as open |
 
 The gap between "the protocol in §§1–6" and "the system in the repository" is wide, and it
 is deliberate on the implementation's side rather than an oversight on the paper's: LTP the
