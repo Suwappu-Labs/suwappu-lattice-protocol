@@ -338,7 +338,8 @@ Where:
   requires Poseidon in place of SHA3-256 for circuit-friendliness. Hash outputs are encoded as
   lowercase hexadecimal strings prefixed with the algorithm name: `sha3-256:<hex>`. A
   conforming EntityID is therefore a 73-character string — a 9-character prefix and 64 hex
-  digits.
+  digits under the SHA3-256 default; a deployment on a SHA-384 profile (§8.2) produces
+  `sha384:` + 96 hex digits instead, and implementations MUST NOT assume a fixed length.
 - `||` denotes concatenation
 - `timestamp` is the commitment time (logical clock, not wall clock), encoded as an 8-byte
   big-endian IEEE 754 double
@@ -393,7 +394,7 @@ than by preference, and the separation is normative.
 | Lane | Default | Permitted set | Governs |
 |------|---------|---------------|---------|
 | **Canonical** | SHA3-256 (FIPS 202) | SHA3-256, SHA-384, SHA-512 — FIPS-approved only | EntityIDs, commitment records, Merkle roots and tree heads, corridor digests, anything a regulator or external auditor evaluates |
-| **Internal** | BLAKE3-256 | Unconstrained | Shard placement and indexing, chunk integrity, caching, AEAD nonce derivation — never part of the compliance trust boundary |
+| **Internal** | BLAKE3-256 | Unconstrained | Shard placement and indexing, chunk integrity, caching, AEAD keystream — never part of the compliance trust boundary |
 
 **Why two lanes.** The two lanes answer different questions. The canonical lane answers
 "will an auditor accept this artifact as evidence?", which in regulated deployments means
@@ -428,8 +429,12 @@ The two happen to have identical output length and comparable security margins, 
 numerical results are unchanged; the attribution is not.
 
 **Relationship to the reference implementation.** The lane split is `canonical_hash()` /
-`internal_hash()` / `spec_hash_bytes()` in `src/ltp/dual_lane/`, enforced by static
-analysis rules that reject direct `hashlib` calls elsewhere in the tree.
+`internal_hash()` / `spec_hash_bytes()` in `src/ltp/dual_lane/`, with static-analysis rules
+that flag direct `hashlib` use outside that module. The rules are partial rather than
+airtight — a handful of direct SHA-256/SHA-512 calls remain outside the lane API, notably
+the HMAC-SHA256 in shard nonce derivation (§2.1.1) and the SHA-512 prehash in composite
+signing (§8.2), both of which are fixed by their own specifications rather than
+profile-selected.
 
 ---
 
@@ -747,6 +752,14 @@ The lattice key is:
 
 The default policy is `{"type": "unrestricted"}`. Policy enforcement occurs during the MATERIALIZE phase (§2.3.1, step 2): the receiver MUST verify that the current time falls within `[not_before, not_after]` and that the materialization count does not exceed `max_materializations`. Implementations that do not support policy enforcement MUST reject any policy with `type` other than `"unrestricted"`.
 
+> **⚠ Not implemented.** The reference implementation stores and seals `access_policy` but
+> **does not enforce it**: `materialize()` never reads the field, and no time check or
+> materialization counter exists. A key sealed with `{"type": "one-time"}` can today be
+> materialized repeatedly. The requirement above is normative and the Lean development
+> proves the policy algebra sound (`minimal_is_sound`, `one_time_exhausts`), but neither
+> fact is discharged by running code. Deployments MUST NOT rely on access policy as a
+> security control until this is implemented; see §8.6.
+
 - **Opaque** — an interceptor sees only random bytes (no metadata leaks)
 - **Post-quantum** — ML-KEM-768 resists both classical and quantum adversaries
 
@@ -807,10 +820,20 @@ The receiver uses the lattice key to **reconstruct** the entity from the commitm
 4. Verify commitment record: H(record) == commitment_ref (integrity check)
 5. Verify commitment record signature (sender authenticity)
 6. Read encoding params (n, k) from commitment record
-7. Derive shard locations: ConsistentHash(entity_id || shard_index) for index in 0..n-1
-8. Fetch k-of-n ENCRYPTED shards from nearest available commitment nodes (parallel)
-9. Decrypt each shard: AEAD_Decrypt(CEK, encrypted_shard, nonce=H(CEK || entity_id || shard_index)[:nonce_len])
-   — AEAD authentication tag is verified BEFORE decryption (tamper detection)
+7. Derive shard locations: ConsistentHash_internal(entity_id || shard_index || replica)
+   for index in 0..n-1, replica in 0..r-1  (§2.1.2)
+8. Fetch ENCRYPTED shards from nearest available commitment nodes (parallel). An
+   implementation MAY fetch more than k — the reference implementation requests all n — so
+   that shards failing tag verification in step 9 can be discarded and replaced without a
+   second round trip. It fails only if fewer than k survive verification.
+9. Decrypt each shard with the §2.1.1 derivation:
+     nonce_i = HKDF-Expand(HKDF-Extract("ETP-SHARD-NONCE-v1", CEK),
+                           info = entity_id || uint32_be(i))[:nonce_len]
+     plaintext_i = AEAD_Decrypt(CEK, encrypted_shard_i, nonce=nonce_i,
+                                aad = entity_id || uint32_be(i))
+   — the AEAD authentication tag is verified BEFORE decryption (tamper detection), and the
+   associated data binds each shard to its own (entity, index) position, so a shard replayed
+   at the wrong index fails here rather than corrupting the decode
 10. ErasureDecode(decrypted_shards, k) → entity content
 11. Verify: H(entity_content || shape || timestamp || sender_pubkey) == entity_id
     — *End-to-end content integrity check.* This is distinct from the Merkle root verification
@@ -1465,19 +1488,28 @@ extracted to, or mechanically linked with, `src/ltp/`. Read
 `formal/lean/README.md` § "What is NOT proved" before citing them.
 
 **Size-bound note (a model/implementation divergence we do not paper over).**
-`sealed_768_bounded` proves the sealed key lies in 1,220–1,250 bytes. The
-implementation produces **1,423 bytes** (§7.4). Both are correct about
-different things: the Lean model assumes a compact inner payload, whereas the
-implementation seals a 295-byte JSON payload whose `entity_id` and
-`commitment_ref` are 73-character prefixed digest *strings* rather than raw
-32-byte values. The 1,128-byte envelope overhead is identical in both; the gap
-is entirely in payload encoding. What the theorem establishes and the
-measurement confirms is the load-bearing claim — that the sealed size does not
-depend on entity size. The absolute constant in the Lean model is stale, and a
-compact binary encoding (the `canonical_bytes` path, 244 bytes, already present
-but not yet on the sealing path) would bring the implementation to 1,372 bytes.
-Aligning the two is tracked as future work; until then, cite 1,423 bytes for
-the implementation and treat the Lean interval as a statement about the model.
+`sealed_768_bounded` proves the sealed key is at most 1,300 bytes for any
+policy of at most 96 bytes; the companion `sealed_768_min` / `sealed_768_max`
+bracket the model at 1,220–1,250 bytes. The implementation produces **1,423
+bytes** (§7.4). The 203-byte gap decomposes into two independent causes:
+
+- **179 bytes of payload encoding.** The model assumes a compact 116-byte
+  inner payload; the implementation seals 295 bytes of JSON whose `entity_id`
+  and `commitment_ref` are 73-character prefixed digest *strings* rather than
+  raw 32-byte values.
+- **24 bytes of envelope.** The Lean model's envelope is
+  `kem_ct(1088) + tag(16) = 1104` and has no nonce field at all; the
+  implementation's wire format is
+  `kem_ct(1088) ‖ nonce(24) ‖ ciphertext ‖ tag(16) = 1128`. The model is
+  simply missing the nonce.
+
+What the theorem establishes and the measurement confirms is the load-bearing
+claim — that sealed size does not depend on entity size. The absolute constants
+in the Lean model are stale in both respects. A compact binary encoding (the
+`canonical_bytes` path, 244 bytes, already present but not on the sealing path)
+would bring the implementation to 1,372 bytes. Aligning model and
+implementation is tracked as future work; until then, cite 1,423 bytes for the
+implementation and treat the Lean interval as a statement about the model.
 
 **Verifpal symbolic analysis** (`docs/formal/etp-protocol.vp`, Verifpal
 0.27.4, active Dolev-Yao attacker, unbounded sessions; first run recorded
@@ -1496,8 +1528,12 @@ replay finding independently corroborates the KEM ciphertext-binding gap
 disclosed in §3.3.3; the planned mitigation (receiver encapsulation-key
 fingerprint and entity_id in the sealed key's AEAD associated data, plus a
 freshness component) is recorded there and in `docs/formal/ANALYSIS.md`.
-Policy enforcement (`max_materializations`, §2.2.1) bounds the impact of a
-replayed key in the interim.
+Access policy (`max_materializations`, §2.2.1) would bound the impact of a
+replayed key, but it is specified and **not implemented** — the reference
+implementation never evaluates the field — so no mitigation is in force today.
+Earlier revisions of this paper cited policy enforcement as an interim
+mitigation for this finding; that was incorrect, and the replay finding is
+currently unmitigated.
 
 Current status, per artifact class: symbolic confidentiality **verified
 under stated assumptions**; symbolic authentication **failing with known,
@@ -1578,7 +1614,7 @@ previous one:
 ```json
 {
   "entity_id": "sha3-256:new_hash...",
-  "predecessor": "sha3-256:old_hash...",
+  "predecessor": "<64-hex log head at commit time — bare, no algorithm prefix>",
   "version": 2,
   ...
 }
@@ -1586,6 +1622,13 @@ previous one:
 
 This creates an immutable **version chain**. Every version exists permanently. "Updating" is
 actually "appending a new version." The full history is always auditable.
+
+Two details matter for implementers. The `predecessor` field is set by the log at append
+time, not by the sender, which is why it is excluded from the signable payload (§2.1.3) — it
+carries the log head as a bare 64-character hex digest with no algorithm prefix, unlike every
+other digest in the record. And because each version is a distinct entity with its own full
+shard set, a version chain of $M$ revisions costs $M \cdot D\rho$ in storage; §6.4's
+deduplication guidance applies directly (commit deltas, not snapshots).
 
 ### 4.3 Immutability ≠ Availability
 
@@ -2411,37 +2454,43 @@ which primitives are expensive, how costs scale with $n$ and $k$, and what the p
 artifacts actually weigh. They say nothing about $\alpha$, the parallelism efficiency factor
 of §6.4, which is a property of a real network topology and remains unmeasured (§7.5).
 
-**Method.** Medians over repeated trials (50 for primitives, 3–5 for protocol phases) after
-warmup, `time.perf_counter`, Python 3.11.15 on Linux x86-64 with 4 CPUs, ML-KEM/ML-DSA via
-`pqcrypto` (liboqs-backed), AEAD via libsodium, all at NIST Level 3
+**Method.** Medians over repeated trials after warmup — 50 for the asymmetric primitives, 30
+for hash throughput, 3–5 for erasure coding and protocol phases — timed with
+`time.perf_counter`. Python 3.11.15 on Linux x86-64, 4 CPUs, shared virtual host. ML-KEM and
+ML-DSA come from the `pqcrypto` package, AEAD (XChaCha20-Poly1305) from libsodium via
+PyNaCl, BLAKE3 from the `blake3` package, SHA3-256 from `hashlib`. All at NIST Level 3
 (`SecurityProfile(level=3, canonical=sha3-256, internal=blake3)`). The erasure coder runs on
 the conformant pure-Python path, not the optional `zfec` fast path (§7.5).
 
 ### 7.1 Cryptographic Primitives
 
-| Operation | Median latency |
-|-----------|---------------:|
-| ML-KEM-768 keygen | 0.071 ms |
-| ML-KEM-768 encapsulate | 0.073 ms |
-| ML-KEM-768 decapsulate | 0.091 ms |
-| ML-DSA-65 keygen | 0.198 ms |
-| ML-DSA-65 sign (473-byte record) | 0.636 ms |
-| ML-DSA-65 verify | 0.193 ms |
+Median latency, with the range observed across two independent runs. The host is a shared
+4-CPU VM, and sub-millisecond operations vary by tens of percent between runs; we give the
+range rather than imply a precision the measurement does not support.
 
-Every post-quantum operation on the critical path is **sub-millisecond**. A complete
-LATTICE phase — one encapsulation plus one AEAD seal — costs well under a tenth of a
-millisecond of asymmetric work.
+| Operation | Median latency | Observed range |
+|-----------|---------------:|---------------:|
+| ML-KEM-768 keygen | 0.07 ms | 0.065–0.071 |
+| ML-KEM-768 encapsulate | 0.09 ms | 0.073–0.109 |
+| ML-KEM-768 decapsulate | 0.09 ms | 0.091–0.092 |
+| ML-DSA-65 keygen | 0.20 ms | 0.196–0.198 |
+| ML-DSA-65 sign (473-byte record) | 0.59 ms | 0.545–0.636 |
+| ML-DSA-65 verify | 0.19 ms | 0.187–0.193 |
+
+The precise values matter less than the order of magnitude: every post-quantum operation on
+the critical path is **sub-millisecond**, and the whole asymmetric cost of a LATTICE phase —
+one encapsulation plus one AEAD seal — is well under a fifth of a millisecond.
 
 Hash throughput on 1 MiB, per lane (§1.3):
 
 | Lane | Algorithm | Throughput |
 |------|-----------|-----------:|
-| Canonical | SHA3-256 | 350 MiB/s |
-| Internal | BLAKE3-256 | 5,965 MiB/s |
+| Canonical | SHA3-256 | ~350 MiB/s |
+| Internal | BLAKE3-256 | ~6,000 MiB/s |
 
-The **17× gap** is the quantitative justification for the dual-lane split. It is also why
-the split is drawn where it is: the canonical lane runs once per commitment record, the
-internal lane once per (entity, shard, replica) placement decision.
+The **~17× gap** (16.8–17.0 across runs) is the quantitative justification for the dual-lane
+split. It is also why the split is drawn where it is: the canonical lane runs once per
+commitment record, the internal lane once per (entity, shard, replica) placement decision.
 
 ### 7.2 Erasure Coding
 
@@ -2655,12 +2704,18 @@ discipline §5.4.1.2 argues for.
 | Domain digest | SHA3-256 over `H(len(tag) ‖ tag ‖ data)`, length as `uint32` big-endian |
 | Corridor BLS DST | `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_` |
 
-**Three distinct BLS domain separation tags exist** in the system — one for general LTP BLS
-signing, one for the corridor, one for threshold DKG. Signatures produced under one will
-never verify under another. This is correct design (domain separation is the point) but it
-is an interoperability hazard worth stating plainly: the corridor DST must match the Rust
+**Two distinct BLS hash-to-curve domain separation tags exist** in the system: the corridor's
+`…_SSWU_RO_NUL_` above, and `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` for general LTP
+BLS signing. Threshold DKG signing deliberately reuses the general POP tag so that a
+combined threshold signature verifies under the ordinary verification path; DKG's separation
+from other message types is achieved by a message-prefix domain tag, not by a distinct DST.
+
+A signature produced under the corridor DST will not verify under the general one, or vice
+versa. This is correct design — domain separation is the point — but it is an
+interoperability hazard worth stating plainly: the corridor DST must match the Rust
 implementation's constant byte-for-byte, and a mismatch produces silent verification failure
-rather than a clear error.
+rather than a clear error. Deployments SHOULD treat cross-implementation DST agreement as a
+startup assertion rather than a code-review convention.
 
 The 7-of-9 quorum's safety property — any two valid attestations share at least one honest
 signer given at most 4 Byzantine super-nodes — is machine-checked as `corridor_safety`
@@ -2750,6 +2805,9 @@ Consolidated, so a reader does not have to reconstruct it:
 | EntityID uses BLAKE3-256 | Uses SHA3-256 (canonical lane) | Corrected throughout this revision; the dual-lane architecture is now specified in §1.3. |
 | "No X25519 or Ed25519" | Opt-in composite mode includes Ed25519 | Corrected in §8.2 and §3.4. |
 | The `eval` label `"vandermonde-powers-of-0x02"` | Evaluation points are $\alpha_i = i+1$ | Known and frozen: the label is hashed into signed records and cannot be corrected without invalidating them. Conformance is defined by §2.1.1, never by parsing the label. |
+| §2.2.1 access policy is enforced at MATERIALIZE | **Not enforced at all** — `materialize()` never reads the field; no time check, no materialization counter | Genuine and security-relevant. A `one-time` key can be materialized repeatedly, and the bundled demo does exactly that. The policy algebra is proved sound in Lean and specified normatively here, but no running code discharges it. Until it is implemented, access policy is documentation, not a control — and the §3.3.8 sealed-key replay finding has no interim mitigation. |
+| §2.1.2 / §5.4.1.1 require replicas across distinct failure domains | Placement hashes `(entity_id, index, replica)` and never consults `node.region` | Genuine. A region-diversity *checker* exists (`check_cross_region_placement`) but is a read-only diagnostic, not a placement constraint. The availability figures of §5.4.1.1 assume a constraint the placement algorithm does not enforce, so a deployment must verify diversity out of band. Geo-fencing exists but is a jurisdiction allow-list, not a diversity rule. |
+| Shared secrets and retired keys are "zeroized" (§2.2.2, Appendix B #26, #31) | Drops the reference (`del`) rather than overwriting the buffer | Real but lesser. Python cannot reliably zero an immutable `bytes` object; discharging this properly requires a mutable buffer or an HSM-backed path. The forward-secrecy argument of §2.2.2 is correspondingly weaker than stated against an attacker who can read process memory after use. |
 | `ON_CHAIN_COMMITMENT_BYTES = 1600` | Matches no real field layout | A machine-checked negative result: the Lean development proves this constant unsatisfiable for any well-formed envelope and traces its provenance to a mislabeled ML-KEM-1024 ciphertext with the aggregate signature omitted. Real totals are 1,216 B (ML-KEM-768) and 1,696 B (ML-KEM-1024). The corresponding strict-total assertion is a dead forward-compatibility stub. |
 
 We publish this table rather than quietly reconciling the two, because the divergences are

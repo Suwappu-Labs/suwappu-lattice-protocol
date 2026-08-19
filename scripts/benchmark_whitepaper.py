@@ -79,8 +79,8 @@ def measure_primitives() -> dict:
     ek, dk = MLKEM.keygen()
     shared_secret, kem_ct = MLKEM.encaps(ek)
     vk, sk = MLDSA.keygen()
-    # Sign over a payload the size of a real signable commitment record.
-    message = os.urandom(462)
+    # Sign over a payload the size of a real signable commitment record (§7.4).
+    message = os.urandom(473)
     sig = MLDSA.sign(sk, message)
 
     one_mib = os.urandom(1 << 20)
