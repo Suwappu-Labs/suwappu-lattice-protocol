@@ -13,7 +13,7 @@
 
 | **Author** | **Version** | **Date** | **Status** | **Classification** |
 |:----------:|:-----------:|:--------:|:----------:|:------------------:|
-| Tsolmondorj Natsagdorj | 0.2.1 | 2026-08-19 | Public Draft — Request for Comments | Public |
+| Tsolmondorj Natsagdorj | 0.2.2 | 2026-08-21 | Public Draft — Request for Comments | Public |
 
 </div>
 
@@ -1400,7 +1400,7 @@ extracted to, or mechanically linked with, `src/ltp/`. Read
 The confidentiality verdicts are conditional on authentic identity-key
 distribution (modeled as a guarded pre-protocol exchange). The sealed-key
 replay finding independently corroborates the KEM ciphertext-binding gap
-disclosed in §3.3.2; the planned mitigation (receiver encapsulation-key
+disclosed in §3.3.3; the planned mitigation (receiver encapsulation-key
 fingerprint and entity_id in the sealed key's AEAD associated data, plus a
 freshness component) is recorded there and in `docs/formal/ANALYSIS.md`.
 Policy enforcement (`max_materializations`, §2.2.1) bounds the impact of a
@@ -2139,10 +2139,16 @@ $$B_{direct}(N) = D \cdot N$$
 
 For $N = 1$: $B_{LTP} = D(\rho+1) > D = B_{direct}$. **LTP is strictly worse for single-transfer bandwidth.**
 
-For $N > \rho$: $B_{LTP} \approx D \cdot N \approx B_{direct}$. **LTP amortizes to parity.**
+For $N \gg \rho$: $B_{LTP} \approx D \cdot N \approx B_{direct}$. **LTP amortizes to parity.**
+(At $N$ only slightly above $\rho$ the ratio is still nearly $2\times$; the approximation is
+asymptotic, not immediate.)
 
 At the default parameters ($n = 64$, $k = 32$, $r = 3$): $\rho = 64 \cdot 3 / 32 = 6$.
-Break-even occurs at $N > 6$ receivers (not $N > 3$).
+**Break-even** — the point from which the once-paid commit overhead $D\rho$ no longer exceeds
+the aggregate delivered volume $D \cdot N$, equivalently $B_{LTP}(N) \leq 2\,B_{direct}(N)$ —
+occurs at $N \geq \rho = 6$ receivers (not $N \geq r = 3$): parity at exactly $N = 6$, and for
+$N > 6$ the overhead is strictly smaller than the delivered volume. This is the statement
+machine-checked as `breakeven_iff` in `formal/lean/Ltp/Bandwidth.lean` (§3.3.8).
 
 For large $N$: The commit cost $D\rho$ becomes negligible. Each additional receiver costs only
 $D$ (local shard fetches) + ~1,300 bytes (sealed key). Sender bandwidth is constant after commit.
@@ -2791,14 +2797,15 @@ $$T_{\text{LTP per receiver}} \approx 20\text{ min (light delay)} + 8\text{ sec 
 
 **Break-even on bandwidth:** LTP uses $D(\rho + N) = D(nr/k + N)$ total system bytes versus direct's $DN$.
 LTP's extra commit cost is $D \cdot nr/k$. At $n = 64$, $k = 32$, $r = 3$ ($\rho = 6$): break-even is
-$N > \rho = 6$ receivers — beyond 6 Mars-side receivers, LTP's total Earth upload ($6\text{ GB}$ once)
-is less than direct's ($N \times 1\text{ GB}$). At $N = 10$: LTP saves $4\text{ GB}$ of Earth upload.
+$N \geq \rho = 6$ receivers (§6.4, machine-checked as `breakeven_iff`) — at 6 Mars-side receivers
+LTP's total Earth upload ($6\text{ GB}$ once) equals direct's ($N \times 1\text{ GB}$), and beyond 6
+it is strictly less. At $N = 10$: LTP saves $4\text{ GB}$ of Earth upload.
 
 **What this does NOT claim.** LTP does not solve the physics of light delay — initial shard
 replication to Mars still traverses the 20-minute link. The advantage requires pre-populated
 Mars-local commitment nodes, which is an infrastructure deployment decision, not a protocol
 guarantee. The scenario is meaningful only when the commit cost is amortized across a
-sufficiently large receiver population (break-even: $N > \rho$).
+sufficiently large receiver population (break-even: $N \geq \rho$).
 
 ---
 
@@ -2809,8 +2816,9 @@ sufficiently large receiver population (break-even: $N > \rho$).
 | 0.1.0-draft | 2026-02-24 | Initial draft; reviewed by external review rounds 001–003 (formal + mathematical) and 004 (research landscape), `docs/security/audits/external/whitepaper-reviews/`. |
 | 0.1.0-draft (rev) | 2026-03-29 | Post-review corrections: test-vector arithmetic, BHT collision bound (~85-bit), cost-model expansion factor ρ = nr/k, nonce-derivation invariant, TCONF log binding, ZK-mode specification, theorem-numbering note. |
 | 0.2.0 | 2026-08-17 | Publication revision: threshold-secrecy claims conditioned per §3.3.5 throughout; erasure-coding spec re-baselined to the reference implementation (consecutive evaluation points, length-prefix framing) with regenerated test vectors — the evaluation points were re-baselined from the unimplemented powers-of-α scheme to the implemented consecutive-points scheme (α_i = i+1), test vectors regenerated from the reference implementation, superseding the §2.1.1 arithmetic checked in review rounds 001–002; the `encoding_params` `eval` label string is retained verbatim for record-hash compatibility; commitment-record size corrected; KEM-binding claim corrected to a disclosed limitation with planned mitigation; normative conflicts resolved (low-entropy × quantum threat model; extension registry created; log hash primitive unified on BLAKE3-256); disclosure paragraphs for deferred wire formats, hybrid KEM, regulatory posture, forward-secrecy caveats, key-rotation gap; machine-checked verification status section added (§3.3.8) covering the 52 Lean 4 theorems — including both §2.1.1 test vectors recomputed inside the Lean kernel — and the first recorded Verifpal run (2 confidentiality queries verified, 2 authentication replay findings disclosed with planned mitigation); literature positioning updated per the 2026-08-16 research round (X-BIND KEM-binding taxonomy, NIST IR 8547 transition posture, XChaCha20-Poly1305 standardization status); bibliography unified into a single consistent numbered style (37 references, every in-text citation resolves to exactly one entry and vice versa — previously three incompatible citation conventions coexisted and two citations, Cremers–Dax–Medinger and Schmieg, were referenced in §3.3 but absent from every reference list); FIPS 203/204, RFC 9180, NIST IR 8547, and X-Wing given first-class bibliography entries; new §8.9 positions LTP's corridor quorum against Data Availability Sampling (Al-Bassam et al., Danksharding, Hall-Andersen–Simkin–Wagner); §8.4 adds Signal's Sealed Sender as the closest KEM-bound-envelope precedent, and §8.7's constant-size-capability contribution claim is rescoped accordingly to the specific bundle rather than the underlying primitive; missing §8.8 TOC entry restored. |
+| 0.2.2 | 2026-08-21 | Consistency pass over the formal-proof surfaces, aligning the prose with the machine-checked Lean statements. §3.3.8: the sealed-key replay finding's cross-reference corrected to §3.3.3 — the section that actually discloses the KEM ciphertext-binding gap; "§3.3.2" was a typo (§3.3.2 is Shard Integrity). §6.4: the bandwidth break-even restated in the machine-checked form — the commit overhead D·ρ no longer exceeds the aggregate delivered volume D·N, equivalently B_LTP(N) ≤ 2·B_direct(N), exactly when N ≥ ρ (`breakeven_iff`, `formal/lean/Ltp/Bandwidth.lean`) — replacing the strict "break-even at N > 6" phrasing that contradicted §3.3.8's machine-checked "N ≥ ρ" table row; the amortization-to-parity claim tightened from "N > ρ" to "N ≫ ρ" with an explicit note that at N slightly above ρ the total-bytes ratio is still nearly 2×. Appendix A: break-even aligned to the same convention — Earth-upload parity at exactly N = ρ = 6 receivers, strict savings beyond — in both the worked Mars example and the closing caveat. No theorem statements, games, bounds, or parameters changed. |
 | 0.2.1 | 2026-08-19 | Independent mathematical audit of §3.3 fixed two unsound proofs. Theorem 7 (§3.3.5, Threshold Secrecy) previously claimed zero information leakage from *t* < *k* shards via an indistinguishability game; corrected to a proportional entropy-leakage bound (*t* · log₂ 256 bits per byte position) with the correct attribution to Shamir-style blinded secret sharing (McEliece–Sarwate) rather than plain MDS coding, plus a new "practical consequence at *t* = *k*−1" discussion — propagated to the Overview and §3.1 Threat Analysis tables. Theorem 8 (§3.3.6, Transfer Immutability) previously bounded the game by four cryptographic advantages with no proof path covering an adversary who exploits step 4's "modify the sealed key in transit" grant to redirect a receiver onto a different, honestly-committed entity — an attack requiring no break of CR, EUF-CMA, AEAD AUTH, or ML-KEM IND-CCA2; the theorem is now conditioned on the receiver enforcing expected-identity binding (explicitly cross-referenced to the matching KEM-binding gap already disclosed in §3.3.3 and the sealed-key replay failure in §3.3.8's Verifpal results — one underlying weakness, not three), with the proof's "dominated by the largest" phrasing corrected to match the min(Pr[E₁],Pr[E₂]) reasoning used in Theorem 4, and the "strongest security theorem" framing softened accordingly. §3.3.2 (Theorem 4, Shard Integrity) game notation corrected: `s_i` renamed to `c_i` to make explicit that `ShardHash` is computed over the AEAD ciphertext per §2.1.1/§2.1.3, not the plaintext shard, removing a definitional ambiguity between the game and the wire format. |
 
 ---
 
-*LTP v0.2.1 — Lattice Transfer Protocol*
+*LTP v0.2.2 — Lattice Transfer Protocol*

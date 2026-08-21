@@ -10,7 +10,7 @@
 [![Python](https://img.shields.io/badge/python-3.10+-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 [![SDK](https://img.shields.io/badge/SDK-3.0.0-orange)]()
-[![Whitepaper](https://img.shields.io/badge/whitepaper-0.2.1-informational)](docs/WHITEPAPER.md)
+[![Whitepaper](https://img.shields.io/badge/whitepaper-0.2.2-informational)](docs/WHITEPAPER.md)
 [![Formal](https://img.shields.io/badge/Lean_4-52_theorems-9cf)](formal/lean/README.md)
 [![Post-Quantum](https://img.shields.io/badge/crypto-post--quantum-purple)]()
 [![Claude Code](https://img.shields.io/badge/Claude_Code-supported-blueviolet)](CLAUDE.md)
@@ -28,7 +28,7 @@
 >
 > **Two version numbers, deliberately.** The **SDK** (this repository, the
 > `ltp` Python package) is at 3.0.0. The **protocol specification**
-> ([whitepaper](docs/WHITEPAPER.md)) is at 0.2.1 — a public draft issued for
+> ([whitepaper](docs/WHITEPAPER.md)) is at 0.2.2 — a public draft issued for
 > comment. They version independently; see
 > [`docs/STABILITY_PROMISES.md`](docs/STABILITY_PROMISES.md).
 
@@ -84,7 +84,7 @@ The entity is never serialized and shipped as a monolithic payload. It is
 |----------|-----------|-----------|
 | O(1) transfer path | Sender-to-receiver carries ~1.3KB regardless of entity size | ML-KEM sealed lattice key |
 | Immutability | Committed entities cannot be altered | Append-only Merkle log with ML-DSA-65 signatures |
-| Threshold secrecy | < k shards reveal nothing about the entity | Information-theoretic security via erasure coding |
+| Threshold secrecy | < k plaintext shards leak only a bounded, proportional share of entropy (t·log₂ 256 bits per byte position from t shards — whitepaper §3.3.5); AEAD encryption is the primary confidentiality layer | Erasure-coding threshold (partial, defense-in-depth) + XChaCha20-Poly1305 |
 | Non-repudiation | Sender cannot deny having committed an entity | ML-DSA-65 signatures on commitment records |
 | Post-quantum security | Resistant to quantum computer attacks | ML-KEM-768 (FIPS 203) + ML-DSA-65 (FIPS 204) |
 | Forward secrecy | Compromising one transfer doesn't compromise others | Fresh ML-KEM encapsulation per transfer |
@@ -214,7 +214,7 @@ flowchart TD
 
 ```mermaid
 flowchart BT
-    L1["Layer 1: Information-Theoretic Security\nErasure coding (k-of-n threshold)\n< k shards reveal nothing"]
+    L1["Layer 1: Threshold Structure (defense-in-depth)\nErasure coding (k-of-n threshold)\n< k shards: bounded proportional leakage (§3.3.5)"]
     L2["Layer 2: Cryptographic Integrity\nBLAKE3-256 content addressing\nMerkle root + ML-DSA-65 signatures"]
     L3["Layer 3: Zero-Knowledge (Optional)\nPedersen hiding commitments (BLS12-381)\nFRI-based STARK proofs (PQ-safe)"]
     L4["Layer 4: Shard Encryption\nAEAD with random 256-bit CEK\nPer-shard nonce derivation"]
@@ -375,7 +375,7 @@ See [docs/README.md](docs/README.md) for the full documentation index.
 
 | Document | Description |
 |----------|-------------|
-| [Whitepaper](docs/WHITEPAPER.md) | Full protocol specification (v0.2.1, public draft for comment) |
+| [Whitepaper](docs/WHITEPAPER.md) | Full protocol specification (v0.2.2, public draft for comment) |
 | [Formal Verification Status](docs/FORMAL_VERIFICATION_STATUS.md) | What is machine-checked, what is paper-proven, what is neither |
 | [Extension Registry](docs/extension-registry.md) | Registered `x-ltp/` shape types |
 | [Architecture](docs/design-decisions/ARCHITECTURE.md) | System components and data flow |

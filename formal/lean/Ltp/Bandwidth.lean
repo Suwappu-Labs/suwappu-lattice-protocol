@@ -66,8 +66,8 @@ theorem single_receiver_costs_more (D ρ : Nat) (hD : 0 < D) (hρ : 0 < ρ) :
 /-- **Break-even.** The commit overhead is no larger than the useful
 transfer volume exactly when `N ≥ ρ` — equivalently, `B_LTP(N)` is within
 2× of `B_direct(N)` exactly from the break-even point on. At the default
-parameters this is the paper's "break-even occurs at N > 6 receivers
-(not N > 3)". -/
+parameters this is the paper's "break-even occurs at N ≥ ρ = 6 receivers
+(not N ≥ r = 3)" — §6.4 was aligned to this inclusive form in v0.2.2. -/
 theorem breakeven_iff (D ρ N : Nat) (hD : 0 < D) :
     bLTP D ρ N ≤ 2 * bDirect D N ↔ ρ ≤ N := by
   constructor

@@ -91,7 +91,7 @@ ETP transfers data via three phases:
 | ID | Threat | Likelihood | Impact | Mitigation | Residual Risk |
 |----|--------|:----------:|:------:|------------|---------------|
 | I1 | **HNDL: Harvest encrypted traffic now, decrypt with future quantum computer** | Medium | Critical | ML-KEM-768 (FIPS 203) + ML-DSA-65 (FIPS 204) — post-quantum safe. Forward secrecy via fresh encapsulation per transfer | Algorithm break (no known attack on MLWE) |
-| I2 | Shard collusion: <k nodes collude to reconstruct content | Low | Critical | Information-theoretic security: <k shards reveal zero information about content (erasure coding property) | ≥k nodes colluding defeats threshold |
+| I2 | Shard collusion: <k nodes collude to reconstruct content | Low | Critical | AEAD encryption of shards (primary); erasure-coding threshold as defense-in-depth — t < k plaintext shards leak t·log₂ 256 bits per byte position, a bounded proportional amount, not zero (whitepaper §3.3.5) | ≥k nodes colluding with the CEK defeats the threshold; structured content degrades the residual entropy at t = k−1 |
 | I3 | CEK leakage via side-channel | Low | Critical | CEK generated via os.urandom(); nonce derived from CEK+entity_id (defense-in-depth) | Timing/power side-channels on KEM operations |
 | I4 | Metadata leakage: access patterns reveal who transfers to whom | Medium | Medium | Encrypted shards are content-addressed; lattice key size is constant (O(1)) regardless of content | Network-level traffic analysis |
 | I5 | ZK mode weakness: Groth16/BLS12-381 is NOT post-quantum safe | High (if used) | Critical | ZK mode explicitly documented as non-PQ-safe; standard mode recommended for quantum threat models | Users must opt out of ZK mode |

@@ -74,7 +74,7 @@ The Verifpal model intentionally abstracts these components — they are outside
 |---|---|---|
 | ML-KEM-768 reduction | Verifpal has no native KEM primitive; we model it as DH, which has equivalent confidentiality guarantees in the symbolic setting but a different concrete reduction | NIST FIPS 203, plus `tests/test_acvp_mlkem.py` against ACVP test vectors |
 | ML-DSA-65 reduction | Modeled as a generic SIGN primitive | NIST FIPS 204, plus `tests/test_acvp_mldsa.py` |
-| Erasure coding `k-of-n` threshold | Information-theoretic; the symbolic model cannot express "any `k` shares determine the secret, any `k-1` do not" | `tests/test_erasure.py` plus the constructive proof in `docs/WHITEPAPER.md` §5 |
+| Erasure coding `k-of-n` threshold | Information-theoretic; the symbolic model cannot express "any `k` shares determine the secret, any `k-1` do not" | `tests/test_erasure.py` plus the entropy-bound proof in `docs/WHITEPAPER.md` §3.3.5 and the Lean threshold theorems (`at_threshold_decodable` / `below_threshold_undecodable`) |
 | Side-channel resistance of the implementation | Symbolic verifiers don't model timing or power channels | `docs/security/audits/internal/SECURITY_REVIEW-2-24-2026.md` §4, plus the `assert_bls_production()` gate in `src/ltp/bls.py` that blocks the unaudited `py_ecc` keygen fallback under `LTP_ENV=production` |
 | Commitment-network topology | Shard placement, retrieval, gossip — infrastructure-level, not protocol-level | `docs/THREAT_MODEL.md` §3 (Threat Sources) and §4.D (DoS) |
 

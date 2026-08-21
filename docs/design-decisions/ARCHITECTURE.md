@@ -210,7 +210,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart BT
-    L1["Layer 1: INFORMATION-THEORETIC SECURITY\nErasure coding k-of-n threshold\n< k shards reveal nothing\nDistributed across independent nodes"]
+    L1["Layer 1: THRESHOLD STRUCTURE (defense-in-depth)\nErasure coding k-of-n threshold\n< k shards: bounded proportional leakage (WP §3.3.5)\nDistributed across independent nodes"]
     L2["Layer 2: CRYPTOGRAPHIC INTEGRITY\nContent-addressed entities (BLAKE3)\nMerkle root over encrypted shard hashes\nML-DSA-65 signatures (FIPS 204)"]
     L3["Layer 3: ZERO-KNOWLEDGE (Optional)\nZK-proofs on commitment records\nVerifiable computation on hidden data"]
     L4["Layer 4: SHARD ENCRYPTION\nAEAD with random 256-bit CEK\nPer-shard nonce derivation\nNodes store ciphertext only"]
