@@ -12,10 +12,10 @@ things against the reference implementation:
   4. Exact artifact sizes -- the sealed lattice key, the commitment record,
      and their constituent parts.
 
-The erasure coder on the conformant path is pure Python, which dominates the
-wall-clock at every size. Entity sizes are therefore kept small enough for the
-run to finish in a few minutes; the throughputs, ratios, and byte counts are
-the transferable results, not the absolute times at any one size.
+The conformant erasure coder is table-driven pure Python (bytes.translate +
+big-integer XOR, both C-speed per chunk), so multi-MiB sweeps are practical;
+the throughputs, ratios, and byte counts are the transferable results, not
+the absolute times at any one size.
 
 These are single-host figures for the reference implementation. They are not a
 performance claim about a deployed commitment network -- see the whitepaper
@@ -45,9 +45,8 @@ from ltp.primitives import MLDSA, MLKEM
 from ltp.protocol import LTPProtocol
 from ltp.shards import ShardEncryptor
 
-# Entity sizes used for the throughput sweeps. 256 KiB is the largest size the
-# pure-Python coder gets through at n=64 in reasonable time.
-SWEEP = [("64KiB", 1 << 16), ("256KiB", 1 << 18)]
+# Entity sizes used for the throughput sweeps.
+SWEEP = [("64KiB", 1 << 16), ("256KiB", 1 << 18), ("1MiB", 1 << 20), ("4MiB", 4 << 20)]
 
 # (n, k) pairs: the implementation default, then the cost-model default used
 # throughout §6.4 and Appendix A.
@@ -119,10 +118,10 @@ def measure_erasure() -> dict:
         out[f"n{n}_k{k}"] = {}
         for label, size in SWEEP:
             data = os.urandom(size)
-            encode_ms = median_ms(lambda: ErasureCoder.encode(data, n, k), 3, 1)
+            encode_ms = median_ms(lambda: ErasureCoder.encode(data, n, k), 5, 2)
             shards = ErasureCoder.encode(data, n, k)
             subset = {i: shards[i] for i in range(k)}
-            decode_ms = median_ms(lambda: ErasureCoder.decode(subset, n, k), 3, 1)
+            decode_ms = median_ms(lambda: ErasureCoder.decode(subset, n, k), 5, 2)
             mib = size / (1 << 20)
             out[f"n{n}_k{k}"][label] = {
                 "encode_ms": round(encode_ms, 2),
@@ -157,7 +156,7 @@ def measure_commit_breakdown() -> dict:
             ShardEncryptor.encrypt_shard(cek, entity_id, s, i) for i, s in enumerate(shards)
         ]
         hash_ms = median_ms(lambda: [ltp.canonical_hash(s) for s in encrypted], 5, 1)
-        sign_ms = median_ms(lambda: sender.sign(b"x" * 462), 20, 3)
+        sign_ms = median_ms(lambda: sender.sign(b"x" * 473), 20, 3)
 
         total = erasure_ms + aead_ms + hash_ms + sign_ms
         out[f"n{n}_k{k}"] = {

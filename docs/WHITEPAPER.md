@@ -13,7 +13,7 @@
 
 | **Author** | **Version** | **Date** | **Status** | **Classification** |
 |:----------:|:-----------:|:--------:|:----------:|:------------------:|
-| Tsolmondorj Natsagdorj | 0.3.0 | 2026-08-19 | Public Draft — Request for Comments | Public |
+| Tsolmondorj Natsagdorj | 0.4.0 | 2026-08-21 | Public Draft — Request for Comments | Public |
 
 </div>
 
@@ -134,6 +134,7 @@ ML-DSA-65 · SHA3-256 · BLAKE3 · Certificate Transparency · Reed-Solomon codi
     - [6.2 Geographic Distance](#62-geographic-distance)
     - [6.3 Computing Power](#63-computing-power)
     - [6.4 Formal Cost Model](#64-formal-cost-model)
+    - [6.5 Exact Cost of the Coding Layer](#65-exact-cost-of-the-coding-layer)
 - [7. Empirical Evaluation](#7-empirical-evaluation)
     - [7.1 Cryptographic Primitives](#71-cryptographic-primitives)
     - [7.2 Erasure Coding](#72-erasure-coding)
@@ -2438,6 +2439,92 @@ contention), $T_{LTP} \approx T_{direct}$ but with the sender free to go offline
    the COMMIT phase — each LTP entity should represent a distinct logical unit, not an
    intermediate edit state.
 
+### 6.5 Exact Cost of the Coding Layer
+
+§7 shows empirically that the erasure coder is where an LTP implementation's time goes.
+This section derives its cost exactly, and shows how far an implementation can reduce the
+constant without changing a single shard byte. The analysis matters because the coding
+layer's cost is *conformance-constrained*: §2.1.1 pins the shards to the byte, so the only
+legal optimizations are ones that compute the same function faster.
+
+**The counting identity.** Every byte of every shard is a $k$-term inner product over
+GF(2⁸):
+
+$$\text{shard}_i[b] \;=\; \bigoplus_{j=0}^{k-1} \alpha_i^{\,j} \otimes c_j[b]$$
+
+Encoding produces $n$ shards of $D/k$ bytes, each byte requiring $k$ field multiplications,
+so the total is exactly
+
+$$W_{\text{enc}} \;=\; n \cdot k \cdot \frac{D}{k} \;=\; n \cdot D \quad\text{byte-multiplications, plus } \tfrac{k-1}{k}\, nD \text{ byte-XORs.}$$
+
+The $k$s cancel: **encode cost depends on $n$ alone**, not on $n \cdot k$. Decoding
+reconstructs $k$ chunks from $k$ selected shards through the inverse matrix, giving
+$W_{\text{dec}} = k \cdot D$ by the same count. Two predictions follow, both tested in
+§7.2: throughput at fixed $n$ is flat in $D$ and in $k$, and the encode:decode cost ratio
+is $n : k$ — a factor of 2 at both parameter sets this paper uses.
+
+**Reaching the bound in an interpreted implementation.** The identity above says nothing
+about the *constant* per byte-multiplication, and the constant is where a naive
+implementation loses two orders of magnitude: evaluating the inner product byte-by-byte in
+interpreted code costs an interpreter dispatch per field operation. Two algebraic facts
+remove the interpreter from the data path entirely:
+
+1. *Multiplication by a constant is a byte substitution.* For fixed $c$, the map
+   $b \mapsto c \otimes b$ is $\mathbb{F}_2$-linear on the 8-bit vector space — a
+   function on 256 values, precomputable as a 256-entry table $T_c$. Multiplying an entire
+   chunk by $c$ is then a single native byte-translation pass
+   ($\texttt{bytes.translate}(T_c)$ in the reference implementation). At most 255 distinct
+   tables exist (64 KiB in total), built lazily and cached.
+
+2. *Accumulation is carry-free addition.* The XOR of two equal-length byte strings is
+   addition in $\mathbb{F}_2^{8L}$, which arbitrary-precision integer XOR performs in one
+   native pass.
+
+Factoring the inner product by coefficient therefore turns each of the $nk$ coefficient
+applications into two native passes over a $D/k$-byte chunk. The interpreter executes
+$O(nk)$ operations *regardless of $D$*; the per-byte work is one table lookup and one XOR
+in compiled code. The reference implementation adopted this factorization in place of the
+byte-by-byte loop, with shards verified byte-identical against the scalar definition, the
+§2.1.1 pinned vectors, and the Lean-kernel recomputation (§3.3.8). The measured effect is
+a **100–150× throughput increase** with zero conformance impact (§7.2).
+
+**The decode matrix in $O(k^2)$.** Reed-Solomon decoding *is* polynomial interpolation:
+the message chunks are the coefficients of a degree-$(k{-}1)$ polynomial $p$, and the
+shards are its evaluations $p(\alpha_i)$. Rather than inverting the $k \times k$
+Vandermonde submatrix by Gauss-Jordan elimination ($O(k^3)$ field operations), the inverse
+follows in closed form from the Lagrange basis. With
+$P(z) = \prod_t (z \oplus \alpha_t)$, define $Q_i(z) = P(z)/(z \oplus \alpha_i)$
+(exact by synthetic division, since $\alpha_i$ is a root of $P$) and
+$d_i = Q_i(\alpha_i) = \prod_{t \neq i} (\alpha_i \oplus \alpha_t)$. Then
+
+$$\left(V^{-1}\right)[m][i] \;=\; \left([z^m]\,Q_i\right) \otimes d_i^{-1}$$
+
+— computable in $O(k^2)$ total: one $O(k^2)$ product for $P$, then one $O(k)$ division and
+one $O(k)$ Horner evaluation per row. (In characteristic 2, subtraction is XOR, hence the
+$\oplus$ in the linear factors.) At $k = 32$ this replaces roughly 130,000 interpreted
+field operations with roughly 3,000; at large $k$ it keeps the matrix step negligible
+beside the $O(kD)$ data path, where Gauss-Jordan would begin to rival it. The reference
+implementation uses the Lagrange construction on the decode path and retains Gauss-Jordan
+as an independent cross-check, with the two verified equal over randomized index sets in
+the test suite.
+
+**What remains on the table.** Two further reductions exist, one legal and one not:
+
+- *SIMD field kernels* (Intel ISA-L, or the GFNI instruction set) evaluate the same
+  Vandermonde products at several GiB/s per core — roughly another order of magnitude in
+  the constant. This is conformance-preserving: same matrix, same shards, faster
+  arithmetic. It is the remaining item in §12, Open Question 8.
+- *Additive-FFT Reed-Solomon* (the Lin–Chung–Han line of work) reduces the exponent,
+  encoding in $O(D \log n)$ rather than $O(D \cdot n)$. But it achieves this by changing
+  the evaluation-point structure, which changes the shard bytes — non-conformant under
+  §2.1.1 — and at this protocol's $n \leq 255$ the maximum asymptotic gain is
+  $n / \log_2 n \leq 32$ before its larger constants are paid. The asymptotics are not
+  where this protocol's performance lives; the constant is.
+
+The conformance-preserving cost floor is therefore $n \cdot D$ byte-operations at whatever
+rate the host executes table-lookup-plus-XOR — and §7.2 measures the reference
+implementation running within a small factor of memory bandwidth on that kernel.
+
 ---
 
 ## 7. Empirical Evaluation
@@ -2459,23 +2546,24 @@ for hash throughput, 3–5 for erasure coding and protocol phases — timed with
 `time.perf_counter`. Python 3.11.15 on Linux x86-64, 4 CPUs, shared virtual host. ML-KEM and
 ML-DSA come from the `pqcrypto` package, AEAD (XChaCha20-Poly1305) from libsodium via
 PyNaCl, BLAKE3 from the `blake3` package, SHA3-256 from `hashlib`. All at NIST Level 3
-(`SecurityProfile(level=3, canonical=sha3-256, internal=blake3)`). The erasure coder runs on
-the conformant pure-Python path, not the optional `zfec` fast path (§7.5).
+(`SecurityProfile(level=3, canonical=sha3-256, internal=blake3)`). The erasure coder is the
+conformant table-driven kernel of §6.5 — pure Python orchestrating C-speed byte
+primitives — not the optional non-conformant `zfec` path (§7.5).
 
 ### 7.1 Cryptographic Primitives
 
-Median latency, with the range observed across two independent runs. The host is a shared
-4-CPU VM, and sub-millisecond operations vary by tens of percent between runs; we give the
-range rather than imply a precision the measurement does not support.
+Typical latency, with the range observed across three independent runs. The host is a
+shared 4-CPU VM, and sub-millisecond operations vary by tens of percent between runs; we
+give the range rather than imply a precision the measurement does not support.
 
-| Operation | Median latency | Observed range |
+| Operation | Typical latency | Observed range |
 |-----------|---------------:|---------------:|
-| ML-KEM-768 keygen | 0.07 ms | 0.065–0.071 |
-| ML-KEM-768 encapsulate | 0.09 ms | 0.073–0.109 |
-| ML-KEM-768 decapsulate | 0.09 ms | 0.091–0.092 |
-| ML-DSA-65 keygen | 0.20 ms | 0.196–0.198 |
-| ML-DSA-65 sign (473-byte record) | 0.59 ms | 0.545–0.636 |
-| ML-DSA-65 verify | 0.19 ms | 0.187–0.193 |
+| ML-KEM-768 keygen | 0.07 ms | 0.061–0.071 |
+| ML-KEM-768 encapsulate | 0.07 ms | 0.057–0.109 |
+| ML-KEM-768 decapsulate | 0.08 ms | 0.071–0.092 |
+| ML-DSA-65 keygen | 0.18 ms | 0.157–0.198 |
+| ML-DSA-65 sign (473-byte record) | 0.55 ms | 0.505–0.636 |
+| ML-DSA-65 verify | 0.18 ms | 0.168–0.193 |
 
 The precise values matter less than the order of magnitude: every post-quantum operation on
 the critical path is **sub-millisecond**, and the whole asymmetric cost of a LATTICE phase —
@@ -2485,76 +2573,125 @@ Hash throughput on 1 MiB, per lane (§1.3):
 
 | Lane | Algorithm | Throughput |
 |------|-----------|-----------:|
-| Canonical | SHA3-256 | ~350 MiB/s |
-| Internal | BLAKE3-256 | ~6,000 MiB/s |
+| Canonical | SHA3-256 | 350–464 MiB/s |
+| Internal | BLAKE3-256 | 5,965–6,618 MiB/s |
 
-The **~17× gap** (16.8–17.0 across runs) is the quantitative justification for the dual-lane
+The **14–17× gap** across runs is the quantitative justification for the dual-lane
 split. It is also why the split is drawn where it is: the canonical lane runs once per
 commitment record, the internal lane once per (entity, shard, replica) placement decision.
 
 ### 7.2 Erasure Coding
 
-Reed-Solomon over GF(2⁸), conformant pure-Python path, at both the implementation default
-and the cost-model default:
+Reed-Solomon over GF(2⁸) on the conformant path. Two implementations of the *same
+function* are compared: the original byte-by-byte scalar loop (the baseline this paper's
+earlier revisions measured), and the table-driven kernel of §6.5, which produces
+byte-identical shards. The change is pure constant-factor engineering guided by the
+algebra — no parameter, no wire byte, and no security property moved.
+
+**Baseline (scalar loop), retained for the record:**
+
+| Parameters | Entity | Encode | Decode | Encode throughput |
+|-----------|--------|-------:|-------:|------------------:|
+| $n=8, k=4$ | 256 KiB | 453 ms | 257 ms | 0.55 MiB/s |
+| $n=64, k=32$ | 256 KiB | 3,072 ms | 1,496 ms | 0.081 MiB/s |
+
+**Current (table-driven kernel, §6.5):**
 
 | Parameters | Entity | Encode | Decode | Encode throughput | Decode throughput |
 |-----------|--------|-------:|-------:|------------------:|------------------:|
-| $n=8, k=4$ | 64 KiB | 119 ms | 64 ms | 0.52 MiB/s | 0.98 MiB/s |
-| $n=8, k=4$ | 256 KiB | 453 ms | 257 ms | 0.55 MiB/s | 0.97 MiB/s |
-| $n=64, k=32$ | 64 KiB | 763 ms | 380 ms | 0.082 MiB/s | 0.165 MiB/s |
-| $n=64, k=32$ | 256 KiB | 3,072 ms | 1,496 ms | 0.081 MiB/s | 0.167 MiB/s |
+| $n=8, k=4$ | 64 KiB | 0.59 ms | 0.42 ms | 106 MiB/s | 149 MiB/s |
+| $n=8, k=4$ | 256 KiB | 2.39 ms | 1.56 ms | 104 MiB/s | 160 MiB/s |
+| $n=8, k=4$ | 1 MiB | 11.4 ms | 6.4 ms | 88 MiB/s | 155 MiB/s |
+| $n=8, k=4$ | 4 MiB | 49.3 ms | 27.7 ms | 81 MiB/s | 145 MiB/s |
+| $n=64, k=32$ | 64 KiB | 5.8 ms | 3.3 ms | 10.8 MiB/s | 18.8 MiB/s |
+| $n=64, k=32$ | 256 KiB | 20.5 ms | 11.3 ms | 12.2 MiB/s | 22.1 MiB/s |
+| $n=64, k=32$ | 1 MiB | 83.8 ms | 42.8 ms | 11.9 MiB/s | 23.4 MiB/s |
+| $n=64, k=32$ | 4 MiB | 312.9 ms | 169.4 ms | 12.8 MiB/s | 23.6 MiB/s |
 
-Two things are worth reading off this table.
+The speedup is **~100–150×** at matched configurations (e.g. 453 → 2.39 ms encode at
+$n{=}8$; 3,072 → 20.5 ms at $n{=}64$), and the sweep now extends to 4 MiB where the
+baseline was impractical to run. Three predictions from §6.5 can be read off the table.
 
-**Encode cost scales with $n$, not with $n \cdot k$.** Each of the $n$ output shards is a
-$k$-term linear combination over chunks of size $D/k$, so the total work is
-$n \cdot k \cdot (D/k) = n \cdot D$ — independent of $k$. The measurement confirms the
-prediction: encode throughput falls by $6.4\times$ (64 KiB) to $6.8\times$ (256 KiB) between
-$n=8$ and $n=64$, against a predicted $8\times$, with the shortfall attributable to
-per-shard fixed costs that amortize better at larger $n$. Throughput is flat across entity
-size within each parameter set, as a linear model requires.
+**The $n \cdot D$ law, now with a stable constant.** Normalizing payload throughput by
+$n$ gives the kernel's *coefficient-work rate* — the speed at which it executes the
+underlying $n \cdot D$ byte-operations. Across every measured configuration it is nearly
+constant: $8 \times 104 \approx 830$ MiB/s at $(8,4)$ and $64 \times 12.2 \approx 780$
+MiB/s at $(64,32)$ on 256 KiB, and between 650 and 850 MiB/s over the full 64 KiB–4 MiB
+sweep. The earlier scalar measurements deviated from the predicted $8\times$ ratio by
+20% because interpreter fixed costs did not amortize uniformly; with those costs removed
+from the data path, the measured $n{=}8$ : $n{=}64$ throughput ratios (6.4–9.9 across
+sizes, centered on 8.0) bracket the prediction, and the residual variation tracks
+allocator and cache effects rather than arithmetic.
 
-**Decode is roughly twice as fast as encode** at matched parameters, because decoding
-produces $k$ chunks rather than $n$ shards, and $k < n$ by construction. The
-$k \times k$ Vandermonde inversion is $O(k^3)$ but on a $k \times k$ matrix of field
-elements, not on the data, so it is negligible beside the $O(k \cdot D)$ recombination.
+**Decode:encode confirms $k : n$.** §6.5 predicts decode does $k/n = 1/2$ the work at both
+parameter sets. Measured ratios run 1.4–1.9× — the factor of 2 attenuated by the decode
+path's extra fixed costs (matrix construction, chunk reassembly), exactly the deviation a
+constant-plus-linear cost model expects at these sizes.
+
+**The matrix step no longer matters at any legal $k$.** With the Lagrange construction
+(§6.5) the decode matrix costs $O(k^2)$ interpreted operations — about 3,000 at $k=32$ —
+against millions of C-speed byte operations in the data path. Under Gauss-Jordan at large
+$k$ the matrix step would have grown to rival the data path; that ceiling is gone.
 
 ### 7.3 End-to-End Transfer
 
 Full three-phase transfer, 16-node network across 4 simulated regions, content verified
-byte-identical on materialization:
+byte-identical on materialization. These figures use the §6.5 table-driven coder; the
+pre-optimization equivalents (e.g. 479 ms and 3,099 ms COMMIT on the two 256 KiB rows) are
+retained in the revision history for comparison.
 
 | Parameters | Entity | COMMIT | LATTICE | MATERIALIZE | Sealed key |
 |-----------|--------|-------:|--------:|------------:|-----------:|
-| $n=8, k=4$ | 64 KiB | 114 ms | 0.242 ms | 64 ms | 1,423 B |
-| $n=8, k=4$ | 256 KiB | 479 ms | 0.251 ms | 259 ms | 1,423 B |
-| $n=64, k=32$ | 64 KiB | 782 ms | 0.254 ms | 388 ms | 1,423 B |
-| $n=64, k=32$ | 256 KiB | 3,099 ms | 0.233 ms | 1,494 ms | 1,423 B |
+| $n=8, k=4$ | 64 KiB | 3.2 ms | 0.188 ms | 1.2 ms | 1,423 B |
+| $n=8, k=4$ | 256 KiB | 6.6 ms | 0.157 ms | 2.8 ms | 1,423 B |
+| $n=8, k=4$ | 1 MiB | 20.9 ms | 0.143 ms | 9.9 ms | 1,423 B |
+| $n=8, k=4$ | 4 MiB | 79.0 ms | 0.163 ms | 48.5 ms | 1,423 B |
+| $n=64, k=32$ | 64 KiB | 9.3 ms | 0.169 ms | 4.2 ms | 1,423 B |
+| $n=64, k=32$ | 256 KiB | 23.8 ms | 0.140 ms | 11.9 ms | 1,423 B |
+| $n=64, k=32$ | 1 MiB | 88.0 ms | 0.145 ms | 42.6 ms | 1,423 B |
+| $n=64, k=32$ | 4 MiB | 357.1 ms | 0.189 ms | 183.7 ms | 1,423 B |
 
-**The LATTICE phase is constant.** Across a 4× range of entity size and an 8× range of $n$,
-it stays under 0.3 ms in every configuration and across repeated runs (0.218–0.284 ms
-observed), while the sealed key stays byte-identical at 1,423. The timing varies with host
-noise; the size does not vary at all. This is the paper's central structural claim — that
-the sender→receiver path is $O(1)$ in entity size — observed directly rather than argued,
-and it is the one headline claim these measurements actually settle.
+A 256 KiB entity now completes an entire commit-lattice-materialize round trip in under
+10 ms at the implementation default — down from roughly three-quarters of a second — and a
+4 MiB entity in about an eighth of a second. The optimization changed no protocol byte:
+the same commitment records, the same shard roots, the same sealed keys.
 
-**Where the time goes.** Decomposing COMMIT on a 256 KiB entity:
+**The LATTICE phase is constant.** Across a 64× range of entity size and an 8× range of
+$n$, it stays under 0.2 ms in every configuration (0.14–0.19 ms this run; 0.14–0.28 ms
+across all recorded runs), while the sealed key stays byte-identical at 1,423. The timing
+varies with host noise; the size does not vary at all. This is the paper's central
+structural claim — that the sender→receiver path is $O(1)$ in entity size — observed
+directly rather than argued, and it is the one headline claim these measurements actually
+settle.
 
-| Component | $n=8, k=4$ | $n=64, k=32$ |
-|-----------|-----------:|-------------:|
-| Erasure encoding | 444.9 ms (99.3%) | 3,242.1 ms (99.9%) |
-| AEAD encryption, all shards | 0.53 ms | 1.16 ms |
-| Shard hashing (canonical lane) | 1.47 ms | 1.62 ms |
-| ML-DSA-65 signature | 1.05 ms | 0.70 ms |
-| **Cryptography, total** | **0.7%** | **0.1%** |
+**Where the time goes.** Decomposing COMMIT on a 256 KiB entity, before and after the
+§6.5 optimization:
 
-This is the most useful result in the section, and it inverts a common assumption.
-Post-quantum cryptography is **not** the cost of running LTP: it is under 1% of COMMIT, and
-its share *falls* as $n$ grows because the signature is paid once per entity while erasure
-coding is paid per shard. The dominant cost is a pure-Python finite-field routine. An
-implementation seeking to make LTP fast should optimize the erasure coder — or use a
-SIMD-accelerated one — and should not trade away post-quantum security for performance,
-because there is almost no performance there to recover.
+| Component | $n=8, k=4$ before | $n=8, k=4$ after | $n=64, k=32$ before | $n=64, k=32$ after |
+|-----------|-----------:|-----------:|-------------:|-------------:|
+| Erasure encoding | 444.9 ms (99.3%) | 2.4 ms (50.6%) | 3,242.1 ms (99.9%) | 21.0 ms (88.5%) |
+| AEAD encryption, all shards | 0.53 ms | 0.48 ms | 1.16 ms | 0.97 ms |
+| Shard hashing (canonical lane) | 1.47 ms | 1.17 ms | 1.62 ms | 1.26 ms |
+| ML-DSA-65 signature | 1.05 ms | 0.70 ms | 0.70 ms | 0.51 ms |
+| **Cryptography, total** | **0.7%** | **49.4%** | **0.1%** | **11.5%** |
+
+Read the after-columns carefully, because the percentages invert without the underlying
+facts changing. Cryptography did not get more expensive — its absolute cost is essentially
+unchanged (about 2.3 ms at either parameter set) — the coder got 100× cheaper, so at the
+implementation default the commit is now split roughly evenly between the coding layer and
+cryptography, and at the cost-model default the coder still dominates because its cost
+scales with $n$ while the crypto is fixed-plus-symmetric.
+
+Two conclusions survive the optimization intact, and one sharpens. First, the
+*post-quantum asymmetric* operations remain a rounding error: the ML-DSA-65 signature is
+0.5–0.7 ms per entity, paid once, and everything else in the crypto rows is symmetric work
+(SHA-3, XChaCha20-Poly1305) that any transfer protocol pays. Trading away post-quantum
+security for performance remains a bad trade at every measured configuration. Second, the
+coder is still the right place for further optimization at large $n$ — a SIMD kernel is
+the remaining lever (§6.5, §12 OQ8). What sharpens: at the implementation default, further
+coder work now buys at most 2× end-to-end, because Amdahl's law has arrived — the next
+bottleneck is the C-library crypto itself, which is to say the implementation is
+approaching the floor set by the primitives rather than by the interpreter.
 
 ### 7.4 Artifact Sizes
 
@@ -2583,13 +2720,14 @@ to the link that the design is trying to relieve, not to every artifact in the s
 
 We would rather state these than have a reviewer find them.
 
-1. **The erasure backend is not the fast one.** These figures use the conformant
-   pure-Python coder. The optional `zfec` backend is far faster but **systematic**, which
-   makes its shards and shard roots incompatible with the conformant path (§2.1.1) — it is
-   not a drop-in accelerator, and mixing the two within a deployment breaks
-   interoperability. Absolute wall-clock times here are therefore a floor on achievable
-   performance, not an estimate of it. A conformant SIMD implementation is future work
-   (§12, Open Question 8).
+1. **The coding kernel still has headroom.** These figures use the conformant
+   table-driven coder (§6.5), which runs its byte kernel at 0.65–0.85 GiB/s — within an
+   order of magnitude of, but not at, what a SIMD field-arithmetic kernel (ISA-L, GFNI)
+   achieves on the same matrix. Absolute wall-clock is therefore still a floor on
+   achievable performance, now by roughly one order of magnitude rather than two-plus
+   (§12, Open Question 8). The optional `zfec` backend remains **systematic** and
+   therefore non-conformant (§2.1.1) — it is not a drop-in accelerator, and mixing the
+   two within a deployment breaks interoperability.
 
 2. **No network.** All parties are in one process. Every claim in §6.4 that depends on
    $\alpha$ — the parallelism efficiency of $k$ concurrent shard fetches — is untouched by
@@ -2797,7 +2935,7 @@ Consolidated, so a reader does not have to reconstruct it:
 
 | Paper says | Implementation does | Resolution |
 |-----------|--------------------|-----------|
-| Default erasure parameters $n=64, k=32$ (§6.4, Appendix A) | Defaults to $n=8, k=4$ | Both are valid; $(64,32)$ is the *cost-model* default used for analysis, $(8,4)$ the *runtime* default chosen for tractable encode time. §7.2 measures both. A deployment should choose $(n,k,r)$ from its own availability target (§5.4.1), not from either default. |
+| Default erasure parameters $n=64, k=32$ (§6.4, Appendix A) | Defaults to $n=8, k=4$ | Both are valid; $(64,32)$ is the *cost-model* default used for analysis, $(8,4)$ the *runtime* default (originally chosen for tractable encode time under the scalar coder; with the §6.5 kernel both are fast, and the choice now turns on the availability model of §5.4.1 rather than on encode cost). §7.2 measures both. A deployment should choose $(n,k,r)$ from its own availability target (§5.4.1), not from either default. |
 | Default replication $r=3$ (§6.4) | Defaults to $r=2$ | Same: $\rho = nr/k$ is 6 at the paper's defaults, 4 at the implementation's. Cost-model conclusions are stated in terms of $\rho$ and hold for either. |
 | §5.5 declines to specify economics | Ships a complete tokenomics engine with ~30 hard-coded parameters, and carries two conflicting sets of stake and penalty constants | Genuine divergence. §5.5's interface-only stance remains the protocol's position; the engine is one deployment's instantiation. A separate design document supersedes it with a stablecoin-collateral model that assumes no native token. |
 | §5.1.2 "requires no consensus protocol" | Ships a DAG-BFT engine | Not a contradiction — the storage layer requires no consensus, and the engine serves deployments that additionally want ordered execution. But §5.1.2 should not be read as "LTP has no consensus code." |
@@ -3404,12 +3542,16 @@ trade is pure cost.
    This is not specific to LTP — it is the same obstacle facing post-quantum migration in
    proof-of-stake consensus generally.
 
-8. **A conformant fast erasure backend**: §7 shows the pure-Python coder consuming over 99% of
-   COMMIT. The available fast backend (`zfec`) is *systematic* and therefore produces different
-   shards and different shard roots than the conformant non-systematic path (§2.1.1) — it is
-   not interchangeable. Can a SIMD-accelerated implementation of the *conformant* Vandermonde
-   construction close the gap, or should the wire format adopt a systematic code in a future
-   major version and accept the compatibility break?
+8. **A conformant fast erasure backend**: *substantially addressed since first posed.* When
+   this question was opened, the conformant coder consumed over 99% of COMMIT and the only
+   fast backend (`zfec`) was *systematic* — different shards, different shard roots,
+   non-conformant under §2.1.1. The table-driven kernel of §6.5 has since closed most of
+   the gap in place: 100–150× faster, byte-identical shards, no new dependency, with the
+   coder now at ~50% of COMMIT at the implementation default (§7.3). What remains open is
+   the final order of magnitude — a SIMD field-arithmetic kernel (ISA-L or GFNI) driving
+   the *same* Vandermonde matrix — and the original systematic-code question is now
+   answerable: the compatibility break is not worth it, because the non-systematic
+   construction has been shown to run at C-library speed without one.
 
 9. **Independent second implementation**: §5.4.1.2 identifies software monoculture as the
    dominant residual availability risk, and the mitigation — a second conforming
@@ -3650,7 +3792,8 @@ analysis of the settlement surface (§8.4) is summarized here and argued at leng
 | 0.1.0-draft (rev) | 2026-03-29 | Post-review corrections: test-vector arithmetic, BHT collision bound (~85-bit), cost-model expansion factor ρ = nr/k, nonce-derivation invariant, TCONF log binding, ZK-mode specification, theorem-numbering note. |
 | 0.2.0 | 2026-08-17 | Publication revision: threshold-secrecy claims conditioned per §3.3.5 throughout; erasure-coding spec re-baselined to the reference implementation (consecutive evaluation points, length-prefix framing) with regenerated test vectors — the evaluation points were re-baselined from the unimplemented powers-of-α scheme to the implemented consecutive-points scheme (α_i = i+1), test vectors regenerated from the reference implementation, superseding the §2.1.1 arithmetic checked in review rounds 001–002; the `encoding_params` `eval` label string is retained verbatim for record-hash compatibility; commitment-record size corrected; KEM-binding claim corrected to a disclosed limitation with planned mitigation; normative conflicts resolved (low-entropy × quantum threat model; extension registry created; log hash primitive unified on BLAKE3-256); disclosure paragraphs for deferred wire formats, hybrid KEM, regulatory posture, forward-secrecy caveats, key-rotation gap; machine-checked verification status section added (§3.3.8) covering the 52 Lean 4 theorems — including both §2.1.1 test vectors recomputed inside the Lean kernel — and the first recorded Verifpal run (2 confidentiality queries verified, 2 authentication replay findings disclosed with planned mitigation); literature positioning updated per the 2026-08-16 research round (X-BIND KEM-binding taxonomy, NIST IR 8547 transition posture, XChaCha20-Poly1305 standardization status); bibliography unified into a single consistent numbered style (37 references, every in-text citation resolves to exactly one entry and vice versa — previously three incompatible citation conventions coexisted and two citations, Cremers–Dax–Medinger and Schmieg, were referenced in §3.3 but absent from every reference list); FIPS 203/204, RFC 9180, NIST IR 8547, and X-Wing given first-class bibliography entries; new §8.9 positions LTP's corridor quorum against Data Availability Sampling (Al-Bassam et al., Danksharding, Hall-Andersen–Simkin–Wagner); §8.4 adds Signal's Sealed Sender as the closest KEM-bound-envelope precedent, and §8.7's constant-size-capability contribution claim is rescoped accordingly to the specific bundle rather than the underlying primitive; missing §8.8 TOC entry restored. |
 | 0.3.0 | 2026-08-19 | Implementation-reconciliation and evaluation revision. **Corrections against the reference implementation:** the canonical hash is SHA3-256, not BLAKE3-256 — EntityIDs, commitment records, Merkle roots and tree heads are all `sha3-256:`-prefixed, and the previously undocumented dual-lane architecture (FIPS-approved canonical lane, BLAKE3 internal lane) is now specified in a new §1.3 with the 17x throughput measurement that motivates it; shard nonces are HKDF-derived rather than bare-hash-derived, and AEAD associated data binds each shard to its (entity, index) position (§2.1.1); the sealed lattice key is 1,423 B, not ~1,300 B; the commitment record is 5,824 B, not ~3.5 KB — the earlier figure omitted the inline 1,952-byte verification key, which with the signature accounts for 90.3% of the record (§2.1.3); the claim of 'no X25519 or Ed25519' is corrected to disclose the opt-in ML-DSA-65 + Ed25519 composite signature mode (§8.2); the post-quantum claim is rescoped from 'standard mode' to a per-surface table (new §3.4) that discloses the corridor's BLS12-381 attestation quorum as a second non-PQ surface alongside ZK mode. **New sections:** §7 Empirical Evaluation supplies the benchmarks external review round 003 requested and 0.2.0 shipped without — post-quantum primitive latencies, both hash lanes, erasure throughput at two parameter sets, end-to-end phase timings, exact artifact sizes, and a threats-to-validity subsection; the O(1) sender-receiver invariant is now measured (byte-identical sealed keys across entity sizes) and the COMMIT breakdown shows cryptography at 0.1-0.7% against erasure coding at 99.3-99.9%; all figures are reproducible via `scripts/benchmark_whitepaper.py`. §8 Reference Implementation and Deployment Status inventories the subsystems the paper does not specify (DAG-BFT consensus, multi-VM execution, bridge, federation, enforcement, compliance, economics), specifies the corridor surface §10.9 previously compared to DAS without defining (§8.3, including the safety/liveness asymmetry at 7-of-9), discloses the on-chain settlement trust assumptions (§8.4: the registry does not verify the BLS aggregate on-chain, the deployed ZK verifier runs in a simulated mode with no cryptographic check, dispute resolution is arbitration rather than verification, bonds are zero), records testnet deployment status (§8.5), and consolidates every known paper-implementation divergence into a single table (§8.6). New §5.4.1.2 addresses the software-monoculture and common-cause failure gap review 003 raised and 0.2.0 left open, with a multiplicative bound showing p_sw dominates the geographic model at nine-nines figures. New §11.6 states where LTP is the wrong tool, and §§11.1-11.4 now carry concrete parameters and an honest per-case fit assessment. New Notation table, new Appendix B consolidating 36 conformance requirements, and new Appendix C mapping the companion documents the paper depends on but had never cited. **Structural:** sections 8-11 renumbered to 10-13 to seat the two new sections; cross-reference errors fixed (KEM-binding gap cited §3.3.2, is §3.3.3; shard TTL cited §5.3, is §5.4.4; corridor quorum cited §5.1, now §8.3); Open Questions expanded from 6 to 10, adding post-quantum aggregate signatures, a conformant fast erasure backend, an independent second implementation, and normative identity-key distribution; a size-bound note discloses the divergence between the Lean model's proved 1,220-1,250 B interval and the implemented 1,423 B; a reading caution added to the §9 comparison table acknowledging its structural bias. **Disclosed as unimplemented:** access policy is specified here and proved sound in Lean but is not enforced anywhere in the SDK, so a one-time key can be materialized repeatedly — this also retracts the claim, made in 0.2.0's §3.3.8, that policy enforcement bounds the impact of the sealed-key replay finding; replica placement does not consult node region, so the failure-domain diversity the §5.4.1.1 availability figures assume is not enforced by the placement algorithm; and "zeroized" overstates what the implementation does to discarded key material. All three are in the §8.6 divergence table. **Post-release fact-check:** an independent verification pass over this revision corrected the HKDF salt to its true value (ETP-SHARD-NONCE-v1, a frozen legacy constant), reduced the claimed count of distinct BLS DSTs from three to two, repaired the Lean size-bound note (the model has no nonce field, so 24 B of the gap is envelope rather than payload encoding, and the 1,220-1,250 interval belongs to sealed_768_min/max rather than sealed_768_bounded), removed AEAD nonce derivation from the internal lane's scope, and updated §2.3.1, which had retained the superseded bare-hash nonce formula. §7.1 now reports ranges across two runs rather than single-run precision the shared host does not support. |
+| 0.4.0 | 2026-08-21 | Coding-layer mathematics and performance revision. New §6.5 derives the exact cost of the coding layer — the counting identity W_enc = n·D byte-multiplications (independent of k) and W_dec = k·D; the factorization of the Vandermonde inner product into per-coefficient 256-entry byte substitutions plus carry-free big-integer XOR, which removes the interpreter from the data path while leaving every shard byte unchanged; the closed-form O(k²) Vandermonde inverse via Lagrange interpolation (master polynomial, exact synthetic division, Horner normalization) replacing O(k³) Gauss-Jordan on the decode path; and the frontier analysis (SIMD/GFNI kernels as the conformance-preserving next order of magnitude; additive-FFT ruled out as non-conformant and asymptotically capped at n ≤ 255). The reference implementation adopted both constructions: measured **100–150× erasure speedup** with byte-identical shards, gated by the §2.1.1 pinned vectors, the Lean-kernel recomputation, a randomized old-vs-new equivalence fuzz (72 parameter sets including n = 255), a Lagrange-vs-Gauss-Jordan cross-check (211 matrices), and four new permanent regression tests. §7 re-measured throughout: erasure encode now 81–106 MiB/s at (8,4) and 10.8–12.8 MiB/s at (64,32) with the sweep extended to 4 MiB; a 256 KiB three-phase transfer completes in under 10 ms (was ~740 ms); the COMMIT breakdown inverts from 99.3–99.9% erasure to 50.6% at (8,4) and 88.5% at (64,32), with the paper now noting that the absolute cost of cryptography is unchanged and that Amdahl's law caps further coder-only gains at the implementation default; the n·D law is validated by a kernel coefficient-work rate constant at 0.65–0.85 GiB/s across all sixteen configurations, replacing the scalar-era 6.4–6.8× anomaly. §7.1 ranges widened to three runs; §7.5 headroom note revised from two-plus orders of magnitude to one; §12 Open Question 8 marked substantially addressed, with the systematic-code escape hatch withdrawn. Baseline (scalar) measurements are retained in §7.2 and in this table's 0.3.0 entry for the record. |
 
 ---
 
-*LTP v0.3.0 — Lattice Transfer Protocol*
+*LTP v0.4.0 — Lattice Transfer Protocol*

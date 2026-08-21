@@ -39,6 +39,7 @@ GLYPHS = {
     "∎": r"$\square$",
     "⁸": r"\textsuperscript{8}",
     "²": r"\textsuperscript{2}",
+    "³": r"\textsuperscript{3}",
     "₀": r"\textsubscript{0}",
     "₁": r"\textsubscript{1}",
     "₂": r"\textsubscript{2}",
