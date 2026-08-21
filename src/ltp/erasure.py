@@ -60,20 +60,27 @@ class ErasureCoder:
     data split into k chunks, where ANY k of the n shards are sufficient to
     reconstruct the original data. This is the core availability guarantee.
 
-    Performance (PoC limitation):
-      Encode/decode are O(n * k * chunk_size) pure-Python loops over GF(256).
-      For a 100 KB payload with n=8, k=4: ~800K GF multiplications per encode.
-      This is acceptable for testing and small payloads but will bottleneck at
-      scale.  A production-grade fast backend must reproduce the §2.1.1
-      non-systematic Vandermonde shards byte-for-byte (an optimized GF(2⁸)
-      kernel, e.g. Intel ISA-L, driven by the same matrix); zfec does NOT —
-      it is systematic — and is therefore opt-in only via
-      LTP_ERASURE_BACKEND=zfec (see _use_zfec).
+    Performance:
+      The bulk data path is table-driven: for each matrix coefficient c the
+      GF(256) map b -> c ⊗ b is a fixed 256-entry byte substitution, so a
+      whole chunk is multiplied with one C-speed bytes.translate() call and
+      accumulated with one arbitrary-precision integer XOR (also C-speed).
+      Total work remains O(n · |data|) field operations for encode and
+      O(k · |data|) for decode, but the per-byte constant is a table lookup
+      plus an XOR in C rather than interpreted Python arithmetic. The decode
+      matrix is built in O(k²) via Lagrange interpolation (the classical
+      Vandermonde inverse), not O(k³) Gauss-Jordan. The shard bytes are
+      identical to the scalar §2.1.1 definition — the whitepaper's pinned
+      test vectors and the Lean-kernel recomputation both gate this path.
     """
 
     _GF_EXP = [0] * 512
     _GF_LOG = [0] * 256
     _GF_INITIALIZED = False
+
+    # Lazily built 256-byte translation tables, one per coefficient value:
+    # _MUL_TABLE[c][b] = c ⊗ b. At most 255 tables of 256 bytes ever exist.
+    _MUL_TABLE: dict[int, bytes] = {}
 
     @classmethod
     def _init_gf(cls) -> None:
@@ -105,6 +112,27 @@ class ErasureCoder:
         assert a != 0, "Cannot invert zero in GF(256)"
         return cls._GF_EXP[255 - cls._GF_LOG[a]]
 
+    @classmethod
+    def _mul_table(cls, c: int) -> bytes:
+        """256-byte translation table for the linear map b -> c ⊗ b.
+
+        Multiplication by a constant is GF(2)-linear on the byte, so the
+        whole map fits in one substitution table and applies to an entire
+        chunk via bytes.translate() in C.
+        """
+        table = cls._MUL_TABLE.get(c)
+        if table is None:
+            cls._init_gf()
+            if c == 0:
+                table = bytes(256)
+            else:
+                exp = cls._GF_EXP
+                log = cls._GF_LOG
+                log_c = log[c]
+                table = bytes([0] + [exp[log_c + log[b]] for b in range(1, 256)])
+            cls._MUL_TABLE[c] = table
+        return table
+
     @staticmethod
     def _pad(data: bytes, k: int) -> bytes:
         remainder = len(data) % k
@@ -119,6 +147,11 @@ class ErasureCoder:
 
         Evaluation points α_i = i + 1 (all non-zero, 1 through n).
         Any k shards reconstruct the original (MDS property).
+
+        Shard i is p(α_i) evaluated bytewise, where p(x) = Σ_j chunk_j · x^j.
+        The inner product is factored by coefficient: each term
+        α_i^j ⊗ chunk_j is one translate() pass, each accumulation one
+        big-integer XOR, so the per-byte work runs in C.
 
         Returns: list of n shard bytes objects.
         """
@@ -141,24 +174,26 @@ class ErasureCoder:
             encoder = _zfec_mod.Encoder(k, n)
             return encoder.encode(data_chunks)
 
-        # Pure Python GF(256) fallback
         cls._init_gf()
+        gf_mul = cls._gf_mul
+        mul_table = cls._mul_table
+        from_bytes = int.from_bytes
+
+        # chunk_j as a big integer, reused wherever the coefficient is 1.
+        chunk_ints = [from_bytes(chunk, "big") for chunk in data_chunks]
 
         shards = []
         for i in range(n):
             alpha = i + 1
-            alpha_powers = [0] * k
-            alpha_powers[0] = 1
+            acc = chunk_ints[0]  # α_i^0 = 1
+            coef = 1
             for j in range(1, k):
-                alpha_powers[j] = cls._gf_mul(alpha_powers[j - 1], alpha)
-
-            shard = bytearray(chunk_size)
-            for byte_pos in range(chunk_size):
-                val = 0
-                for j in range(k):
-                    val ^= cls._gf_mul(alpha_powers[j], data_chunks[j][byte_pos])
-                shard[byte_pos] = val
-            shards.append(bytes(shard))
+                coef = gf_mul(coef, alpha)
+                if coef == 1:
+                    acc ^= chunk_ints[j]
+                else:
+                    acc ^= from_bytes(data_chunks[j].translate(mul_table(coef)), "big")
+            shards.append(acc.to_bytes(chunk_size, "big"))
 
         return shards
 
@@ -169,6 +204,10 @@ class ErasureCoder:
         via Gauss-Jordan elimination over GF(256).
 
         Returns V^{-1} so that coefficients = V^{-1} * evaluations.
+
+        Retained as the independent O(k³) reference; the decode path uses
+        the O(k²) Lagrange construction (_lagrange_inverse), which is
+        cross-checked against this method in the test suite.
         """
         aug = []
         for i in range(k):
@@ -207,6 +246,55 @@ class ErasureCoder:
         return [aug[i][k:] for i in range(k)]
 
     @classmethod
+    def _lagrange_inverse(cls, alphas: list[int], k: int) -> list[list[int]]:
+        """
+        Invert the k×k Vandermonde matrix V[i][j] = alphas[i]^j in O(k²)
+        via Lagrange interpolation.
+
+        Decoding Reed-Solomon *is* polynomial interpolation: the message
+        chunks are the coefficients of p, and the shards are evaluations
+        p(α_i). Writing p in the Lagrange basis,
+
+            p(z) = Σ_i y_i · L_i(z),
+            L_i(z) = Q_i(z) ⊗ d_i⁻¹,
+            Q_i(z) = P(z) / (z ⊕ α_i),   P(z) = Π_t (z ⊕ α_t),
+            d_i    = Q_i(α_i) = Π_{t≠i} (α_i ⊕ α_t),
+
+        the m-th coefficient of p is Σ_i y_i ⊗ [z^m]Q_i ⊗ d_i⁻¹, so
+        W[m][i] = [z^m]Q_i ⊗ d_i⁻¹ is exactly (V⁻¹)[m][i]. P costs O(k²)
+        once; each Q_i is one O(k) synthetic division (α_i is a root of P,
+        so the division is exact); each d_i one O(k) Horner evaluation.
+        In characteristic 2, subtraction is XOR, so z − α is z ⊕ α.
+        """
+        cls._init_gf()
+        gf_mul = cls._gf_mul
+
+        # P(z) = Π (z ⊕ α_t), coefficients low-to-high, monic of degree k.
+        poly = [1]
+        for x in alphas:
+            nxt = [0] * (len(poly) + 1)
+            for j, p in enumerate(poly):
+                nxt[j] ^= gf_mul(x, p)
+                nxt[j + 1] ^= p
+            poly = nxt
+
+        inverse = [[0] * k for _ in range(k)]
+        for i, x in enumerate(alphas):
+            # Synthetic division Q_i = P / (z ⊕ x): exact because P(x) = 0.
+            q = [0] * k
+            q[k - 1] = poly[k]
+            for j in range(k - 2, -1, -1):
+                q[j] = poly[j + 1] ^ gf_mul(x, q[j + 1])
+            # d_i = Q_i(x) by Horner.
+            d = 0
+            for j in range(k - 1, -1, -1):
+                d = gf_mul(d, x) ^ q[j]
+            d_inv = cls._gf_inv(d)
+            for m in range(k):
+                inverse[m][i] = gf_mul(q[m], d_inv)
+        return inverse
+
+    @classmethod
     def decode(cls, shards: dict[int, bytes], n: int, k: int) -> bytes:
         """
         Decode from ANY k-of-n shards via Vandermonde matrix inversion over GF(256).
@@ -230,21 +318,30 @@ class ErasureCoder:
             original_length = struct.unpack(">Q", result[:8])[0]
             return result[8 : 8 + original_length]
 
-        # Pure Python GF(256) fallback
         cls._init_gf()
+        mul_table = cls._mul_table
+        from_bytes = int.from_bytes
 
         alphas = [i + 1 for i in indices]
-        V_inv = cls._invert_vandermonde(alphas, k)
+        v_inv = cls._lagrange_inverse(alphas, k)
 
-        reconstructed = bytearray(chunk_size * k)
-        for byte_pos in range(chunk_size):
-            y_vals = [shards[idx][byte_pos] for idx in indices]
-            for m in range(k):
-                val = 0
-                for j in range(k):
-                    val ^= cls._gf_mul(V_inv[m][j], y_vals[j])
-                reconstructed[m * chunk_size + byte_pos] = val
+        selected = [shards[idx] for idx in indices]
+        selected_ints = [from_bytes(s, "big") for s in selected]
 
-        result = bytes(reconstructed)
+        chunks = []
+        for m in range(k):
+            row = v_inv[m]
+            acc = 0
+            for j in range(k):
+                w = row[j]
+                if w == 0:
+                    continue
+                if w == 1:
+                    acc ^= selected_ints[j]
+                else:
+                    acc ^= from_bytes(selected[j].translate(mul_table(w)), "big")
+            chunks.append(acc.to_bytes(chunk_size, "big"))
+
+        result = b"".join(chunks)
         original_length = struct.unpack(">Q", result[:8])[0]
         return result[8 : 8 + original_length]
