@@ -10,7 +10,7 @@
 [![Python](https://img.shields.io/badge/python-3.10+-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 [![SDK](https://img.shields.io/badge/SDK-3.0.0-orange)]()
-[![Whitepaper](https://img.shields.io/badge/whitepaper-0.2.2-informational)](docs/WHITEPAPER.md)
+[![Whitepaper](https://img.shields.io/badge/whitepaper-0.2.3-informational)](docs/WHITEPAPER.md)
 [![Formal](https://img.shields.io/badge/Lean_4-52_theorems-9cf)](formal/lean/README.md)
 [![Post-Quantum](https://img.shields.io/badge/crypto-post--quantum-purple)]()
 [![Claude Code](https://img.shields.io/badge/Claude_Code-supported-blueviolet)](CLAUDE.md)
@@ -28,7 +28,7 @@
 >
 > **Two version numbers, deliberately.** The **SDK** (this repository, the
 > `ltp` Python package) is at 3.0.0. The **protocol specification**
-> ([whitepaper](docs/WHITEPAPER.md)) is at 0.2.2 — a public draft issued for
+> ([whitepaper](docs/WHITEPAPER.md)) is at 0.2.3 — a public draft issued for
 > comment. They version independently; see
 > [`docs/STABILITY_PROMISES.md`](docs/STABILITY_PROMISES.md).
 
@@ -375,7 +375,7 @@ See [docs/README.md](docs/README.md) for the full documentation index.
 
 | Document | Description |
 |----------|-------------|
-| [Whitepaper](docs/WHITEPAPER.md) | Full protocol specification (v0.2.2, public draft for comment) |
+| [Whitepaper](docs/WHITEPAPER.md) | Full protocol specification (v0.2.3, public draft for comment) |
 | [Formal Verification Status](docs/FORMAL_VERIFICATION_STATUS.md) | What is machine-checked, what is paper-proven, what is neither |
 | [Extension Registry](docs/extension-registry.md) | Registered `x-ltp/` shape types |
 | [Architecture](docs/design-decisions/ARCHITECTURE.md) | System components and data flow |
