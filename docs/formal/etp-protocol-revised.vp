@@ -1,0 +1,132 @@
+// LTP — Revised Sealed-Key Construction (Whitepaper Theorem 9, §3.3.6)
+// Verifpal model of the PLANNED protocol revision, not the v1 wire format.
+//
+// This model modifies etp-protocol.vp exactly as the planned sealed-key
+// mitigation prescribes (whitepaper §3.3.3, §3.3.6 Theorem 9, §3.3.8):
+//
+//   1. FRESHNESS — the receiver generates a per-transfer nonce eta and
+//      sends it to the sender before the LATTICE phase. A sealed key
+//      replayed from another session carries the wrong eta and fails
+//      AEAD decryption.
+//   2. RECEIVER BINDING — the sealed key's AEAD associated data is
+//      CONCAT(HASH(receiver_ek), entity_id, eta): the receiver's
+//      encapsulation-key fingerprint, the entity identity, and the
+//      freshness nonce. A sealed key addressed to a different receiver
+//      or a different entity fails decryption at this receiver.
+//   3. RECORD BINDING — the sealed payload carries the commitment
+//      reference (entity_id, shard_root), and the receiver verifies the
+//      commitment signature against the values recovered FROM THE
+//      SEALED PAYLOAD, not against the publicly delivered copies. The
+//      commitment the receiver acts on is thereby pulled through the
+//      authenticated sealed channel.
+//
+// Symbolic caveat (same as the base model): ML-KEM-768 is modeled as
+// DH; the AEAD is ideal — in particular the symbolic AEAD is perfectly
+// committing to key and associated data. The whitepaper's §3.3.3
+// committing-AEAD requirement is exactly the obligation to make the
+// real AEAD live up to what this model assumes; a non-committing AEAD
+// (plain XChaCha20-Poly1305) is NOT faithfully represented here.
+//
+// Author: Suwappu-Labs
+// Date: 2026-08-23 (first run recorded in
+//       verifpal-run-2026-08-23-revised.md)
+
+attacker[active]
+
+// === Key Setup ===
+
+principal Sender[
+	knows private sender_sk
+	sender_vk = G^sender_sk
+	generates content, cek, entity_nonce
+]
+
+principal Receiver[
+	knows private receiver_sk
+	receiver_ek = G^receiver_sk
+]
+
+// Public key exchange (pre-protocol). Guarded: identity keys are
+// distributed authentically (key directory), per ANALYSIS.md — this is
+// Theorem 9's single long-term trust anchor (the sender-key pin).
+Sender -> Receiver: [sender_vk]
+Receiver -> Sender: [receiver_ek]
+
+// === Phase 1: COMMIT ===
+
+principal Sender[
+	entity_id = HASH(content)
+	encrypted_shards = AEAD_ENC(cek, content, entity_nonce)
+	shard_root = HASH(encrypted_shards)
+	commitment = SIGN(sender_sk, HASH(CONCAT(entity_id, shard_root)))
+]
+
+// Commitment publication: encrypted shards and AEAD nonce are public
+// (commitment nodes are untrusted for confidentiality).
+Sender -> Receiver: entity_id, shard_root, commitment, encrypted_shards, entity_nonce
+
+// === Freshness (new in the revision) ===
+// The receiver issues a per-transfer nonce before the LATTICE phase.
+// The channel is unguarded: the attacker may tamper — a swapped nonce
+// makes the receiver's later AEAD check fail, which is the point.
+
+principal Receiver[
+	generates eta
+]
+
+Receiver -> Sender: eta
+
+// === Phase 2: LATTICE (revised sealed key) ===
+
+principal Sender[
+	shared_secret = receiver_ek^sender_sk
+
+	// Sealed payload now carries the commitment reference.
+	lattice_payload = CONCAT(cek, entity_id, shard_root)
+
+	// Associated data binds receiver fingerprint, entity, freshness.
+	sealed_ad = CONCAT(HASH(receiver_ek), entity_id, eta)
+	sealed_key = AEAD_ENC(shared_secret, lattice_payload, sealed_ad)
+]
+
+Sender -> Receiver: sealed_key
+
+// === Phase 3: MATERIALIZE (revised checks) ===
+
+principal Receiver[
+	shared_secret_r = sender_vk^receiver_sk
+
+	// The receiver reconstructs the expected associated data from ITS
+	// OWN key fingerprint, the delivered entity_id, and ITS OWN eta —
+	// any mismatch (wrong receiver, wrong entity, replayed session)
+	// fails decryption.
+	expected_ad = CONCAT(HASH(receiver_ek), entity_id, eta)
+	lattice_payload_r = AEAD_DEC(shared_secret_r, sealed_key, expected_ad)?
+
+	// Recover CEK and the commitment reference from the sealed payload.
+	cek_r, entity_id_r, shard_root_r = SPLIT(lattice_payload_r)?
+
+	// Verify the commitment signature against the SEALED values — the
+	// record the receiver acts on comes through the sealed channel.
+	commitment_valid = SIGNVERIF(sender_vk, HASH(CONCAT(entity_id_r, shard_root_r)), commitment)?
+
+	// Decrypt shards with the sealed CEK.
+	reconstructed = AEAD_DEC(cek_r, encrypted_shards, entity_nonce)?
+]
+
+// === Security Queries ===
+
+queries[
+	// Confidentiality must be preserved by the revision.
+	confidentiality? cek
+	confidentiality? content
+
+	// The two queries that FAIL against the v1 construction
+	// (etp-protocol.vp, run 2026-08-16) — the revision's goal is to
+	// flip these.
+	authentication? Sender -> Receiver: commitment
+	authentication? Sender -> Receiver: sealed_key
+
+	// Freshness: the sealed key must not be replayable across sessions.
+	freshness? sealed_key
+]
