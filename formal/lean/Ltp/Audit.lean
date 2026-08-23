@@ -9,6 +9,7 @@ import Ltp.Governance
 import Ltp.TestVectors
 import Ltp.Ramp
 import Ltp.ConcreteSecurity
+import Ltp.Availability
 
 /-
 Axiom audit.
@@ -133,3 +134,13 @@ open Suwappu.LTP.Commitment
 #print axioms Suwappu.LTP.ConcreteSecurity.backoff_doubles
 #print axioms Suwappu.LTP.ConcreteSecurity.mars_commit_upload_seconds
 #print axioms Suwappu.LTP.ConcreteSecurity.mars_commit_upload_hours
+
+-- Correlated-failure availability arithmetic (Paper §5.4.1.1; v0.2.7)
+#print axioms Suwappu.LTP.Availability.replica_complement
+#print axioms Suwappu.LTP.Availability.replica_two_forms
+#print axioms Suwappu.LTP.Availability.replica_default
+#print axioms Suwappu.LTP.Availability.cross_region_cube
+#print axioms Suwappu.LTP.Availability.cross_region_bracket
+#print axioms Suwappu.LTP.Availability.cross_region_avail_bracket
+#print axioms Suwappu.LTP.Availability.same_region_worst
+#print axioms Suwappu.LTP.Availability.colocation_penalty
