@@ -13,7 +13,7 @@
 
 | **Author** | **Version** | **Date** | **Status** | **Classification** |
 |:----------:|:-----------:|:--------:|:----------:|:------------------:|
-| Tsolmondorj Natsagdorj | 0.2.5 | 2026-08-23 | Public Draft — Request for Comments | Public |
+| Tsolmondorj Natsagdorj | 0.2.6 | 2026-08-23 | Public Draft — Request for Comments | Public |
 
 </div>
 
@@ -997,7 +997,11 @@ The correct post-quantum security characterization:
 
 The ~85-bit quantum collision resistance remains well above any practical attack threshold
 and does not threaten the protocol's security margins. However, preimage resistance and
-collision resistance have different post-quantum security levels.
+collision resistance have different post-quantum security levels. (The integer arithmetic
+behind this table — $\lfloor 256/3 \rfloor = 85$ with the ~85.3 bracketing, $256/2 = 128$,
+the strict collision-below-preimage ordering, and Grover's quadratic accounting
+$2^{128} \cdot 2^{128} = 2^{256}$ — is machine-checked in
+`formal/lean/Ltp/ConcreteSecurity.lean`; see §3.3.8.)
 
 **Cost-model caveat on the ~85-bit figure.** The BHT bound counts *quantum queries* and
 presumes quantum-accessible memory of size $O(2^{85})$. In cost-aware models that charge
@@ -1126,7 +1130,11 @@ $$\mathsf{Adv}^{\text{TCONF,enc}}_{\mathcal{A}}(\lambda) \leq \mathsf{Adv}^{\tex
 entity_id as a fixed public value and bounding only attacks on the cryptographic components:
 
 - **Game 0** = TCONF restricted to attacks on the sealed key and AEAD shards.
-- **Game 1**: Replace ML-KEM shared secret with random. By ML-KEM IND-CCA security,
+- **Game 1**: Replace ML-KEM shared secret with random. (The TCONF game is passive — it
+  offers $\mathcal{A}$ no decapsulation oracle — so IND-CPA of the KEM would suffice for
+  this hop; the proof invokes IND-CCA because that is what FIPS 203's FO transform
+  delivers, and assuming the stronger property the scheme actually has costs no tightness.)
+  By ML-KEM IND-CCA security,
   $|\Pr[G_0] - \Pr[G_1]| \leq \mathsf{Adv}^{\text{IND-CCA}}_{\text{ML-KEM}}$.
   Now the sealed key is a random encryption — independent of $b$.
 - **Game 2**: Replace AEAD encryptions of shards with encryptions of zeros. By AEAD
@@ -1494,7 +1502,7 @@ them, two machine-checked artifacts exist in the reference repository as of
 spirit of §3.3.7, exactly what they do not.
 
 **Lean 4 proofs** (`formal/lean/`, CI-gated, `sorry`-free with a
-negative-tested axiom audit; 73 audited theorems). Machine-checked claims
+negative-tested axiom audit; 82 audited theorems). Machine-checked claims
 that correspond to statements made in this paper:
 
 | Paper claim | Lean theorem |
@@ -1508,6 +1516,7 @@ that correspond to statements made in this paper:
 | The corridor 7-of-9 attestation quorum: any two attestations share an honest signer with ≤ 4 Byzantine super-nodes | `corridor_safety` |
 | Both §2.1.1 interoperability test vectors, recomputed inside the Lean kernel over a from-scratch GF(2⁸) implementation and checked byte-for-byte | `vector1_matches`, `vector2_matches`, `vector2_framing` |
 | §3.3.5's corrected entropy ledger — t shards leak exactly t·log₂ 256 bits per byte position, one symbol per shard, 256^(k−t) surviving candidates = 2^residual, exactly 8 bits of residual at t = k−1 — and the (t_p, k; n) blinded-ramp trade (LTP at t_p = 0, Shamir at t_p = k−1, share size monotone in t_p) | `leak_plus_residual`, `leak_per_shard`, `one_short_residual`, `candidates_eq_two_pow_residual`, `no_blinding`, `shamir_extreme`, `blinding_costs_more` |
+| §3.3.1's concrete-security integers — ⌊256/3⌋ = 85 with the ~85.3 bracketing (the review-001 finding), 256/2 = 128, collision strictly below preimage post-quantum, Grover's 2¹²⁸·2¹²⁸ = 2²⁵⁶ — plus the §2.1.1 nonce margin (2⁶⁴ < 2⁹⁷ at q = 2³²), the §2.3.3 backoff doubling law, and Appendix A's 48,000 s ≈ 13.4 h Earth-upload figure | `bht_exponent`, `bht_bracket`, `collision_below_preimage`, `grover_square`, `nonce_birthday_margin`, `backoff_doubles`, `mars_commit_upload_seconds` |
 
 These are proofs **about small models of the specification, not about the
 implementation**: the erasure theorems assume the MDS threshold shape rather
@@ -2961,6 +2970,7 @@ sufficiently large receiver population (break-even: $N \geq \rho$).
 | 0.1.0-draft | 2026-02-24 | Initial draft; reviewed by external review rounds 001–003 (formal + mathematical) and 004 (research landscape), `docs/security/audits/external/whitepaper-reviews/`. |
 | 0.1.0-draft (rev) | 2026-03-29 | Post-review corrections: test-vector arithmetic, BHT collision bound (~85-bit), cost-model expansion factor ρ = nr/k, nonce-derivation invariant, TCONF log binding, ZK-mode specification, theorem-numbering note. |
 | 0.2.0 | 2026-08-17 | Publication revision: threshold-secrecy claims conditioned per §3.3.5 throughout; erasure-coding spec re-baselined to the reference implementation (consecutive evaluation points, length-prefix framing) with regenerated test vectors — the evaluation points were re-baselined from the unimplemented powers-of-α scheme to the implemented consecutive-points scheme (α_i = i+1), test vectors regenerated from the reference implementation, superseding the §2.1.1 arithmetic checked in review rounds 001–002; the `encoding_params` `eval` label string is retained verbatim for record-hash compatibility; commitment-record size corrected; KEM-binding claim corrected to a disclosed limitation with planned mitigation; normative conflicts resolved (low-entropy × quantum threat model; extension registry created; log hash primitive unified on BLAKE3-256); disclosure paragraphs for deferred wire formats, hybrid KEM, regulatory posture, forward-secrecy caveats, key-rotation gap; machine-checked verification status section added (§3.3.8) covering the 52 Lean 4 theorems — including both §2.1.1 test vectors recomputed inside the Lean kernel — and the first recorded Verifpal run (2 confidentiality queries verified, 2 authentication replay findings disclosed with planned mitigation); literature positioning updated per the 2026-08-16 research round (X-BIND KEM-binding taxonomy, NIST IR 8547 transition posture, XChaCha20-Poly1305 standardization status); bibliography unified into a single consistent numbered style (37 references, every in-text citation resolves to exactly one entry and vice versa — previously three incompatible citation conventions coexisted and two citations, Cremers–Dax–Medinger and Schmieg, were referenced in §3.3 but absent from every reference list); FIPS 203/204, RFC 9180, NIST IR 8547, and X-Wing given first-class bibliography entries; new §8.9 positions LTP's corridor quorum against Data Availability Sampling (Al-Bassam et al., Danksharding, Hall-Andersen–Simkin–Wagner); §8.4 adds Signal's Sealed Sender as the closest KEM-bound-envelope precedent, and §8.7's constant-size-capability contribution claim is rescoped accordingly to the specific bundle rather than the underlying primitive; missing §8.8 TOC entry restored. |
+| 0.2.6 | 2026-08-23 | Concrete-security integers join the machine-checked suite; Theorem 5 assumption note. New Lean module `formal/lean/Ltp/ConcreteSecurity.lean` (9 theorems, total 73 → 82) pins §3.3.1's post-quantum arithmetic — ⌊256/3⌋ = 85 with the ~85.3 bracketing (the exact division math review 001 found misstated), 256/2 = 128, the strict collision-below-preimage post-quantum ordering, and Grover's 2¹²⁸·2¹²⁸ = 2²⁵⁶ accounting — plus the §2.1.1 nonce-collision margin (q² = 2⁶⁴ < 2⁹⁷ at q = 2³²), the §2.3.3 exponential-backoff doubling law, and Appendix A's Earth-upload figure (48,000 s, bracketed between 13 h and 13.5 h). §3.3.1 gains a pointer to the machine-checked table arithmetic. §3.3.3 (Theorem 5, Game 1): noted that the passive TCONF game needs only KEM IND-CPA for the first hop — IND-CCA is invoked because the FO transform provides it, at no tightness cost; recorded so the proof's assumption inventory is exact. |
 | 0.2.5 | 2026-08-23 | Theorem 9 added and the ramp arithmetic generalized. §3.3.6: new SKB game (sealed-key context binding) and Theorem 9, stating the planned sealed-key revision's proof obligation: with receiver-fingerprint + entity_id + freshness nonce in the AEAD associated data, a CMT-4 committing AEAD [42], and a single long-term sender-key pin at the receiver (the standard AKE long-term-key assumption [41]), Adv^SKB ≤ Adv^EUF-CMA + Adv^CMT-4 + Adv^AUTH + q_s²/2^(|η|+1) — replacing Theorem 8's per-transfer expected-identity hypothesis with one key pin, and making the TIMM bound protocol-enforced with an added CMT-4 term. The theorem is stated for the revised construction, not the v1 wire format, and makes explicit that over plain (non-committing) XChaCha20-Poly1305 its bound is vacuous — the §3.3.3 committing-AEAD requirement is thereby load-bearing, not advisory. Theorem-numbering note updated to 3–9. Lean: `Ltp/Ramp.lean` extended with field-size generality (6 theorems, total 67 → 73) — the candidate arithmetic over any size-q field with the GF(2⁸) versions as the q = 256 instance (`gf256_specialization`), and strict antitonicity for every q ≥ 2 (`candidatesQ_step_strict`, `candidatesQ_strict_antitone`): each additional shard strictly shrinks the candidate set, the counting fact behind the v0.2.1 Theorem 7 correction, now a pinned theorem rather than a correction note. |
 | 0.2.4 | 2026-08-23 | The §3.3.5 ramp-scheme arithmetic joins the machine-checked suite. New Lean module `formal/lean/Ltp/Ramp.lean` (15 theorems, bringing the audited total from 52 to 67) pins the quantitative content of the v0.2.1 Theorem 7 correction the way `Bandwidth.lean` pins the review-001 ρ correction: the entropy ledger (leaked + residual = joint entropy, exactly one symbol moved per observed shard — `leak_plus_residual`, `leak_per_shard`), the sharp edge cases (residual 0 exactly at t = k, exactly 8 bits at t = k−1 — `residual_zero_iff`, `one_short_residual`), the 256^(k−t) candidate counts with the §2.1.1 worked example decided in-kernel (65,536 → 256 after one shard — `candidates_step`, `worked_example_pairs`, `worked_example_one_shard`), the candidates/entropy consistency identity 256^(k−t) = 2^residual (`candidates_eq_two_pow_residual`), and the v0.2.3 blinded-ramp trade (LTP at t_p = 0, Shamir at t_p = k−1, share size monotone in t_p — `no_blinding`, `shamir_extreme`, `blinding_costs_more`). The probabilistic step of Theorem 7 (equal likelihood of surviving candidates under a uniform prior) remains pen-and-paper and is flagged as such in §3.3.5 and the module header. §3.3.8 table extended; theorem counts updated across the repository docs. |
 | 0.2.3 | 2026-08-22 | Literature-grounded strengthening of the §3.3 formal proofs. Theorem 4 (§3.3.2, Shard Integrity) bound tightened from the conservative sum Adv^SPR + Adv^AUTH to the provable minimum min(Adv^SPR, Adv^AUTH), via paired reductions from a single winning transcript (the win condition is a conjunction, for which a union bound was the wrong tool); the earlier sum bound is retained as an explicitly-loose historical note. §3.3.5: the erasure layer is now identified by its standard secret-sharing name — a (0, k; n) ramp scheme (Blakley–Meadows [39]) with the generic linear ramp leakage profile — placing Theorem 7's entropy bound in its taxonomic context and recording the (t_p, k; n) blinded-ramp upgrade path. §3.3.6: the fourth attack path is identified as an identity-misbinding / unknown key-share attack (Blake-Wilson–Menezes [40]; Krawczyk's SIGMA analysis [41]), with Theorem 8's expected-identity-binding hypothesis recognized as that literature's standard countermeasure. §3.3.3: new committing-AEAD requirement on the planned sealed-key mitigation — XChaCha20-Poly1305 is CMT-insecure (Bellare–Hoang [42]) and non-committing AEADs enable partitioning-oracle attacks (Len–Grubbs–Ristenpart [43]), so AAD binding alone cannot discharge the misbinding findings against an adversary who knows the AEAD keys; the revision must add an explicit commitment to the AEAD inputs (propagated to §3.3.8's mitigation summary). §3.3.1: cost-model caveat on the ~85-bit BHT collision figure per Bernstein's collision-search cost analysis [44] — the query-complexity bound is retained as the conservative planning number. References [39]–[44] added. |
@@ -2969,4 +2979,4 @@ sufficiently large receiver population (break-even: $N \geq \rho$).
 
 ---
 
-*LTP v0.2.5 — Lattice Transfer Protocol*
+*LTP v0.2.6 — Lattice Transfer Protocol*

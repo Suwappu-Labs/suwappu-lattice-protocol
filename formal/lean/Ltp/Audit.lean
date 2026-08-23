@@ -8,6 +8,7 @@ import Ltp.Policy
 import Ltp.Governance
 import Ltp.TestVectors
 import Ltp.Ramp
+import Ltp.ConcreteSecurity
 
 /-
 Axiom audit.
@@ -121,3 +122,14 @@ open Suwappu.LTP.Commitment
 #print axioms Suwappu.LTP.Ramp.candidatesQ_at_threshold
 #print axioms Suwappu.LTP.Ramp.candidatesQ_step_strict
 #print axioms Suwappu.LTP.Ramp.candidatesQ_strict_antitone
+
+-- Concrete-security arithmetic (Paper §3.3.1, §2.1.1, §2.3.3, Appendix A; v0.2.6)
+#print axioms Suwappu.LTP.ConcreteSecurity.bht_exponent
+#print axioms Suwappu.LTP.ConcreteSecurity.bht_bracket
+#print axioms Suwappu.LTP.ConcreteSecurity.birthday_exponent
+#print axioms Suwappu.LTP.ConcreteSecurity.collision_below_preimage
+#print axioms Suwappu.LTP.ConcreteSecurity.grover_square
+#print axioms Suwappu.LTP.ConcreteSecurity.nonce_birthday_margin
+#print axioms Suwappu.LTP.ConcreteSecurity.backoff_doubles
+#print axioms Suwappu.LTP.ConcreteSecurity.mars_commit_upload_seconds
+#print axioms Suwappu.LTP.ConcreteSecurity.mars_commit_upload_hours
