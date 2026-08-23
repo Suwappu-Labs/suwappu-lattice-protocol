@@ -9,7 +9,7 @@ What's verified, by what tool, and what's not — for outside cryptographic revi
 | [`ANALYSIS.md`](formal/ANALYSIS.md) | (overview doc) | Methodology, attacker model, cryptographic abstractions, query list, **and recorded results as of 2026-08-16** |
 | [`etp-protocol.vp`](formal/etp-protocol.vp) | Verifpal v0.27.4 | Symbolic model of the 3-phase COMMIT / LATTICE / MATERIALIZE protocol. **Run 2026-08-16**: 2 of 4 queries verified, 2 replay findings — see below. |
 | [`verifpal-run-2026-08-16.md`](formal/verifpal-run-2026-08-16.md) | Verifpal v0.27.4 | Recorded output of the first verification run |
-| [`../formal/lean/`](../formal/lean/) | Lean 4 (core, no Mathlib) | **Machine-checked.** Corridor 7-of-9 quorum safety + liveness, constant-size commitment **and sealed-lattice-key** invariants, §6.4 bandwidth break-even, erasure k-of-n threshold consequences, access-policy algebra, 2/3-supermajority BFT bounds, and both §2.1.1 test vectors recomputed in-kernel over GF(2⁸). 52 audited theorems. Gated in CI by `.github/workflows/formal.yml`. |
+| [`../formal/lean/`](../formal/lean/) | Lean 4 (core, no Mathlib) | **Machine-checked.** Corridor 7-of-9 quorum safety + liveness, constant-size commitment **and sealed-lattice-key** invariants, §6.4 bandwidth break-even, erasure k-of-n threshold consequences, access-policy algebra, 2/3-supermajority BFT bounds, both §2.1.1 test vectors recomputed in-kernel over GF(2⁸), and the §3.3.5 ramp-scheme entropy ledger (leakage/candidate-count arithmetic and the blinded-ramp share-size trade). 67 audited theorems. Gated in CI by `.github/workflows/formal.yml`. |
 
 ## Machine-checked (Lean 4)
 
@@ -33,6 +33,8 @@ the publication pass. Run `formal/lean/verify.sh`. Headline theorems
 | `no_index_privileged` / `at_threshold_decodable` / `below_threshold_undecodable` | Paper §4.3's sharp k-of-n boundary and "no shard index privileged", derived from the assumed MDS threshold shape |
 | `permits_antitone_count` / `one_time_exhausts` / `minimal_is_sound` / `attenuate_no_amplify` | §2.2.1 access-policy algebra: count checks can't wedge, one-time is one-time, the mandated fail-closed mode never over-grants, attenuation never amplifies |
 | `supermajority_safety` / `supermajority_liveness` | §5.1 governance BFT bounds (2/3 supermajority, < n/3 Byzantine), with a tightness counterexample at exactly n/3 |
+| `leak_plus_residual` / `leak_per_shard` / `candidates_eq_two_pow_residual` | §3.3.5's corrected entropy ledger: t shards leak exactly t·8 bits per byte position, one symbol per shard, with 256^(k−t) surviving candidates = 2^residual — pins the Theorem 7 correction (added 2026-08-23) |
+| `no_blinding` / `shamir_extreme` / `blinding_costs_more` | §3.3.5's (t_p, k; n) blinded-ramp trade: LTP is the t_p = 0 extreme, Shamir the t_p = k−1 extreme, privacy threshold bought monotonically with share size |
 
 The proofs use no `sorry` (CI enforces this via an axiom audit, and the
 gate is negative-tested). **They are proofs about a model, not about

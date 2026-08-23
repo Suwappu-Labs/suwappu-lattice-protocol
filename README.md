@@ -10,8 +10,8 @@
 [![Python](https://img.shields.io/badge/python-3.10+-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 [![SDK](https://img.shields.io/badge/SDK-3.0.0-orange)]()
-[![Whitepaper](https://img.shields.io/badge/whitepaper-0.2.3-informational)](docs/WHITEPAPER.md)
-[![Formal](https://img.shields.io/badge/Lean_4-52_theorems-9cf)](formal/lean/README.md)
+[![Whitepaper](https://img.shields.io/badge/whitepaper-0.2.4-informational)](docs/WHITEPAPER.md)
+[![Formal](https://img.shields.io/badge/Lean_4-67_theorems-9cf)](formal/lean/README.md)
 [![Post-Quantum](https://img.shields.io/badge/crypto-post--quantum-purple)]()
 [![Claude Code](https://img.shields.io/badge/Claude_Code-supported-blueviolet)](CLAUDE.md)
 [![Cursor](https://img.shields.io/badge/Cursor-supported-black)](.cursorrules)
@@ -28,7 +28,7 @@
 >
 > **Two version numbers, deliberately.** The **SDK** (this repository, the
 > `ltp` Python package) is at 3.0.0. The **protocol specification**
-> ([whitepaper](docs/WHITEPAPER.md)) is at 0.2.3 — a public draft issued for
+> ([whitepaper](docs/WHITEPAPER.md)) is at 0.2.4 — a public draft issued for
 > comment. They version independently; see
 > [`docs/STABILITY_PROMISES.md`](docs/STABILITY_PROMISES.md).
 
@@ -234,7 +234,7 @@ Two machine-checked artifacts, both gated in CI. What they establish — and
 what they do not — is stated in full in
 [`docs/FORMAL_VERIFICATION_STATUS.md`](docs/FORMAL_VERIFICATION_STATUS.md).
 
-**Lean 4** ([`formal/lean/`](formal/lean/README.md)) — 52 audited theorems, no
+**Lean 4** ([`formal/lean/`](formal/lean/README.md)) — 67 audited theorems, no
 `sorry`, no Mathlib dependency, negative-tested axiom audit. Covers the
 corridor 7-of-9 quorum (safety and liveness), the constant-size commitment and
 sealed-lattice-key invariants, the §6.4 bandwidth break-even, the k-of-n
@@ -357,7 +357,7 @@ suwappu-lattice-protocol/
 │       ├── DeployMainnet.s.sol        # Production deployment (configurable)
 │       └── UpgradeV4.s.sol            # Governance-controlled UUPS upgrade
 │
-├── formal/lean/                # Lean 4 machine-checked proofs (52 theorems)
+├── formal/lean/                # Lean 4 machine-checked proofs (67 theorems)
 ├── tests/                      # 4,033 Python tests across 247 files
 ├── docs/                       # Protocol documentation
 │   ├── WHITEPAPER.md           # Full protocol specification
@@ -375,7 +375,7 @@ See [docs/README.md](docs/README.md) for the full documentation index.
 
 | Document | Description |
 |----------|-------------|
-| [Whitepaper](docs/WHITEPAPER.md) | Full protocol specification (v0.2.3, public draft for comment) |
+| [Whitepaper](docs/WHITEPAPER.md) | Full protocol specification (v0.2.4, public draft for comment) |
 | [Formal Verification Status](docs/FORMAL_VERIFICATION_STATUS.md) | What is machine-checked, what is paper-proven, what is neither |
 | [Extension Registry](docs/extension-registry.md) | Registered `x-ltp/` shape types |
 | [Architecture](docs/design-decisions/ARCHITECTURE.md) | System components and data flow |
@@ -393,7 +393,7 @@ See [docs/README.md](docs/README.md) for the full documentation index.
 |----------|-------|
 | Python tests | 4,033 |
 | Solidity test/invariant functions | 339 |
-| Lean 4 theorems (machine-checked, `sorry`-free) | 52 |
+| Lean 4 theorems (machine-checked, `sorry`-free) | 67 |
 | ZK proof tests (EC + STARK) | 59 |
 | Adversarial/attack tests | 56 |
 | Security audit tests | 24 findings verified |

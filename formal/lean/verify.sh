@@ -77,8 +77,8 @@ fi
 # Every listed theorem must actually have been reported on; if Audit.lean
 # stops printing (e.g. a theorem was renamed away) we want to know.
 COUNT="$(echo "$AXIOMS" | grep -c "depends on axioms\|does not depend on any axioms" || true)"
-if [ "$COUNT" -lt 52 ]; then
-  echo "error: expected >=52 axiom reports, got $COUNT — did a theorem get renamed or dropped?" >&2
+if [ "$COUNT" -lt 67 ]; then
+  echo "error: expected >=67 axiom reports, got $COUNT — did a theorem get renamed or dropped?" >&2
   exit 1
 fi
 echo "    $COUNT theorems audited, no sorryAx"

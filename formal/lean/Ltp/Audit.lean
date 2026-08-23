@@ -7,6 +7,7 @@ import Ltp.Erasure
 import Ltp.Policy
 import Ltp.Governance
 import Ltp.TestVectors
+import Ltp.Ramp
 
 /-
 Axiom audit.
@@ -95,3 +96,20 @@ open Suwappu.LTP.Commitment
 #print axioms Suwappu.LTP.TestVectors.vector1_non_systematic
 #print axioms Suwappu.LTP.TestVectors.vector2_framing
 #print axioms Suwappu.LTP.TestVectors.vector2_matches
+
+-- Ramp-scheme entropy bookkeeping (Paper §3.3.5, v0.2.3)
+#print axioms Suwappu.LTP.Ramp.leak_plus_residual
+#print axioms Suwappu.LTP.Ramp.leak_per_shard
+#print axioms Suwappu.LTP.Ramp.leak_monotone
+#print axioms Suwappu.LTP.Ramp.residual_zero_iff
+#print axioms Suwappu.LTP.Ramp.one_short_residual
+#print axioms Suwappu.LTP.Ramp.candidates_step
+#print axioms Suwappu.LTP.Ramp.candidates_at_threshold
+#print axioms Suwappu.LTP.Ramp.candidates_one_short
+#print axioms Suwappu.LTP.Ramp.candidates_eq_two_pow_residual
+#print axioms Suwappu.LTP.Ramp.worked_example_pairs
+#print axioms Suwappu.LTP.Ramp.worked_example_one_shard
+#print axioms Suwappu.LTP.Ramp.no_blinding
+#print axioms Suwappu.LTP.Ramp.shamir_extreme
+#print axioms Suwappu.LTP.Ramp.share_cost_exact
+#print axioms Suwappu.LTP.Ramp.blinding_costs_more
