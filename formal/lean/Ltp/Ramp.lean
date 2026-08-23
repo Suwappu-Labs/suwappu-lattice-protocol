@@ -181,4 +181,71 @@ theorem blinding_costs_more (D k tp₁ tp₂ : Nat)
         Nat.mul_le_mul_left _ (by omega)
     _ ≤ D := Nat.div_mul_le_self D (k - tp₁)
 
+/-! ## Field-size generality
+
+The theorems above hard-code GF(2⁸)'s 256. Nothing about the ramp
+profile depends on that choice — the same bookkeeping holds over any
+field of size `q ≥ 2` (the paper's v1 parameter set fixes q = 256, but
+§2.1.1 leaves the field a parameter of the encoding spec). The
+generalised forms below subsume the 256 versions (see
+`gf256_specialization`) and add a statement the fixed-base versions
+cannot express: *strict* antitonicity — every additional shard strictly
+shrinks the candidate set, for every nontrivial field. -/
+
+/-- Candidate count over a size-`q` field: `q^(k−t)`. -/
+def candidatesQ (q k t : Nat) : Nat := q ^ (k - t)
+
+/-- The GF(2⁸) count is the `q = 256` instance — the specialised
+theorems above are shadows of the general ones. -/
+theorem gf256_specialization (k t : Nat) :
+    candidates k t = candidatesQ 256 k t := rfl
+
+/-- The candidate count is positive over any nonempty field — the
+posterior support never vanishes below the threshold. -/
+theorem candidatesQ_pos (q k t : Nat) (hq : 1 ≤ q) :
+    0 < candidatesQ q k t := by
+  unfold candidatesQ
+  exact Nat.pos_pow_of_pos _ hq
+
+/-- Each shard divides the candidate set by exactly `q`, over any
+field. -/
+theorem candidatesQ_step (q k t : Nat) (h : t < k) :
+    candidatesQ q k t = q * candidatesQ q k (t + 1) := by
+  unfold candidatesQ
+  have hk : k - t = (k - (t + 1)) + 1 := by omega
+  rw [hk, Nat.pow_succ, Nat.mul_comm]
+
+/-- At the threshold the candidate set is a singleton, over any field —
+unique decoding does not depend on the field size. -/
+theorem candidatesQ_at_threshold (q k : Nat) : candidatesQ q k k = 1 := by
+  unfold candidatesQ
+  rw [Nat.sub_self, Nat.pow_zero]
+
+/-- **Every shard strictly helps** (`q ≥ 2`): one more observed shard
+strictly shrinks the candidate set. This is the counting form of "any
+nonzero observation changes the posterior" — the very fact that made
+the pre-v0.2.1 zero-leakage claim untenable, now pinned as a theorem
+rather than a correction note. -/
+theorem candidatesQ_step_strict (q k t : Nat) (hq : 2 ≤ q) (h : t < k) :
+    candidatesQ q k (t + 1) < candidatesQ q k t := by
+  rw [candidatesQ_step q k t h]
+  have hpos : 0 < candidatesQ q k (t + 1) :=
+    candidatesQ_pos q k (t + 1) (by omega)
+  calc candidatesQ q k (t + 1)
+      = 1 * candidatesQ q k (t + 1) := by rw [Nat.one_mul]
+    _ < q * candidatesQ q k (t + 1) :=
+        Nat.mul_lt_mul_of_lt_of_le (by omega) (Nat.le_refl _) hpos
+
+/-- Strict antitonicity across any gap: observing strictly more shards
+always leaves strictly fewer candidates (`q ≥ 2`, both counts below the
+threshold's closure). -/
+theorem candidatesQ_strict_antitone (q k t₁ t₂ : Nat)
+    (hq : 2 ≤ q) (h₁₂ : t₁ < t₂) (h₂ : t₂ ≤ k) :
+    candidatesQ q k t₂ < candidatesQ q k t₁ := by
+  have hle : candidatesQ q k t₂ ≤ candidatesQ q k (t₁ + 1) := by
+    unfold candidatesQ
+    exact Nat.pow_le_pow_right (by omega) (by omega)
+  exact Nat.lt_of_le_of_lt hle
+    (candidatesQ_step_strict q k t₁ hq (by omega))
+
 end Suwappu.LTP.Ramp

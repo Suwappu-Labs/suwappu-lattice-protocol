@@ -113,3 +113,11 @@ open Suwappu.LTP.Commitment
 #print axioms Suwappu.LTP.Ramp.shamir_extreme
 #print axioms Suwappu.LTP.Ramp.share_cost_exact
 #print axioms Suwappu.LTP.Ramp.blinding_costs_more
+
+-- Ramp-scheme field-size generality (Paper §3.3.5, v0.2.5)
+#print axioms Suwappu.LTP.Ramp.gf256_specialization
+#print axioms Suwappu.LTP.Ramp.candidatesQ_pos
+#print axioms Suwappu.LTP.Ramp.candidatesQ_step
+#print axioms Suwappu.LTP.Ramp.candidatesQ_at_threshold
+#print axioms Suwappu.LTP.Ramp.candidatesQ_step_strict
+#print axioms Suwappu.LTP.Ramp.candidatesQ_strict_antitone

@@ -9,7 +9,7 @@ What's verified, by what tool, and what's not — for outside cryptographic revi
 | [`ANALYSIS.md`](formal/ANALYSIS.md) | (overview doc) | Methodology, attacker model, cryptographic abstractions, query list, **and recorded results as of 2026-08-16** |
 | [`etp-protocol.vp`](formal/etp-protocol.vp) | Verifpal v0.27.4 | Symbolic model of the 3-phase COMMIT / LATTICE / MATERIALIZE protocol. **Run 2026-08-16**: 2 of 4 queries verified, 2 replay findings — see below. |
 | [`verifpal-run-2026-08-16.md`](formal/verifpal-run-2026-08-16.md) | Verifpal v0.27.4 | Recorded output of the first verification run |
-| [`../formal/lean/`](../formal/lean/) | Lean 4 (core, no Mathlib) | **Machine-checked.** Corridor 7-of-9 quorum safety + liveness, constant-size commitment **and sealed-lattice-key** invariants, §6.4 bandwidth break-even, erasure k-of-n threshold consequences, access-policy algebra, 2/3-supermajority BFT bounds, both §2.1.1 test vectors recomputed in-kernel over GF(2⁸), and the §3.3.5 ramp-scheme entropy ledger (leakage/candidate-count arithmetic and the blinded-ramp share-size trade). 67 audited theorems. Gated in CI by `.github/workflows/formal.yml`. |
+| [`../formal/lean/`](../formal/lean/) | Lean 4 (core, no Mathlib) | **Machine-checked.** Corridor 7-of-9 quorum safety + liveness, constant-size commitment **and sealed-lattice-key** invariants, §6.4 bandwidth break-even, erasure k-of-n threshold consequences, access-policy algebra, 2/3-supermajority BFT bounds, both §2.1.1 test vectors recomputed in-kernel over GF(2⁸), and the §3.3.5 ramp-scheme entropy ledger (leakage/candidate-count arithmetic and the blinded-ramp share-size trade). 73 audited theorems. Gated in CI by `.github/workflows/formal.yml`. |
 
 ## Machine-checked (Lean 4)
 

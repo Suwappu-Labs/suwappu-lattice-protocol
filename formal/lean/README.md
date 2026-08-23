@@ -38,6 +38,7 @@ strength. A cold `lake build` takes seconds.
 | `leak_plus_residual` / `leak_per_shard` / `one_short_residual` | `Ltp/Ramp.lean` | §3.3.5's corrected entropy ledger: t shards leak exactly t·8 bits per byte position, each shard moves exactly one symbol of entropy, and t = k−1 leaves exactly 8 bits — pins the Theorem 7 correction (v0.2.1) the way `Bandwidth.lean` pins the ρ correction |
 | `candidates_step` / `candidates_at_threshold` / `candidates_eq_two_pow_residual` | `Ltp/Ramp.lean` | The 256^(k−t) candidate count: divided by 256 per shard, a singleton at t = k, and consistent with the entropy bound (256^(k−t) = 2^residual) — §2.1.1's k = 2 worked example (65,536 → 256 after one shard) is `decide`d in-kernel |
 | `no_blinding` / `shamir_extreme` / `blinding_costs_more` | `Ltp/Ramp.lean` | The §3.3.5 (t_p, k; n) blinded-ramp trade: LTP today is the t_p = 0 extreme (shares D/k), Shamir is t_p = k−1 (shares as large as the payload), and privacy threshold is bought monotonically with share size |
+| `candidatesQ_step_strict` / `candidatesQ_strict_antitone` / `gf256_specialization` | `Ltp/Ramp.lean` | Field-size generality: the candidate arithmetic holds over any size-q field, the GF(2⁸) theorems are the q = 256 instance, and for every q ≥ 2 each additional shard *strictly* shrinks the candidate set — the counting fact that made the pre-v0.2.1 zero-leakage claim untenable, pinned as a theorem |
 
 Plus the generic forms (`quorum_intersection_general`) so the results are
 not specific to 7-of-9, and the counting lemmas they rest on.

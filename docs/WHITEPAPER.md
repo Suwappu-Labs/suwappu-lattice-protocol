@@ -13,7 +13,7 @@
 
 | **Author** | **Version** | **Date** | **Status** | **Classification** |
 |:----------:|:-----------:|:--------:|:----------:|:------------------:|
-| Tsolmondorj Natsagdorj | 0.2.4 | 2026-08-23 | Public Draft — Request for Comments | Public |
+| Tsolmondorj Natsagdorj | 0.2.5 | 2026-08-23 | Public Draft — Request for Comments | Public |
 
 </div>
 
@@ -925,7 +925,7 @@ $\mathcal{A}$ denotes a PPT (probabilistic polynomial time) adversary, $\mathsf{
 denotes a negligible function in security parameter $\lambda$, and $\mathsf{Adv}^{X}_{\mathcal{A}}$
 denotes $\mathcal{A}$'s advantage in game $X$.
 
-**Note on theorem numbering.** The theorems in this section are numbered 3–8. Theorems 1
+**Note on theorem numbering.** The theorems in this section are numbered 3–9. Theorems 1
 and 2 are reserved for the informal Corollary (Immutability) and Remark (Availability
 Boundary) in §4.3, which are prose restatements of results proved here rather than
 independent formal results. The numbering is kept consistent so that cross-references
@@ -1419,6 +1419,62 @@ post-quantum security, while BLAKE3-256 provides ~85-bit post-quantum collision 
 (BHT bound) and 128-bit post-quantum preimage resistance (Grover bound). Closing the gap
 without relying on an external hypothesis — by binding the sealed key to its commitment record
 inside the protocol itself — is the same open item tracked in §3.3.3 and §3.3.8, not a new one.
+Theorem 9 below specifies that closure as a proof obligation for the planned revision.
+
+**Discharging the hypothesis: sealed-key context binding (planned revision).** The
+expected-identity-binding hypothesis of Theorem 8 currently lives *outside* the protocol.
+The planned sealed-key revision (§3.3.3, §3.3.8) — receiver encapsulation-key fingerprint
+and entity_id in the sealed key's AEAD associated data, a freshness nonce, and a committing
+AEAD per the §3.3.3 requirement — is designed to pull most of it inside. The following game
+and theorem make that design goal precise, so the revision can be implemented against a
+proof obligation rather than a prose intention. **They apply to the revised construction,
+not to the v1 wire format.**
+
+**Definition (SKB game — sealed-key context binding).** As TIMM, with two changes. First,
+the sealed key is the revised construction: $\text{AD} = (\mathrm{fp}(ek_R),\ \text{entity\_id},\
+\eta)$ with $\eta$ a per-transfer freshness nonce, the AEAD committing to (key, nonce,
+associated data, message) in the CMT-4 sense of [42], and the receiver rejecting any sealed
+key whose AD does not carry its own encapsulation-key fingerprint, the entity_id of the
+commitment record it resolves, and a previously-unseen $\eta$. Second — the residual trust
+anchor — the receiver is initialized with the *intended sender's verification key* $vk_S$,
+obtained once through an authenticated channel (the standard long-term-key assumption of
+authenticated key exchange [41]; the analogue of certificate pinning), and rejects any
+commitment record not signed under $vk_S$. $\mathcal{A}$ wins if the receiver accepts and
+materializes an entity that $S$ never sealed to $R$.
+
+**Theorem 9 (Sealed-Key Context Binding — for the planned revision).** For any PPT
+adversary $\mathcal{A}$ against the revised construction making at most $q_s$ transfer
+sessions:
+
+$$\mathsf{Adv}^{\text{SKB}}_{\mathcal{A}}(\lambda) \leq \mathsf{Adv}^{\text{EUF-CMA}}_{\text{ML-DSA}}(\lambda) + \mathsf{Adv}^{\text{CMT-4}}_{\text{AEAD}}(\lambda) + \mathsf{Adv}^{\text{AUTH}}_{\text{AEAD}}(\lambda) + \frac{q_s^2}{2^{|\eta|+1}}$$
+
+*Proof sketch.* A winning delivery consists of a commitment record and a sealed key that
+pass every receiver check. The record verifies under the pinned $vk_S$; if $S$ never signed
+it, $\mathcal{A}$ has produced an EUF-CMA forgery. If the record is genuine, the accepted
+sealed key's AD names $R$'s fingerprint, that record's entity_id, and a fresh $\eta$; a
+sealed key that $S$ produced for a *different* context but that is accepted in this one is
+either a single ciphertext valid under two distinct (key, nonce, AD) contexts — a CMT-4
+break of the committing AEAD — or carries a tag the sender never produced for this context
+(an AUTH forgery). A sealed key replayed verbatim from another session is rejected by the
+freshness check except on an $\eta$-collision, bounded by the birthday term. The cases are
+exhaustive: every win transcript falls into at least one. ∎
+
+**What Theorem 9 does and does not achieve.** It replaces Theorem 8's per-transfer
+expected-identity hypothesis with a *single long-term assumption*: the receiver knows which
+sender it intends to receive from. That assumption is irreducible at the protocol layer — a
+receiver with no expectation whatsoever about its counterparty cannot distinguish one honest
+transfer from another, in LTP or in any authenticated protocol; this is the general lesson
+of the identity-misbinding literature [40], [41] — but it is one key pin, once, rather than
+an out-of-band confirmation per transfer. Under that single pin and the revised
+construction, the TIMM bound becomes protocol-enforced with one added term:
+
+$$\mathsf{Adv}^{\text{TIMM}}_{\mathcal{A}}(\lambda) \leq \mathsf{Adv}^{\text{CR}}_{H} + \mathsf{Adv}^{\text{EUF-CMA}}_{\text{ML-DSA}} + \mathsf{Adv}^{\text{AUTH}}_{\text{AEAD}} + \mathsf{Adv}^{\text{IND-CCA}}_{\text{ML-KEM}} + \mathsf{Adv}^{\text{CMT-4}}_{\text{AEAD}} + \frac{q_s^2}{2^{|\eta|+1}}$$
+
+The CMT-4 term is why the §3.3.3 committing-AEAD requirement is normative rather than
+advisory: implemented over plain XChaCha20-Poly1305, $\mathsf{Adv}^{\text{CMT-4}}_{\text{AEAD}}$
+is not negligible (the scheme is CMT-insecure [42]) and Theorem 9's bound is vacuous. The
+theorem is stated here, ahead of the revision that will implement it, precisely so that the
+implementation inherits a proof obligation with no room for that mistake.
 
 #### 3.3.7 What Cannot Be Formally Proven
 
@@ -1438,7 +1494,7 @@ them, two machine-checked artifacts exist in the reference repository as of
 spirit of §3.3.7, exactly what they do not.
 
 **Lean 4 proofs** (`formal/lean/`, CI-gated, `sorry`-free with a
-negative-tested axiom audit; 67 audited theorems). Machine-checked claims
+negative-tested axiom audit; 73 audited theorems). Machine-checked claims
 that correspond to statements made in this paper:
 
 | Paper claim | Lean theorem |
@@ -1496,7 +1552,7 @@ work, per `docs/FORMAL_VERIFICATION_STATUS.md`).
 
 > **Informal Summary.** This section provides an accessible explanation of LTP's immutability
 > properties for readers who want intuition before the formalism. The authoritative security
-> definitions and game-based proofs are in §3.3 (Theorems 3–8). Formal statements, reduction
+> definitions and game-based proofs are in §3.3 (Theorems 3–9). Formal statements, reduction
 > bounds, and concrete security parameters are in §3.3; this section provides cross-references
 > and prose context only.
 
@@ -2905,6 +2961,7 @@ sufficiently large receiver population (break-even: $N \geq \rho$).
 | 0.1.0-draft | 2026-02-24 | Initial draft; reviewed by external review rounds 001–003 (formal + mathematical) and 004 (research landscape), `docs/security/audits/external/whitepaper-reviews/`. |
 | 0.1.0-draft (rev) | 2026-03-29 | Post-review corrections: test-vector arithmetic, BHT collision bound (~85-bit), cost-model expansion factor ρ = nr/k, nonce-derivation invariant, TCONF log binding, ZK-mode specification, theorem-numbering note. |
 | 0.2.0 | 2026-08-17 | Publication revision: threshold-secrecy claims conditioned per §3.3.5 throughout; erasure-coding spec re-baselined to the reference implementation (consecutive evaluation points, length-prefix framing) with regenerated test vectors — the evaluation points were re-baselined from the unimplemented powers-of-α scheme to the implemented consecutive-points scheme (α_i = i+1), test vectors regenerated from the reference implementation, superseding the §2.1.1 arithmetic checked in review rounds 001–002; the `encoding_params` `eval` label string is retained verbatim for record-hash compatibility; commitment-record size corrected; KEM-binding claim corrected to a disclosed limitation with planned mitigation; normative conflicts resolved (low-entropy × quantum threat model; extension registry created; log hash primitive unified on BLAKE3-256); disclosure paragraphs for deferred wire formats, hybrid KEM, regulatory posture, forward-secrecy caveats, key-rotation gap; machine-checked verification status section added (§3.3.8) covering the 52 Lean 4 theorems — including both §2.1.1 test vectors recomputed inside the Lean kernel — and the first recorded Verifpal run (2 confidentiality queries verified, 2 authentication replay findings disclosed with planned mitigation); literature positioning updated per the 2026-08-16 research round (X-BIND KEM-binding taxonomy, NIST IR 8547 transition posture, XChaCha20-Poly1305 standardization status); bibliography unified into a single consistent numbered style (37 references, every in-text citation resolves to exactly one entry and vice versa — previously three incompatible citation conventions coexisted and two citations, Cremers–Dax–Medinger and Schmieg, were referenced in §3.3 but absent from every reference list); FIPS 203/204, RFC 9180, NIST IR 8547, and X-Wing given first-class bibliography entries; new §8.9 positions LTP's corridor quorum against Data Availability Sampling (Al-Bassam et al., Danksharding, Hall-Andersen–Simkin–Wagner); §8.4 adds Signal's Sealed Sender as the closest KEM-bound-envelope precedent, and §8.7's constant-size-capability contribution claim is rescoped accordingly to the specific bundle rather than the underlying primitive; missing §8.8 TOC entry restored. |
+| 0.2.5 | 2026-08-23 | Theorem 9 added and the ramp arithmetic generalized. §3.3.6: new SKB game (sealed-key context binding) and Theorem 9, stating the planned sealed-key revision's proof obligation: with receiver-fingerprint + entity_id + freshness nonce in the AEAD associated data, a CMT-4 committing AEAD [42], and a single long-term sender-key pin at the receiver (the standard AKE long-term-key assumption [41]), Adv^SKB ≤ Adv^EUF-CMA + Adv^CMT-4 + Adv^AUTH + q_s²/2^(|η|+1) — replacing Theorem 8's per-transfer expected-identity hypothesis with one key pin, and making the TIMM bound protocol-enforced with an added CMT-4 term. The theorem is stated for the revised construction, not the v1 wire format, and makes explicit that over plain (non-committing) XChaCha20-Poly1305 its bound is vacuous — the §3.3.3 committing-AEAD requirement is thereby load-bearing, not advisory. Theorem-numbering note updated to 3–9. Lean: `Ltp/Ramp.lean` extended with field-size generality (6 theorems, total 67 → 73) — the candidate arithmetic over any size-q field with the GF(2⁸) versions as the q = 256 instance (`gf256_specialization`), and strict antitonicity for every q ≥ 2 (`candidatesQ_step_strict`, `candidatesQ_strict_antitone`): each additional shard strictly shrinks the candidate set, the counting fact behind the v0.2.1 Theorem 7 correction, now a pinned theorem rather than a correction note. |
 | 0.2.4 | 2026-08-23 | The §3.3.5 ramp-scheme arithmetic joins the machine-checked suite. New Lean module `formal/lean/Ltp/Ramp.lean` (15 theorems, bringing the audited total from 52 to 67) pins the quantitative content of the v0.2.1 Theorem 7 correction the way `Bandwidth.lean` pins the review-001 ρ correction: the entropy ledger (leaked + residual = joint entropy, exactly one symbol moved per observed shard — `leak_plus_residual`, `leak_per_shard`), the sharp edge cases (residual 0 exactly at t = k, exactly 8 bits at t = k−1 — `residual_zero_iff`, `one_short_residual`), the 256^(k−t) candidate counts with the §2.1.1 worked example decided in-kernel (65,536 → 256 after one shard — `candidates_step`, `worked_example_pairs`, `worked_example_one_shard`), the candidates/entropy consistency identity 256^(k−t) = 2^residual (`candidates_eq_two_pow_residual`), and the v0.2.3 blinded-ramp trade (LTP at t_p = 0, Shamir at t_p = k−1, share size monotone in t_p — `no_blinding`, `shamir_extreme`, `blinding_costs_more`). The probabilistic step of Theorem 7 (equal likelihood of surviving candidates under a uniform prior) remains pen-and-paper and is flagged as such in §3.3.5 and the module header. §3.3.8 table extended; theorem counts updated across the repository docs. |
 | 0.2.3 | 2026-08-22 | Literature-grounded strengthening of the §3.3 formal proofs. Theorem 4 (§3.3.2, Shard Integrity) bound tightened from the conservative sum Adv^SPR + Adv^AUTH to the provable minimum min(Adv^SPR, Adv^AUTH), via paired reductions from a single winning transcript (the win condition is a conjunction, for which a union bound was the wrong tool); the earlier sum bound is retained as an explicitly-loose historical note. §3.3.5: the erasure layer is now identified by its standard secret-sharing name — a (0, k; n) ramp scheme (Blakley–Meadows [39]) with the generic linear ramp leakage profile — placing Theorem 7's entropy bound in its taxonomic context and recording the (t_p, k; n) blinded-ramp upgrade path. §3.3.6: the fourth attack path is identified as an identity-misbinding / unknown key-share attack (Blake-Wilson–Menezes [40]; Krawczyk's SIGMA analysis [41]), with Theorem 8's expected-identity-binding hypothesis recognized as that literature's standard countermeasure. §3.3.3: new committing-AEAD requirement on the planned sealed-key mitigation — XChaCha20-Poly1305 is CMT-insecure (Bellare–Hoang [42]) and non-committing AEADs enable partitioning-oracle attacks (Len–Grubbs–Ristenpart [43]), so AAD binding alone cannot discharge the misbinding findings against an adversary who knows the AEAD keys; the revision must add an explicit commitment to the AEAD inputs (propagated to §3.3.8's mitigation summary). §3.3.1: cost-model caveat on the ~85-bit BHT collision figure per Bernstein's collision-search cost analysis [44] — the query-complexity bound is retained as the conservative planning number. References [39]–[44] added. |
 | 0.2.2 | 2026-08-21 | Consistency pass over the formal-proof surfaces, aligning the prose with the machine-checked Lean statements. §3.3.8: the sealed-key replay finding's cross-reference corrected to §3.3.3 — the section that actually discloses the KEM ciphertext-binding gap; "§3.3.2" was a typo (§3.3.2 is Shard Integrity). §6.4: the bandwidth break-even restated in the machine-checked form — the commit overhead D·ρ no longer exceeds the aggregate delivered volume D·N, equivalently B_LTP(N) ≤ 2·B_direct(N), exactly when N ≥ ρ (`breakeven_iff`, `formal/lean/Ltp/Bandwidth.lean`) — replacing the strict "break-even at N > 6" phrasing that contradicted §3.3.8's machine-checked "N ≥ ρ" table row; the amortization-to-parity claim tightened from "N > ρ" to "N ≫ ρ" with an explicit note that at N slightly above ρ the total-bytes ratio is still nearly 2×. Appendix A: break-even aligned to the same convention — Earth-upload parity at exactly N = ρ = 6 receivers, strict savings beyond — in both the worked Mars example and the closing caveat. No theorem statements, games, bounds, or parameters changed. |
@@ -2912,4 +2969,4 @@ sufficiently large receiver population (break-even: $N \geq \rho$).
 
 ---
 
-*LTP v0.2.4 — Lattice Transfer Protocol*
+*LTP v0.2.5 — Lattice Transfer Protocol*
