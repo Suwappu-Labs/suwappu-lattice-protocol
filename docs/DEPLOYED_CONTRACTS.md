@@ -80,6 +80,39 @@ The deployer wallet deployed all contracts on both chains. After deployment, adm
 
 ---
 
+## Ethereum Sepolia — Chain ID `11155111`
+
+Deployed 2026-08-24 as a second **living** leg after the original SUWAPPU
+Testnet leg (chain `103115120`) was retired with its AWS infrastructure. This
+is the re-legging target from
+[`docs/plans/2026-08-24-testnet-cross-chain-relegging.md`](plans/2026-08-24-testnet-cross-chain-relegging.md);
+deployed with `scripts/deploy_testnet_leg.sh` +
+`scripts/register_signer_leg.sh`. Deployer/operator keys are custodied in
+Turnkey (org `5cf56ed5-…`, private-key ids `a5f1eb39-…` deployer /
+`047f429f-…` operator).
+
+### Registry (v6, deployed block 11,553,962)
+
+| Contract | Address |
+|---|---|
+| LTPAnchorRegistry (Implementation) | `0x4896da1439e679ed56cfb8c773e3b57cadfd5c9c` |
+| ERC1967Proxy | `0xfd66b836cbe118001156c006e05cfe4432733cd3` |
+| LTPMultiSig (2-of-2) | `0xda3781fa161caaa824d7c478638d427ba5676664` |
+| TimelockController (60s delay) | `0x42c4017cee96b19c467dcf44e926da365cd0499c` |
+
+### Bridge (deployed block 11,553,963)
+
+| Contract | Address |
+|---|---|
+| OptimisticBridgeChallenge | `0x0af67a32d2578f57397f0022bff9ba2647d66b58` |
+| ZKBridgeVerifier (`MODE_SIMULATED`) | `0x4d687361cc02e134c70d1a0d3e2e9ee7cc51f1fa` |
+
+Registry admin is the Timelock (verified on-chain: `admin() == 0x42c4017c…`).
+Bridge-operator signer `0x4212a67b…64ed2541` registered through the full
+MultiSig → Timelock governance path.
+
+---
+
 ## Governance Architecture (Both Chains)
 
 ```
@@ -127,7 +160,7 @@ To regenerate the ABI after a contract change, run `forge build` in
 
 ---
 
-**Total across both chains: 53 on-chain transactions, all status `0x1` (success).**
+**Live legs after the 2026-08-24 re-legging: Base Sepolia (84532) + Ethereum Sepolia (11155111). The original SUWAPPU Testnet leg (103115120) is retired (AWS infra torn down).**
 
 ---
 

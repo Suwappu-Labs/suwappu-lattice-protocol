@@ -1,0 +1,21 @@
+{
+  "chain_label": "ethereum_sepolia",
+  "chain_id": 11155111,
+  "rpc_url": "https://ethereum-sepolia-rpc.publicnode.com",
+  "explorer_url": "https://sepolia.etherscan.io",
+  "deployer": "0xdC517061243D7659b5CeeCCAB5E1269cE3dcD1F1",
+  "multisig_operator": "0xC830218082187A693AA6aa735528Cf9daE4d1a94",
+  "contracts": {
+    "LTPAnchorRegistry_implementation": "0x4896da1439e679ed56cfb8c773e3b57cadfd5c9c",
+    "ERC1967Proxy": "0xfd66b836cbe118001156c006e05cfe4432733cd3",
+    "LTPMultiSig": "0xda3781fa161caaa824d7c478638d427ba5676664",
+    "TimelockController": "0x42c4017cee96b19c467dcf44e926da365cd0499c",
+    "OptimisticBridgeChallenge": "0x0af67a32d2578f57397f0022bff9ba2647d66b58",
+    "ZKBridgeVerifier": "0x4d687361cc02e134c70d1a0d3e2e9ee7cc51f1fa"
+  },
+  "blocks": {
+    "registry": "11553962",
+    "bridge": "11553963"
+  },
+  "deployed_at": "2026-08-24T01:56:38Z"
+}
