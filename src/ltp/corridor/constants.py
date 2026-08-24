@@ -59,3 +59,12 @@ DOMAIN_TAG_DKG_COMMIT = b"LTP-DKG-COMMIT-V1"
 # helper signs under py_ecc's `G2ProofOfPossession` DST instead, so the
 # corridor surface uses this constant explicitly when calling into blst.
 BLS_CORRIDOR_DST = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_"
+
+# Canonical corridor roster digest — see `membership.py`. Unlike the tags
+# above this one has NO counterpart in `suwappu-dag/crates/suwappu-ltp` yet:
+# roster assembly is currently a Python-side concern, and the digest is used
+# for operators to confirm agreement out-of-band rather than on the wire. It
+# lives here so `domain_tags.py` keeps its single-source-of-truth claim
+# (LTP-A-021). If roster assembly ever moves onto the wire, this tag is the
+# one the Rust side must adopt verbatim.
+DOMAIN_TAG_CORRIDOR_ROSTER = b"LTP-CORRIDOR-ROSTER-V1"

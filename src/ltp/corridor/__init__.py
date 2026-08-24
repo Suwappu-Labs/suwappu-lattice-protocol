@@ -18,6 +18,7 @@ from .attestation import (
     Corridor,
     CorridorAttestation,
     CorridorId,
+    CorridorPopVerificationFailed,
     InvalidSignature,
     LtpError,
     SuperNode,
@@ -89,6 +90,17 @@ from .envelope import (
     EnvelopeSizeError,
     OnChainCommitment,
 )
+from .membership import (
+    CorridorMembershipError,
+    CorridorRegistry,
+    DuplicateAuthority,
+    DuplicateBlsKey,
+    MalformedSuperNode,
+    RosterFull,
+    RosterNotReady,
+    WrongCorridor,
+    build_pop_message,
+)
 from .state_anchor import (
     GENESIS_PARENT,
     AuthScheme,
@@ -133,6 +145,7 @@ __all__ = [
     "UnknownWitness",
     "InvalidSignature",
     "AggregateVerificationFailed",
+    "CorridorPopVerificationFailed",
     # bls
     "keygen",
     "corridor_sign",
@@ -140,6 +153,16 @@ __all__ = [
     "corridor_aggregate_signatures",
     "corridor_aggregate_verify",
     "CorridorBlsBackendMissing",
+    # membership
+    "CorridorRegistry",
+    "CorridorMembershipError",
+    "WrongCorridor",
+    "DuplicateAuthority",
+    "DuplicateBlsKey",
+    "MalformedSuperNode",
+    "RosterNotReady",
+    "RosterFull",
+    "build_pop_message",
     # da
     "Cid",
     "DaSla",

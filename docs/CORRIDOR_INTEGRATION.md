@@ -19,6 +19,47 @@ These constants and digest constructions are part of the public surface (see [`S
 
 Both implementations validate these sizes at the wire boundary. A signature shorter than 96 bytes never reaches the verifier in either language.
 
+## Assembling the corridor
+
+Every snippet below starts from "suppose `corridor` is the 9-member super-node
+set". Getting to that object is its own problem: nine operators, nine BLS
+keypairs, and no agreement yet on who is in. `src/ltp/corridor/membership.py`
+is the data layer for that step — transport-agnostic, so enrollments can arrive
+over gossip, a REST endpoint, or a file in a git repo.
+
+```python
+from src.ltp.corridor.membership import CorridorRegistry, build_pop_message
+from src.ltp.corridor.bls import corridor_sign, keygen
+
+# Each operator, on their own machine, once:
+pk, sk = keygen()
+pop = corridor_sign(sk, build_pop_message(pk))   # proves they hold sk
+# ... then publishes (authority_id, corridor_id, pk, pop) however they like.
+
+# Each node, independently, as enrollments arrive:
+registry = CorridorRegistry(corridor_id=7)
+for node in incoming_super_nodes:
+    registry.enroll(node)       # raises on a bad, duplicate, or foreign member
+
+print(registry.roster_digest().hex())   # compare this with your peers
+corridor = registry.finalize()          # exactly 9, canonically ordered
+```
+
+`enroll` rejects, and leaves the registry untouched, when the super-node targets
+a different corridor, has a wrong-length key or PoP, repeats an already-enrolled
+authority id, repeats an already-enrolled **BLS public key**, or presents a PoP
+that does not verify. The BLS-key check is the one with no signature-level
+analogue: two authority ids sharing one key means a single operator holds two of
+nine seats, so a "7-of-9" quorum can be reached by six real parties. Every
+signature in that attestation is valid; the threshold is the thing that broke.
+
+`roster_digest()` is a domain-separated SHA3-256 over `(corridor_id, count,
+(authority, pubkey)*)` in canonical order. Read it aloud on a call, post it, or
+diff it in CI — if two operators' digests differ, they do not have the same
+corridor, and that is much cheaper to discover before anything is signed.
+Members are sorted by authority id before finalization, so enrollment order
+cannot make two honest nodes disagree.
+
 ## Python — verify an attestation in process
 
 ```python
@@ -109,6 +150,7 @@ The current on-chain contract does **not** re-verify the BLS aggregate; it trust
 - **DST mismatch**: if you call `blst.P2.hash_to(digest)` without the explicit `BLS_DST` argument, the Rust verifier silently produces a 96-byte signature that will never cross-validate with Python. Always pass the DST. See the captured skill `bls-dst-mismatch-cross-language-interop` for the failure signature.
 - **Length-prefixed digest**: the SHA3-256 helper prepends `len(tag)` as a 4-byte big-endian length before the tag bytes. A Python or Rust port that omits the length prefix produces a different digest that will fail verification with no useful error message. See `src/ltp/corridor/digest.py` for the canonical implementation.
 - **Sorted signer arrays**: the `signers` JSON array MUST be sorted ascending. Both serializers emit it sorted; both verifiers reject unsorted input. Be careful if you re-emit JSON through a tool that doesn't preserve order.
+- **PoP is checked at the door, not at verify time**: `Corridor.verify_pops()` exists but is opt-in, and `verify_attestation` does not call it. If you build a `Corridor` by hand rather than through `CorridorRegistry`, nothing has checked that any member actually holds the secret key for the public key it advertises — that is the rogue-key attack LTP-A-015 covers. `CorridorRegistry.enroll` verifies the PoP before admitting a member, and `finalize()` re-runs `verify_pops()` on the assembled set.
 - **Hex vs serde-default**: if your Rust side uses `#[serde(with = "hex")]`, use the canonical Python helpers. If it doesn't, use the `*_to_serde_default_dict` / `*_from_serde_default_dict` mirrors.
 
 ## Reference implementations

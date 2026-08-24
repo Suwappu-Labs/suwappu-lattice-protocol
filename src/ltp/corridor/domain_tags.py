@@ -17,6 +17,7 @@ from .constants import (
     DOMAIN_TAG_ATTEST,
     DOMAIN_TAG_CID,
     DOMAIN_TAG_CORRIDOR_POP,
+    DOMAIN_TAG_CORRIDOR_ROSTER,
     DOMAIN_TAG_DID_STARK,
     DOMAIN_TAG_DKG_COMMIT,
 )
@@ -34,6 +35,7 @@ ALL_DOMAIN_TAGS: tuple[bytes, ...] = (
     DOMAIN_TAG_CID,
     DOMAIN_TAG_DID_STARK,
     DOMAIN_TAG_CORRIDOR_POP,
+    DOMAIN_TAG_CORRIDOR_ROSTER,
     DOMAIN_TAG_DKG_COMMIT,
     # BLS_CORRIDOR_DST is a hash-to-curve DST, not a SHA3 domain tag, so
     # technically a different namespace — but we include it here so the
