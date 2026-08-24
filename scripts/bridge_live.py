@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """
-Live cross-chain bridge execution — SUWAPPU Testnet <-> Base Sepolia.
+Live cross-chain bridge execution between any two deployed LTP legs.
 
 Runs LiveBridge.transfer() against both live RPCs in both directions,
-capturing full TX hashes and writing results to JSON.
+capturing full TX hashes and writing results to JSON. Legs are selected by
+env-var prefix (defaults preserve the original SUWAPPU <-> Base Sepolia pair).
 
 Usage:
-    # Both directions
+    # Both directions, default legs
     python scripts/bridge_live.py --direction both --output bridge_results.json
 
-    # Single direction
-    python scripts/bridge_live.py --direction suwappu-to-base
-    python scripts/bridge_live.py --direction base-to-suwappu
+    # New legs deployed with scripts/deploy_testnet_leg.sh, e.g.
+    # Arbitrum Sepolia <-> Base Sepolia:
+    python scripts/bridge_live.py \
+        --l1-prefix ARBITRUM_SEPOLIA --l2-prefix BASE_SEPOLIA --direction both
+
+    # Env vars per leg: <PREFIX>_RPC_URL, <PREFIX>_ANCHOR_REGISTRY,
+    # <PREFIX>_OPERATOR_KEY, <PREFIX>_CHAIN_ID
 
 Requires:
     - contracts/.env with RPC URLs, operator keys, registry addresses
@@ -117,14 +122,24 @@ def create_protocol(keypair_path: str = "") -> tuple[LTPProtocol, KeyPair, KeyRe
 
 
 def build_chain_config(env: dict, prefix: str, chain_id: int, label: str) -> ChainConfig:
-    """Build ChainConfig from env vars with a given prefix."""
-    rpc_key = f"{prefix}_RPC_URL" if prefix != "BASE_SEPOLIA" else "BASE_SEPOLIA_RPC_URL"
-    registry_key = f"{prefix}_ANCHOR_REGISTRY" if prefix == "SUWAPPU" else "L2_PROXY_ADDRESS"
-    operator_key_var = f"{prefix}_OPERATOR_KEY" if prefix == "SUWAPPU" else "L2_DEPLOYER_KEY"
+    """Build ChainConfig from env vars with a given prefix.
+
+    Generic scheme (any leg): <PREFIX>_RPC_URL, <PREFIX>_ANCHOR_REGISTRY,
+    <PREFIX>_OPERATOR_KEY. Legacy Base Sepolia names (L2_PROXY_ADDRESS,
+    L2_DEPLOYER_KEY) are kept as fallbacks so existing .env files keep working.
+    """
+    rpc_key = f"{prefix}_RPC_URL"
+    registry_key = f"{prefix}_ANCHOR_REGISTRY"
+    operator_key_var = f"{prefix}_OPERATOR_KEY"
 
     rpc_url = env.get(rpc_key, "")
     registry = env.get(registry_key, "")
     op_key = env.get(operator_key_var, "")
+
+    # Legacy fallbacks for the original Base Sepolia leg
+    if prefix == "BASE_SEPOLIA":
+        registry = registry or env.get("L2_PROXY_ADDRESS", "")
+        op_key = op_key or env.get("L2_DEPLOYER_KEY", "")
 
     if not rpc_url or not registry or not op_key:
         raise ValueError(
@@ -249,9 +264,22 @@ def main():
     parser = argparse.ArgumentParser(description="Live cross-chain bridge execution")
     parser.add_argument(
         "--direction",
-        choices=["suwappu-to-base", "base-to-suwappu", "both"],
+        choices=["suwappu-to-base", "base-to-suwappu", "l1-to-l2", "l2-to-l1", "both"],
         default="both",
-        help="Bridge direction (default: both)",
+        help="Bridge direction (default: both). suwappu-to-base/base-to-suwappu are "
+        "legacy aliases for l1-to-l2/l2-to-l1.",
+    )
+    parser.add_argument(
+        "--l1-prefix",
+        default="SUWAPPU",
+        help="Env-var prefix for the first leg, e.g. ARBITRUM_SEPOLIA reads "
+        "ARBITRUM_SEPOLIA_RPC_URL / _ANCHOR_REGISTRY / _OPERATOR_KEY / _CHAIN_ID "
+        "(default: SUWAPPU)",
+    )
+    parser.add_argument(
+        "--l2-prefix",
+        default="BASE_SEPOLIA",
+        help="Env-var prefix for the second leg (default: BASE_SEPOLIA)",
     )
     parser.add_argument(
         "--output",
@@ -274,12 +302,23 @@ def main():
     env = load_env(args.env_file)
     logger.info("Loaded %d env vars from %s", len(env), args.env_file)
 
-    # Build chain configs
-    suwappu_config = build_chain_config(env, "SUWAPPU", 103115120, "suwappu_testnet")
-    base_config = build_chain_config(env, "BASE_SEPOLIA", 84532, "base_sepolia")
+    # Build chain configs. Chain ID comes from <PREFIX>_CHAIN_ID, with fallbacks
+    # for the two historic legs (SUWAPPU testnet, Base Sepolia).
+    legacy_chain_ids = {"SUWAPPU": 103115120, "BASE_SEPOLIA": 84532}
 
-    logger.info("SUWAPPU Testnet: %s → %s", suwappu_config.rpc_url, suwappu_config.registry_address)
-    logger.info("Base Sepolia: %s → %s", base_config.rpc_url, base_config.registry_address)
+    def leg_config(prefix: str) -> ChainConfig:
+        chain_id = int(env.get(f"{prefix}_CHAIN_ID", legacy_chain_ids.get(prefix, 0)))
+        if not chain_id:
+            raise ValueError(f"{prefix}_CHAIN_ID missing from env file")
+        return build_chain_config(env, prefix, chain_id, prefix.lower())
+
+    suwappu_config = leg_config(args.l1_prefix)
+    base_config = leg_config(args.l2_prefix)
+
+    logger.info("L1 %s: %s → %s", args.l1_prefix, suwappu_config.rpc_url,
+                suwappu_config.registry_address)
+    logger.info("L2 %s: %s → %s", args.l2_prefix, base_config.rpc_url,
+                base_config.registry_address)
 
     # Create protocol with registered keypair
     protocol, operator_kp, kr = create_protocol(keypair_path=args.keypair)
@@ -288,24 +327,24 @@ def main():
     results = {
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "deployer": "0xcBFDDCb830eE902248F6d1b0A0C64f6e4E35b8E9",
-        "suwappu_registry": suwappu_config.registry_address,
-        "base_registry": base_config.registry_address,
+        "l1_prefix": args.l1_prefix,
+        "l2_prefix": args.l2_prefix,
+        "l1_registry": suwappu_config.registry_address,
+        "l2_registry": base_config.registry_address,
         "transfers": [],
     }
 
     nonce = 1
+    fwd = f"{suwappu_config.label}_to_{base_config.label}"
+    rev = f"{base_config.label}_to_{suwappu_config.label}"
 
-    if args.direction in ("suwappu-to-base", "both"):
-        r = execute_bridge(
-            "suwappu_to_base", protocol, operator_kp, suwappu_config, base_config, nonce
-        )
+    if args.direction in ("suwappu-to-base", "l1-to-l2", "both"):
+        r = execute_bridge(fwd, protocol, operator_kp, suwappu_config, base_config, nonce)
         results["transfers"].append(r)
         nonce += 1
 
-    if args.direction in ("base-to-suwappu", "both"):
-        r = execute_bridge(
-            "base_to_suwappu", protocol, operator_kp, base_config, suwappu_config, nonce
-        )
+    if args.direction in ("base-to-suwappu", "l2-to-l1", "both"):
+        r = execute_bridge(rev, protocol, operator_kp, base_config, suwappu_config, nonce)
         results["transfers"].append(r)
 
     # Write results
