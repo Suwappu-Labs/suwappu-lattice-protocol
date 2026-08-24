@@ -152,6 +152,8 @@ ML-DSA-65 · BLAKE3 · Certificate Transparency · Reed-Solomon coding
 **Appendices**
 
 - [Appendix A: High-Latency Link Optimization (Thought Experiment)](#appendix-a-high-latency-link-optimization-thought-experiment)
+- [Appendix B: Protocol Parameters](#appendix-b-protocol-parameters) — every tunable, with its live on-chain value
+- [Appendix C: Disclaimer](#appendix-c-disclaimer)
 - [Revision History](#revision-history)
 
 ---
@@ -221,11 +223,11 @@ row describes something that exists in
 
 ### How it flows
 
-- **Sender → commitment network.** The sender shards the entity, encrypts, and distributes. The payload never travels sender→receiver.
-- **Network → commitment log.** Each commitment is appended to the Merkle log; the operator publishes a signed tree head.
-- **Log → registry.** The bridge operator anchors a commitment on-chain: `anchorDigest`, `merkleRoot`, `signerVkHash`, `sequence`.
-- **Registry ⇄ registry.** The same entity can be anchored on more than one chain. Each registry stamps `targetChainId` from its own `block.chainid`, so an anchor from one chain cannot be replayed onto another.
-- **Network → receiver.** The receiver decapsulates the lattice key, fetches any `k` shards, and reconstructs. Verification is against the EntityID, so a lying node is caught by arithmetic, not by reputation.
+- **Sender → commitment network.** The sender shards the entity, encrypts each shard, and distributes. The payload never travels sender→receiver. This is the whole point: the direct path carries a key, not a file.
+- **Network → commitment log.** Every commitment is appended to the Merkle log, and the operator publishes a signed tree head. An operator who forks the log signs two heads for one tree, which is exactly the evidence that convicts them.
+- **Log → registry.** The bridge operator anchors on-chain: `anchorDigest`, `merkleRoot`, `signerVkHash`, `sequence`. Sequence is monotonic per signer, so a replayed or reordered anchor is rejected by the contract, not by a watcher.
+- **Registry ⇄ registry.** The same entity can be anchored on more than one chain. Each registry stamps `targetChainId` from its own `block.chainid`, never from the caller — so an anchor minted for one leg is arithmetically invalid on another. Cross-chain replay is closed by construction, not by policy.
+- **Network → receiver.** The receiver decapsulates the lattice key, fetches any `k` shards from the nearest nodes, and reconstructs. The result is checked against the EntityID. A lying node is caught by a hash, not by reputation.
 
 ### What this does not do yet
 
@@ -237,7 +239,10 @@ properties.
 - **Governance is 2-of-2 with a 60-second Timelock, and bonds are zero.** That is a testnet posture. The v7 hardening (Byzantine threshold, 24-hour delay, production lock) is written but not deployed anywhere.
 - **ZK transfer mode is not post-quantum.** See the warning above.
 
-Live deployments, addresses, and the demonstrated cross-chain anchor pair are in
+Every tunable behind these claims — bonds, delays, thresholds, shard counts — is
+listed with its live on-chain value in
+[Appendix B: Protocol Parameters](#appendix-b-protocol-parameters). Live
+deployments, addresses, and the demonstrated cross-chain anchor pair are in
 [`DEPLOYED_CONTRACTS.md`](DEPLOYED_CONTRACTS.md). The trust model is dissected in
 [`BRIDGE_TRUST_MODEL.md`](BRIDGE_TRUST_MODEL.md).
 
@@ -2844,6 +2849,69 @@ replication to Mars still traverses the 20-minute link. The advantage requires p
 Mars-local commitment nodes, which is an infrastructure deployment decision, not a protocol
 guarantee. The scenario is meaningful only when the commit cost is amortized across a
 sufficiently large receiver population (break-even: $N > \rho$).
+
+---
+
+## Appendix B: Protocol Parameters
+
+Every tunable the protocol actually has, in one table. Two provenance markers:
+
+- **live** — read from the deployed contract on Ethereum Sepolia (`11155111`) on 2026-08-24 with `cast call`. Base Sepolia carries the same values.
+- **source** — a constant or default in this repository; cited by file and line.
+
+Nothing here is a target or a plan. Where a value is weaker than it should be for
+production, the table says so in the same row rather than in a footnote.
+
+### On-chain
+
+| Parameter | Value | Provenance | Note |
+|---|---|---|---|
+| Registry `version()` | `6` | live | Same implementation bytecode on both legs. |
+| `MAX_BATCH_SIZE` | `100` | live · `LTPAnchorRegistry.sol:27` | Upper bound on `batchAnchor` length. |
+| MultiSig threshold | `2` of `2` | live | **Testnet posture.** One lost key halts governance; one compromised key is half of quorum. v7 raises this to `⌈N/2⌉+1`. |
+| Timelock `getMinDelay()` | `60` seconds | live | **Testnet posture.** Too short for a human to react to a malicious upgrade. v7 floor is 24 hours. |
+| `challengePeriod` | `3600` seconds | live | The window in which a fraudulent anchor can be disputed. Mainnet floor in `DeployMainnet.s.sol` is 24 h; recommended 48–72 h. |
+| `minOperatorBond` | `0` | live | **Nothing is at stake.** A dishonest operator forfeits nothing, so the optimistic path currently rests on watchfulness, not on economics. |
+| `minChallengerBond` | `0` | live | Challenging is free, which is the one direction in which a zero bond is harmless. |
+| `verificationMode` | `0` (`MODE_SIMULATED`) | live · `ZKBridgeVerifier.sol:26` | Not a proof system. See §3.2.4 and the honesty note in [The entities](#the-entities). |
+| Signer rotation grace cap | `7` days | source · `LTPAnchorRegistry.sol:312` | Enforced by `require(gracePeriod <= 7 days)`, not merely documented. Bounds how long a rotated-out key stays valid for in-flight anchors. |
+| Entity states | `0`–`5` | source · `LTPAnchorRegistry.sol:19-24` | `UNKNOWN → COMMITTED → ANCHORED → MATERIALIZED`, plus `DISPUTED`, `DELETED`. |
+| `targetChainId` | `block.chainid` | source · `LTPAnchorRegistry.sol` | Stamped by the contract, never supplied by the caller. This is what makes an anchor non-replayable across legs. |
+
+### Off-chain
+
+| Parameter | Value | Provenance | Note |
+|---|---|---|---|
+| Erasure coding `n` | `8` | source · `protocol.py:111` | Total shards emitted per entity. |
+| Erasure coding `k` | `4` | source · `protocol.py:112` | Shards required to reconstruct. Losing `n−k = 4` loses nothing. |
+| ML-KEM-768 ciphertext | `1088` B | source · `primitives.py:45` | The dominant term in the sealed key. |
+| ML-KEM-768 encapsulation key | `1184` B | source · `primitives.py:43` | |
+| ML-KEM-1024 ciphertext | `1568` B | source · `primitives.py:48` | Level 5 option. |
+| Canonical hash | SHA3-256 | source · `primitives.py` | On-chain and EntityID surface. |
+| Internal hash | BLAKE3-256 | source · `primitives.py` | Never crosses the on-chain boundary — see §1 on dual-lane hashing. |
+| Signature | ML-DSA-65 | source · `commitment.py:479` | Signs commitment records and tree heads. |
+
+**Reading the two postures together.** A 2-of-2 MultiSig, a 60-second Timelock,
+and zero bonds are individually defensible on a testnet and jointly unsuitable
+for value. They are listed together here so that no reader has to assemble that
+conclusion from four separate sections.
+
+---
+
+## Appendix C: Disclaimer
+
+This document describes a protocol under active development, and the deployments
+it references are testnets.
+
+- **No live deployment is production-hardened.** Every leg runs a 2-of-2 MultiSig, a 60-second Timelock, zero bonds, and a simulated ZK verifier. The v7 hardening exists in source and is deployed nowhere.
+- **Do not move value across these bridges.** They exist to be tested and attacked, not to settle anything.
+- **Testnet keys are testnet keys.** The keypairs listed in [`DEPLOYED_CONTRACTS.md`](DEPLOYED_CONTRACTS.md) are disposable and are documented so the deployments are auditable, not because they are secured to a production standard.
+- **Formal results are scoped.** §3.3 states precisely what is proven, what is machine-checked (52 Lean 4 theorems, §3.3.8), and what is not provable. Two theorems were corrected after an independent audit in v0.2.1 — see the Revision History. Read §3.3.7 before relying on any security claim.
+- **ZK transfer mode is not post-quantum.** It uses Groth16 over BLS12-381 and must not be used against a quantum adversary. See the warning after the Abstract.
+- **Nothing here is an offer, a security, or investment advice.**
+
+If a claim in this document ever contradicts the behaviour of the deployed
+contracts, the contracts are correct and this document is a bug. Report it.
 
 ---
 
