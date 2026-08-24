@@ -1,0 +1,21 @@
+{
+  "chain_label": "tempo_testnet",
+  "chain_id": 42431,
+  "rpc_url": "https://rpc.testnet.tempo.xyz",
+  "explorer_url": "https://explore.tempo.xyz",
+  "deployer": "0xdC517061243D7659b5CeeCCAB5E1269cE3dcD1F1",
+  "multisig_operator": "0xC830218082187A693AA6aa735528Cf9daE4d1a94",
+  "contracts": {
+    "LTPAnchorRegistry_implementation": "0x076a2a8669652fd176a510d0b2b19844f1be758d",
+    "ERC1967Proxy": "0x76e9ec05745ce767e0d6f1c5f60980436a2894f6",
+    "LTPMultiSig": "0x7a4efae5f92327971fdcc3fa14ad32962479c062",
+    "TimelockController": "0x929267cdd128c38083e8a4d0a01d02b5c5395bef",
+    "OptimisticBridgeChallenge": "0x47012e38abe97bcbc0e560e04758e549ce9bc4f9",
+    "ZKBridgeVerifier": "0x80cf135807c62146584e1c9af33fda684f72ff75"
+  },
+  "blocks": {
+    "registry": "32323752",
+    "bridge": "32323783"
+  },
+  "deployed_at": "2026-08-24T22:06:00Z"
+}

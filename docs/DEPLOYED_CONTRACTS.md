@@ -7,7 +7,7 @@
 
 ## Live legs at a glance
 
-The bridge is legged on **two live chains**. Every leg runs the same stack:
+The bridge is legged on **three live chains**. Every leg runs the same stack:
 `LTPAnchorRegistry` (UUPS proxy) + `LTPMultiSig` (2-of-2) + `TimelockController`,
 plus the `OptimisticBridgeChallenge` / `ZKBridgeVerifier` pair.
 
@@ -15,10 +15,13 @@ plus the `OptimisticBridgeChallenge` / `ZKBridgeVerifier` pair.
 |---|---|---|---|---|
 | Base Sepolia | `84532` | `0x79eF1B7914f98C5C1404617449AB1f377c475996` | v6 | **Live** |
 | Ethereum Sepolia | `11155111` | `0xfd66b836cbe118001156c006e05cfe4432733cd3` | v6 | **Live** (deployed 2026-08-24) |
+| Tempo testnet ("moderato") | `42431` | `0x76e9ec05745ce767e0d6f1c5f60980436a2894f6` | v6 | **Live** (deployed 2026-08-24) |
 | SUWAPPU Testnet | `103115120` | `0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4` | v5 | **Retired** — RPC gone with the AWS teardown |
 
-A cross-chain anchor pair has been demonstrated across the two live legs — see
-[Verified cross-chain anchor pair](#verified-cross-chain-anchor-pair) below.
+A cross-chain anchor pair has been demonstrated across Ethereum Sepolia and Base
+Sepolia — see [Verified cross-chain anchor pair](#verified-cross-chain-anchor-pair)
+below. On the Tempo leg an `entityIdHash` has additionally been carried as the
+memo of a real TIP-20 payment and resolved back to its anchor.
 
 ---
 
@@ -27,8 +30,8 @@ A cross-chain anchor pair has been demonstrated across the two live legs — see
 | Role | Address | Scope |
 |---|---|---|
 | Deployer (original) | `0xcBFDDCb830eE902248F6d1b0A0C64f6e4E35b8E9` | Base Sepolia, SUWAPPU Testnet (retired) |
-| Deployer (2026-08 re-legging) | `0xdC517061243D7659b5CeeCCAB5E1269cE3dcD1F1` | Ethereum Sepolia |
-| MultiSig owner 2 / operator (2026-08 re-legging) | `0xC830218082187A693AA6aa735528Cf9daE4d1a94` | Ethereum Sepolia |
+| Deployer (2026-08 re-legging) | `0xdC517061243D7659b5CeeCCAB5E1269cE3dcD1F1` | Ethereum Sepolia, Tempo testnet |
+| MultiSig owner 2 / operator (2026-08 re-legging) | `0xC830218082187A693AA6aa735528Cf9daE4d1a94` | Ethereum Sepolia, Tempo testnet |
 | Bridge Operator VK Hash | `0x4212a67b46dd5fea793af0b980911ab6656313eb2ffb7d68b858187464ed2541` | All legs |
 
 On every leg, admin is irreversibly transferred to that leg's Timelock at deploy
@@ -39,7 +42,8 @@ the leg, so a leg that failed the handoff never gets written down here.
 The 2026-08 re-legging keypair is **testnet-only** and custodied in Turnkey
 (organization `5cf56ed5-…`; private-key ids `a5f1eb39-…` deployer,
 `047f429f-…` operator). It holds no mainnet value and is not an upgrade
-authority on any leg beyond its 1-of-2 seat in the Ethereum Sepolia MultiSig.
+authority on any leg beyond its 1-of-2 seat in the Ethereum Sepolia and Tempo
+MultiSigs.
 
 ---
 
@@ -175,6 +179,49 @@ demonstrates the registry write path and the replay guard across two live chains
 it is **not** a test of the off-chain LTP signing pipeline. The full signed path
 runs through [`scripts/bridge_live.py`](../scripts/bridge_live.py) and needs the
 bridge-operator ML-DSA keypair.
+
+## Tempo testnet — Chain ID `42431`
+
+Payments-first L1 (Stripe / Paradigm). Deployed 2026-08-24 to carry the
+payment-memo attestation described in
+[`design-decisions/TEMPO_INTEGRATION.md`](design-decisions/TEMPO_INTEGRATION.md).
+Same v6 bytecode as the other legs — no contract changes were required.
+
+### Registry (v6, deployed block 32,323,752)
+
+| Contract | Address |
+|---|---|
+| LTPAnchorRegistry (Implementation) | `0x076a2a8669652fd176a510d0b2b19844f1be758d` |
+| ERC1967Proxy | `0x76e9ec05745ce767e0d6f1c5f60980436a2894f6` |
+| LTPMultiSig (2-of-2) | `0x7a4efae5f92327971fdcc3fa14ad32962479c062` |
+| TimelockController (60s delay) | `0x929267cdd128c38083e8a4d0a01d02b5c5395bef` |
+
+### Bridge (deployed block 32,323,783)
+
+| Contract | Address |
+|---|---|
+| OptimisticBridgeChallenge | `0x47012e38abe97bcbc0e560e04758e549ce9bc4f9` |
+| ZKBridgeVerifier (`MODE_SIMULATED`) | `0x80cf135807c62146584e1c9af33fda684f72ff75` |
+
+Registry admin verified on-chain as the Timelock; bridge-operator signer
+`0x4212a67b…64ed2541` registered through the full MultiSig → Timelock path.
+
+**Deploying here needs `GAS_ESTIMATE_MULTIPLIER=1200`** and the operator funded
+in TIP-20 rather than native value — both non-obvious, both explained in the
+integration doc's gotchas section.
+
+### Payment-memo attestation (live)
+
+An `entityIdHash` carried as the 32-byte memo of a real TIP-20 payment, resolved
+back to its anchor on this leg:
+
+| | |
+|---|---|
+| Memo / `entityIdHash` | `0xc6e6fbd7965cec5914849d9cb74c00614fce15671f2beac06dda042d64cc1183` |
+| Anchor tx | `0x8ae2579f2c186d6cb26a0d6a4028d3237cd9703e7cfbd45304c840bff8c70b15` |
+| Payment tx | `0x43354343824134cf98e53ee765c75adc826ad7b5f5aeacaddbd15245b1eb089c` (100 AlphaUSD) |
+
+---
 
 ---
 

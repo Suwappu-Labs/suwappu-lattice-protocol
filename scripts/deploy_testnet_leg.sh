@@ -71,6 +71,21 @@ fi
 # pre-broadcast RPC question that reliably answers "can this account spend"
 # on such a chain, so this does not pretend to be one: it flags the reported
 # balance as non-credible and says what will actually happen.
+# Some chains meter gas far more heavily than mainnet-equivalents, so forge's
+# estimate (even with its default 130% headroom) can land BELOW the true cost.
+# Measured on Tempo testnet (42431): LTPAnchorRegistry actually consumes
+# ~10.58M gas, while forge estimated 2.81M and even --gas-estimate-multiplier
+# 400 only reached 8.65M. Each attempt failed with gasUsed == gasLimit exactly,
+# which reads like a revert but is plain out-of-gas.
+#
+# Set GAS_ESTIMATE_MULTIPLIER (percent, e.g. 800) for such chains. Mind the
+# per-transaction cap — Tempo rejects anything above 30M gas outright.
+FORGE_GAS_ARGS=""
+if [ -n "${GAS_ESTIMATE_MULTIPLIER:-}" ]; then
+    FORGE_GAS_ARGS="--gas-estimate-multiplier $GAS_ESTIMATE_MULTIPLIER"
+    echo "Gas estimate multiplier: ${GAS_ESTIMATE_MULTIPLIER}%"
+fi
+
 ABSURD_WEI=1000000000000000000000000000000   # 1e12 ETH — no real testnet grant
 if [ "$(python3 -c "print(1 if int('$BALANCE_WEI') > $ABSURD_WEI else 0)")" = "1" ]; then
     cat >&2 <<WARN
@@ -94,7 +109,7 @@ echo "== Deploying registry + governance =="
     forge script script/DeployTestnet.s.sol:DeployTestnet \
         --rpc-url "$RPC_URL" \
         --private-key "$DEPLOYER_PRIVATE_KEY" \
-        --broadcast -vv
+        --broadcast -vv $FORGE_GAS_ARGS
 )
 
 REG_BROADCAST="$CONTRACTS_DIR/broadcast/DeployTestnet.s.sol/$CHAIN_ID/run-latest.json"
@@ -129,7 +144,7 @@ echo "== Deploying bridge pair =="
     forge script script/DeployBridge.s.sol:DeployBridge \
         --rpc-url "$RPC_URL" \
         --private-key "$DEPLOYER_PRIVATE_KEY" \
-        --broadcast -vv
+        --broadcast -vv $FORGE_GAS_ARGS
 )
 
 BRIDGE_BROADCAST="$CONTRACTS_DIR/broadcast/DeployBridge.s.sol/$CHAIN_ID/run-latest.json"

@@ -1,0 +1,28 @@
+{
+  "description": "End-to-end proof: an LTP entityIdHash carried as the 32-byte memo of a real Tempo TIP-20 payment, resolved back to an on-chain anchor.",
+  "chain": "tempo_testnet",
+  "chain_id": 42431,
+  "rpc": "https://rpc.testnet.tempo.xyz",
+  "date": "2026-08-24",
+  "document_set": {"invoice": "INV-2026-0042", "shape": "application/json", "bytes": 173},
+  "entity_id": "sha3-256:4543699361bd4d4174436f8923691ae71e05b1456e4b3724609421b008691fa8",
+  "entity_id_hash_and_memo": "0xc6e6fbd7965cec5914849d9cb74c00614fce15671f2beac06dda042d64cc1183",
+  "registry_proxy": "0x76e9ec05745ce767e0d6f1c5f60980436a2894f6",
+  "anchor_tx": "0x8ae2579f2c186d6cb26a0d6a4028d3237cd9703e7cfbd45304c840bff8c70b15",
+  "payment": {
+    "tx": "0x43354343824134cf98e53ee765c75adc826ad7b5f5aeacaddbd15245b1eb089c",
+    "token": "0x20c0000000000000000000000000000000000001",
+    "token_symbol": "AlphaUSD",
+    "amount_base_units": 100000000,
+    "amount_display": "100.000000",
+    "payee": "0xC830218082187A693AA6aa735528Cf9daE4d1a94",
+    "function": "transferWithMemo(address,uint256,bytes32)",
+    "selector": "0x95777d59",
+    "status": "success"
+  },
+  "verification": {
+    "memo_recovered_from_payment_calldata": true,
+    "entity_state": "ANCHORED",
+    "signer_vk_hash": "0x4212a67b46dd5fea793af0b980911ab6656313eb2ffb7d68b858187464ed2541"
+  }
+}
