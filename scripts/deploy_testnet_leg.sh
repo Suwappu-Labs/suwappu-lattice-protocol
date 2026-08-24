@@ -58,6 +58,30 @@ if [ "$(python3 -c "print(1 if int('$BALANCE_WEI') < $MIN_WEI else 0)")" = "1" ]
     die "deployer balance below 0.005 ETH — fund it or set FORCE_DEPLOY=true"
 fi
 
+# eth_getBalance is not a spendability check on every chain, and the balance
+# gate above is therefore not sufficient on its own.
+#
+# Measured on Tempo testnet (42431, client tempo/v1.13.1): eth_getBalance
+# returns a fixed sentinel — 0x4242…4242 — for EVERY address, including the
+# zero address and freshly generated ones, while the account's real spendable
+# balance is 0. The chain also rejects plain native value transfers outright
+# ("value transfer not allowed"; value moves as TIP-20 stablecoins), and its
+# eth_estimateGas does NOT apply a balance check, so an estimate-based probe
+# returns a healthy number for an account that cannot pay. There is no
+# pre-broadcast RPC question that reliably answers "can this account spend"
+# on such a chain, so this does not pretend to be one: it flags the reported
+# balance as non-credible and says what will actually happen.
+ABSURD_WEI=1000000000000000000000000000000   # 1e12 ETH — no real testnet grant
+if [ "$(python3 -c "print(1 if int('$BALANCE_WEI') > $ABSURD_WEI else 0)")" = "1" ]; then
+    cat >&2 <<WARN
+WARNING: $CHAIN_LABEL reports an implausible balance for every account, so the
+         balance check above proves nothing. If this chain does not actually
+         hold funds for $DEPLOYER_ADDRESS, the run will fail at broadcast with
+         "insufficient funds for gas * price + value: have 0". Fund the
+         deployer through the chain's own faucet or wallet first.
+WARN
+fi
+
 [ "$DEPLOYER_ADDRESS" != "$SUWAPPU_OPERATOR_ADDRESS" ] || \
     die "SUWAPPU_OPERATOR_ADDRESS must differ from the deployer (2-of-2 multisig needs two owners)"
 
