@@ -1,7 +1,11 @@
 # Unified Tokenomics — SUWP Across suwappubot, suwappu-dag, and LTP
 
 > **Status: SUPERSEDED.** See
-> [`DEFERRED_TOKEN_ARCHITECTURE.md`](DEFERRED_TOKEN_ARCHITECTURE.md). This document's
+> [`DEFERRED_TOKEN_ARCHITECTURE.md`](DEFERRED_TOKEN_ARCHITECTURE.md) — whose
+> deferral was itself superseded on 2026-08-24 by the genesis pre-mine +
+> fair-launch decision in
+> [`suwappu-dag/docs/whitepaper/TOKENOMICS.md`](https://github.com/Suwappu-Labs/suwappu-dag/blob/main/docs/whitepaper/TOKENOMICS.md),
+> which is the current authority on SUWP supply and distribution. This document's
 > naming-collision fix (SUWAPPU = SUWP, one asset) still stands — that part was
 > correct and isn't revisited. What's superseded is the premise underneath it: that a
 > SUWP token needs to exist, and needs to be staked, before the bridge or the chain can

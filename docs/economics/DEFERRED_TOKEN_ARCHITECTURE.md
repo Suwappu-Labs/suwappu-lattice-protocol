@@ -1,6 +1,20 @@
 # Deferred-Token Architecture — Bridge and Chain Security Without a Premined SUWP
 
-> **Status:** adopted. Supersedes [`UNIFIED_TOKENOMICS.md`](UNIFIED_TOKENOMICS.md)'s
+> **Status update (2026-08-24): the deferral is SUPERSEDED.** The decision was
+> made to launch SUWP with the chain after all: the full fixed 1,000,000,000
+> supply is pre-mined in the mainnet genesis block and distributed as a fair
+> launch (no team/investor/treasury allocation, no inflation budget). The
+> authoritative tokenomics now live in
+> [`suwappu-dag/docs/whitepaper/TOKENOMICS.md`](https://github.com/Suwappu-Labs/suwappu-dag/blob/main/docs/whitepaper/TOKENOMICS.md)
+> with the auditable genesis ledger in `suwappu-dag/scripts/tge/`.
+> What survives from this document: the LTP bridge remains stablecoin-native
+> per §3.1 (attestor bonds are posted in the transferred stablecoin — SUWP is
+> not required to move value across the bridge), and the whitepaper's §5.5
+> interface-only stance is unchanged. What is superseded: §3.2's
+> stablecoin-bootstrap of chain consensus (mainnet stakes SUWP from genesis)
+> and §3.3's "token only after observed usage" sequencing.
+>
+> **Original status:** adopted. Supersedes [`UNIFIED_TOKENOMICS.md`](UNIFIED_TOKENOMICS.md)'s
 > premise (not its naming-collision fix — SUWAPPU = SUWP still stands if/when a token
 > exists), and replaces the now-closed `NODE_UNIFICATION.md` / `BRIDGE_TOKENOMICS.md`
 > PRs (Suwappu-Labs/suwappu-lattice-protocol#46, #47), which staked bridge security on
