@@ -32,7 +32,8 @@ memo of a real TIP-20 payment and resolved back to its anchor.
 | Deployer (original) | `0xcBFDDCb830eE902248F6d1b0A0C64f6e4E35b8E9` | Base Sepolia, SUWAPPU Testnet (retired) |
 | Deployer (2026-08 re-legging) | `0xdC517061243D7659b5CeeCCAB5E1269cE3dcD1F1` | Ethereum Sepolia, Tempo testnet |
 | MultiSig owner 2 / operator (2026-08 re-legging) | `0xC830218082187A693AA6aa735528Cf9daE4d1a94` | Ethereum Sepolia, Tempo testnet |
-| Bridge Operator VK Hash | `0x4212a67b46dd5fea793af0b980911ab6656313eb2ffb7d68b858187464ed2541` | All legs |
+| Bridge Operator VK Hash (original) | `0x4212a67b46dd5fea793af0b980911ab6656313eb2ffb7d68b858187464ed2541` | All legs. Secret key is **not** in this repo, so it cannot sign — registry-level anchors only |
+| Bridge Operator VK Hash (2026-08-24, signable) | `0x47f8caa7a0de9ff35d54ae6f8c42c8efdadc7d84c07b2eaa660edb1d3ea2513a` | Ethereum Sepolia, Tempo. Generated to run the full signed path; testnet-only |
 
 On every leg, admin is irreversibly transferred to that leg's Timelock at deploy
 time — no deployer retains privileged access post-deployment. This is asserted
@@ -220,6 +221,34 @@ back to its anchor on this leg:
 | Memo / `entityIdHash` | `0xc6e6fbd7965cec5914849d9cb74c00614fce15671f2beac06dda042d64cc1183` |
 | Anchor tx | `0x8ae2579f2c186d6cb26a0d6a4028d3237cd9703e7cfbd45304c840bff8c70b15` |
 | Payment tx | `0x43354343824134cf98e53ee765c75adc826ad7b5f5aeacaddbd15245b1eb089c` (100 AlphaUSD) |
+
+---
+
+## Full signed LTP transfer (live)
+
+`scripts/bridge_live.py`, Ethereum Sepolia → Tempo testnet, 2026-08-24. This is
+the ML-DSA-signed protocol path, not a registry-level write: commit → anchor →
+ML-KEM relay → materialize → verify, with a dual-write anchor on the second leg.
+
+| Field | Value |
+|---|---|
+| EntityID | `sha3-256:c52b073bd32794c77b7da89d94ba45b6e73d100d45ce6eac1e7cd93430a15ee6` |
+| Signer vkHash | `0x47f8caa7a0de9ff35d54ae6f8c42c8efdadc7d84c07b2eaa660edb1d3ea2513a` |
+| L1 anchor (Ethereum Sepolia) | `0xe5daf6adf9b5c763cc555c13b9850331f6b9883bb14b59f486cf681e308cd597`, block 11,560,274 |
+| L2 anchor (Tempo, dual-write) | `0x49ae7ff4f5253388efa870a5c9a0bc13133133b57fa545f557de1682aeb9b9c7`, block 32,332,225 |
+| Entity state | `ANCHORED` on **both** registries |
+| Elapsed | 8.1 s |
+
+Transcript: [`deployments/bridge_live_transcript.json`](../deployments/bridge_live_transcript.json).
+
+**What was real, and what was not.** The signing, sharding, sealed key,
+materialization and both anchors are real and independently verifiable on two
+live chains. The optimistic-challenge and ZK-finality steps in that run are
+**in-process simulations** — `ChallengeManager` is a Python object, not the
+deployed `OptimisticBridgeChallenge`, and `SimulatedZKBridgeProver` produced the
+"instant finality" line without any on-chain proof. The transcript's
+`challenge_status: finalized` and `zk_finalized: true` describe the simulator.
+The deployed `ZKBridgeVerifier` is still `MODE_SIMULATED` and was not exercised.
 
 ---
 

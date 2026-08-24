@@ -153,7 +153,11 @@ def build_chain_config(env: dict, prefix: str, chain_id: int, label: str) -> Cha
         rpc_url=rpc_url,
         registry_address=registry,
         operator_key=op_key,
-        tx_timeout=180,
+        # Public Sepolia RPCs regularly take longer than 180s to surface a
+        # receipt; the transaction lands, but web3 has already raised
+        # TimeExhausted and the run aborts mid-bridge with an anchor that
+        # actually succeeded on-chain. Override with BRIDGE_TX_TIMEOUT.
+        tx_timeout=int(os.environ.get("BRIDGE_TX_TIMEOUT", "600")),
     )
 
 

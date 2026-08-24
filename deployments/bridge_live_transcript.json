@@ -1,0 +1,49 @@
+{
+  "timestamp": "2026-08-24T23:31:27Z",
+  "deployer": "0xcBFDDCb830eE902248F6d1b0A0C64f6e4E35b8E9",
+  "l1_prefix": "ETHEREUM_SEPOLIA",
+  "l2_prefix": "TEMPO",
+  "l1_registry": "0xfd66b836cbe118001156c006e05cfe4432733cd3",
+  "l2_registry": "0x76e9ec05745ce767e0d6f1c5f60980436a2894f6",
+  "transfers": [
+    {
+      "direction": "ethereum_sepolia_to_tempo",
+      "success": true,
+      "entity_id": "sha3-256:c52b073bd32794c77b7da89d94ba45b6e73d100d45ce6eac1e7cd93430a15ee6",
+      "l1_chain_id": 11155111,
+      "l1_anchor_tx_hash": "e5daf6adf9b5c763cc555c13b9850331f6b9883bb14b59f486cf681e308cd597",
+      "is_anchored_on_l1": true,
+      "l1_entity_state": 2,
+      "l1_block_height": 11560274,
+      "sequence": 2,
+      "cross_chain": true,
+      "elapsed_seconds": 8.101,
+      "l2_chain_id": 42431,
+      "l2_anchor_tx_hash": "49ae7ff4f5253388efa870a5c9a0bc13133133b57fa545f557de1682aeb9b9c7",
+      "is_anchored_on_l2": true,
+      "l2_entity_state": 2,
+      "l2_block_height": 32332225,
+      "challenge_status": "finalized",
+      "challenge_deadline": null,
+      "zk_proof_id": "7a87d2b45d816be6b7f1f9995491852d52bb6cfd75d4e98df784af3b08a81d4b",
+      "zk_finalized": true
+    }
+  ],
+  "_scope": {
+    "what_this_is": "Transcript of scripts/bridge_live.py: a full ML-DSA-signed LTP transfer, Ethereum Sepolia -> Tempo testnet, 2026-08-24. Closes /goal item E4.",
+    "real_on_chain": [
+      "ML-DSA-65 signing of the commitment record (real key, sk 4032 B)",
+      "Erasure coding / sharding and ML-KEM-768 sealed key",
+      "MATERIALIZE: reconstruct + PQC verify",
+      "Anchor on Ethereum Sepolia (11155111) tx e5daf6ad... block 11560274, status 1",
+      "Dual-write anchor on Tempo testnet (42431) tx 49ae7ff4... block 32332225, status 1",
+      "entityState == ANCHORED (2) read back from BOTH registries"
+    ],
+    "simulated_in_process_NOT_on_chain": [
+      "ChallengeManager(challenge_period=3600) is an in-process object, not the deployed OptimisticBridgeChallenge contract",
+      "SimulatedZKBridgeProver produced the 'ZK proof -> instant finality' line; no proof was verified on-chain",
+      "challenge_status='finalized' and zk_finalized=true therefore describe the simulator, not chain state"
+    ],
+    "honest_summary": "The cryptography and the anchors are real and independently verifiable on two live chains. The optimistic-challenge and ZK-finality steps are in-process simulations; the deployed ZKBridgeVerifier remains MODE_SIMULATED and was not exercised by this run."
+  }
+}
