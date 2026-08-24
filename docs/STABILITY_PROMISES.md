@@ -12,7 +12,7 @@ The Python package (`ltp`) and the deployed Solidity contracts follow **semantic
 
 The current version is published in [`pyproject.toml`](../pyproject.toml) `project.version` and in [`CHANGELOG.md`](../CHANGELOG.md).
 
-The on-chain `LTPAnchorRegistry` exposes its own integer `version()` view — currently `v5` on SUWAPPU Testnet and `v6` on Base Sepolia. See [`docs/DEPLOYED_CONTRACTS.md`](DEPLOYED_CONTRACTS.md) for addresses and the governance path that controls upgrades.
+The on-chain `LTPAnchorRegistry` exposes its own integer `version()` view — currently `v6` on both live legs (Base Sepolia and Ethereum Sepolia). See [`docs/DEPLOYED_CONTRACTS.md`](DEPLOYED_CONTRACTS.md) for addresses and the governance path that controls upgrades.
 
 ## Public surface
 
@@ -78,8 +78,8 @@ are live, which are planned, and how to read version skew.
 
 | Python SDK | Solidity Registry | Wire Format | Status |
 |---|---|---|---|
-| 3.x | v5 | `LTP-corridor-v1` | live (SUWAPPU Testnet, Chain ID `103115120`) |
-| 3.x | v6 | `LTP-corridor-v1` | live (Base Sepolia) |
+| 3.x | v6 | `LTP-corridor-v1` | live (Base Sepolia `84532`, Ethereum Sepolia `11155111`) |
+| 3.x | v5 | `LTP-corridor-v1` | retired (SUWAPPU Testnet `103115120` — chain decommissioned) |
 | 4.x *(planned)* | v7 *(planned)* | `LTP-corridor-v1` | pending GLO-770 |
 
 ### How to read this matrix

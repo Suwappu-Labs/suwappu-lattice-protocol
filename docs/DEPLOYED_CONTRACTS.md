@@ -1,7 +1,24 @@
 # LTP Deployed Contracts and Wallets
 
 **Author:** Javier Calderon Jr, CTO — Suwappu (SUWAPPU)
-**Last Updated:** April 27, 2026
+**Last Updated:** August 24, 2026
+
+---
+
+## Live legs at a glance
+
+The bridge is legged on **two live chains**. Every leg runs the same stack:
+`LTPAnchorRegistry` (UUPS proxy) + `LTPMultiSig` (2-of-2) + `TimelockController`,
+plus the `OptimisticBridgeChallenge` / `ZKBridgeVerifier` pair.
+
+| Leg | Chain ID | Registry proxy | Registry version | Status |
+|---|---|---|---|---|
+| Base Sepolia | `84532` | `0x79eF1B7914f98C5C1404617449AB1f377c475996` | v6 | **Live** |
+| Ethereum Sepolia | `11155111` | `0xfd66b836cbe118001156c006e05cfe4432733cd3` | v6 | **Live** (deployed 2026-08-24) |
+| SUWAPPU Testnet | `103115120` | `0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4` | v5 | **Retired** — RPC gone with the AWS teardown |
+
+A cross-chain anchor pair has been demonstrated across the two live legs — see
+[Verified cross-chain anchor pair](#verified-cross-chain-anchor-pair) below.
 
 ---
 
@@ -9,14 +26,32 @@
 
 | Role | Address | Scope |
 |---|---|---|
-| Deployer | `0xcBFDDCb830eE902248F6d1b0A0C64f6e4E35b8E9` | Both chains |
-| Bridge Operator VK Hash | `0x4212a67b46dd5fea793af0b980911ab6656313eb2ffb7d68b858187464ed2541` | Both chains |
+| Deployer (original) | `0xcBFDDCb830eE902248F6d1b0A0C64f6e4E35b8E9` | Base Sepolia, SUWAPPU Testnet (retired) |
+| Deployer (2026-08 re-legging) | `0xdC517061243D7659b5CeeCCAB5E1269cE3dcD1F1` | Ethereum Sepolia |
+| MultiSig owner 2 / operator (2026-08 re-legging) | `0xC830218082187A693AA6aa735528Cf9daE4d1a94` | Ethereum Sepolia |
+| Bridge Operator VK Hash | `0x4212a67b46dd5fea793af0b980911ab6656313eb2ffb7d68b858187464ed2541` | All legs |
 
-The deployer wallet deployed all contracts on both chains. After deployment, admin was irreversibly transferred to the Timelock on each chain. The deployer has no privileged access post-deployment.
+On every leg, admin is irreversibly transferred to that leg's Timelock at deploy
+time — no deployer retains privileged access post-deployment. This is asserted
+on-chain by the deploy script (`registry.admin() == timelock`) before it records
+the leg, so a leg that failed the handoff never gets written down here.
+
+The 2026-08 re-legging keypair is **testnet-only** and custodied in Turnkey
+(organization `5cf56ed5-…`; private-key ids `a5f1eb39-…` deployer,
+`047f429f-…` operator). It holds no mainnet value and is not an upgrade
+authority on any leg beyond its 1-of-2 seat in the Ethereum Sepolia MultiSig.
 
 ---
 
-## SUWAPPU Testnet — Chain ID `103115120`
+## SUWAPPU Testnet — Chain ID `103115120` — RETIRED
+
+> **This leg is no longer reachable.** Its RPC endpoint was an AWS load balancer
+> in `us-east-2` that was torn down with the rest of the AWS footprint; the chain
+> itself is gone, so these contracts cannot be called. The addresses are retained
+> as a historical record of the v5 deployment and for auditing the transaction
+> history below — **do not** point an integration at this leg. The re-legging that
+> replaced it is documented in
+> [`plans/2026-08-24-testnet-cross-chain-relegging.md`](plans/2026-08-24-testnet-cross-chain-relegging.md).
 
 ### Registry (v5, deployed block 687,609)
 
@@ -113,7 +148,37 @@ MultiSig → Timelock governance path.
 
 ---
 
-## Governance Architecture (Both Chains)
+## Verified cross-chain anchor pair
+
+The two live legs have been exercised end to end: the **same entity**, under the
+**same registered bridge-operator signer**, with the **same Merkle root**,
+anchored on both chains. Each registry stamps `targetChainId` from its own
+`block.chainid` rather than from caller-supplied data — that is the contract's
+cross-chain replay guard, and the differing values below are it working.
+
+| Field | Ethereum Sepolia | Base Sepolia |
+|---|---|---|
+| Anchor tx | [`0x4c3a2276…e02d4e`](https://sepolia.etherscan.io/tx/0x4c3a2276b9dd9ea81cda85b938f6ed47a460810f2112e5faf3a6525eaee02d4e) | [`0xe78567c7…bc26d8`](https://sepolia.basescan.org/tx/0xe78567c7609bb3b251960a3cf764ce8e33b0d1b3b27be54b5459441fe8bc26d8) |
+| `targetChainId` (self-stamped) | `11155111` | `84532` |
+| Sequence | 1 | 14 |
+| `entityState` | `ANCHORED` | `ANCHORED` |
+
+Shared across both: `entityIdHash` `0xdb1404697e58e26737f755a3da21a338bbf11e4b529a415345366c661e5a3945`,
+`signerVkHash` `0x4212a67b46dd5fea793af0b980911ab6656313eb2ffb7d68b858187464ed2541`,
+`merkleRoot` `0xb1364cf2b85965d2c544542a435c0f4425104a179777df60c2a2e2369b7ad0f4`.
+Machine-readable record: [`deployments/cross_chain_anchor_pair.json`](../deployments/cross_chain_anchor_pair.json).
+
+**Scope of what this proves.** On-chain, `anchor()` authorizes by *registered
+`signerVkHash`* — it does not verify the ML-DSA signature, which is an off-chain
+concern (see [`STABILITY_PROMISES.md`](STABILITY_PROMISES.md)). So this
+demonstrates the registry write path and the replay guard across two live chains;
+it is **not** a test of the off-chain LTP signing pipeline. The full signed path
+runs through [`scripts/bridge_live.py`](../scripts/bridge_live.py) and needs the
+bridge-operator ML-DSA keypair.
+
+---
+
+## Governance Architecture (All Live Legs)
 
 ```
 MultiSig (2-of-2) → TimelockController (60s) → LTPAnchorRegistry (Proxy)
@@ -123,20 +188,37 @@ MultiSig (2-of-2) → TimelockController (60s) → LTPAnchorRegistry (Proxy)
 
 - Admin on all contracts is the **Timelock** — never the deployer or MultiSig directly
 - Signer registration requires the full governance path: MultiSig propose → confirm → execute schedule → wait 60s → execute register
-- Bridge contracts are wired together: `OptimisticBridgeChallenge.setZKVerifier(zkVerifier)` is meant to enable instant finality via ZK proof — **but the live `ZKBridgeVerifier` on both chains above is currently deployed in `MODE_SIMULATED`** (a keccak-based placeholder, not a real proof system; see `contracts/src/ZKBridgeVerifier.sol`). No production-deployed ZK verifier for ML-DSA/lattice-based signatures exists anywhere in the industry as of this writing — this is an honest R&D gap, not a swap-in-a-library task. Until `lockProduction()` is called after a real verifier backend lands, treat every anchor's finality as coming from the **optimistic path** (`openWindow` → `challengePeriod` → `finalizeWindow`), which is fully real. Don't rely on "instant finality" for anything moving value today.
+- Bridge contracts are wired together: `OptimisticBridgeChallenge.setZKVerifier(zkVerifier)` is meant to enable instant finality via ZK proof — **but the live `ZKBridgeVerifier` on every leg above is currently deployed in `MODE_SIMULATED`** (a keccak-based placeholder, not a real proof system; see `contracts/src/ZKBridgeVerifier.sol`). No production-deployed ZK verifier for ML-DSA/lattice-based signatures exists anywhere in the industry as of this writing — this is an honest R&D gap, not a swap-in-a-library task. Until `lockProduction()` is called after a real verifier backend lands, treat every anchor's finality as coming from the **optimistic path** (`openWindow` → `challengePeriod` → `finalizeWindow`), which is fully real. Don't rely on "instant finality" for anything moving value today.
 - Timelock delay is 60s (testnet); production target is 24-48 hours
 
 ## On-Chain Verification Commands
 
-```bash
-# SUWAPPU Testnet
-cast call 0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4 "version()(uint256)" --rpc-url "$SUWAPPU_RPC_URL"
-cast call 0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4 "admin()(address)" --rpc-url "$SUWAPPU_RPC_URL"
+Each command below is against a **live** leg. Both should report `6` for
+`version()`, and an `admin()` equal to that leg's Timelock (the addresses in the
+tables above) — if `admin()` ever comes back as an EOA, treat the leg as
+compromised and stop using it.
 
-# Base Sepolia
+```bash
+# Base Sepolia (chain 84532)
+export BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
 cast call 0x79eF1B7914f98C5C1404617449AB1f377c475996 "version()(uint256)" --rpc-url "$BASE_SEPOLIA_RPC_URL"
-cast call 0x79eF1B7914f98C5C1404617449AB1f377c475996 "admin()(address)" --rpc-url "$BASE_SEPOLIA_RPC_URL"
+cast call 0x79eF1B7914f98C5C1404617449AB1f377c475996 "admin()(address)"   --rpc-url "$BASE_SEPOLIA_RPC_URL"
+
+# Ethereum Sepolia (chain 11155111)
+export ETHEREUM_SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+cast call 0xfd66b836cbe118001156c006e05cfe4432733cd3 "version()(uint256)" --rpc-url "$ETHEREUM_SEPOLIA_RPC_URL"
+cast call 0xfd66b836cbe118001156c006e05cfe4432733cd3 "admin()(address)"   --rpc-url "$ETHEREUM_SEPOLIA_RPC_URL"
+
+# Confirm the bridge-operator signer is authorized on a leg
+cast call 0xfd66b836cbe118001156c006e05cfe4432733cd3 \
+  "authorizedSigners(bytes32)(bool)" \
+  0x4212a67b46dd5fea793af0b980911ab6656313eb2ffb7d68b858187464ed2541 \
+  --rpc-url "$ETHEREUM_SEPOLIA_RPC_URL"
 ```
+
+The retired SUWAPPU Testnet leg is deliberately absent — its RPC no longer
+resolves, so any command against it fails at the transport layer rather than
+telling you anything about the contracts.
 
 ## ABIs for Non-Python Integrators
 
@@ -147,11 +229,21 @@ without running a local Solidity build. A worked ethers v6 example lives
 at [`examples/verify_anchor_from_js.mjs`](../examples/verify_anchor_from_js.mjs):
 
 ```bash
+# Base Sepolia
 node examples/verify_anchor_from_js.mjs \
   https://sepolia.base.org \
   0x79eF1B7914f98C5C1404617449AB1f377c475996 \
   <entityIdHash>
+
+# Ethereum Sepolia
+node examples/verify_anchor_from_js.mjs \
+  https://ethereum-sepolia-rpc.publicnode.com \
+  0xfd66b836cbe118001156c006e05cfe4432733cd3 \
+  <entityIdHash>
 ```
+
+The ABI is identical across both live legs — they run the same v6 implementation
+bytecode, deployed separately per chain.
 
 To regenerate the ABI after a contract change, run `forge build` in
 `contracts/` and copy the `abi` field of
@@ -160,15 +252,18 @@ To regenerate the ABI after a contract change, run `forge build` in
 
 ---
 
-**Live legs after the 2026-08-24 re-legging: Base Sepolia (84532) + Ethereum Sepolia (11155111). The original SUWAPPU Testnet leg (103115120) is retired (AWS infra torn down).**
-
----
-
 ## v7 Governance Hardening (Source Updates — Pending Deploy)
 
 The Solidity changes in PR #8 Commit 5 (`docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md` LTP-A-002, LTP-A-007, LTP-A-009, LTP-A-017) are source-only — they do **not** modify any deployed v5/v6 contract. They take effect when the next batch (v7) is deployed using the tightened `DeployMainnet.s.sol` script.
 
-See [Bridge Trust Model](BRIDGE_TRUST_MODEL.md) for what this means concretely for a user of the *live* Base Sepolia deployment today — most importantly, that `lockProduction()` (the ZK production-mode lock) does not exist on the currently-deployed contract, so the `MODE_SIMULATED` fast path (no real cryptographic verification, LTP-A-007) cannot be locked out until v7 actually deploys.
+See [Bridge Trust Model](BRIDGE_TRUST_MODEL.md) for what this means concretely for a user of the live deployments today — most importantly, that `lockProduction()` (the ZK production-mode lock) does not exist on the currently-deployed contracts, so the `MODE_SIMULATED` fast path (no real cryptographic verification, LTP-A-007) cannot be locked out until v7 actually deploys.
+
+**This applies to *both* live legs, including the new one.** The Ethereum Sepolia
+leg was deployed 2026-08-24 with `DeployTestnet.s.sol` + `DeployBridge.s.sol` —
+the testnet scripts — so it carries the same pre-v7 posture as Base Sepolia:
+2-of-2 MultiSig, 60-second Timelock, `MODE_SIMULATED` verifier. Re-legging
+restored a second *live* chain to bridge across; it did **not** advance the
+governance hardening. Do not read "newly deployed" as "hardened".
 
 | Change | File | What it enforces at the next deploy |
 |---|---|---|

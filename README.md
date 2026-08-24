@@ -96,7 +96,7 @@ The entity is never serialized and shipped as a monolithic payload. It is
 | **Post-Quantum Cryptography** | ML-KEM-768/1024 (FIPS 203) + ML-DSA-65/87 (FIPS 204) + XChaCha20-Poly1305 | Active — real crypto, Level 3 + Level 5 |
 | **Lattice Transfer Protocol** | 3-phase lifecycle with erasure coding, Merkle audit log, threshold reconstruction | Complete |
 | **Dual-Lane Hashing** | SHA3-256 (canonical/on-chain) + BLAKE3-256 (internal/performance) | Enforced separation |
-| **On-Chain Settlement** | LTPAnchorRegistry v6 with UUPS proxy + MultiSig + Timelock governance | Deployed on SUWAPPU Testnet + Base Sepolia |
+| **On-Chain Settlement** | LTPAnchorRegistry v6 with UUPS proxy + MultiSig + Timelock governance | Live on Base Sepolia + Ethereum Sepolia |
 
 ## SUWAPPU Stack Alignment
 
@@ -262,14 +262,9 @@ Reproduction instructions for both artifacts are in their respective READMEs.
 
 ## Smart Contracts
 
-### SUWAPPU Testnet (v5) — Chain ID `103115120`
-
-| Contract | Address |
-|----------|---------|
-| UUPS Proxy (registry) | `0xB29d8BFF4973D1D7bcB10E32112EBB8fdd530bF4` |
-| Implementation v5 | `0xADf01df5B6Bef8e37d253571ab6e21177aCb7796` |
-| MultiSig (2-of-2) | `0x0106A79e9236009a05742B3fB1e3B7a52F44373D` |
-| Timelock (60s delay) | `0x7C2665F7e68FE635ee8F10aa0130AEBC603a9Db8` |
+Two **live** legs, both running registry v6. Full record, including the retired
+leg and the verified cross-chain anchor pair, is in
+[`docs/DEPLOYED_CONTRACTS.md`](docs/DEPLOYED_CONTRACTS.md).
 
 ### Base Sepolia (v6) — Chain ID `84532`
 
@@ -280,6 +275,22 @@ Reproduction instructions for both artifacts are in their respective READMEs.
 | MultiSig (2-of-2) | `0x4c324c3c3475f58b67d3c879880D6c94eDC82E49` |
 | Timelock (60s delay) | `0xc915740e35E38569E47f611eA5772Ff5278bc5Ae` |
 
+### Ethereum Sepolia (v6) — Chain ID `11155111`
+
+| Contract | Address |
+|----------|---------|
+| UUPS Proxy (registry) | `0xfd66b836cbe118001156c006e05cfe4432733cd3` |
+| Implementation v6 | `0x4896da1439e679ed56cfb8c773e3b57cadfd5c9c` |
+| MultiSig (2-of-2) | `0xda3781fa161caaa824d7c478638d427ba5676664` |
+| Timelock (60s delay) | `0x42c4017cee96b19c467dcf44e926da365cd0499c` |
+
+### SUWAPPU Testnet (v5) — Chain ID `103115120` — **retired**
+
+Deployed March 2026 and decommissioned when its AWS-hosted RPC was torn down.
+The chain is unreachable; addresses are kept only as a historical record in
+[`docs/DEPLOYED_CONTRACTS.md`](docs/DEPLOYED_CONTRACTS.md). Do not point an
+integration at it.
+
 **Governance chain:** MultiSig (2-of-2) → Timelock (60s) → Registry
 
 **Deployment evolution:**
@@ -288,9 +299,15 @@ v1 (Mar 23)   Implementation only          No proxy, no governance
 v2 (Mar 23)   + UUPS Proxy + MultiSig      Upgradeable, 2-of-2 control
 v3 (Mar 23)   + TimelockController          Time-delayed governance
 v4 (Mar 25)   Verified production deploy    84 Solidity + 1,167 Python tests
-v5 (Mar 25)   Author attribution + v5      SUWAPPU Testnet production
+v5 (Mar 25)   Author attribution + v5      SUWAPPU Testnet (now retired)
 v6 (Apr 14)   Base Sepolia L2 deployment   Bidirectional bridge
+v6 (Aug 24)   Ethereum Sepolia re-legging  Restores a second live leg
 ```
+
+> **Governance posture is unchanged by the re-legging.** Every live leg is still
+> 2-of-2 MultiSig, 60-second Timelock, and a `MODE_SIMULATED` ZK verifier — the
+> v7 hardening is source-only and not yet deployed anywhere. See
+> [`docs/BRIDGE_TRUST_MODEL.md`](docs/BRIDGE_TRUST_MODEL.md).
 
 ---
 

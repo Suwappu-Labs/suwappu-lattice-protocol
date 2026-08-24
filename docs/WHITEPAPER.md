@@ -58,6 +58,7 @@ ML-DSA-65 · BLAKE3 · Certificate Transparency · Reed-Solomon coding
 
 - [Abstract](#abstract)
 - [Note on Terminology](#note-on-terminology)
+- [The entities](#the-entities) — the one-page map: what each piece is, what it does, and what it does not do yet
 
 ---
 
@@ -195,6 +196,50 @@ from distributed shards. The protocol achieves:
 > is vulnerable to Shor's algorithm and does **not** provide quantum-resistant hiding. **ZK
 > mode MUST NOT be used in deployments with a quantum-adversary threat model.** The planned
 > upgrade path is a STARK or lattice-based proof system (§3.2.4, §10 Open Question 6).
+
+---
+
+## The entities
+
+Everything below is specified in full later in this document. This section is the
+map: what each piece is, and what it does. Nothing here is aspirational — every
+row describes something that exists in
+[`src/ltp/`](../src/ltp/) or [`contracts/src/`](../contracts/src/) today.
+
+| Entity | What it is | What it does |
+|---|---|---|
+| **An entity** | Content + shape, addressed by a SHA3-256 EntityID | The unit of transfer. Same bytes and same declared shape produce the same ID, on every conforming implementation, forever. |
+| **The lattice key** | A ~1,300-byte sealed key, of which the ML-KEM-768 ciphertext is 1,088 B | The only thing that crosses the sender→receiver path. Its size does not depend on the entity's size. |
+| **Shards** | `n` erasure-coded fragments, any `k` of which suffice (default `n=8`, `k=4`) | Carry the entity. Losing `n−k` of them loses nothing. |
+| **Commitment nodes** | The storage network, stake-registered and audited | Hold shards and answer fetches. The receiver pulls from the nearest ones, not from the sender. |
+| **The commitment log** | An append-only Merkle log with a signed tree head (ML-DSA-65) | Makes the commitment set auditable. A signed head can be checked without trusting the operator who produced it. |
+| **`LTPAnchorRegistry`** | A UUPS-proxied contract, one deployment per chain (v6 live on two) | Records anchors on-chain. Authorizes by *registered signer*, enforces sequence monotonicity, and stamps the chain ID itself. |
+| **The bridge operator** | An ML-DSA-65 keypair, registered on-chain by `vkHash` | Signs and submits anchors. It is a registered signer, not an admin — it cannot upgrade or pause anything. |
+| **MultiSig → Timelock** | 2-of-2 MultiSig proposing into a `TimelockController` | The only path that can register a signer or upgrade a registry. Admin on every live leg is the Timelock, never a wallet. |
+| **`OptimisticBridgeChallenge`** | A challenge window with a bonded dispute path | Provides finality by elapsed time and unchallenged silence. This is the real finality path today. |
+| **`ZKBridgeVerifier`** | A proof verifier, currently deployed in `MODE_SIMULATED` | Intended to give instant finality. It does **not** verify real proofs today — see the honesty note below. |
+
+### How it flows
+
+- **Sender → commitment network.** The sender shards the entity, encrypts, and distributes. The payload never travels sender→receiver.
+- **Network → commitment log.** Each commitment is appended to the Merkle log; the operator publishes a signed tree head.
+- **Log → registry.** The bridge operator anchors a commitment on-chain: `anchorDigest`, `merkleRoot`, `signerVkHash`, `sequence`.
+- **Registry ⇄ registry.** The same entity can be anchored on more than one chain. Each registry stamps `targetChainId` from its own `block.chainid`, so an anchor from one chain cannot be replayed onto another.
+- **Network → receiver.** The receiver decapsulates the lattice key, fetches any `k` shards, and reconstructs. Verification is against the EntityID, so a lying node is caught by arithmetic, not by reputation.
+
+### What this does not do yet
+
+The protocol is easier to trust when its gaps are stated as plainly as its
+properties.
+
+- **On-chain `anchor()` does not verify the ML-DSA signature.** It authorizes by registered `signerVkHash`. Signature verification is off-chain. An anchor proves *a registered signer submitted this*, not *this signature is valid on-chain*.
+- **`ZKBridgeVerifier` is `MODE_SIMULATED` on every live deployment.** It is a keccak-based placeholder. Treat all finality as coming from the optimistic path. No production ZK verifier for lattice signatures exists in the industry today; this is an open R&D gap, not a missing library.
+- **Governance is 2-of-2 with a 60-second Timelock, and bonds are zero.** That is a testnet posture. The v7 hardening (Byzantine threshold, 24-hour delay, production lock) is written but not deployed anywhere.
+- **ZK transfer mode is not post-quantum.** See the warning above.
+
+Live deployments, addresses, and the demonstrated cross-chain anchor pair are in
+[`DEPLOYED_CONTRACTS.md`](DEPLOYED_CONTRACTS.md). The trust model is dissected in
+[`BRIDGE_TRUST_MODEL.md`](BRIDGE_TRUST_MODEL.md).
 
 ---
 

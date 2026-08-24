@@ -11,17 +11,26 @@ model, see `docs/bridge-mvp-scope.md`) or the ML-DSA/BLS validator
 signing surface (see `docs/THREAT_MODEL.md`) — those are different
 subsystems with different trust properties.
 
-**Status of this doc: describes the live Base Sepolia deployment as of
-2026-07-25** (block 39,928,377, contracts below). Several of the
-issues described here are already fixed *in source* (v7, see
+**Status of this doc: describes the live deployments as of 2026-08-24.**
+Several of the issues described here are already fixed *in source* (v7, see
 `docs/DEPLOYED_CONTRACTS.md` "v7 Governance Hardening") but **not yet
-deployed** — the live contracts predate that fix. This doc will need a
+deployed** — every live contract predates that fix. This doc will need a
 follow-up pass once v7 actually deploys.
 
-| Contract | Base Sepolia address |
-|---|---|
-| `OptimisticBridgeChallenge` | `0x5083194d9e8EB54Fc397E69A518Be9503C767Dd0` |
-| `ZKBridgeVerifier` | `0x4Df2D23269D0841200b36106AA90ba653e30DFf3` |
+| Contract | Base Sepolia (`84532`) | Ethereum Sepolia (`11155111`) |
+|---|---|---|
+| `OptimisticBridgeChallenge` | `0x5083194d9e8EB54Fc397E69A518Be9503C767Dd0` | `0x0af67a32d2578f57397f0022bff9ba2647d66b58` |
+| `ZKBridgeVerifier` | `0x4Df2D23269D0841200b36106AA90ba653e30DFf3` | `0x4d687361cc02e134c70d1a0d3e2e9ee7cc51f1fa` |
+
+**Everything in this document applies identically to both legs.** The Ethereum
+Sepolia leg was deployed 2026-08-24 by the re-legging described in
+`docs/plans/2026-08-24-testnet-cross-chain-relegging.md`, using the same testnet
+scripts and the same parameters as Base Sepolia: 2-of-2 MultiSig, 60-second
+Timelock, `MODE_SIMULATED` verifier, 3600-second challenge window, zero bonds.
+A newer deployment date does **not** mean a stronger trust model — the second
+leg exists so there are two live chains to bridge *between*, not because
+anything was hardened. The original SUWAPPU Testnet leg (`103115120`) is retired
+and unreachable; ignore any older text that treats it as live.
 
 ## 1. The two finality paths
 
