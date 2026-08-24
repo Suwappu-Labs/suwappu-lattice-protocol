@@ -1,0 +1,37 @@
+{
+  "description": "Verified cross-chain anchor pair across the two live LTP legs. The SAME entity (entityIdHash) is anchored under the SAME registered bridge-operator signer (signerVkHash) with the SAME merkleRoot on both chains; each registry independently self-stamps its own targetChainId from block.chainid (the contract's cross-chain replay guard). Registry-level demonstration: on-chain anchor() authorizes by registered signerVkHash and does not verify the ML-DSA signature (off-chain concern), so no bridge-operator secret key was required.",
+  "shared": {
+    "entity_id_hash": "0xdb1404697e58e26737f755a3da21a338bbf11e4b529a415345366c661e5a3945",
+    "signer_vk_hash": "0x4212a67b46dd5fea793af0b980911ab6656313eb2ffb7d68b858187464ed2541",
+    "merkle_root": "0xb1364cf2b85965d2c544542a435c0f4425104a179777df60c2a2e2369b7ad0f4"
+  },
+  "legs": [
+    {
+      "chain": "ethereum_sepolia",
+      "chain_id": 11155111,
+      "registry_proxy": "0xfd66b836cbe118001156c006e05cfe4432733cd3",
+      "anchor_digest": "0xa3f6c7c62a54e23017716b19d6f3fe19894a563a5c88731fe708ee869196e213",
+      "anchor_tx": "0x4c3a2276b9dd9ea81cda85b938f6ed47a460810f2112e5faf3a6525eaee02d4e",
+      "target_chain_id_stamped": 11155111,
+      "sequence": 1,
+      "entity_state": "ANCHORED",
+      "explorer": "https://sepolia.etherscan.io/tx/0x4c3a2276b9dd9ea81cda85b938f6ed47a460810f2112e5faf3a6525eaee02d4e"
+    },
+    {
+      "chain": "base_sepolia",
+      "chain_id": 84532,
+      "registry_proxy": "0x79eF1B7914f98C5C1404617449AB1f377c475996",
+      "anchor_digest": "0xa93f2801612c6d89fa756edac3e5771d09b9378490c2669224bcf168ace584ca",
+      "anchor_tx": "0xe78567c7609bb3b251960a3cf764ce8e33b0d1b3b27be54b5459441fe8bc26d8",
+      "target_chain_id_stamped": 84532,
+      "sequence": 14,
+      "entity_state": "ANCHORED",
+      "explorer": "https://sepolia.basescan.org/tx/0xe78567c7609bb3b251960a3cf764ce8e33b0d1b3b27be54b5459441fe8bc26d8"
+    }
+  ],
+  "funding": {
+    "note": "Base Sepolia gas obtained by depositing Ethereum Sepolia ETH through Base's canonical L1 bridge (L1->L2 deposit; Base Sepolia settles to Ethereum Sepolia).",
+    "l1_bridge": "0xfd0Bf71F60660E2f608ed56e1659C450eB113120",
+    "l1_deposit_tx": "0xe58e58d200d251be00adfbc8af2eb5d47232df921f8a12c959af9fdda535b8e7"
+  }
+}
