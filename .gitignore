@@ -90,3 +90,7 @@ formal/lean/.lake/
 
 # Filled per-chain deploy configs contain private keys — only templates are tracked
 config/deploy/*.env
+
+# lychee link-checker cache (lychee.toml sets cache = true, so the docs
+# lane leaves this behind on every local run)
+.lycheecache
