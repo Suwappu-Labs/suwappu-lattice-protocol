@@ -100,6 +100,37 @@ where "post-quantum" is a present-tense requirement rather than a talking point:
 **harvest-now-decrypt-later against long-lived financial records is a real
 threat model**, and it is the argument that survives contact with a CFO.
 
+**Prototyped and verified end to end** — see
+[`examples/tempo_memo_attestation.py`](../../examples/tempo_memo_attestation.py)
+and `tests/test_tempo_memo_attestation.py` (14 tests).
+
+The fit is exact rather than approximate. Tempo writes a memo as
+`pad(stringToHex(memo), { size: 32 })` — a `bytes32` field. The on-chain LTP
+`entityIdHash` is also `bytes32`. So the memo *is* the attestation pointer, with
+no truncation, no wrapper, and no encoding overhead.
+
+Live run against the Ethereum Sepolia leg on 2026-08-24:
+
+| Step | Value |
+|---|---|
+| Document set | a 173-byte invoice (`INV-2026-0042`, `application/json`) |
+| EntityID | `sha3-256:4543699361bd4d41…691fa8` |
+| Tempo memo / `entityIdHash` | `0xc6e6fbd7965cec5914849d9cb74c00614fce15671f2beac06dda042d64cc1183` |
+| Anchor tx | [`0x703e4002…f31100`](https://sepolia.etherscan.io/tx/0x703e4002dbb591a4ba884d8986b648aa52a6d5f7a69a3d43dfd9994b52f31100) |
+| Resolution | `entity_state = ANCHORED`, bound to signer `0x4212a67b…64ed2541` |
+
+Three cases were exercised against live chains, and the negative ones matter
+more than the positive one:
+
+1. **The anchored memo resolves** — `ANCHORED`, correct signer.
+2. **A human memo does not.** `"INV-2026-0042"` encodes to `0x494e562d…0000` and returns `UNKNOWN`; the tool reports that it decodes as ASCII text, so a miss is explained rather than merely denied.
+3. **The same memo on the wrong leg does not resolve.** Queried against the Base Sepolia registry it returns `UNKNOWN` — attestations are per-leg, and the tool does not paper over that.
+
+Two implementation notes that cost real debugging and are pinned by tests:
+
+- **The memo is not the digest in the EntityID string.** `EntityID` is `sha3-256:<hex>`; the on-chain bytes32 is `spec_hash_bytes(entity_id_string)` — SHA3-256 over the whole prefixed string (`src/ltp/bridge/live.py:247`). Using the inner digest produces a memo that silently never resolves against any registry.
+- **No magic prefix.** A 4-byte tag plus 28 bytes of digest would let a parser recognise an LTP memo offline, but it spends 32 bits of collision resistance (2^128 → 2^112) to buy a guess. The registry is the discriminator instead: `getEntityState(memo) != UNKNOWN`.
+
 ### 3.2 Tempo Zones ↔ LTP corridors
 
 Tempo **Zones** are private zones running alongside the public chain, with
