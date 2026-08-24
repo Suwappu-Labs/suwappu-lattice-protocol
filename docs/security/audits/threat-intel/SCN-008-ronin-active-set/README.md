@@ -59,9 +59,12 @@ pinned:
 ## Notes on the fork-test variant
 
 The campaign plan suggested running SCN-008 as a Foundry fork
-test against the SUWAPPU Testnet deployment. A fork test is feasible
-without operator coordination (read-only) but doesn't add
-defensive value beyond the local-deploy test pinned here — the
+test against the SUWAPPU Testnet deployment. That chain has since been
+decommissioned and is unreachable, so that specific fork target no longer
+exists; the equivalent today would fork a live leg (Base Sepolia or Ethereum
+Sepolia — see [DEPLOYED_CONTRACTS.md](../../../../DEPLOYED_CONTRACTS.md)).
+Either way a fork test is feasible without operator coordination (read-only)
+but doesn't add defensive value beyond the local-deploy test pinned here — the
 deployed instance runs the same bytecode. The fork variant is
 deferred as a follow-up if FedRAMP evidence requires it.
 

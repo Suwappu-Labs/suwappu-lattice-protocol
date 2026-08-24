@@ -4,6 +4,20 @@ Post-quantum cryptographic data transfer with on-chain anchors. This index
 routes you to the right document in one click; if you can't tell what
 you're looking for yet, start with the persona pages.
 
+## Current state
+
+| | |
+|---|---|
+| **Live legs** | Base Sepolia (`84532`) and Ethereum Sepolia (`11155111`), both registry v6 |
+| **Retired** | SUWAPPU Testnet (`103115120`) — chain decommissioned, unreachable |
+| **Finality** | Optimistic path only. The ZK verifier is deployed in `MODE_SIMULATED` and verifies nothing |
+| **Governance** | 2-of-2 MultiSig → 60-second Timelock, zero bonds — testnet posture, not production |
+| **Do not** | Move value across these bridges |
+
+Every number behind those rows, read live from the deployed contracts, is in
+[Whitepaper Appendix B](WHITEPAPER.md#appendix-b-protocol-parameters).
+Addresses are in [DEPLOYED_CONTRACTS.md](DEPLOYED_CONTRACTS.md).
+
 ## Who are you?
 
 | You are… | Start here |
@@ -28,7 +42,7 @@ New to LTP? Read in this order:
    LTP, SUWAPPU DAG, SUWAPPU-DB, and the ecosystem atlas
 4. **[CORRIDOR_INTEGRATION.md](CORRIDOR_INTEGRATION.md)** — wire format
 5. **[DEPLOYED_CONTRACTS.md](DEPLOYED_CONTRACTS.md)** — current registry
-   addresses on SUWAPPU Testnet and Base Sepolia
+   addresses on Base Sepolia and Ethereum Sepolia
 
 ## Visuals
 

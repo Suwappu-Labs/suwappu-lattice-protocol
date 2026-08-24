@@ -370,7 +370,7 @@ suwappu-lattice-protocol/
 │   │   └── FormalVerification.t.sol   # 21 fuzz/invariant/parity tests
 │   └── script/
 │       ├── Deploy.s.sol               # Local deployment
-│       ├── DeployTestnet.s.sol        # SUWAPPU Testnet deployment
+│       ├── DeployTestnet.s.sol        # Testnet deployment (any EVM testnet leg)
 │       ├── DeployMainnet.s.sol        # Production deployment (configurable)
 │       └── UpgradeV4.s.sol            # Governance-controlled UUPS upgrade
 │
