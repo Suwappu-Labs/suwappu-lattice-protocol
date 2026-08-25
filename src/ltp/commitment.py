@@ -1059,12 +1059,23 @@ class CommitmentNetwork:
     def _placement(
         self, entity_id: str, shard_index: int, replicas: int = 2
     ) -> list[CommitmentNode]:
-        """Deterministic shard placement via consistent hashing (cached).
+        """Deterministic, failure-domain-aware shard placement (cached).
 
         Uses rehashing to avoid the stride-based clustering problem:
         each replica slot gets a unique hash derived from the placement
         key and replica index, producing uniform distribution regardless
         of network size. Results are cached and invalidated on node list change.
+
+        Failure-domain diversity (whitepaper §2.1.2 / §5.4.1.1): replicas of
+        the same shard index are placed in distinct regions while distinct
+        regions remain — i.e. they span min(replicas, R) failure domains,
+        where R is the number of regions among active eligible nodes. Only
+        once every region already hosts a replica does placement fall back
+        to region-repeating (but still node-distinct) selection. The
+        availability model's cross-region assumption is thereby enforced by
+        construction, not left to chance. Selection stays a pure function of
+        (entity_id, shard_index, replicas, active node set): both sender and
+        receiver derive identical placements.
 
         When a geo-fence policy is set, only nodes in allowed jurisdictions
         are considered for placement, enforcing data sovereignty requirements.
@@ -1098,19 +1109,40 @@ class CommitmentNetwork:
         for r in range(replicas):
             placement_key = f"{entity_id}:{shard_index}:{r}"
             h = int.from_bytes(internal_hash_bytes(placement_key.encode()), "big")
-            idx = h % n_active
-            candidate = active[idx]
-            if candidate not in selected:
-                selected.append(candidate)
-            elif n_active > len(selected):
-                # Rehash to find an unselected node
-                for attempt in range(n_active):
-                    rehash_key = f"{placement_key}:{attempt}"
-                    rh = int.from_bytes(internal_hash_bytes(rehash_key.encode()), "big")
-                    candidate = active[rh % n_active]
-                    if candidate not in selected:
-                        selected.append(candidate)
+            primary = h % n_active
+
+            # Candidate order for this replica slot: the primary hash, the
+            # rehash sequence (uniformity), then a linear scan from the
+            # primary slot (exhaustiveness — the hash attempts alone are not
+            # guaranteed to visit every node, so without the scan a viable
+            # node could be missed and a replica silently dropped).
+            order = [primary]
+            for attempt in range(n_active):
+                rehash_key = f"{placement_key}:{attempt}"
+                rh = int.from_bytes(internal_hash_bytes(rehash_key.encode()), "big")
+                order.append(rh % n_active)
+            order.extend((primary + step) % n_active for step in range(n_active))
+
+            used_regions = {node.region for node in selected}
+            fresh_region_exists = any(
+                node.region not in used_regions for node in active if node not in selected
+            )
+
+            chosen = None
+            if fresh_region_exists:
+                for idx in order:
+                    candidate = active[idx]
+                    if candidate not in selected and candidate.region not in used_regions:
+                        chosen = candidate
                         break
+            if chosen is None:
+                for idx in order:
+                    candidate = active[idx]
+                    if candidate not in selected:
+                        chosen = candidate
+                        break
+            if chosen is not None:
+                selected.append(chosen)
 
         self._placement_cache[cache_key] = selected
         return selected

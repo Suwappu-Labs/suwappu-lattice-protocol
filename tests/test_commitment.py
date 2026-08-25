@@ -494,3 +494,82 @@ class TestShardTTL:
         node = CommitmentNode("node-1", "us-east")
         node.evicted = True
         assert not node.store_shard_with_ttl("e1", 0, b"data", 10, 100)
+
+
+# ---------------------------------------------------------------------------
+# Failure-Domain-Aware Placement (Whitepaper §2.1.2 / §5.4.1.1)
+# ---------------------------------------------------------------------------
+
+
+class TestFailureDomainPlacement:
+    """Replicas of one shard index MUST span min(replicas, R) distinct
+    regions — the constraint the §5.4.1.1 availability model assumes."""
+
+    def _network(self, nodes: int, regions: list[str]) -> CommitmentNetwork:
+        net = CommitmentNetwork()
+        for i in range(nodes):
+            net.add_node(f"fd-{i}", regions[i % len(regions)])
+        return net
+
+    def test_replicas_span_distinct_regions(self):
+        net = self._network(12, ["us", "eu", "ap", "sa"])
+        for e in range(50):
+            entity_id = f"sha3-256:{e:064x}"
+            for idx in range(8):
+                for replicas in (2, 3, 4):
+                    sel = net._placement(entity_id, idx, replicas)
+                    assert len(sel) == replicas
+                    assert len({n.region for n in sel}) == min(replicas, 4), (
+                        f"replicas not region-diverse for entity {e}, shard {idx}"
+                    )
+
+    def test_more_replicas_than_regions_uses_every_region(self):
+        net = self._network(6, ["us", "eu"])
+        sel = net._placement("sha3-256:" + "cd" * 32, 0, 4)
+        assert len(sel) == 4
+        assert {n.region for n in sel} == {"us", "eu"}
+        assert len({n.node_id for n in sel}) == 4  # still node-distinct
+
+    def test_single_region_degrades_to_node_distinct(self):
+        net = self._network(5, ["solo"])
+        sel = net._placement("sha3-256:" + "ab" * 32, 0, 3)
+        assert len(sel) == 3
+        assert len({n.node_id for n in sel}) == 3
+
+    def test_placement_deterministic_across_instances(self):
+        a = self._network(12, ["us", "eu", "ap", "sa"])
+        b = self._network(12, ["us", "eu", "ap", "sa"])
+        for e in range(20):
+            entity_id = f"sha3-256:{e:064x}"
+            for idx in range(4):
+                assert [n.node_id for n in a._placement(entity_id, idx, 3)] == [
+                    n.node_id for n in b._placement(entity_id, idx, 3)
+                ]
+
+    def test_replica_count_never_silently_drops(self):
+        """The exhaustive linear-scan tail guarantees a replica for every
+        slot whenever enough distinct active nodes exist."""
+        net = self._network(4, ["us", "eu"])
+        for e in range(30):
+            entity_id = f"sha3-256:{e:064x}"
+            sel = net._placement(entity_id, 0, 4)
+            assert len(sel) == 4
+            assert len({n.node_id for n in sel}) == 4
+
+    def test_diagnostic_reports_all_cross_region(self):
+        """check_cross_region_placement now passes by construction when
+        at least two regions exist."""
+        net = self._network(8, ["us", "eu", "ap", "sa"])
+        report = net.check_cross_region_placement("sha3-256:" + "ef" * 32, 8, replicas=2)
+        assert report["all_cross_region"] is True
+
+    def test_region_failure_leaves_survivor_for_every_shard(self):
+        """With cross-region replicas, losing any single region leaves at
+        least one live replica per shard index."""
+        net = self._network(12, ["us", "eu", "ap", "sa"])
+        entity_id = "sha3-256:" + "aa" * 32
+        for failed in ["us", "eu", "ap", "sa"]:
+            for idx in range(8):
+                sel = net._placement(entity_id, idx, 2)
+                survivors = [n for n in sel if n.region != failed]
+                assert survivors, f"shard {idx} lost all replicas to region {failed}"
