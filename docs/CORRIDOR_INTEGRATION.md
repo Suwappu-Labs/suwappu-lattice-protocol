@@ -19,6 +19,56 @@ These constants and digest constructions are part of the public surface (see [`S
 
 Both implementations validate these sizes at the wire boundary. A signature shorter than 96 bytes never reaches the verifier in either language.
 
+## Running the ceremony
+
+Everything below is library code. `scripts/corridor_ceremony.py` is the
+runnable form — the whole ceremony as commands that read and write plain JSON,
+so an operator can follow it without writing any Python:
+
+```bash
+# Each operator, once, on their own machine. Publishes the public key only.
+corridor_ceremony.py keygen --out operator-3.key.json
+
+# The coordinator, from the nine published keys. Publishes BOTH the file
+# and its digest; every operator checks the digest before going further.
+corridor_ceremony.py allowlist --corridor 7 --seat 0=<pk> ... --out allowlist.json
+
+# Each operator claims their seat.
+corridor_ceremony.py announce --key operator-3.key.json \
+    --allowlist allowlist.json --authority 3 --out ann-3.json
+
+# Anyone, from the nine announcements. Prints the roster digest to compare.
+corridor_ceremony.py roster --allowlist allowlist.json \
+    --announcements ./anns --out corridor.json
+
+# A round.
+corridor_ceremony.py payload --source-chain 1 --target-chain 2 \
+    --height 100 --state-root <hex32> --round 42 --out payload.json
+corridor_ceremony.py sign --key operator-3.key.json --authority 3 \
+    --payload payload.json --history operator-3.history.json --out partial-3.json
+corridor_ceremony.py aggregate --corridor corridor.json \
+    --payload payload.json --partials ./partials --out attestation.json
+corridor_ceremony.py verify --corridor corridor.json --attestation attestation.json
+```
+
+Files rather than sockets, deliberately: every corridor step is asynchronous
+and human-paced, and a file is a transport every operator already has. It also
+means the ceremony runs with no network and no dependencies beyond the SDK,
+and that a daemon can be built later without changing any of the protocol
+above it.
+
+Two things worth knowing before you run it:
+
+- **`--history` is load-bearing, not bookkeeping.** Each `sign` is a fresh
+  process, so the history file is the only thing that remembers what this seat
+  already signed. Delete it and the next `sign` for a round you already signed
+  will happily produce the conflicting signature that forfeits your bond.
+  Keep it next to the key, back it up with the key.
+- **`keygen` writes a plaintext BLS secret key** at mode 0600. That is
+  testnet-appropriate and is not key custody: a corridor holding value wants
+  the secret in an HSM or Turnkey, with the signer reading a handle instead of
+  the bytes.
+
 ## Assembling the corridor
 
 Every snippet below starts from "suppose `corridor` is the 9-member super-node

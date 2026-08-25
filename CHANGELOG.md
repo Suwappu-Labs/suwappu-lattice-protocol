@@ -12,6 +12,18 @@ public-surface promise and the cross-version compatibility matrix.
 ## [Unreleased]
 
 ### Added
+- `scripts/corridor_ceremony.py` — the corridor ceremony as runnable commands.
+  Four modules of corridor library existed and nothing an operator could
+  execute, so "joining a corridor" was still prose. This covers the whole
+  sequence — `keygen`, `allowlist`, `announce`, `roster`, `payload`, `sign`,
+  `aggregate`, `verify` — reading and writing plain JSON via the existing wire
+  codecs, with no network and no new dependencies. Files rather than sockets
+  because every corridor step is asynchronous and human-paced, and because a
+  daemon can be built later without changing the protocol underneath. `sign`
+  persists the double-sign guard to a `--history` file, which is what makes
+  the guard survive the restart that is the usual way a node equivocates;
+  `keygen` and the history file are written at mode 0600. `SeatAllowlist`
+  gained a wire codec so an allowlist can be published as a file
 - `ltp.corridor.policy` — who is *entitled* to a corridor seat. The
   enrollment binding stops a replay of someone else's announcement, but does
   nothing against a stranger who generates their own keypair and announces for

@@ -36,6 +36,7 @@ from .attestation import (
 from .da import Cid, Commitment, DaSla
 from .did_stark import DidRotationStatement, DidStarkProof
 from .enrollment import EnrollmentAnnouncement
+from .policy import SeatAllowlist
 from .session import EquivocationEvidence
 from .state_anchor import AuthScheme, StateAnchor
 
@@ -226,6 +227,39 @@ def equivocation_evidence_from_dict(d: dict[str, Any]) -> EquivocationEvidence:
         payload_b=attestation_payload_from_dict(_dict_field(d, "payload_b")),
         signature_b=_hex_bytes(d, "signature_b", _SIZE_BLS_SIGNATURE),
     )
+
+
+def seat_allowlist_to_dict(a: SeatAllowlist) -> dict[str, Any]:
+    """Encode a published seat allowlist.
+
+    Seats are emitted as a sorted list of objects rather than a JSON object
+    keyed by seat id, because JSON object keys are strings and would make
+    `{"0": ...}` versus `{0: ...}` a round-trip hazard across languages.
+    """
+    return {
+        "corridor_id": a.corridor_id,
+        "seats": [
+            {"authority": authority, "bls_public_key": bytes(a.seats[authority]).hex()}
+            for authority in sorted(a.seats)
+        ],
+    }
+
+
+def seat_allowlist_from_dict(d: dict[str, Any]) -> SeatAllowlist:
+    """Rebuild a seat allowlist. `SeatAllowlist` re-validates on construction,
+    so a duplicate key or a wrong-length key is rejected here too."""
+    seats: dict[int, bytes] = {}
+    for i, raw in enumerate(_list_field(d, "seats")):
+        if not isinstance(raw, dict):
+            raise WireFormatError(f"seats[{i}] must be an object, got {type(raw).__name__}")
+        authority = _int_field(raw, "authority")
+        if authority in seats:
+            raise WireFormatError(f"seat {authority} appears more than once")
+        seats[authority] = _hex_bytes(raw, "bls_public_key", _SIZE_BLS_PUBLIC_KEY)
+    try:
+        return SeatAllowlist(corridor_id=_int_field(d, "corridor_id"), seats=seats)
+    except ValueError as e:
+        raise WireFormatError(f"invalid seat allowlist: {e}") from e
 
 
 def corridor_to_dict(c: Corridor) -> dict[str, Any]:
