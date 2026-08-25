@@ -114,6 +114,24 @@ public-surface promise and the cross-version compatibility matrix.
   LTP-A-022 (cross-language BLS DST pinning — confirmed-OK)
 
 ### Changed
+- Corridor wire integer fields are now decoded as strictly as serde decodes a
+  `u32`. The helper used `int(raw)`, which accepts `"5"` and — the dangerous
+  one — silently truncates `5.9` to `5`. Rust's serde rejects both outright,
+  so the lenient side meant Python and the DAG L1 disagreed about which
+  messages are valid on a wire `STABILITY_PROMISES.md` pins byte-for-byte, and
+  a truncated height or authority id is a value the sender never sent yet
+  would be hashed into a canonical digest as though it were. `bool` is
+  excluded explicitly, since it subclasses `int` and `true` would otherwise
+  decode as the id `1`. Strings and floats in integer fields were never part
+  of the documented format — "integer discriminants", "sorted JSON arrays of
+  u32 ids" — so this tightens Python toward the spec rather than changing it,
+  but a producer that was relying on the leniency will now get a
+  `WireFormatError`. Two existing tests asserted the old wording; the new
+  message additionally names the offending list element
+- `SeatAllowlist` copies and freezes the seat map it is given. Validation runs
+  once at construction, so a caller retaining the dict they passed in could
+  otherwise add a seat, duplicate a key or swap in a wrong-length one
+  afterwards, and every check would already have run
 - `CHANGELOG.md` entries now flag breaking changes inline with `**[BREAKING]**`
 
 ### Known issues

@@ -319,10 +319,10 @@ def main():
     suwappu_config = leg_config(args.l1_prefix)
     base_config = leg_config(args.l2_prefix)
 
-    logger.info("L1 %s: %s → %s", args.l1_prefix, suwappu_config.rpc_url,
-                suwappu_config.registry_address)
-    logger.info("L2 %s: %s → %s", args.l2_prefix, base_config.rpc_url,
-                base_config.registry_address)
+    logger.info(
+        "L1 %s: %s → %s", args.l1_prefix, suwappu_config.rpc_url, suwappu_config.registry_address
+    )
+    logger.info("L2 %s: %s → %s", args.l2_prefix, base_config.rpc_url, base_config.registry_address)
 
     # Create protocol with registered keypair
     protocol, operator_kp, kr = create_protocol(keypair_path=args.keypair)

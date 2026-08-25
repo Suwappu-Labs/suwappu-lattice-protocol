@@ -173,5 +173,7 @@ def test_deeply_nested_signers_list_rejected():
         "aggregate_signature": "00" * 96,
         "signers": [[[1, 2, 3]]],
     }
-    with pytest.raises(WireFormatError, match=r"signers.*integers"):
+    # The decoder names the offending element, so a nested list is reported as
+    # signers[0] rather than as a whole-field failure.
+    with pytest.raises(WireFormatError, match=r"signers\[0\].*must be a JSON integer"):
         corridor_attestation_from_dict(d)

@@ -44,7 +44,17 @@ Thumbs.db
 *.log
 
 # Claude Code
-.claude/
+# `.claude/*` rather than `.claude/` because git cannot re-include a file whose
+# parent directory is excluded, and two files here are shared infrastructure
+# rather than private notes: the SessionStart hook that provisions a remote
+# container (without it `pytest tests/` aborts during collection and the lint
+# lane silently skips), and the settings that register it. Everything else
+# under .claude/ stays ignored, which is what this rule was always for.
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+.claude/hooks/*
+!.claude/hooks/session-start.sh
 # Project-level CLAUDE.md is tracked (Anthropic-recommended pattern, see
 # docs/AI_AGENTS.md). Keep private session notes under .claude/ instead.
 docs/ETP_UNIFIED_NODE_DEPLOYMENT_PLAN.md

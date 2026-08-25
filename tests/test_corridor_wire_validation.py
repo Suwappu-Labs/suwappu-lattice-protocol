@@ -67,7 +67,7 @@ class TestAttestationPayloadFromDict:
     def test_source_chain_not_int(self):
         d = _valid_payload()
         d["source_chain"] = "not-a-number"
-        with pytest.raises(WireFormatError, match="source_chain.*not an integer"):
+        with pytest.raises(WireFormatError, match="source_chain.*must be a JSON integer"):
             attestation_payload_from_dict(d)
 
     def test_negative_source_height(self):
@@ -141,7 +141,9 @@ class TestCorridorAttestationFromDict:
     def test_signers_not_integers(self):
         d = _valid_corridor_attestation()
         d["signers"] = [0, "string-not-int", 2]
-        with pytest.raises(WireFormatError, match="signers.*list of integers"):
+        # The message now names the offending element rather than the field, so
+        # an operator staring at a 9-entry list knows which one to look at.
+        with pytest.raises(WireFormatError, match=r"signers\[1\].*must be a JSON integer"):
             corridor_attestation_from_dict(d)
 
     def test_payload_not_object(self):
@@ -253,3 +255,57 @@ class TestDidRotationStatementFromDict:
                     "source_height": 100,
                 }
             )
+
+
+class TestIntegerFieldsMatchSerdeStrictness:
+    """`int(raw)` accepts `"5"` and silently truncates `5.9` to `5`. serde will
+    decode neither into a `u32`, so a lenient Python decoder means the two
+    implementations disagree about which messages are valid — on a wire that
+    `STABILITY_PROMISES.md` pins byte-for-byte across both.
+    """
+
+    BASE = {"authority": 0, "corridor": 0, "bls_public_key": "00" * 48}
+
+    @pytest.mark.parametrize("bad", ["0", 0.0, 0.9, True, False, None, [0], {"n": 0}])
+    def test_non_integers_are_rejected(self, bad):
+        with pytest.raises(WireFormatError) as exc:
+            super_node_from_dict({**self.BASE, "authority": bad})
+        assert "must be a JSON integer" in str(exc.value)
+
+    def test_a_float_is_not_silently_truncated(self):
+        """The dangerous one: 100.9 decoding as 100 is a value nobody sent, and
+        it would be hashed into a canonical digest as though it were."""
+        with pytest.raises(WireFormatError):
+            super_node_from_dict({**self.BASE, "authority": 100.9})
+
+    def test_bool_is_not_an_authority_id(self):
+        """bool subclasses int in Python, so `True` would decode as seat 1."""
+        with pytest.raises(WireFormatError) as exc:
+            super_node_from_dict({**self.BASE, "corridor": True})
+        assert "bool" in str(exc.value)
+
+    def test_genuine_integers_still_decode(self):
+        node = super_node_from_dict({**self.BASE, "authority": 7, "corridor": 3})
+        assert node.authority == 7
+        assert node.corridor == 3
+
+    def test_signers_entries_are_checked_individually(self):
+        from src.ltp.corridor.wire import corridor_attestation_from_dict
+
+        payload = {
+            "source_chain": 1,
+            "target_chain": 2,
+            "source_height": 3,
+            "state_root": "11" * 32,
+            "timestamp_round": 4,
+        }
+        good = {
+            "payload": payload,
+            "aggregate_signature": "22" * 96,
+            "signers": [0, 1, 2],
+        }
+        assert corridor_attestation_from_dict(good).signers == frozenset({0, 1, 2})
+
+        with pytest.raises(WireFormatError) as exc:
+            corridor_attestation_from_dict({**good, "signers": [0, "1", 2]})
+        assert "signers[1]" in str(exc.value)

@@ -100,9 +100,7 @@ def normalize_memo(memo: str) -> bytes:
     except ValueError as exc:
         raise SystemExit(f"memo is not valid hex: {exc}")
     if len(b) != MEMO_BYTES:
-        raise SystemExit(
-            f"memo must be exactly {MEMO_BYTES} bytes (Tempo bytes32); got {len(b)}"
-        )
+        raise SystemExit(f"memo must be exactly {MEMO_BYTES} bytes (Tempo bytes32); got {len(b)}")
     return b
 
 
@@ -119,9 +117,7 @@ def looks_like_text_memo(memo: bytes) -> bool:
 
 
 def _rpc(rpc_url: str, method: str, params: list) -> dict:
-    payload = json.dumps(
-        {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
-    ).encode()
+    payload = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode()
     req = urllib.request.Request(
         rpc_url,
         data=payload,
@@ -185,8 +181,7 @@ def verify_memo(memo_hex: str, rpc_url: str, registry: str) -> dict:
             text = memo.rstrip(b"\x00").decode("ascii", "replace")
             result["looks_like_text_memo"] = text
             result["explanation"] += (
-                f" It decodes as the ASCII text {text!r}, which is the shape of "
-                "a human Tempo memo."
+                f" It decodes as the ASCII text {text!r}, which is the shape of a human Tempo memo."
             )
         return result
 

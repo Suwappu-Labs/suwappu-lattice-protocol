@@ -77,16 +77,33 @@ def _hex_bytes(d: dict[str, Any], field: str, expected: int | None = None) -> by
     return decoded
 
 
+def _require_int(raw: Any, what: str) -> int:
+    """Accept a JSON integer and nothing else.
+
+    ``int(raw)`` would be more forgiving, and that is the problem. It accepts
+    ``"5"`` and it *silently truncates* ``5.9`` to ``5`` — so a field this
+    side reads as 5 is a field the Rust side rejects outright, because serde
+    will not decode either into a ``u32``. On a wire that is pinned
+    byte-for-byte across two implementations (see ``STABILITY_PROMISES.md``),
+    "Python accepts what Rust refuses" is a divergence in what counts as a
+    valid message, and a silently truncated height or authority id is a value
+    the sender never sent.
+
+    ``bool`` is excluded explicitly because it is an ``int`` subclass in
+    Python, so ``True`` would otherwise decode as the id ``1``.
+    """
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        raise WireFormatError(f"{what} must be a JSON integer, got {type(raw).__name__} ({raw!r})")
+    return raw
+
+
 def _int_field(d: dict[str, Any], field: str, *, non_negative: bool = True) -> int:
-    """Coerce ``d[field]`` to int; raise WireFormatError on failure."""
+    """Read ``d[field]`` as a JSON integer; raise WireFormatError on failure."""
     try:
         raw = d[field]
     except KeyError as e:
         raise WireFormatError(f"missing field {field!r}") from e
-    try:
-        value = int(raw)
-    except (TypeError, ValueError) as e:
-        raise WireFormatError(f"field {field!r} is not an integer: {raw!r}") from e
+    value = _require_int(raw, f"field {field!r}")
     if non_negative and value < 0:
         raise WireFormatError(f"field {field!r} must be non-negative, got {value}")
     return value
@@ -158,10 +175,7 @@ def corridor_attestation_to_dict(a: CorridorAttestation) -> dict[str, Any]:
 
 def corridor_attestation_from_dict(d: dict[str, Any]) -> CorridorAttestation:
     signers_raw = _list_field(d, "signers")
-    try:
-        signers = frozenset(int(s) for s in signers_raw)
-    except (TypeError, ValueError) as e:
-        raise WireFormatError(f"signers must be a list of integers: {e}") from e
+    signers = frozenset(_require_int(s, f"signers[{i}]") for i, s in enumerate(signers_raw))
     return CorridorAttestation(
         payload=attestation_payload_from_dict(_dict_field(d, "payload")),
         aggregate_signature=_hex_bytes(d, "aggregate_signature", _SIZE_BLS_SIGNATURE),

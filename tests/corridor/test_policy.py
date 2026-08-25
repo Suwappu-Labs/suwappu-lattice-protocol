@@ -276,3 +276,99 @@ def test_a_custom_policy_satisfies_the_protocol(keys):
     with pytest.raises(SeatNotAuthorized):
         reg.enroll_announcement(announce(sk1, pk1, CORRIDOR, 1))
     assert reg.size == 1
+
+
+# -- the allowlist as a published file ---------------------------------------
+
+
+def test_allowlist_survives_a_wire_round_trip(allowlist):
+    """An allowlist is only useful if it can be published, so it has to encode."""
+    from src.ltp.corridor.wire import seat_allowlist_from_dict, seat_allowlist_to_dict
+
+    restored = seat_allowlist_from_dict(seat_allowlist_to_dict(allowlist))
+    assert restored.corridor_id == allowlist.corridor_id
+    assert dict(restored.seats) == dict(allowlist.seats)
+    assert restored.digest() == allowlist.digest()
+
+
+def test_wire_emits_seats_as_a_sorted_list_not_an_object(allowlist):
+    """JSON object keys are strings, so a seat map keyed by id would make
+    `{"0": ...}` vs `{0: ...}` a cross-language round-trip hazard."""
+    from src.ltp.corridor.wire import seat_allowlist_to_dict
+
+    d = seat_allowlist_to_dict(allowlist)
+    assert isinstance(d["seats"], list)
+    ids = [s["authority"] for s in d["seats"]]
+    assert ids == sorted(ids)
+    assert all(isinstance(s["authority"], int) for s in d["seats"])
+
+
+def test_wire_re_validates_rather_than_trusting_the_file(keys):
+    """A published allowlist is someone else's file — construction rules have
+    to apply to it, not just to allowlists built in-process."""
+    from src.ltp.corridor.wire import WireFormatError, seat_allowlist_from_dict
+
+    shared = keys[0][0].hex()
+    with pytest.raises(WireFormatError) as exc:
+        seat_allowlist_from_dict(
+            {
+                "corridor_id": CORRIDOR,
+                "seats": [
+                    {"authority": 0, "bls_public_key": shared},
+                    {"authority": 1, "bls_public_key": shared},
+                ],
+            }
+        )
+    assert "independent key" in str(exc.value)
+
+    with pytest.raises(WireFormatError):
+        seat_allowlist_from_dict(
+            {"corridor_id": CORRIDOR, "seats": [{"authority": 0, "bls_public_key": "00" * 10}]}
+        )
+
+    with pytest.raises(WireFormatError) as exc:
+        seat_allowlist_from_dict(
+            {
+                "corridor_id": CORRIDOR,
+                "seats": [
+                    {"authority": 0, "bls_public_key": keys[0][0].hex()},
+                    {"authority": 0, "bls_public_key": keys[1][0].hex()},
+                ],
+            }
+        )
+    assert "more than once" in str(exc.value)
+
+
+# -- the allowlist cannot be edited out from under the registry --------------
+
+
+def test_mutating_the_dict_you_passed_in_does_not_change_the_allowlist(keys):
+    """Validation runs once at construction. Without a copy, a caller holding
+    the original dict could add a seat afterwards and skip every check."""
+    seats = {0: keys[0][0], 1: keys[1][0]}
+    allowlist = SeatAllowlist(corridor_id=CORRIDOR, seats=seats)
+    before = allowlist.digest()
+
+    seats[2] = keys[2][0]
+    seats[0] = b"\x00" * 48
+
+    assert sorted(allowlist.seats) == [0, 1]
+    assert allowlist.digest() == before
+    assert bytes(allowlist.seats[0]) == keys[0][0]
+
+
+def test_the_allowlist_itself_is_read_only(allowlist, keys):
+    with pytest.raises(TypeError):
+        allowlist.seats[99] = keys[0][0]
+
+
+def test_a_registry_keeps_refusing_a_seat_added_after_construction(keys):
+    """The end-to-end consequence: post-hoc edits cannot widen entitlement."""
+    seats = {0: keys[0][0]}
+    allowlist = SeatAllowlist(corridor_id=CORRIDOR, seats=seats)
+    seats[4] = keys[4][0]  # too late
+
+    reg = CorridorRegistry(corridor_id=CORRIDOR, policy=allowlist)
+    pk4, sk4 = keys[4]
+    with pytest.raises(SeatNotAuthorized):
+        reg.enroll_announcement(announce(sk4, pk4, CORRIDOR, 4))

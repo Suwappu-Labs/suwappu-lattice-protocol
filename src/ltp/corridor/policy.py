@@ -39,7 +39,8 @@ digest instead of an unexplained storm of rejected announcements.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Mapping, Protocol, runtime_checkable
 
 from .attestation import AuthorityId, CorridorId
@@ -117,6 +118,13 @@ class SeatAllowlist:
 
     corridor_id: CorridorId
     seats: Mapping[AuthorityId, bytes]
+    #: Set by `__post_init__` to a read-only snapshot of `seats`. Validation
+    #: happens once at construction, so a caller holding a reference to the
+    #: dict they passed in could otherwise add a seat, duplicate a key, or
+    #: swap in a wrong-length one afterwards and every check above would have
+    #: already run. Copying breaks that alias; the proxy makes the
+    #: immutability visible rather than merely true.
+    _frozen: Mapping[AuthorityId, bytes] = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if not 0 <= self.corridor_id <= ID_MAX:
@@ -152,6 +160,13 @@ class SeatAllowlist:
                     "seat must be an independent key or the quorum threshold is a fiction"
                 )
             seen[bytes(key)] = authority
+
+        object.__setattr__(
+            self,
+            "_frozen",
+            MappingProxyType({a: bytes(k) for a, k in self.seats.items()}),
+        )
+        object.__setattr__(self, "seats", self._frozen)
 
     def authorize(self, announcement: "EnrollmentAnnouncement") -> None:
         node = announcement.super_node

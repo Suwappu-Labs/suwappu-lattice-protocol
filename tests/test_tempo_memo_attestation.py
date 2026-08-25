@@ -49,9 +49,7 @@ def test_tempo_text_memo_is_recognised_as_text():
 
 
 def test_digest_is_not_mistaken_for_text():
-    digest = bytes.fromhex(
-        "c6e6fbd7965cec5914849d9cb74c00614fce15671f2beac06dda042d64cc1183"
-    )
+    digest = bytes.fromhex("c6e6fbd7965cec5914849d9cb74c00614fce15671f2beac06dda042d64cc1183")
     assert not tma.looks_like_text_memo(digest)
 
 
