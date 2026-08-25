@@ -25,6 +25,7 @@ from src.ltp.corridor.constants import (
 )
 from src.ltp.corridor.enrollment import announce
 from src.ltp.corridor.membership import CorridorRegistry
+from src.ltp.corridor.policy import OpenEnrollment
 from src.ltp.corridor.session import (
     CorridorSigner,
     DoubleSignAttempt,
@@ -65,7 +66,7 @@ def roster():
     same roster.
     """
     keys = [keygen() for _ in range(LTP_ATTESTATION_QUORUM_SIZE)]
-    reg = CorridorRegistry(corridor_id=CORRIDOR)
+    reg = CorridorRegistry(corridor_id=CORRIDOR, policy=OpenEnrollment())
     for i, (pk, sk) in enumerate(keys):
         reg.enroll_announcement(announce(sk, pk, CORRIDOR, i))
     signers = [CorridorSigner(i, sk) for i, (_, sk) in enumerate(keys)]

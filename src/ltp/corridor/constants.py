@@ -79,3 +79,10 @@ DOMAIN_TAG_CORRIDOR_ROSTER = b"LTP-CORRIDOR-ROSTER-V1"
 # yet, and this is the tag the Rust side must adopt verbatim if enrollment
 # ever moves onto the cross-repo wire.
 DOMAIN_TAG_CORRIDOR_ENROLL = b"LTP-CORRIDOR-ENROLL-V1"
+
+# Seat-allowlist digest — see `policy.py`. Lets nine operators confirm they
+# were configured with the same permitted seat set *before* enrollment
+# starts, so a misconfiguration surfaces as one mismatched digest rather
+# than as an unexplained storm of rejected announcements. Python-side only,
+# on the same terms as the two tags above.
+DOMAIN_TAG_CORRIDOR_ALLOWLIST = b"LTP-CORRIDOR-ALLOWLIST-V1"

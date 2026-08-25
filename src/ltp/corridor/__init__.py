@@ -106,10 +106,17 @@ from .membership import (
     DuplicateAuthority,
     DuplicateBlsKey,
     MalformedSuperNode,
+    NoEnrollmentPolicy,
     RosterFull,
     RosterNotReady,
     WrongCorridor,
     build_pop_message,
+)
+from .policy import (
+    EnrollmentPolicy,
+    OpenEnrollment,
+    SeatAllowlist,
+    SeatNotAuthorized,
 )
 from .session import (
     CorridorSigner,
@@ -184,6 +191,12 @@ __all__ = [
     "MalformedSuperNode",
     "RosterNotReady",
     "RosterFull",
+    "NoEnrollmentPolicy",
+    # seat entitlement
+    "EnrollmentPolicy",
+    "SeatAllowlist",
+    "OpenEnrollment",
+    "SeatNotAuthorized",
     "build_pop_message",
     # enrollment
     "EnrollmentAnnouncement",

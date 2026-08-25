@@ -38,7 +38,7 @@ ann = announce(sk, pk, corridor_id=7, authority=3, epoch=0)
 # ... then publishes `ann` however they like: gossip, REST, a file in a repo.
 
 # Each node, independently, as announcements arrive:
-registry = CorridorRegistry(corridor_id=7, epoch=0)
+registry = CorridorRegistry(corridor_id=7, epoch=0, policy=allowlist)
 for incoming in announcements_received:
     registry.enroll_announcement(incoming)   # raises on anything not legitimate
 
@@ -76,13 +76,64 @@ What this does **not** do is decide who is *entitled* to a seat. An announcement
 proves "the holder of this key wants seat 3 of corridor 7 in epoch 0"; an
 allowlist, stake check, or governance vote is a separate layer above this one.
 
+### Who is entitled to a seat
+
+The binding above stops someone replaying *your* announcement. It does nothing
+against a stranger who generates their own keypair and announces for your
+seat — that announcement is genuinely signed by a key its sender genuinely
+holds, and `verify_announcement` passes it. Authenticity and entitlement are
+different questions, and only the second one keeps the corridor from belonging
+to whoever arrives first.
+
+`enroll_announcement` is therefore fail-closed: without a `policy` it refuses
+to run at all.
+
+```python
+from src.ltp.corridor.policy import SeatAllowlist
+
+allowlist = SeatAllowlist(corridor_id=7, seats={0: pk_a, 1: pk_b, ...})
+print(allowlist.digest().hex())   # every operator compares this first
+registry = CorridorRegistry(corridor_id=7, epoch=0, policy=allowlist)
+```
+
+`SeatAllowlist` binds a seat to a **specific key**, not merely to a set of
+approved keys, so seat N can only ever be held by the key published for seat N
+— an allowlisted operator cannot take a colleague's seat, and a key published
+for corridor 7 cannot carry into corridor 12. Construction rejects two seats
+sharing one key, which would hand one operator two of nine votes and make the
+threshold a fiction. `digest()` is what nine operators compare out-of-band
+before enrollment opens, so a misconfiguration shows up as one mismatched
+value rather than a storm of unexplained rejections.
+
+Of the three entitlement schemes usually proposed for a corridor, an allowlist
+is the only one that can be enforced today, and that is an availability fact
+rather than a preference:
+
+| Scheme | Status |
+|---|---|
+| Allowlist | Implemented — `SeatAllowlist` |
+| Stake | No escrowed bond exists to check a claim against; declared stake is a number the claimant chose |
+| Governance vote | No corridor governance surface exists — no proposal, no vote, no on-chain seat registry |
+
+The `EnrollmentPolicy` protocol is the seam so the other two land later as
+additional implementations rather than as a rewrite. `OpenEnrollment` permits
+any seat and has to be named explicitly; it is for a devnet or a test, never
+for a corridor whose attestations anyone relies on.
+
+The policy check runs *before* signature verification — a dict lookup versus a
+BLS pairing — so a stranger cannot make a node do expensive work by spraying
+announcements at seats they were never going to get. A policy must therefore
+treat the announcement's contents as unauthenticated claims and let the
+registry's signature checks establish that the claimant really holds the key.
+
 ### What the registry rejects
 
 `enroll` rejects, and leaves the registry untouched, when the super-node targets
 a different corridor, has a wrong-length key or PoP, repeats an already-enrolled
 authority id, repeats an already-enrolled **BLS public key**, or presents a PoP
-that does not verify. `enroll_announcement` additionally rejects a wrong epoch
-and a binding that does not cover this corridor/epoch/seat.
+that does not verify. `enroll_announcement` additionally rejects a wrong
+epoch, a seat the policy does not permit, and a binding that does not cover
+this corridor/epoch/seat.
 
 The BLS-key check is the one with no signature-level analogue: two authority ids
 sharing one key means a single operator holds two of nine seats, so a "7-of-9"

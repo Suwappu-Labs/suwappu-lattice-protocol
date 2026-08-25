@@ -36,11 +36,13 @@ Three properties it enforces that nothing else did:
 The roster digest lets operators confirm agreement out-of-band — read it aloud
 on a call, post it, diff it in CI — before the corridor signs anything.
 
-One thing this module does *not* settle on its own: a bare `SuperNode` carries
-a PoP over the public key alone, which names no corridor, seat, or epoch, so it
-can be replayed into a seat its owner never claimed. `enrollment.py` adds the
-binding signature that closes that, and `enroll_announcement` is the entry
-point to prefer for anything arriving over a transport.
+Two things this module does *not* settle on its own. A bare `SuperNode`
+carries a PoP over the public key alone, which names no corridor, seat, or
+epoch, so it can be replayed into a seat its owner never claimed —
+`enrollment.py` adds the binding signature that closes that. And a genuine
+announcement is still not a *permitted* one; `policy.py` decides entitlement.
+`enroll_announcement` requires both, and is the entry point to prefer for
+anything arriving over a transport.
 """
 
 from __future__ import annotations
@@ -64,8 +66,9 @@ from .constants import (
 )
 from .digest import sha3_256_domain
 
-if TYPE_CHECKING:  # pragma: no cover — import cycle: enrollment imports this module
+if TYPE_CHECKING:  # pragma: no cover — import cycle: both import this module
     from .enrollment import EnrollmentAnnouncement
+    from .policy import EnrollmentPolicy
 
 #: A BLS12-381 compressed G1 public key.
 BLS_PUBKEY_BYTES = 48
@@ -125,6 +128,23 @@ class RosterNotReady(CorridorMembershipError):
         self.need = need
 
 
+class NoEnrollmentPolicy(CorridorMembershipError):
+    """`enroll_announcement` was called on a registry with no policy.
+
+    Fail-closed on purpose: without one, every genuine announcement is also a
+    permitted one and the corridor belongs to whoever arrives first.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(
+            "enroll_announcement requires a policy deciding which keys may hold "
+            "which seats — pass `policy=SeatAllowlist(...)`, or "
+            "`policy=OpenEnrollment()` if you genuinely want to admit anyone "
+            "(dev and test only). `enroll` is the path for a SuperNode you "
+            "built locally and have already vetted."
+        )
+
+
 class RosterFull(CorridorMembershipError):
     def __init__(self, size: int) -> None:
         super().__init__(f"roster already holds its full {size} members")
@@ -137,7 +157,7 @@ class CorridorRegistry:
 
     Usage::
 
-        reg = CorridorRegistry(corridor_id=7, epoch=0)
+        reg = CorridorRegistry(corridor_id=7, epoch=0, policy=allowlist)
         for ann in incoming:
             reg.enroll_announcement(ann)   # raises on a bad or duplicate member
         corridor = reg.finalize()          # exactly-9, deterministic order
@@ -154,6 +174,7 @@ class CorridorRegistry:
 
     corridor_id: CorridorId
     epoch: int = 0
+    policy: "EnrollmentPolicy | None" = None
     quorum_size: int = LTP_ATTESTATION_QUORUM_SIZE
     _members: dict[AuthorityId, SuperNode] = field(default_factory=dict, repr=False)
 
@@ -222,11 +243,27 @@ class CorridorRegistry:
         not name a corridor, seat, or epoch, so it can be replayed into a seat
         its owner never claimed; an announcement's binding signature covers
         all three. See `enrollment.py` for the replay it prevents.
+
+        Requires a `policy`. A genuine announcement is not the same as a
+        permitted one — with nobody deciding entitlement, the first nine keys
+        to arrive own the corridor — so this path is fail-closed and
+        `policy.OpenEnrollment` is the explicit way to say you meant it.
+        `enroll` is unaffected: it is documented as the local path, where the
+        caller built the `SuperNode` itself and has already decided.
+
+        Order is policy → signatures. The policy check is a dict lookup and
+        signature verification is a BLS pairing, so rejecting an unauthorized
+        seat first denies a stranger a cheap way to make this node do
+        expensive work.
         """
         from .enrollment import EpochMismatch, verify_announcement
 
+        if self.policy is None:
+            raise NoEnrollmentPolicy()
+
         if ann.epoch != self.epoch:
             raise EpochMismatch(self.epoch, ann.epoch)
+        self.policy.authorize(ann)
         verify_announcement(ann)
         self.enroll(ann.super_node)
 

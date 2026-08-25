@@ -24,6 +24,7 @@ from src.ltp.corridor.enrollment import (
     verify_announcement,
 )
 from src.ltp.corridor.membership import CorridorRegistry, DuplicateBlsKey
+from src.ltp.corridor.policy import OpenEnrollment
 from src.ltp.corridor.wire import (
     WireFormatError,
     enrollment_announcement_from_dict,
@@ -117,7 +118,7 @@ def test_seat_squatting_is_blocked_end_to_end():
     honest = announce(sk, pk, corridor_id=CORRIDOR, authority=3, epoch=0)
     squat = _replay(honest, authority=8)
 
-    reg = CorridorRegistry(corridor_id=CORRIDOR, epoch=0)
+    reg = CorridorRegistry(corridor_id=CORRIDOR, epoch=0, policy=OpenEnrollment())
     with pytest.raises(BindingVerificationFailed):
         reg.enroll_announcement(squat)
     assert reg.size == 0
@@ -138,7 +139,7 @@ def test_without_the_binding_the_squat_would_have_worked():
     honest = announce(sk, pk, corridor_id=CORRIDOR, authority=3, epoch=0)
     squat = _replay(honest, authority=8)
 
-    reg = CorridorRegistry(corridor_id=CORRIDOR, epoch=0)
+    reg = CorridorRegistry(corridor_id=CORRIDOR, epoch=0, policy=OpenEnrollment())
     reg.enroll(squat.super_node)  # the PoP is genuine, so this passes
     assert reg.size == 1
     with pytest.raises(DuplicateBlsKey):
@@ -224,7 +225,7 @@ def test_registry_rejects_an_announcement_from_another_epoch():
     pk, sk = keygen()
     old = announce(sk, pk, corridor_id=CORRIDOR, authority=3, epoch=0)
 
-    reg = CorridorRegistry(corridor_id=CORRIDOR, epoch=1)
+    reg = CorridorRegistry(corridor_id=CORRIDOR, epoch=1, policy=OpenEnrollment())
     with pytest.raises(EpochMismatch) as exc:
         reg.enroll_announcement(old)
     assert exc.value.expected == 1
@@ -233,7 +234,7 @@ def test_registry_rejects_an_announcement_from_another_epoch():
 
 
 def test_a_full_roster_assembles_from_announcements():
-    reg = CorridorRegistry(corridor_id=CORRIDOR, epoch=2)
+    reg = CorridorRegistry(corridor_id=CORRIDOR, epoch=2, policy=OpenEnrollment())
     for i in range(LTP_ATTESTATION_QUORUM_SIZE):
         pk, sk = keygen()
         reg.enroll_announcement(announce(sk, pk, CORRIDOR, i, epoch=2))
@@ -249,7 +250,7 @@ def test_roster_digest_is_bound_to_the_epoch():
 
     digests = []
     for epoch in (0, 1):
-        reg = CorridorRegistry(corridor_id=CORRIDOR, epoch=epoch)
+        reg = CorridorRegistry(corridor_id=CORRIDOR, epoch=epoch, policy=OpenEnrollment())
         for i, (pk, sk) in enumerate(keys):
             reg.enroll_announcement(announce(sk, pk, CORRIDOR, i, epoch=epoch))
         digests.append(reg.roster_digest())

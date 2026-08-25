@@ -12,6 +12,21 @@ public-surface promise and the cross-version compatibility matrix.
 ## [Unreleased]
 
 ### Added
+- `ltp.corridor.policy` — who is *entitled* to a corridor seat. The
+  enrollment binding stops a replay of someone else's announcement, but does
+  nothing against a stranger who generates their own keypair and announces for
+  a seat: that announcement is genuinely signed by a key its sender genuinely
+  holds. Without an entitlement policy the first nine keys to arrive own the
+  corridor, so `CorridorRegistry.enroll_announcement` is now fail-closed and
+  requires a `policy` (`enroll`, the documented local path, is unaffected).
+  `SeatAllowlist` binds a seat to a *specific* key, so seat N can only be held
+  by the key published for seat N; it refuses two seats sharing one key at
+  construction, and `digest()` lets nine operators confirm they were
+  configured alike before enrollment opens. `OpenEnrollment` permits anyone
+  and must be named explicitly. The `EnrollmentPolicy` protocol is a seam:
+  stake- and governance-based entitlement cannot be enforced today — there is
+  no escrowed bond to check against, and no corridor governance surface — so
+  they land later as implementations rather than as a rewrite
 - `ltp.bridge.wire` — canonical JSON for the untrusted relayer hop.
   `RelayPacket` and `SignedEnvelope` had no serialization at all, so
   `Relayer.relay()` and `L2Materializer.materialize()` could only ever run in
