@@ -12,6 +12,17 @@ public-surface promise and the cross-version compatibility matrix.
 ## [Unreleased]
 
 ### Added
+- Access-policy enforcement (whitepaper §2.2.1 / §2.3.1 step 2): new
+  `ltp.access_policy` module (`check_policy`, `validate_policy`,
+  `PolicyViolation`, exported from `ltp`), enforced in
+  `LTPProtocol.materialize()` after unsealing and before any fetch —
+  time window and count for every policy type, `one-time` defaulting to
+  a limit of 1, fail-closed rejection of unknown or malformed policies,
+  atomic per-sealed-key slot reservation with rollback on failed
+  attempts. `lattice()` now structurally validates policies at seal
+  time (temporal checks stay at materialize), surfaced as HTTP 400 at
+  the REST gateway. Counts are in-memory per protocol instance; scope
+  and residual replay surface documented in whitepaper §2.2.1/§3.3.8.
 - Quality-parity pass (cross-repo bar set by suwappubot):
   `scripts/verify.sh` single verification entrypoint with lanes
   (lint / semgrep / python / fast / contracts / secaudit / docs / all);
@@ -37,6 +48,18 @@ public-surface promise and the cross-version compatibility matrix.
   LTP-A-022 (cross-language BLS DST pinning — confirmed-OK)
 
 ### Changed
+- Erasure coder rebuilt around a table-driven GF(256) kernel
+  (per-coefficient `bytes.translate` substitution + big-integer XOR)
+  and an O(k²) Lagrange-interpolation decode matrix replacing O(k³)
+  Gauss-Jordan on the decode path (Gauss-Jordan retained as an
+  independent cross-check). 100–150× faster encode/decode with
+  byte-identical shards — gated by the whitepaper §2.1.1 pinned
+  vectors, the Lean-kernel constants, a randomized old-vs-new
+  equivalence fuzz, and new regression tests. Derivation in whitepaper
+  §6.5; re-measured evaluation in §7 (whitepaper 0.4.0/0.4.1).
+- Demo access policies in `python -m ltp` corrected from invented
+  types (`availability-test`, `boundary-test`, …) to conformant ones —
+  they only ever worked because nothing enforced them
 - `CHANGELOG.md` entries now flag breaking changes inline with `**[BREAKING]**`
 
 ### Known issues
