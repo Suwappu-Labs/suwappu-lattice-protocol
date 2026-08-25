@@ -1,6 +1,6 @@
 # LTP Production Roadmap
 
-**Author:** Javier Calderon Jr, CTO — Suwappu (SUWAPPU)
+**Author:** Suwappu (SUWAPPU)
 **Date:** May 11, 2026
 **Purpose:** Map all remaining work from current state to production-ready multi-node deployment. Living reference document — update as specs are completed.
 
