@@ -1561,3 +1561,56 @@ class TestEndToEndWithHSM:
         hsm.destroy_key("destroy-me")
         with pytest.raises(KeyError):
             hsm.sign("destroy-me", b"test")
+
+
+class TestSoftwareHSMImplicitKeyRegime:
+    """LTP-A-032 regression: under the production-default implicit-HSM
+    regime, kp.dk / kp.sk are sentinels, so the compliance SoftwareHSM must
+    route private-key operations through the KeyPair (kp.sign / kp.decaps),
+    never through raw MLDSA/MLKEM calls on stored fields. The test suite
+    normally opts out of implicit HSM (conftest), which is exactly how the
+    original defect stayed invisible while `python -m ltp` crashed."""
+
+    def test_sign_and_decrypt_with_implicit_hsm(self, monkeypatch):
+        import src.ltp.keypair as keypair_mod
+        from src.ltp.compliance import HSMConfig, SoftwareHSM
+        from src.ltp.keypair import SealedBox
+        from src.ltp.primitives import MLDSA
+
+        monkeypatch.setattr(keypair_mod, "_implicit_hsm_enabled", lambda: True)
+
+        hsm = SoftwareHSM(HSMConfig())
+        result = hsm.generate_keypair("implicit-regime")
+
+        # Stored raw fields are sentinels under this regime, not key material.
+        assert len(hsm._keys[result["key_id"]]["sk"]) != MLDSA.SK_SIZE
+
+        message = b"compliance signing under implicit HSM"
+        sig = hsm.sign(result["key_id"], message)
+        vk = result["public_key"][-1952:]
+        assert MLDSA.verify(vk, message, sig)
+
+        kp = hsm._keys[result["key_id"]]["keypair"]
+        sealed = SealedBox.seal(b"hsm-sealed payload", kp.ek)
+        assert hsm.decrypt(result["key_id"], sealed) == b"hsm-sealed payload"
+
+    def test_sign_and_decrypt_with_raw_keys(self, monkeypatch):
+        """The same paths under the legacy raw-key regime."""
+        import src.ltp.keypair as keypair_mod
+        from src.ltp.compliance import HSMConfig, SoftwareHSM
+        from src.ltp.keypair import SealedBox
+        from src.ltp.primitives import MLDSA
+
+        monkeypatch.setattr(keypair_mod, "_implicit_hsm_enabled", lambda: False)
+
+        hsm = SoftwareHSM(HSMConfig())
+        result = hsm.generate_keypair("raw-regime")
+        assert len(hsm._keys[result["key_id"]]["sk"]) == MLDSA.SK_SIZE
+
+        message = b"compliance signing with raw keys"
+        sig = hsm.sign(result["key_id"], message)
+        assert MLDSA.verify(result["public_key"][-1952:], message, sig)
+
+        kp = hsm._keys[result["key_id"]]["keypair"]
+        sealed = SealedBox.seal(b"raw-sealed payload", kp.ek)
+        assert hsm.decrypt(result["key_id"], sealed) == b"raw-sealed payload"

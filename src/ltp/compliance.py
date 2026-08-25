@@ -1427,8 +1427,14 @@ class SoftwareHSM(HSMInterface):
         key_id = f"{self.config.key_label_prefix}{self._next_id}"
         self._next_id += 1
 
+        # LTP-A-032: keep the KeyPair and route private-key operations
+        # through kp.sign() / SealedBox.unseal(kp) — under the implicit-HSM
+        # default, kp.dk / kp.sk are sentinels, not key material, and raw
+        # MLDSA/MLKEM calls on them fail. The raw fields are retained for
+        # legacy readers and are only meaningful when implicit HSM is off.
         self._keys[key_id] = {
             "label": label,
+            "keypair": kp,
             "public_key": kp.ek + kp.vk,  # Combined public material
             "private_key": kp.dk + kp.sk,  # Combined private material (PoC only)
             "ek": kp.ek,
@@ -1447,23 +1453,19 @@ class SoftwareHSM(HSMInterface):
         key_data = self._keys.get(key_id)
         if key_data is None:
             raise KeyError(f"Key '{key_id}' not found in HSM")
-        from .primitives import MLDSA
-
-        return MLDSA.sign(key_data["sk"], message)
+        # Routes through the backing HSM when the keypair is HSM-backed
+        # (LTP-A-032); direct ML-DSA signing otherwise.
+        return key_data["keypair"].sign(message)
 
     def decrypt(self, key_id: str, ciphertext: bytes) -> bytes:
         key_data = self._keys.get(key_id)
         if key_data is None:
             raise KeyError(f"Key '{key_id}' not found in HSM")
-        from .keypair import KeyPair, SealedBox
+        from .keypair import SealedBox
 
-        kp = KeyPair(
-            ek=key_data["ek"],
-            dk=key_data["dk"],
-            vk=key_data["vk"],
-            sk=key_data["sk"],
-        )
-        return SealedBox.unseal(ciphertext, kp)
+        # SealedBox.unseal routes decapsulation through kp.decaps, which is
+        # HSM-aware (LTP-A-032) — works under both key regimes.
+        return SealedBox.unseal(ciphertext, key_data["keypair"])
 
     def destroy_key(self, key_id: str) -> bool:
         if key_id in self._keys:
