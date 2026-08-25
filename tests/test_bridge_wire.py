@@ -101,8 +101,27 @@ def signed_relayed(
     return relayer.relay(commitment, cek, l2_verifier), protocol
 
 
-def _materializer(protocol: LTPProtocol, l2_verifier: KeyPair) -> L2Materializer:
-    m = L2Materializer(protocol, l2_verifier, chain_id="optimism", required_confirmations=1)
+def _materializer(
+    protocol: LTPProtocol,
+    l2_verifier: KeyPair,
+    *,
+    require_relay_envelope: bool = False,
+    relay_policy=None,
+) -> L2Materializer:
+    """Default is lenient so the round-trip tests below isolate the wire.
+
+    The strict default is exercised deliberately in the strip tests at the end
+    of this file — putting it here too would mean every unsigned-fixture test
+    failed for the wrong reason.
+    """
+    m = L2Materializer(
+        protocol,
+        l2_verifier,
+        chain_id="optimism",
+        required_confirmations=1,
+        require_relay_envelope=require_relay_envelope,
+        relay_policy=relay_policy,
+    )
     m.set_l1_block_height(10)
     return m
 
@@ -366,3 +385,119 @@ def test_envelope_round_trips_independently(relay_operator):
     assert restored == env
     assert restored.verify()
     assert restored.fingerprint() == env.fingerprint()
+
+
+# -- the two review findings, pinned -----------------------------------------
+
+
+def test_stripping_the_relay_envelope_is_rejected(signed_relayed, l2_verifier):
+    """Finding 1. A relay envelope is optional *on the packet*, so a receiver
+    cannot tell "never signed" from "signed, then stripped in transit" — only
+    local configuration can. Default is strict, so the strip fails."""
+    packet, protocol = signed_relayed
+    d = relay_packet_to_dict(packet)
+    assert "relay_envelope" in d
+    del d["relay_envelope"]
+
+    stripped = relay_packet_from_dict(d)
+    assert stripped.relay_envelope is None
+
+    strict = _materializer(protocol, l2_verifier, require_relay_envelope=True)
+    assert strict.materialize(stripped) is None
+
+    # And the same packet, unstripped, still goes through.
+    fresh = _materializer(protocol, l2_verifier, require_relay_envelope=True)
+    assert fresh.materialize(relay_packet_from_dict(relay_packet_to_dict(packet))) is not None
+
+
+def test_nulling_the_relay_envelope_is_rejected_too(signed_relayed, l2_verifier):
+    """The `null` spelling of absent must not be a way around the strict check."""
+    packet, protocol = signed_relayed
+    d = relay_packet_to_dict(packet)
+    d["relay_envelope"] = None
+
+    strict = _materializer(protocol, l2_verifier, require_relay_envelope=True)
+    assert strict.materialize(relay_packet_from_dict(d)) is None
+
+
+def test_a_valid_signature_from_an_unauthorized_relay_is_rejected(
+    signed_relayed, l2_verifier, l1_operator, relay_operator
+):
+    """Finding 1, second half. Verifying a signature establishes that *some*
+    key signed the packet — provenance, not authorization."""
+
+    class OnlyTheL1Operator:
+        def is_signer_authorized(self, vk, action, epoch):
+            return vk == l1_operator.vk and action == "RELAY"
+
+    packet, protocol = signed_relayed
+    received = relay_packet_from_json(relay_packet_to_json(packet))
+    assert received.relay_envelope.verify()  # the signature is genuine
+
+    gated = _materializer(
+        protocol, l2_verifier, require_relay_envelope=True, relay_policy=OnlyTheL1Operator()
+    )
+    assert gated.materialize(received) is None
+
+    class AlsoTheRelayOperator:
+        def is_signer_authorized(self, vk, action, epoch):
+            return vk == relay_operator.vk and action == "RELAY"
+
+    permitted = _materializer(
+        protocol, l2_verifier, require_relay_envelope=True, relay_policy=AlsoTheRelayOperator()
+    )
+    assert permitted.materialize(received) is not None
+
+
+def _upper_first_letter(hex_str: str) -> str:
+    """Mixed case, deterministically. Uppercasing a fixed prefix would be a
+    no-op whenever those digits happen to be 0-9, which makes the test pass
+    for the wrong reason on most keys and fail on the rest."""
+    for i, c in enumerate(hex_str):
+        if c.isalpha():
+            return hex_str[:i] + c.upper() + hex_str[i + 1 :]
+    raise AssertionError("expected at least one a-f digit in a 1.3 KB key")
+
+
+@pytest.mark.parametrize(
+    "variant",
+    [
+        lambda h: h.upper(),
+        lambda h: h[:4] + " " + h[4:],
+        lambda h: h[:4] + "\t" + h[4:],
+        lambda h: _upper_first_letter(h),
+    ],
+)
+def test_non_canonical_hex_is_rejected(relayed, variant):
+    """Finding 2. `bytes.fromhex` accepts uppercase and skips whitespace, so
+    without a strict decode one packet has unlimited distinct wire spellings —
+    and a receiver deduplicating on the received bytes would miss every
+    repeat."""
+    packet, _ = relayed
+    d = relay_packet_to_dict(packet)
+    d["sealed_key"] = variant(d["sealed_key"])
+
+    with pytest.raises(BridgeWireError):
+        relay_packet_from_dict(d)
+
+
+def test_one_packet_has_exactly_one_wire_spelling(relayed):
+    """The property the strict decode buys: encode and decode are inverse, so
+    hashing a received blob means the same as hashing a re-encoded one."""
+    packet, _ = relayed
+    blob = relay_packet_to_json(packet)
+
+    assert relay_packet_to_json(relay_packet_from_json(blob)) == blob
+    assert b"".join(blob.split()) == blob  # no whitespace to vary
+    hex_field = relay_packet_to_dict(packet)["sealed_key"]
+    assert hex_field == hex_field.lower()
+
+
+def test_odd_length_hex_is_rejected_before_decoding(relayed):
+    packet, _ = relayed
+    d = relay_packet_to_dict(packet)
+    d["sealed_key"] = d["sealed_key"][:-1]
+
+    with pytest.raises(BridgeWireError) as exc:
+        relay_packet_from_dict(d)
+    assert "odd number of hex digits" in str(exc.value)

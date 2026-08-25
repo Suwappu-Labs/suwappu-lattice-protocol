@@ -39,6 +39,7 @@ thing that decides a packet is trustworthy.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from ..envelope import SignedEnvelope
@@ -81,6 +82,9 @@ _MAX_DOMAIN_BYTES = 256
 _MAX_STRING_CHARS = 4096
 #: A chain id or entity id is an identifier, not free text.
 _MAX_IDENTIFIER_CHARS = 256
+#: Exactly what `bytes.hex()` produces — see `_hex_bytes` for why anything
+#: looser breaks canonicality in the decode direction.
+_CANONICAL_HEX = re.compile(r"[0-9a-f]*")
 #: Block heights and nonces are non-negative and bounded well below any real
 #: chain's ceiling; a u64 cap keeps them serializable everywhere downstream.
 _MAX_UINT64 = 2**64 - 1
@@ -93,7 +97,19 @@ def _require_dict(value: Any, what: str) -> dict[str, Any]:
 
 
 def _hex_bytes(d: dict[str, Any], field: str, *, max_len: int) -> bytes:
-    """Decode `d[field]` as hex, rejecting anything oversized before decoding."""
+    """Decode `d[field]` as canonical hex, rejecting oversize before decoding.
+
+    Canonical means exactly what `bytes.hex()` emits: even-length, lowercase,
+    no whitespace. `bytes.fromhex` is far more permissive — it accepts
+    uppercase and skips ASCII whitespace, so `"ab cd"`, `"ABCD"` and `"abcd"`
+    all decode to the same two bytes. That would make decoding many-to-one and
+    the format non-canonical in the direction that matters: a receiver
+    deduplicating packets by hashing the bytes it received could be fed one
+    packet under unlimited distinct hashes, simply by varying case and
+    whitespace, and every variant would sail past the cache. Rejecting
+    non-canonical input keeps encode and decode inverse, so hashing a received
+    blob means the same thing as hashing a re-encoded one.
+    """
     try:
         value = d[field]
     except KeyError as e:
@@ -106,10 +122,14 @@ def _hex_bytes(d: dict[str, Any], field: str, *, max_len: int) -> bytes:
         raise BridgeWireError(
             f"field {field!r} is {len(value) // 2} bytes, over the {max_len}-byte cap"
         )
-    try:
-        return bytes.fromhex(value)
-    except ValueError as e:
-        raise BridgeWireError(f"field {field!r} is not valid hex: {e}") from e
+    if len(value) % 2:
+        raise BridgeWireError(f"field {field!r} has an odd number of hex digits ({len(value)})")
+    if not _CANONICAL_HEX.fullmatch(value):
+        raise BridgeWireError(
+            f"field {field!r} is not canonical hex; expected lowercase [0-9a-f] "
+            "with no whitespace, as `bytes.hex()` emits"
+        )
+    return bytes.fromhex(value)
 
 
 def _string(d: dict[str, Any], field: str, *, max_len: int = _MAX_STRING_CHARS) -> str:
@@ -248,11 +268,13 @@ def relay_packet_from_dict(d: dict[str, Any]) -> RelayPacket:
 
 
 def relay_packet_to_json(p: RelayPacket) -> bytes:
-    """Canonical JSON bytes — sorted keys, compact separators.
+    """Canonical JSON bytes — sorted keys, compact separators, lowercase hex.
 
-    Canonical rather than merely valid so two relayers encoding the same packet
-    produce identical bytes, which makes a packet hashable for dedup and
-    loggable for comparison.
+    Canonical in both directions: this emits one form, and `_hex_bytes` refuses
+    to decode any other, so the encoding is a bijection with the packet. That
+    is what makes hashing a received blob safe for dedup — without the strict
+    decode an attacker could present one packet under unlimited distinct
+    hashes by varying hex case and whitespace.
     """
     return json.dumps(relay_packet_to_dict(p), sort_keys=True, separators=(",", ":")).encode()
 

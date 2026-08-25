@@ -100,10 +100,21 @@ Wraps `LTPProtocol.lattice()`:
 - **On the wire**: `bridge/wire.py` encodes a `RelayPacket` (and its relay
   `SignedEnvelope`) as canonical JSON, so the relayer and the materializer
   can be separate processes on separate hosts. Because the sender is
-  untrusted by construction, the decoder type-checks every field and caps
-  every byte field before decoding it; it does *not* decide whether a packet
-  is legitimate — `SignedEnvelope.verify()` and `L2Materializer.materialize()`
-  keep that job, and a wire round trip preserves every byte they depend on.
+  untrusted by construction, the decoder type-checks every field, caps every
+  byte field before decoding it, and accepts only canonical lowercase hex —
+  `bytes.fromhex` would otherwise take uppercase and whitespace too, giving
+  one packet unlimited wire spellings and defeating any dedup keyed on the
+  received bytes. It does *not* decide whether a packet is legitimate —
+  `SignedEnvelope.verify()` and `L2Materializer.materialize()` keep that job,
+  and a wire round trip preserves every byte they depend on.
+- **Relay authentication is a receiver-side setting**: a relay envelope is
+  optional on the packet, so a receiver cannot distinguish "never signed"
+  from "signed, then stripped in transit". `L2Materializer` therefore takes
+  `require_relay_envelope` (default **True**) and an optional `relay_policy`
+  that additionally requires the envelope's signer to be authorized for the
+  RELAY action — verifying a signature alone establishes provenance, not
+  authorization. `LiveBridge` passes `require_relay_envelope=False` because
+  its relayer hop is in-process, with no transport to strip anything from.
 
 #### 3. `L2Materializer` — Destination Chain Verification
 

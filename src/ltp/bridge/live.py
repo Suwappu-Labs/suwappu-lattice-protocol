@@ -144,6 +144,14 @@ class LiveBridge:
             l2_verifier_keypair,
             chain_id=dest_chain,
             required_confirmations=1,
+            # This relayer hop is in-process: `relay()` hands the packet
+            # straight to `materialize()` with no transport in between, so
+            # there is no position from which an envelope could be stripped
+            # and nothing for a relay signature to protect against. Stated
+            # explicitly rather than inherited, because the moment this bridge
+            # gains a network hop the answer changes and this line is where
+            # it has to be reconsidered.
+            require_relay_envelope=False,
         )
 
         # Independent per-chain sequence counters — seeded from on-chain state

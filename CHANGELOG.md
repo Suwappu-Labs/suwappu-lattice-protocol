@@ -27,6 +27,20 @@ public-surface promise and the cross-version compatibility matrix.
   stake- and governance-based entitlement cannot be enforced today — there is
   no escrowed bond to check against, and no corridor governance surface — so
   they land later as implementations rather than as a rewrite
+- Relay-hop hardening, from a security pass over this branch's own new code.
+  `L2Materializer` verified a relay `SignedEnvelope` only *if present*, so once
+  `bridge/wire.py` created a network hop, an attacker between relayer and
+  materializer could simply delete the `relay_envelope` key and skip relay
+  authentication entirely; and verifying the signature established only that
+  *some* key signed the packet, never that it was an authorized relay
+  operator. `require_relay_envelope` (default True) and an optional
+  `relay_policy` close both. `LiveBridge` and the in-process bridge tests pass
+  `require_relay_envelope=False` explicitly, because their relayer hop has no
+  transport in it. Separately, the wire decoder now accepts only canonical
+  lowercase hex: `bytes.fromhex` takes uppercase and skips whitespace, which
+  gave one packet unlimited distinct wire spellings and would have defeated
+  any receiver deduplicating on the bytes it received — a use the previous
+  docstring explicitly invited
 - `ltp.bridge.wire` — canonical JSON for the untrusted relayer hop.
   `RelayPacket` and `SignedEnvelope` had no serialization at all, so
   `Relayer.relay()` and `L2Materializer.materialize()` could only ever run in

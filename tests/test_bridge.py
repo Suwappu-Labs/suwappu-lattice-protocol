@@ -81,6 +81,9 @@ def l2_materializer(bridge_protocol: LTPProtocol, l2_verifier: KeyPair) -> L2Mat
         l2_verifier,
         chain_id="optimism",
         required_confirmations=1,
+        # In-process relay, as in LiveBridge — no transport, so no envelope to
+        # strip. tests/test_bridge_wire.py covers the wire-crossing case.
+        require_relay_envelope=False,
     )
 
 

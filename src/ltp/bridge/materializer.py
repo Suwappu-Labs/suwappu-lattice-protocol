@@ -13,8 +13,10 @@ Wraps LTPProtocol.materialize() with bridge-specific verification:
 from __future__ import annotations
 
 import logging
+import time
 from typing import Optional
 
+from ..governance import SignerPolicy
 from ..keypair import KeyPair
 from ..protocol import LTPProtocol
 from ..sequencing import SequenceTracker
@@ -46,11 +48,29 @@ class L2Materializer:
         verifier_keypair: KeyPair,
         chain_id: str = "optimism",
         required_confirmations: int = 1,
+        require_relay_envelope: bool = True,
+        relay_policy: Optional[SignerPolicy] = None,
     ) -> None:
+        """
+        `require_relay_envelope` defaults to True and is the reason a stripped
+        envelope cannot pass. A relay envelope is optional *on the packet*, so
+        a receiver cannot tell "was never signed" from "was signed and the
+        signature was removed in transit" — only local configuration can
+        decide that, and defaulting it off would mean anyone able to modify a
+        packet en route could opt out of relay authentication for it. Pass
+        False explicitly for an unsigned relay (a devnet, or a test).
+
+        `relay_policy`, when set, additionally requires the envelope's signer
+        to be authorized for the RELAY action. Without it, verification only
+        establishes that *some* key signed the packet, which is provenance,
+        not authorization.
+        """
         self.protocol = protocol
         self.verifier_keypair = verifier_keypair
         self.chain_id = chain_id
         self.required_confirmations = required_confirmations
+        self.require_relay_envelope = require_relay_envelope
+        self.relay_policy = relay_policy
         self.sequence_tracker = SequenceTracker(chain_id=chain_id)
         self._current_l1_block = 0  # Simulated view of L1 finality
         self._sequence_counter = 0  # Independent per-materializer sequence
@@ -93,17 +113,35 @@ class L2Materializer:
             )
             return None
 
-        # Step 2: Verify relay envelope signature if present
-        if hasattr(packet, "relay_envelope") and packet.relay_envelope is not None:
-            if not packet.relay_envelope.verify():
+        # Step 2: Relay-operator authentication.
+        envelope = getattr(packet, "relay_envelope", None)
+        if envelope is None:
+            if self.require_relay_envelope:
+                logger.warning(
+                    "[L2Materializer] Packet carries no relay envelope and this "
+                    "materializer requires one (entity=%s...)",
+                    packet.entity_id[:16],
+                )
+                return None
+        else:
+            if not envelope.verify():
                 logger.warning(
                     "[L2Materializer] Relay envelope signature verification FAILED (entity=%s...)",
                     packet.entity_id[:16],
                 )
                 return None
+            if self.relay_policy is not None:
+                epoch = int(time.time())
+                if not self.relay_policy.is_signer_authorized(envelope.signer_vk, "RELAY", epoch):
+                    logger.warning(
+                        "[L2Materializer] Relay envelope signature is valid but its "
+                        "signer is not authorized for RELAY (entity=%s...)",
+                        packet.entity_id[:16],
+                    )
+                    return None
             logger.info(
                 "[L2Materializer] Relay envelope verified: signer=%s",
-                packet.relay_envelope.signer_kid[:16],
+                envelope.signer_kid[:16],
             )
 
         # Step 3: Check L1 finality
@@ -122,8 +160,6 @@ class L2Materializer:
         # Step 4: Validate sequence via SequenceTracker (L2-side replay protection)
         # Use a dedicated per-materializer sequence counter (not the message nonce)
         # to decouple L2 replay protection from L1 message ordering.
-        import time
-
         self._sequence_counter += 1
         ok, reason = self.sequence_tracker.validate_and_advance(
             signer_vk=self.verifier_keypair.vk,
