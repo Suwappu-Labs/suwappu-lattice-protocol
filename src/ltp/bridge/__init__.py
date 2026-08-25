@@ -19,6 +19,17 @@ from .anchor import L1Anchor
 from .materializer import L2Materializer
 from .message import BridgeCommitment, BridgeMessage, RelayPacket
 from .relayer import Relayer
+from .wire import (
+    MAX_ENVELOPE_PAYLOAD_BYTES,
+    MAX_SEALED_KEY_BYTES,
+    BridgeWireError,
+    relay_packet_from_dict,
+    relay_packet_from_json,
+    relay_packet_to_dict,
+    relay_packet_to_json,
+    signed_envelope_from_dict,
+    signed_envelope_to_dict,
+)
 
 __all__ = [
     "BridgeMessage",
@@ -27,6 +38,16 @@ __all__ = [
     "L1Anchor",
     "Relayer",
     "L2Materializer",
+    # wire — the untrusted relayer hop
+    "BridgeWireError",
+    "relay_packet_to_dict",
+    "relay_packet_from_dict",
+    "relay_packet_to_json",
+    "relay_packet_from_json",
+    "signed_envelope_to_dict",
+    "signed_envelope_from_dict",
+    "MAX_SEALED_KEY_BYTES",
+    "MAX_ENVELOPE_PAYLOAD_BYTES",
 ]
 
 # LiveBridge requires web3 — import lazily to avoid hard dependency

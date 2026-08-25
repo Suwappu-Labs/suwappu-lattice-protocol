@@ -12,6 +12,18 @@ public-surface promise and the cross-version compatibility matrix.
 ## [Unreleased]
 
 ### Added
+- `ltp.bridge.wire` — canonical JSON for the untrusted relayer hop.
+  `RelayPacket` and `SignedEnvelope` had no serialization at all, so
+  `Relayer.relay()` and `L2Materializer.materialize()` could only ever run in
+  one Python process — the one link the bridge trust model assumes is hostile
+  was the one link that could not be a network. The decoder type-checks every
+  field and caps every byte field *before* decoding it, and reports every
+  malformed input as `BridgeWireError` rather than a stray `KeyError` or
+  `MemoryError`. It deliberately does not judge legitimacy: caps admit both PQ
+  profiles, and `SignedEnvelope.verify()` plus `L2Materializer.materialize()`
+  remain the authority. `RelayPacket.relay_envelope` is now typed
+  `Optional[SignedEnvelope]` instead of `object`, which is why neither its
+  `.verify()` call site nor its missing codec had ever been flagged
 - Corridor roster assembly and signing sessions — the service layer under the
   existing corridor cryptography, which had no answer for how nine independent
   operators arrive at the same `Corridor` object or how partial signatures get

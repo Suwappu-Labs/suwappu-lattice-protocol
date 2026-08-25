@@ -97,6 +97,13 @@ Wraps `LTPProtocol.lattice()`:
 - **Trust model**: Relayer is untrusted. It transports an opaque sealed blob.
   It cannot read the CEK, cannot forge the commitment, and cannot redirect
   to a different recipient (sealed to specific L2 verifier key).
+- **On the wire**: `bridge/wire.py` encodes a `RelayPacket` (and its relay
+  `SignedEnvelope`) as canonical JSON, so the relayer and the materializer
+  can be separate processes on separate hosts. Because the sender is
+  untrusted by construction, the decoder type-checks every field and caps
+  every byte field before decoding it; it does *not* decide whether a packet
+  is legitimate — `SignedEnvelope.verify()` and `L2Materializer.materialize()`
+  keep that job, and a wire round trip preserves every byte they depend on.
 
 #### 3. `L2Materializer` — Destination Chain Verification
 
@@ -156,14 +163,16 @@ src/ltp/bridge/
 ├── message.py           # BridgeMessage, BridgeCommitment, RelayPacket
 ├── anchor.py            # L1Anchor — source chain commitment
 ├── relayer.py           # Relayer — cross-chain sealed key transport
-└── materializer.py      # L2Materializer — dest chain verify + reconstruct
+├── materializer.py      # L2Materializer — dest chain verify + reconstruct
+└── wire.py              # Canonical JSON for the untrusted relayer hop
 
 # Monotonic sequencing lives in src/ltp/sequencing.py::SequenceTracker
 # (VK-fingerprint keyed, chain-bound, temporal expiry — supersedes the
 # old bridge/nonce.py which has been removed)
 
 tests/
-└── test_bridge.py       # End-to-end: lock → relay → verify → mint
+├── test_bridge.py       # End-to-end: lock → relay → verify → mint
+└── test_bridge_wire.py  # Same flow across a wire round trip, plus tampering
 ```
 
 ### End-to-End Test Scenario

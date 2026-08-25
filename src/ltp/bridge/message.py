@@ -14,6 +14,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional
 
+from ..envelope import SignedEnvelope
+
 
 @dataclass
 class BridgeMessage:
@@ -96,4 +98,7 @@ class RelayPacket:
     nonce: int
     source_block: int
     entity_id: str  # Public — allows L2 to pre-fetch commitment
-    relay_envelope: Optional[object] = None  # SignedEnvelope from relay operator
+    # Typed rather than `object`: `L2Materializer` calls `.verify()` on this,
+    # and `bridge/wire.py` has to know it is encodable. As bare `object` no
+    # checker could see either requirement.
+    relay_envelope: Optional[SignedEnvelope] = None
