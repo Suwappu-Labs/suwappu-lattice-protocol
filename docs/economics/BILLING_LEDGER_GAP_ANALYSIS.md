@@ -316,6 +316,48 @@ Stated for calibration, not comfort:
   deposits rather than assigning them is correct and matches exchange
   practice.
 
+## 4.5 What has since been built
+
+`src/ltp/ledger_journal.py` implements items 1, 2 and part of 3 and 5
+below. It is a durable double-entry journal on stdlib `sqlite3`:
+`accounts` / `transactions` / `entries` with a per-transaction
+debits==credits assertion, balances **derived** rather than stored,
+corrections by reversal (never UPDATE or DELETE), a four-counter balance
+cache written in the *same* SQL transaction as its entries, a
+`detect_drift()` that recomputes from the journal and disables cache
+reads on divergence, pending/posted entry states with an `available`
+balance, a durable idempotency table (`(scope, key)` unique, parameter
+hash, cached response including failures, `locked_at`, `recovery_point`,
+reaper, and an `abandoned_keys()` feed for a completer), and
+`(tx_hash, log_index)` uniqueness enforced by a database constraint on
+the transaction itself.
+
+The measured defect at the top of this document is fixed and pinned as a
+regression test: after a restart the customer's spent balance stays
+spent, and replaying the same on-chain deposit raises
+`DuplicateExternalRef` instead of crediting again.
+
+Two findings from building it, both caught by tests written to break the
+code rather than confirm it:
+
+- `check_solvency()` originally read through the balance cache, which
+  meant it could not detect a tampered journal — the forged entry never
+  touches the cached counters, so the check reported healthy while the
+  entries said otherwise. It now audits `recompute_balance()` directly.
+  An integrity check must not trust the thing it is auditing.
+- `AccountBalance.available` had its sign inverted, so a hold *increased*
+  the spendable balance. It was hidden by a test asserting `x or y`,
+  which passes whichever way the sign goes. Both are now exact.
+
+**Still open from the list below:** the ledger journal is not yet wired
+underneath `StablecoinLedger` (that swap is the next step, and it is
+where the API-compatibility work lives); billing still follows handler
+completion rather than server-reported usage; deposit confirmation depth
+is still a block-count delta rather than the chain's `finalized` tag;
+and the receipt log is still unbounded in memory. SQLite's single-writer
+ceiling is the journal's own limit — real, and the reason the schema is
+plain SQL that Postgres can take over.
+
 ## 5. Recommended order of work
 
 1. **Persist the ledger as entries** (`accounts` / `transactions` /
