@@ -1,0 +1,120 @@
+// Lattice Transfer Protocol — v2 receiver-bound sealed envelope
+// Verifpal analysis of COMMIT / LATTICE / MATERIALIZE with the v0.5.0
+// KEM-binding fix (whitepaper §3.3.3) modeled.
+//
+// Author: Suwappu-Labs
+// Date: 2026-08-22
+//
+// This file models the protocol AFTER the v2 envelope; the pre-binding
+// protocol remains in etp-protocol.vp as the historical model whose
+// 2026-08-16 run produced the sealed-key replay finding.
+//
+// Delta from etp-protocol.vp, each mirroring a real protocol change:
+//
+//   1. Ephemeral seal key. Each seal performs a fresh ML-KEM
+//      encapsulation; the DH model now uses a per-seal ephemeral key
+//      (seal_esk / seal_epk) instead of the sender's static identity
+//      key. seal_epk stands in for the KEM ciphertext: it is the
+//      per-seal public value the receiver combines with its own secret
+//      to recover the shared secret, and it travels UNGUARDED — the
+//      attacker may replace it, as they may replace a kem_ct.
+//   2. v2 associated data. The sealed envelope's AEAD associated data
+//      is CONCAT(HASH(receiver_ek), HASH(seal_epk)) — the receiver
+//      recomputes it from its OWN encapsulation key and the received
+//      per-seal public value, exactly as the implementation recomputes
+//      SHA3-256(receiver_ek) and SHA3-256(kem_ct).
+//   3. sealed_at freshness stamp inside the authenticated payload.
+//      Its *presence* is modeled; the receiver-side maximum-age check
+//      compares against a clock, which the symbolic model does not
+//      have — the freshness bound stays an operational argument.
+//   4. Materialize fidelity. The receiver now verifies the commitment
+//      signature against the entity_id recovered FROM THE SEALED
+//      PAYLOAD (protocol step 5 binds the sealed key to the signed
+//      record), and checks the reconstructed content against that
+//      entity_id (step 10's end-to-end check), rather than trusting
+//      the phase-1 broadcast values.
+//
+// Queries are identical to the 2026-08-16 run for comparability.
+
+attacker[active]
+
+// === Key Setup ===
+
+principal Sender[
+	knows private sender_sk
+	sender_vk = G^sender_sk
+	generates content, cek, entity_nonce, sealed_at
+]
+
+principal Receiver[
+	knows private receiver_sk
+	receiver_ek = G^receiver_sk
+]
+
+// Public key exchange (pre-protocol). Guarded: identity keys are
+// distributed authentically (key directory), per ANALYSIS.md.
+Sender -> Receiver: [sender_vk]
+Receiver -> Sender: [receiver_ek]
+
+// === Phase 1: COMMIT ===
+
+principal Sender[
+	entity_id = HASH(content)
+	encrypted_shards = AEAD_ENC(cek, content, entity_nonce)
+	shard_root = HASH(encrypted_shards)
+	commitment = SIGN(sender_sk, HASH(CONCAT(entity_id, shard_root)))
+]
+
+// Commitment is published; encrypted shards and the AEAD nonce are
+// public (commitment nodes are untrusted for confidentiality).
+Sender -> Receiver: entity_id, shard_root, commitment, encrypted_shards, entity_nonce
+
+// === Phase 2: LATTICE (v2 sealed envelope) ===
+
+principal Sender[
+	// Fresh per-seal encapsulation (models ML-KEM encaps)
+	generates seal_esk
+	seal_epk = G^seal_esk
+	shared_secret = receiver_ek^seal_esk
+
+	// v2 binding: AD commits to the receiver's key and this seal's
+	// public value — the model of SHA3(receiver_ek) || SHA3(kem_ct).
+	seal_ad = CONCAT(HASH(receiver_ek), HASH(seal_epk))
+
+	lattice_payload = CONCAT(cek, entity_id, sealed_at)
+	sealed_key = AEAD_ENC(shared_secret, lattice_payload, seal_ad)
+]
+
+Sender -> Receiver: seal_epk, sealed_key
+
+// === Phase 3: MATERIALIZE ===
+
+principal Receiver[
+	// Decapsulate with own secret against the received per-seal value
+	shared_secret_r = seal_epk^receiver_sk
+
+	// Recompute the v2 AD from the receiver's OWN encapsulation key
+	seal_ad_r = CONCAT(HASH(receiver_ek), HASH(seal_epk))
+
+	lattice_payload_r = AEAD_DEC(shared_secret_r, sealed_key, seal_ad_r)?
+	cek_r, entity_id_r, sealed_at_r = SPLIT(lattice_payload_r)?
+
+	// Step 5: the signed commitment must speak about the entity the
+	// SEALED PAYLOAD names — not whatever arrived in phase 1.
+	commitment_valid = SIGNVERIF(sender_vk, HASH(CONCAT(entity_id_r, shard_root)), commitment)?
+
+	// Steps 8-9: decrypt shards with the unsealed CEK
+	reconstructed = AEAD_DEC(cek_r, encrypted_shards, entity_nonce)?
+
+	// Step 10: end-to-end EntityID check on the reconstructed content
+	_ = ASSERT(HASH(reconstructed), entity_id_r)?
+]
+
+// === Security Queries (identical to the 2026-08-16 run) ===
+
+queries[
+	confidentiality? cek
+	confidentiality? content
+	authentication? Sender -> Receiver: commitment
+	authentication? Sender -> Receiver: sealed_key
+]

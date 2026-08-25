@@ -1559,9 +1559,21 @@ rolled back on failure. The residual surface, stated exactly: verbatim
 replay of an unmodified envelope to the same receiver key, across receiver
 instances or restarts, within the configured seal-age window — eliminating
 it entirely requires durable, shared replay state, which is deployment
-infrastructure rather than protocol. The Verifpal model has not been
-re-run against the v2 construction; its recorded verdicts describe the
-pre-binding protocol, and the re-run is pending.
+infrastructure rather than protocol. The Verifpal model was re-run against the v2 construction on 2026-08-22
+(`docs/formal/verifpal-run-2026-08-22-v2.md`), with a negative and
+instructive result: `authentication? sealed_key` still fails, and
+**cannot** pass. The query demands injective agreement, whereas the v2
+envelope provides recipient binding — its associated data is built from
+public values (`SHA3-256(receiver_ek)`, `SHA3-256(kem_ct)`), so an
+attacker can substitute its own encapsulation and compute a valid AAD.
+That is not a break: sealing to a public key is an operation anyone can
+perform, and sender authentication in LTP comes from the ML-DSA
+signature on the commitment record (§2.3.1 step 5) and the end-to-end
+EntityID check (step 10), not from the envelope. The two mechanisms are
+complementary, and the symbolic query tests only the envelope. Closing
+the query would require signing the envelope or an interactive
+freshness value — the first enlarges the constant-size token, the
+second is unavailable to an asynchronously-collected capability.
 
 Current status, per artifact class: symbolic confidentiality **verified
 under stated assumptions**; symbolic authentication **failing with known,

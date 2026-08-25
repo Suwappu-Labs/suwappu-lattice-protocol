@@ -70,9 +70,16 @@ NOT in the associated data: cleartext AAD would break sealed-key
 opacity; it is bound inside the authenticated payload instead — see
 whitepaper §3.3.3 for the full argument and the exact residual replay
 surface.) The verdicts in the table above describe the **pre-binding**
-protocol; the model has not yet been re-run against the v2
-construction, and until it is, the fix's symbolic status is
-*implemented, re-verification pending*. Full traces:
+protocol. The v2 construction was analysed on 2026-08-22
+([`formal/verifpal-run-2026-08-22-v2.md`](formal/verifpal-run-2026-08-22-v2.md)):
+`authentication? sealed_key` still fails and **cannot** pass, because
+Verifpal's authentication query demands injective agreement while the
+v2 envelope provides recipient binding — its AAD is built from public
+values, so an attacker can substitute its own encapsulation and compute
+a valid AAD. Sender authentication comes from the ML-DSA commitment
+signature and the end-to-end EntityID check, which the query does not
+model. The fix's symbolic status is therefore *implemented; the
+outstanding query is resolved as not-applicable rather than pending*. Full traces:
 [`formal/verifpal-run-2026-08-16.md`](formal/verifpal-run-2026-08-16.md).
 
 ## What is NOT in scope of the symbolic model

@@ -113,9 +113,16 @@ Interpretation section always made. The change log is at the top of
      whitepaper §3.3.3 records the reasoning and the exact residual
      surface). Policy enforcement (`max_materializations`, §2.2.1,
      enforced since 0.4.1) additionally bounds same-instance replay.
-     This model has NOT been re-run against the v2 construction; the
-     traces below describe the pre-binding protocol, and re-running the
-     analysis with the binding modeled is the open next step.
+     The v2 construction was modeled and analysed on 2026-08-22
+     (`ltp-protocol-v2.vp`, `verifpal-run-2026-08-22-v2.md`). Result:
+     `authentication? sealed_key` still fails and cannot pass — the
+     query demands injective agreement, the v2 AAD is built from public
+     values, and sealing to a public encapsulation key is something any
+     party can do. Sender authentication is supplied by the ML-DSA
+     commitment signature and the end-to-end EntityID check, outside
+     this query's scope. The traces below describe the pre-binding
+     protocol; the v2 analysis is a separate, negative result rather
+     than an open task.
 
 3. **Computational security** depends on the hardness of the Module-LWE
    problem (ML-KEM-768) and Module-SIS problem (ML-DSA-65), both
