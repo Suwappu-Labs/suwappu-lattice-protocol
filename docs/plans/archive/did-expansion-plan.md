@@ -5,7 +5,7 @@
 
 # ETP DID Expansion Plan — Decentralized Identity via Lattice Transfer Protocol
 
-**Author:** Javier Calderon Jr, CTO — Suwappu (SUWAPPU)
+**Author:** Suwappu (SUWAPPU)
 **Date:** April 24, 2026
 **Status:** Planning
 **Scope:** `did:etp` method specification, DID/VC integration architecture, phased implementation roadmap, PQ-safe ZK cross-chain resolution path.
@@ -127,7 +127,7 @@ The following constraints were established during a team architecture call:
 **LTP Limitations Acknowledged:**
 - LTP does not natively support mutable state or writable keys
 - Cross-chain DID updates require complex synchronization and propagation strategies
-- Practical prototype (Javier's implementation) diverges from theoretical whitepaper assumptions — prioritize prototype-based insights over speculative theory
+- Practical prototype (the reference implementation) diverges from theoretical whitepaper assumptions — prioritize prototype-based insights over speculative theory
 - Modifying LTP for writable fields may introduce consensus and propagation issues
 - Current LTP design favors immutable, append-only data flows (this plan preserves that)
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 /// @title LTPMultiSig
-/// @author Javier Calderon Jr, CTO of Suwappu (SUWAPPU)
+/// @author Suwappu (SUWAPPU)
 /// @notice Lightweight N-of-M multi-signature wallet for LTPAnchorRegistry admin.
 /// @dev Owners propose transactions, collect confirmations, then execute.
 ///      Designed for testnet (2-of-3). Production should use Gnosis Safe.

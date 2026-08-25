@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {OptimisticBridgeChallenge} from "./OptimisticBridgeChallenge.sol";
 
 /// @title ZKBridgeVerifier
-/// @author Javier Calderon Jr, CTO of Suwappu (SUWAPPU)
+/// @author Suwappu (SUWAPPU)
 /// @notice On-chain ZK proof verification for instant bridge finality.
 ///         Accepts proof bytes + public inputs, verifies the proof, and calls
 ///         finalizeWithZKProof on the challenge contract.
