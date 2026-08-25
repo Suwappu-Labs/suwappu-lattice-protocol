@@ -114,6 +114,21 @@ public-surface promise and the cross-version compatibility matrix.
   LTP-A-022 (cross-language BLS DST pinning — confirmed-OK)
 
 ### Changed
+- `just typecheck` is green. It had been failing on its own two curated
+  entries — 16 errors, mostly `KeyPair`'s `_hsm` / `_hsm_kem_key_id` /
+  `_hsm_dsa_key_id`, which were attached dynamically in one constructor branch
+  and so were invisible to the checker. They are now declared fields
+  (`repr=False` so a backend object stays out of logs and tracebacks,
+  `compare=False` so keypairs keep comparing on key material). `sign` and
+  `decaps` read them through a narrowing local and raise `RuntimeError` if a
+  keypair claims HSM backing without a key id, rather than falling through to
+  a local operation against the 0xfe sentinel that stands in for the private
+  key. The remaining fixes are annotation-only: the late-bound
+  `dual_lane.hashing` hooks are typed `Optional[Callable[[], Any]]` instead of
+  inferring `None` from their sentinel, and two `-> bytes` methods in
+  `primitives.py` annotate the local that receives an untyped backend's
+  result. mypy is absent from CI and pre-commit, which is why a red lane went
+  unnoticed; the note in `pyproject.toml` now says so
 - Corridor wire integer fields are now decoded as strictly as serde decodes a
   `u32`. The helper used `int(raw)`, which accepts `"5"` and — the dangerous
   one — silently truncates `5.9` to `5`. Rust's serde rejects both outright,

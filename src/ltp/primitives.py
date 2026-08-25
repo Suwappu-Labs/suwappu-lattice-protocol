@@ -419,6 +419,9 @@ class MLKEM:
         if len(ciphertext) != cls.CT_SIZE:
             raise ValueError(f"Invalid ct size: {len(ciphertext)} (expected {cls.CT_SIZE})")
 
+        # Annotated because the PQ backends are untyped: without it the result
+        # is `Any` and the declared `-> bytes` stops meaning anything.
+        ss: bytes
         if cls._is_level5():
             ss = _kem5_decrypt(dk, ciphertext)
         else:
@@ -496,6 +499,7 @@ class MLDSA:
         if len(sk) != cls.SK_SIZE:
             raise ValueError(f"Invalid sk size: {len(sk)} (expected {cls.SK_SIZE})")
 
+        sig: bytes  # see the note in `decaps` — the backends are untyped
         if cls._is_level5():
             sig = _dsa5_sign(sk, message)
         else:

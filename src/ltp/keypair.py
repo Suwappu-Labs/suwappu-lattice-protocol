@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
+from .hsm import HSMBackend
 from .primitives import AEAD, MLDSA, MLKEM, canonical_hash, canonical_hash_bytes
 
 __all__ = [
@@ -137,6 +138,16 @@ class KeyPair:
     state: KeyState = KeyState.ACTIVE  # Lifecycle state (default ACTIVE for backward compat)
     bls_pk: Optional[bytes] = None  # BLS12-381 public key (48 bytes, optional)
     bls_sk: Optional[bytes] = None  # BLS12-381 signing key (32 bytes, optional)
+
+    # HSM binding, set by `generate` when a backend is supplied. Declared here
+    # rather than attached dynamically so the type checker can see them and so
+    # the HSM-backed shape of a KeyPair is visible in the class rather than
+    # only in a constructor branch. `repr=False` keeps the backend object out
+    # of logs and tracebacks; `compare=False` keeps two keypairs comparing on
+    # their key material, as they did before these were declared.
+    _hsm: Optional[HSMBackend] = field(default=None, repr=False, compare=False)
+    _hsm_kem_key_id: Optional[str] = field(default=None, repr=False, compare=False)
+    _hsm_dsa_key_id: Optional[str] = field(default=None, repr=False, compare=False)
 
     @classmethod
     def generate(cls, label: str = "", hsm=None, with_bls: bool = False) -> "KeyPair":
@@ -280,7 +291,14 @@ class KeyPair:
         change.
         """
         if self.is_hsm_backed:
-            return self._hsm.sign(self._hsm_dsa_key_id, message)
+            hsm, key_id = self._hsm, self._hsm_dsa_key_id
+            if hsm is None or key_id is None:
+                raise RuntimeError(
+                    "KeyPair reports HSM backing but has no DSA key id; its private "
+                    "key material is a sentinel, so falling back to a local sign "
+                    "would produce a signature under 32 bytes of 0xfe"
+                )
+            return hsm.sign(key_id, message)
         return MLDSA.sign(self.sk, message)
 
     def decaps(self, kem_ciphertext: bytes) -> bytes:
@@ -290,7 +308,14 @@ class KeyPair:
         falls back to a direct `MLKEM.decaps(self.dk, kem_ciphertext)`.
         """
         if self.is_hsm_backed:
-            return self._hsm.kem_decaps(self._hsm_kem_key_id, kem_ciphertext)
+            hsm, key_id = self._hsm, self._hsm_kem_key_id
+            if hsm is None or key_id is None:
+                raise RuntimeError(
+                    "KeyPair reports HSM backing but has no KEM key id; its private "
+                    "key material is a sentinel, so falling back to a local decaps "
+                    "would silently produce garbage"
+                )
+            return hsm.kem_decaps(key_id, kem_ciphertext)
         return MLKEM.decaps(self.dk, kem_ciphertext)
 
     # Backward-compatible aliases. Existing callers can keep using

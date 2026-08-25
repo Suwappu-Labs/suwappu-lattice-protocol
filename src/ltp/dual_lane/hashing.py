@@ -21,6 +21,7 @@ import hashlib
 # ---------------------------------------------------------------------------
 import os
 from enum import Enum
+from typing import Any, Callable, Optional
 
 _blake3_available = False
 try:
@@ -111,8 +112,12 @@ def _hash_digest(data: bytes, algo: HashFunction, raw: bool = False):
 # provider without hashing.py importing from primitives.py.
 # ---------------------------------------------------------------------------
 
-_get_active_profile = None  # -> get_security_profile()
-_get_crypto_provider = None  # -> get_crypto_provider()
+# Late-bound hooks: `primitives.py` owns the state these read, and importing
+# it here would be circular, so it patches these on import instead. Annotated
+# because an unannotated `= None` infers as type `None`, which makes the
+# assignment in primitives.py a type error rather than the intended late bind.
+_get_active_profile: Optional[Callable[[], Any]] = None  # -> get_security_profile()
+_get_crypto_provider: Optional[Callable[[], Any]] = None  # -> get_crypto_provider()
 
 
 # ---------------------------------------------------------------------------
