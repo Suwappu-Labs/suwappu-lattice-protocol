@@ -82,6 +82,16 @@ from .did_stark import (
     InvalidSignature as DidStarkInvalidSignature,
 )
 from .digest import sha3_256_domain
+from .enrollment import (
+    BindingVerificationFailed,
+    EnrollmentAnnouncement,
+    EnrollmentError,
+    EpochMismatch,
+    MalformedAnnouncement,
+    announce,
+    build_enrollment_message,
+    verify_announcement,
+)
 from .envelope import (
     BLS_G2_COMPRESSED_BYTES,
     ML_KEM_768_CT_BYTES,
@@ -100,6 +110,18 @@ from .membership import (
     RosterNotReady,
     WrongCorridor,
     build_pop_message,
+)
+from .session import (
+    CorridorSigner,
+    DoubleSignAttempt,
+    EquivocationEvidence,
+    EquivocationMonitor,
+    NotEquivocation,
+    QuorumNotReached,
+    SessionError,
+    SessionKey,
+    SigningSession,
+    WrongPayload,
 )
 from .state_anchor import (
     GENESIS_PARENT,
@@ -163,6 +185,26 @@ __all__ = [
     "RosterNotReady",
     "RosterFull",
     "build_pop_message",
+    # enrollment
+    "EnrollmentAnnouncement",
+    "EnrollmentError",
+    "MalformedAnnouncement",
+    "BindingVerificationFailed",
+    "EpochMismatch",
+    "announce",
+    "build_enrollment_message",
+    "verify_announcement",
+    # signing session
+    "SigningSession",
+    "SessionKey",
+    "SessionError",
+    "WrongPayload",
+    "QuorumNotReached",
+    "CorridorSigner",
+    "DoubleSignAttempt",
+    "EquivocationEvidence",
+    "EquivocationMonitor",
+    "NotEquivocation",
     # da
     "Cid",
     "DaSla",

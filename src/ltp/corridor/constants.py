@@ -68,3 +68,14 @@ BLS_CORRIDOR_DST = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_"
 # (LTP-A-021). If roster assembly ever moves onto the wire, this tag is the
 # one the Rust side must adopt verbatim.
 DOMAIN_TAG_CORRIDOR_ROSTER = b"LTP-CORRIDOR-ROSTER-V1"
+
+# Corridor enrollment binding. The Proof-of-Possession above signs the
+# public key ALONE, so it proves key ownership but says nothing about
+# which corridor, which seat, or which roster epoch the holder intends to
+# join — a PoP observed on the wire can be rebroadcast under any
+# (authority, corridor) pair. The enrollment binding closes that by
+# signing (corridor || epoch || authority || pk). Python-side only, on
+# the same terms as DOMAIN_TAG_CORRIDOR_ROSTER above: no Rust counterpart
+# yet, and this is the tag the Rust side must adopt verbatim if enrollment
+# ever moves onto the cross-repo wire.
+DOMAIN_TAG_CORRIDOR_ENROLL = b"LTP-CORRIDOR-ENROLL-V1"

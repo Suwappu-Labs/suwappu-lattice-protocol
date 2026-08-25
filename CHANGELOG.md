@@ -12,6 +12,30 @@ public-surface promise and the cross-version compatibility matrix.
 ## [Unreleased]
 
 ### Added
+- Corridor roster assembly and signing sessions — the service layer under the
+  existing corridor cryptography, which had no answer for how nine independent
+  operators arrive at the same `Corridor` object or how partial signatures get
+  collected into one. All transport-agnostic; no sockets, no new dependencies.
+  - `ltp.corridor.membership.CorridorRegistry` — enrollment with PoP verified at
+    the door, rejection of duplicate authority ids **and** duplicate BLS public
+    keys (one operator holding two of nine seats defeats the 7-of-9 independence
+    assumption without invalidating a single signature), deterministic ordering,
+    and a `roster_digest()` operators can compare out-of-band
+  - `ltp.corridor.enrollment` — `EnrollmentAnnouncement` and `announce()`. The
+    PoP signs the public key alone, so an observed PoP can be rebroadcast under
+    any (authority, corridor, epoch) triple to squat a seat and lock the real
+    operator out with `DuplicateBlsKey`. The binding signature covers all three
+  - `ltp.corridor.session` — `SigningSession` (per-payload partial collection to
+    the 7-of-9 threshold, duplicate-tolerant, non-mutating on rejection),
+    `CorridorSigner` with a local double-sign guard (paper §6.4), and
+    `EquivocationMonitor` / `EquivocationEvidence` for self-contained,
+    independently verifiable proof that a witness signed two state roots at one
+    height
+  - Wire codecs for `EnrollmentAnnouncement` and `EquivocationEvidence` in
+    `ltp.corridor.wire`; `DOMAIN_TAG_CORRIDOR_ROSTER` and
+    `DOMAIN_TAG_CORRIDOR_ENROLL` registered in `domain_tags.py` (LTP-A-021)
+  - `CorridorPopVerificationFailed` is now exported from `ltp.corridor`; it was
+    raised by the package but never part of its public surface
 - Quality-parity pass (cross-repo bar set by suwappubot):
   `scripts/verify.sh` single verification entrypoint with lanes
   (lint / semgrep / python / fast / contracts / secaudit / docs / all);

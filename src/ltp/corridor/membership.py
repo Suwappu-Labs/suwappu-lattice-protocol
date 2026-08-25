@@ -35,11 +35,18 @@ Three properties it enforces that nothing else did:
 
 The roster digest lets operators confirm agreement out-of-band — read it aloud
 on a call, post it, diff it in CI — before the corridor signs anything.
+
+One thing this module does *not* settle on its own: a bare `SuperNode` carries
+a PoP over the public key alone, which names no corridor, seat, or epoch, so it
+can be replayed into a seat its owner never claimed. `enrollment.py` adds the
+binding signature that closes that, and `enroll_announcement` is the entry
+point to prefer for anything arriving over a transport.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from .attestation import (
     AuthorityId,
@@ -56,6 +63,9 @@ from .constants import (
     LTP_ATTESTATION_QUORUM_SIZE,
 )
 from .digest import sha3_256_domain
+
+if TYPE_CHECKING:  # pragma: no cover — import cycle: enrollment imports this module
+    from .enrollment import EnrollmentAnnouncement
 
 #: A BLS12-381 compressed G1 public key.
 BLS_PUBKEY_BYTES = 48
@@ -127,23 +137,31 @@ class CorridorRegistry:
 
     Usage::
 
-        reg = CorridorRegistry(corridor_id=7)
-        for node in incoming:
-            reg.enroll(node)          # raises on a bad or duplicate member
-        corridor = reg.finalize()     # exactly-9, deterministic order
-        digest = reg.roster_digest()  # compare with peers out-of-band
+        reg = CorridorRegistry(corridor_id=7, epoch=0)
+        for ann in incoming:
+            reg.enroll_announcement(ann)   # raises on a bad or duplicate member
+        corridor = reg.finalize()          # exactly-9, deterministic order
+        digest = reg.roster_digest()       # compare with peers out-of-band
+
+    Use `enroll_announcement` for anything that arrived over a transport and
+    `enroll` only for a `SuperNode` you constructed locally — see
+    `enrollment.py` for why a bare PoP is replayable into a seat its owner
+    never claimed.
 
     `enroll` is all-or-nothing: a rejected enrollment leaves the registry
     unchanged, so a malicious or buggy peer cannot half-insert a member.
     """
 
     corridor_id: CorridorId
+    epoch: int = 0
     quorum_size: int = LTP_ATTESTATION_QUORUM_SIZE
     _members: dict[AuthorityId, SuperNode] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
         if not 0 <= self.corridor_id <= ID_MAX:
             raise ValueError(f"corridor id must fit in u32 (0..{ID_MAX}), got {self.corridor_id}")
+        if not 0 <= self.epoch <= ID_MAX:
+            raise ValueError(f"epoch must fit in u32 (0..{ID_MAX}), got {self.epoch}")
         if self.quorum_size < 1:
             raise ValueError(f"quorum size must be positive, got {self.quorum_size}")
 
@@ -196,6 +214,22 @@ class CorridorRegistry:
 
         self._members[node.authority] = node
 
+    def enroll_announcement(self, ann: "EnrollmentAnnouncement") -> None:
+        """Admit a super-node from a signed enrollment announcement.
+
+        Prefer this over `enroll` for anything that arrived over a transport.
+        A bare `SuperNode` carries a PoP that proves key possession but does
+        not name a corridor, seat, or epoch, so it can be replayed into a seat
+        its owner never claimed; an announcement's binding signature covers
+        all three. See `enrollment.py` for the replay it prevents.
+        """
+        from .enrollment import EpochMismatch, verify_announcement
+
+        if ann.epoch != self.epoch:
+            raise EpochMismatch(self.epoch, ann.epoch)
+        verify_announcement(ann)
+        self.enroll(ann.super_node)
+
     # -- inspection ---------------------------------------------------------
 
     @property
@@ -231,7 +265,7 @@ class CorridorRegistry:
         return corridor
 
     def roster_digest(self) -> bytes:
-        """Canonical digest of the current member set.
+        """Canonical digest of the current member set, bound to corridor and epoch.
 
         Domain-separated and length-prefixed via the corridor's cross-repo hash
         helper, so it is stable across implementations and cannot collide with
@@ -241,7 +275,11 @@ class CorridorRegistry:
         blob = b"".join(
             m.authority.to_bytes(4, "big") + m.bls_public_key for m in self.ordered_members()
         )
-        header = self.corridor_id.to_bytes(4, "big") + len(self._members).to_bytes(2, "big")
+        header = (
+            self.corridor_id.to_bytes(4, "big")
+            + self.epoch.to_bytes(4, "big")
+            + len(self._members).to_bytes(2, "big")
+        )
         return sha3_256_domain(DOMAIN_TAG_CORRIDOR_ROSTER, header + blob)
 
 

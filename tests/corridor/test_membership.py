@@ -224,6 +224,8 @@ def test_registry_rejects_an_out_of_range_corridor_id():
     with pytest.raises(ValueError):
         CorridorRegistry(corridor_id=1 << 32)
     with pytest.raises(ValueError):
+        CorridorRegistry(corridor_id=CORRIDOR, epoch=1 << 32)
+    with pytest.raises(ValueError):
         CorridorRegistry(corridor_id=CORRIDOR, quorum_size=0)
 
 
@@ -342,12 +344,13 @@ def test_digest_uses_its_own_domain_tag():
     """A roster digest must never be mistakable for an attestation digest."""
     from src.ltp.corridor.digest import sha3_256_domain
 
-    reg = CorridorRegistry(corridor_id=CORRIDOR)
+    reg = CorridorRegistry(corridor_id=CORRIDOR, epoch=3)
     node = _node(0)
     reg.enroll(node)
 
     payload = (
         CORRIDOR.to_bytes(4, "big")
+        + (3).to_bytes(4, "big")
         + (1).to_bytes(2, "big")
         + node.authority.to_bytes(4, "big")
         + node.bls_public_key

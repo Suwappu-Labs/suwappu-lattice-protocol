@@ -35,6 +35,8 @@ from .attestation import (
 )
 from .da import Cid, Commitment, DaSla
 from .did_stark import DidRotationStatement, DidStarkProof
+from .enrollment import EnrollmentAnnouncement
+from .session import EquivocationEvidence
 from .state_anchor import AuthScheme, StateAnchor
 
 
@@ -187,6 +189,42 @@ def super_node_from_dict(d: dict[str, Any]) -> SuperNode:
         corridor=_int_field(d, "corridor"),
         bls_public_key=_hex_bytes(d, "bls_public_key", _SIZE_BLS_PUBLIC_KEY),
         pop=pop_field,
+    )
+
+
+def enrollment_announcement_to_dict(a: EnrollmentAnnouncement) -> dict[str, Any]:
+    return {
+        "super_node": super_node_to_dict(a.super_node),
+        "epoch": a.epoch,
+        "binding": a.binding.hex(),
+    }
+
+
+def enrollment_announcement_from_dict(d: dict[str, Any]) -> EnrollmentAnnouncement:
+    return EnrollmentAnnouncement(
+        super_node=super_node_from_dict(_dict_field(d, "super_node")),
+        epoch=_int_field(d, "epoch"),
+        binding=_hex_bytes(d, "binding", _SIZE_BLS_SIGNATURE),
+    )
+
+
+def equivocation_evidence_to_dict(e: EquivocationEvidence) -> dict[str, Any]:
+    return {
+        "witness": e.witness,
+        "payload_a": attestation_payload_to_dict(e.payload_a),
+        "signature_a": e.signature_a.hex(),
+        "payload_b": attestation_payload_to_dict(e.payload_b),
+        "signature_b": e.signature_b.hex(),
+    }
+
+
+def equivocation_evidence_from_dict(d: dict[str, Any]) -> EquivocationEvidence:
+    return EquivocationEvidence(
+        witness=_int_field(d, "witness"),
+        payload_a=attestation_payload_from_dict(_dict_field(d, "payload_a")),
+        signature_a=_hex_bytes(d, "signature_a", _SIZE_BLS_SIGNATURE),
+        payload_b=attestation_payload_from_dict(_dict_field(d, "payload_b")),
+        signature_b=_hex_bytes(d, "signature_b", _SIZE_BLS_SIGNATURE),
     )
 
 

@@ -119,6 +119,13 @@ Commitment-Node DA SLA, cross-chain DID rotation statement, and the
 length-prefixed SHA3-256 domain digest the DAG L1 signs over. Digest parity
 against the Rust reference is locked in `tests/corridor/test_digest_parity.py`.
 
+Alongside the wire mirror, the same package carries the Python-side service
+layer the Rust crate does not define: roster assembly (`membership.py`,
+`enrollment.py`) and signing rounds (`session.py`) — how nine independent
+operators agree on one `Corridor`, and how their partial signatures are
+collected into a 7-of-9 attestation. Both are transport-agnostic; see
+[Corridor Integration](docs/CORRIDOR_INTEGRATION.md).
+
 ## Implementation Reality
 
 | Area | Runtime Truth | Details |
