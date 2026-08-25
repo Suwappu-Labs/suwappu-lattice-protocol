@@ -39,26 +39,94 @@ The revised model changes exactly what the planned mitigation changes
    commitment signature against the *sealed* values, not the publicly
    delivered copies.
 
-Command: `verifpal verify docs/formal/etp-protocol-revised.vp`
+Command: `verifpal verify docs/formal/etp-protocol-revised.vp` (v1 of
+the revised model: no receiver cross-checks, 5 queries including
+`freshness? sealed_key`)
 
-**Status: run in progress at the time of this commit** — the full
-verdict table will be recorded here when the analysis completes. One
-interim finding is already recorded, because it drives the next model
-iteration:
+**Status: DID NOT COMPLETE.** The analysis ran for ≈ 7.5 hours,
+reaching **Stage 6 at 127.9 million analysis states**, before the
+execution environment reclaimed the machine. An incomplete run verifies
+nothing — no ✅ verdict below is claimed — but the partial transcript
+carries two facts worth recording:
 
-- `authentication? Sender -> Receiver: sealed_key` — ❌ a mutation
-  trace was found: the attacker **relays the genuine sealed key
-  unchanged** while nulling the surrounding phase-1 delivery
-  (encrypted_shards, entity_nonce, the record copy). The sealed key's
-  AD check still passes (receiver fingerprint, entity_id, and eta are
-  intact), so the receiver accepts the sealed key inside a rearranged
-  run; the downstream signature check then fails closed, so no wrong
-  entity is accepted — but strict delivery-authentication of the sealed
-  key itself is not met. Planned iteration: the receiver must
-  cross-check the sealed commitment reference against the delivered
-  record (`ASSERT(entity_id_r, entity_id)?`,
-  `ASSERT(shard_root_r, shard_root)?`) so that a tampered companion
-  delivery kills the run before the sealed key counts as accepted.
+- Across all 127.9M explored states (Stages 1–6), the **only failure
+  found** was `authentication? Sender -> Receiver: sealed_key`. No
+  attack was found against `confidentiality? cek`,
+  `confidentiality? content`, `authentication? commitment`, or
+  `freshness? sealed_key` in the explored space. *Not found ≠ absent.*
+- The sealed_key counterexample (found in Stage 1, within seconds): the
+  attacker **relays the genuine sealed key unchanged** while nulling
+  the surrounding phase-1 delivery (encrypted_shards, entity_nonce, the
+  record copy). The sealed key's AD check still passes — receiver
+  fingerprint, entity_id, and eta are intact — so the receiver accepts
+  the sealed key inside a rearranged run; the downstream signature
+  check then fails closed, so no wrong entity is accepted, but strict
+  delivery-authentication of the sealed key itself is not met.
+
+That counterexample dictated the v2 model iteration below.
+
+## Run 3 — revised construction, v2 (`etp-protocol-revised.vp`, 2026-08-25)
+
+Two changes from v1, both recorded in the model header:
+
+1. **Receiver cross-checks** — `ASSERT(entity_id_r, entity_id)?` and
+   `ASSERT(shard_root_r, shard_root)?`: the sealed commitment reference
+   must equal the delivered record, so a tampered companion delivery
+   kills the run before the sealed key counts as accepted. This
+   directly targets the Run 2 counterexample.
+2. **Query set reduced to the baseline's four** (the `freshness?` query
+   dropped) — for a clean column-for-column comparison with
+   `etp-protocol.vp` and a smaller analysis space. Session binding is
+   carried by `eta` inside the AEAD associated data, which the
+   authentication query exercises.
+
+Command: `timeout 2400 verifpal verify docs/formal/etp-protocol-revised.vp`
+(hard 40-minute wall-clock cap, so the recorded outcome is
+deterministic about how much space was explored).
+
+**Outcome: cap reached** (exit 124 at 2,400 s), analysis terminated in
+**Stage 4–5 at ≈ 12.08 million analysis states** — roughly 29× the
+complete baseline run's ~420K states, without exhausting the space.
+Under the bound:
+
+| Query | Finding in explored space |
+|---|---|
+| `confidentiality? cek` | no attack found |
+| `confidentiality? content` | no attack found |
+| `authentication? Sender -> Receiver: commitment` | no attack found |
+| `authentication? Sender -> Receiver: sealed_key` | ❌ one trace (below) |
+
+**No claim of verification is made for any query** — Verifpal only
+issues ✅ verdicts at completion, and the space was not exhausted. "No
+attack found" is a bounded statement about ≈ 12.08M explored states.
+
+**The single trace found, and why it is benign.** The attacker
+**relays the byte-identical sealed key** while tampering the companion
+phase-1 values. The sealed key's own AD check passes (receiver
+fingerprint, entity_id, eta all intact), so Verifpal's strict
+delivery-authentication counts the sealed key as "sent by Attacker and
+not by Sender" at its first checked use. But in the same trace the
+receiver's new `root_consistent` cross-check **fails** on the tampered
+record — the run dies before any wrong entity can be accepted. The
+residual property gap is pure attacker relay of an unmodified message
+over an unguarded channel, which no protocol can exclude; every
+substitution or rearrangement the attacker attempts is caught by the
+cross-checks, the signature check, or the AD binding, all failing
+closed. The v2 cross-checks did exactly what the Run 2 counterexample
+demanded.
+
+## Bottom line
+
+- The 2026-08-16 baseline results **reproduce exactly**.
+- Against the revised (Theorem 9) construction, across ≈ 140M combined
+  explored states over two runs, the only failure Verifpal found is a
+  verbatim-relay trace in which the receiver's own checks fail closed —
+  the misbinding and cross-session-replay attacks that defeat the v1
+  construction were **not reproducible against the revision in the
+  explored space**.
+- Completing the analysis (exhausting the space, or a bounded-session
+  reformulation that terminates) remains open, as does the
+  committing-AEAD obligation the symbolic model assumes away.
 
 ## Interpretation caveats
 

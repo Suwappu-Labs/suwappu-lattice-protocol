@@ -13,7 +13,7 @@
 
 | **Author** | **Version** | **Date** | **Status** | **Classification** |
 |:----------:|:-----------:|:--------:|:----------:|:------------------:|
-| Tsolmondorj Natsagdorj | 0.2.7 | 2026-08-23 | Public Draft — Request for Comments | Public |
+| Tsolmondorj Natsagdorj | 0.2.8 | 2026-08-25 | Public Draft — Request for Comments | Public |
 
 </div>
 
@@ -1549,12 +1549,31 @@ is not itself committing [42]) is recorded there and in
 Policy enforcement (`max_materializations`, §2.2.1) bounds the impact of a
 replayed key in the interim.
 
+**Symbolic analysis of the planned revision (2026-08-23/25).** A second
+model, `docs/formal/etp-protocol-revised.vp`, encodes the Theorem 9
+construction (freshness nonce, receiver-fingerprint and entity_id in the
+sealed key's associated data, sealed commitment reference with receiver
+cross-checks). Its runs are recorded in
+`docs/formal/verifpal-run-2026-08-23-revised.md` and are **bounded, not
+completed**: the revised model's state space exceeds what the analysis
+environment could exhaust (127.9M states explored in the longest run,
+against ~420K for the full baseline run, which was first reproduced
+exactly). In the explored space, no attack was found on either
+confidentiality query or on commitment authentication; the only failure
+found against strict sealed-key delivery-authentication is a verbatim-relay
+trace — the attacker re-delivers the byte-identical sealed key while
+tampering companion values, and the receiver's cross-checks then fail
+closed, so no wrong entity is accepted. **No verification is claimed for
+the unexplored space**; the symbolic caveat that Verifpal's ideal AEAD is
+perfectly committing (§3.3.3) applies throughout.
+
 Current status, per artifact class: symbolic confidentiality **verified
 under stated assumptions**; symbolic authentication **failing with known,
-disclosed findings and a planned fix**; specification arithmetic and
-threshold logic **machine-checked in Lean**; game-based reductions
-**pen-and-paper only** (a CryptoVerif/EasyCrypt treatment remains future
-work, per `docs/FORMAL_VERIFICATION_STATUS.md`).
+disclosed findings and a planned fix** (the revised-construction model
+finds only a benign relay trace in bounded analysis, see above); specification
+arithmetic and threshold logic **machine-checked in Lean**; game-based
+reductions **pen-and-paper only** (a CryptoVerif/EasyCrypt treatment
+remains future work, per `docs/FORMAL_VERIFICATION_STATUS.md`).
 
 ---
 
@@ -2977,6 +2996,7 @@ sufficiently large receiver population (break-even: $N \geq \rho$).
 | 0.1.0-draft | 2026-02-24 | Initial draft; reviewed by external review rounds 001–003 (formal + mathematical) and 004 (research landscape), `docs/security/audits/external/whitepaper-reviews/`. |
 | 0.1.0-draft (rev) | 2026-03-29 | Post-review corrections: test-vector arithmetic, BHT collision bound (~85-bit), cost-model expansion factor ρ = nr/k, nonce-derivation invariant, TCONF log binding, ZK-mode specification, theorem-numbering note. |
 | 0.2.0 | 2026-08-17 | Publication revision: threshold-secrecy claims conditioned per §3.3.5 throughout; erasure-coding spec re-baselined to the reference implementation (consecutive evaluation points, length-prefix framing) with regenerated test vectors — the evaluation points were re-baselined from the unimplemented powers-of-α scheme to the implemented consecutive-points scheme (α_i = i+1), test vectors regenerated from the reference implementation, superseding the §2.1.1 arithmetic checked in review rounds 001–002; the `encoding_params` `eval` label string is retained verbatim for record-hash compatibility; commitment-record size corrected; KEM-binding claim corrected to a disclosed limitation with planned mitigation; normative conflicts resolved (low-entropy × quantum threat model; extension registry created; log hash primitive unified on BLAKE3-256); disclosure paragraphs for deferred wire formats, hybrid KEM, regulatory posture, forward-secrecy caveats, key-rotation gap; machine-checked verification status section added (§3.3.8) covering the 52 Lean 4 theorems — including both §2.1.1 test vectors recomputed inside the Lean kernel — and the first recorded Verifpal run (2 confidentiality queries verified, 2 authentication replay findings disclosed with planned mitigation); literature positioning updated per the 2026-08-16 research round (X-BIND KEM-binding taxonomy, NIST IR 8547 transition posture, XChaCha20-Poly1305 standardization status); bibliography unified into a single consistent numbered style (37 references, every in-text citation resolves to exactly one entry and vice versa — previously three incompatible citation conventions coexisted and two citations, Cremers–Dax–Medinger and Schmieg, were referenced in §3.3 but absent from every reference list); FIPS 203/204, RFC 9180, NIST IR 8547, and X-Wing given first-class bibliography entries; new §8.9 positions LTP's corridor quorum against Data Availability Sampling (Al-Bassam et al., Danksharding, Hall-Andersen–Simkin–Wagner); §8.4 adds Signal's Sealed Sender as the closest KEM-bound-envelope precedent, and §8.7's constant-size-capability contribution claim is rescoped accordingly to the specific bundle rather than the underlying primitive; missing §8.8 TOC entry restored. |
+| 0.2.8 | 2026-08-25 | Symbolic analysis of the planned sealed-key revision. New Verifpal model `docs/formal/etp-protocol-revised.vp` encoding the Theorem 9 construction (freshness nonce, receiver-fingerprint + entity_id in the sealed key's AEAD associated data, sealed commitment reference with receiver cross-checks), with runs recorded in `docs/formal/verifpal-run-2026-08-23-revised.md`: the 2026-08-16 baseline results were first reproduced exactly (Verifpal 0.27.4 rebuilt from source), then the revised model was analyzed under explicit bounds — its state space exceeds what the environment can exhaust (127.9M states in the longest run vs ~420K for the complete baseline run), so **no verification is claimed**; in the explored space the only failure found is a verbatim-relay trace against strict sealed-key delivery-authentication in which the receiver's cross-checks fail closed (no wrong entity accepted). §3.3.8 updated with the bounded-analysis status and its interpretation; FORMAL_VERIFICATION_STATUS.md updated to match. |
 | 0.2.7 | 2026-08-23 | The §5.4.1.1 correlated-failure arithmetic joins the machine-checked suite. New Lean module `formal/lean/Ltp/Availability.lean` (8 theorems, total 82 → 90): the complement identity (1−p_replica) = (1−p_d)(1−p_n) and the agreement of the section's two expressions for p_replica, proved as general polynomial identities over scaled integers (stated additively to be honest under Nat truncated subtraction), plus the review-002-verified worked figures decided in-kernel — 0.0595 at the default parameters, 595³ = 210,644,875 with the ≈ 2.1×10⁻⁴ bracketing, the ≈ 0.99979 per-shard availability bracket, the same-region ≈ 0.01012 figure — and a new sharpening: same-region colocation is at least 48× worse than cross-region placement on shard unavailability, the quantitative content behind the `minimum_regions ≥ 3` genesis rule. §5.4.1.1 gains a machine-check pointer; §3.3.8 table extended. |
 | 0.2.6 | 2026-08-23 | Concrete-security integers join the machine-checked suite; Theorem 5 assumption note. New Lean module `formal/lean/Ltp/ConcreteSecurity.lean` (9 theorems, total 73 → 82) pins §3.3.1's post-quantum arithmetic — ⌊256/3⌋ = 85 with the ~85.3 bracketing (the exact division math review 001 found misstated), 256/2 = 128, the strict collision-below-preimage post-quantum ordering, and Grover's 2¹²⁸·2¹²⁸ = 2²⁵⁶ accounting — plus the §2.1.1 nonce-collision margin (q² = 2⁶⁴ < 2⁹⁷ at q = 2³²), the §2.3.3 exponential-backoff doubling law, and Appendix A's Earth-upload figure (48,000 s, bracketed between 13 h and 13.5 h). §3.3.1 gains a pointer to the machine-checked table arithmetic. §3.3.3 (Theorem 5, Game 1): noted that the passive TCONF game needs only KEM IND-CPA for the first hop — IND-CCA is invoked because the FO transform provides it, at no tightness cost; recorded so the proof's assumption inventory is exact. |
 | 0.2.5 | 2026-08-23 | Theorem 9 added and the ramp arithmetic generalized. §3.3.6: new SKB game (sealed-key context binding) and Theorem 9, stating the planned sealed-key revision's proof obligation: with receiver-fingerprint + entity_id + freshness nonce in the AEAD associated data, a CMT-4 committing AEAD [42], and a single long-term sender-key pin at the receiver (the standard AKE long-term-key assumption [41]), Adv^SKB ≤ Adv^EUF-CMA + Adv^CMT-4 + Adv^AUTH + q_s²/2^(|η|+1) — replacing Theorem 8's per-transfer expected-identity hypothesis with one key pin, and making the TIMM bound protocol-enforced with an added CMT-4 term. The theorem is stated for the revised construction, not the v1 wire format, and makes explicit that over plain (non-committing) XChaCha20-Poly1305 its bound is vacuous — the §3.3.3 committing-AEAD requirement is thereby load-bearing, not advisory. Theorem-numbering note updated to 3–9. Lean: `Ltp/Ramp.lean` extended with field-size generality (6 theorems, total 67 → 73) — the candidate arithmetic over any size-q field with the GF(2⁸) versions as the q = 256 instance (`gf256_specialization`), and strict antitonicity for every q ≥ 2 (`candidatesQ_step_strict`, `candidatesQ_strict_antitone`): each additional shard strictly shrinks the candidate set, the counting fact behind the v0.2.1 Theorem 7 correction, now a pinned theorem rather than a correction note. |
@@ -2987,4 +3007,4 @@ sufficiently large receiver population (break-even: $N \geq \rho$).
 
 ---
 
-*LTP v0.2.7 — Lattice Transfer Protocol*
+*LTP v0.2.8 — Lattice Transfer Protocol*

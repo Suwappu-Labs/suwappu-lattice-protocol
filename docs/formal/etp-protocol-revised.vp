@@ -30,6 +30,22 @@
 // Author: Suwappu-Labs
 // Date: 2026-08-23 (first run recorded in
 //       verifpal-run-2026-08-23-revised.md)
+// Revised: 2026-08-25 (v2) — two changes after the first run's partial
+// results (see the run record):
+//   a. RECEIVER CROSS-CHECKS added: the first run found a trace where
+//      the attacker relays the genuine sealed key unchanged while
+//      nulling the surrounding phase-1 delivery; the sealed key's own
+//      AD check passes and the receiver "accepts" it inside a
+//      rearranged run (downstream checks then fail closed). The
+//      receiver now ASSERTs that the sealed commitment reference
+//      equals the delivered record, killing the run on any tampered
+//      companion value before the sealed key counts as accepted.
+//   b. The separate freshness? query is dropped: the first run spent
+//      127.9M analysis states without exhausting the space. The
+//      4-query set now matches etp-protocol.vp exactly, for a clean
+//      baseline comparison; session binding is carried by eta inside
+//      the AEAD associated data, which the authentication query
+//      exercises.
 
 attacker[active]
 
@@ -106,6 +122,12 @@ principal Receiver[
 	// Recover CEK and the commitment reference from the sealed payload.
 	cek_r, entity_id_r, shard_root_r = SPLIT(lattice_payload_r)?
 
+	// Cross-check the sealed commitment reference against the
+	// delivered record (v2): a tampered companion delivery kills the
+	// run before the sealed key counts as accepted.
+	id_consistent = ASSERT(entity_id_r, entity_id)?
+	root_consistent = ASSERT(shard_root_r, shard_root)?
+
 	// Verify the commitment signature against the SEALED values — the
 	// record the receiver acts on comes through the sealed channel.
 	commitment_valid = SIGNVERIF(sender_vk, HASH(CONCAT(entity_id_r, shard_root_r)), commitment)?
@@ -126,7 +148,4 @@ queries[
 	// flip these.
 	authentication? Sender -> Receiver: commitment
 	authentication? Sender -> Receiver: sealed_key
-
-	// Freshness: the sealed key must not be replayable across sessions.
-	freshness? sealed_key
 ]
