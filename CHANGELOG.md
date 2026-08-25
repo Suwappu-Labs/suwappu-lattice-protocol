@@ -12,6 +12,20 @@ public-surface promise and the cross-version compatibility matrix.
 ## [Unreleased]
 
 ### Added
+- **v2 receiver-bound sealed envelope** (KEM-binding fix, whitepaper
+  §3.3.3): `SealedBox.seal` now emits a versioned envelope whose AEAD
+  associated data commits to SHA3-256(receiver_ek) and
+  SHA3-256(kem_ct) — protocol-level compensation for ML-KEM being
+  neither MAL-BIND-K-PK nor MAL-BIND-K-CT. Re-targeted envelopes and
+  spliced payloads now fail tag verification. `LatticeKey` gains an
+  authenticated `sealed_at` freshness stamp;
+  `ProtocolConfig.max_seal_age_seconds` (default None) lets receivers
+  bound the replay window, fail-closed for unstamped legacy keys.
+  Legacy v1 envelopes still unseal by default (deterministic fallback
+  for the 1-in-256 kem_ct beginning 0x02); `LTP_SEALEDBOX_STRICT_V2=1`
+  rejects them. Sealed size: 1,423 → 1,447 B, still byte-identical
+  across entity sizes. The Verifpal sealed-key replay verdicts describe
+  the pre-binding protocol; symbolic re-verification is pending.
 - Failure-domain-aware shard placement (whitepaper §2.1.2 / §5.4.1.1):
   `CommitmentNetwork._placement` now places replicas of one shard index
   across min(r, R) distinct regions by construction — deterministic,

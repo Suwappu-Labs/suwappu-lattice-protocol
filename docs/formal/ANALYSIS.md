@@ -103,12 +103,19 @@ Interpretation section always made. The change log is at the top of
      binds a sealed key to a session, to freshness, or to the receiver's
      encapsulation key. A replayed sealed key causes re-materialization
      of the same entity. This independently corroborates the KEM
-     ciphertext-binding gap disclosed in whitepaper §3.3 (the Bhargavan
-     et al. binding property is not currently discharged). Mitigations:
-     policy enforcement (`max_materializations`, §2.2.1) bounds the
-     damage; the planned fix is to bind the receiver encapsulation-key
-     fingerprint and entity_id into the sealed key's AEAD associated
-     data, with a freshness component, in a future protocol revision.
+     ciphertext-binding gap disclosed in whitepaper §3.3.
+     **Status update (SDK / whitepaper 0.5.0):** the fix has landed as
+     the v2 receiver-bound sealed envelope — AEAD associated data
+     committing to SHA3-256(receiver_ek) and SHA3-256(kem_ct), plus an
+     authenticated `sealed_at` freshness stamp bounded by an optional
+     receiver-side maximum seal age; entity_id is bound inside the
+     authenticated payload rather than in cleartext AAD (opacity —
+     whitepaper §3.3.3 records the reasoning and the exact residual
+     surface). Policy enforcement (`max_materializations`, §2.2.1,
+     enforced since 0.4.1) additionally bounds same-instance replay.
+     This model has NOT been re-run against the v2 construction; the
+     traces below describe the pre-binding protocol, and re-running the
+     analysis with the binding modeled is the open next step.
 
 3. **Computational security** depends on the hardness of the Module-LWE
    problem (ML-KEM-768) and Module-SIS problem (ML-DSA-65), both

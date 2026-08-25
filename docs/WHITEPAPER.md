@@ -13,7 +13,7 @@
 
 | **Author** | **Version** | **Date** | **Status** | **Classification** |
 |:----------:|:-----------:|:--------:|:----------:|:------------------:|
-| Tsolmondorj Natsagdorj | 0.4.2 | 2026-08-21 | Public Draft — Request for Comments | Public |
+| Tsolmondorj Natsagdorj | 0.5.0 | 2026-08-22 | Public Draft — Request for Comments | Public |
 
 </div>
 
@@ -26,7 +26,7 @@
 LTP inverts the data transfer paradigm. Rather than transmitting a payload from sender to
 receiver, the sender **commits** an immutable, content-addressed, erasure-coded entity to a
 distributed commitment layer and delivers a constant-size cryptographic **lattice key**
-(1,423 bytes measured, §7.4) to the receiver. The receiver **materializes** the entity from
+(1,447 bytes measured, §7.4) to the receiver. The receiver **materializes** the entity from
 geographically nearby commitment nodes — achieving O(1) sender→receiver bandwidth independent
 of entity size, with post-quantum security as the default on the core transfer path.
 
@@ -249,7 +249,7 @@ entity to a distributed commitment layer, transmits a minimal cryptographic **la
 to the receiver, and the receiver **materializes** the entity through deterministic reconstruction
 from distributed shards. The protocol achieves:
 
-- **Decoupled transfer** — the sender→receiver path carries only a 1,423-byte sealed key (ML-KEM-768), independent of entity size; we measure this invariant directly in §7.4. Total system bandwidth is O(entity × replication), but the direct-path bottleneck is eliminated.
+- **Decoupled transfer** — the sender→receiver path carries only a 1,447-byte sealed key (ML-KEM-768), independent of entity size; we measure this invariant directly in §7.4. Total system bandwidth is O(entity × replication), but the direct-path bottleneck is eliminated.
 - **Immutability by design** — every transfer is a permanent, auditable commitment
 - **Verification without institutional trust on the transfer path** — materialization is verified cryptographically end-to-end; the on-chain settlement surface carries separate and weaker trust assumptions, stated in §8.4
 - **Geography-optimized materialization** — the receiver fetches shards from the nearest available nodes, converting a long-haul transfer into parallel local fetches
@@ -727,13 +727,20 @@ The entire key is **sealed** via ML-KEM-768 (FIPS 203) key encapsulation. Each s
 operation generates a fresh encapsulation, providing forward secrecy per transfer.
 
 The sealed key's wire format is
-`kem_ciphertext(1088) ‖ nonce(24) ‖ aead_ciphertext ‖ aead_tag(16)`, giving a constant
-**1,128-byte envelope overhead** on top of the encrypted inner payload.
+`version(1, = 0x02) ‖ kem_ciphertext(1088) ‖ nonce(24) ‖ aead_ciphertext ‖ aead_tag(16)`,
+giving a constant **1,129-byte envelope overhead** on top of the encrypted inner payload.
+The v2 envelope is **receiver-bound**: its AEAD associated data is
+`"LTP-SEALEDBOX-v2\x00" ‖ SHA3-256(receiver_ek) ‖ SHA3-256(kem_ciphertext)`, recomputed by
+the receiver from its *own* encapsulation key at unseal — the KEM-binding fix specified in
+§3.3.3. The inner payload additionally carries a `sealed_at` stamp (whole seconds,
+authenticated) as the freshness component; receivers MAY bound accepted seal age. Legacy
+(unversioned, unbound) v1 envelopes remain unsealable by default for outstanding keys and
+can be rejected outright in strict deployments.
 
 The lattice key is:
-- **Minimal** — 295-byte inner payload, **1,423 bytes sealed** under the default
+- **Minimal** — 318-byte inner payload, **1,447 bytes sealed** under the default
   unrestricted policy, regardless of entity size (measured, §7.4). A time-limited policy
-  with all optional fields populated raises this to 1,495 bytes; the growth is in the
+  with all optional fields populated raises this to 1,519 bytes; the growth is in the
   policy, not the entity.
 - **Sealed** — ML-KEM encapsulated to the receiver's encapsulation key (quantum-resistant)
 - **Self-authenticating** — contains the commitment reference for verification
@@ -780,7 +787,7 @@ The lattice key is **not the data**. It is the **proof of right to reconstruct**
 creates several remarkable properties:
 
 1. **Sender→receiver decoupling**: Transferring 1 KB and transferring 1 TB produce the same
-   size sealed lattice key (1,423 bytes). The sender→receiver direct transmission is O(1).
+   size sealed lattice key (1,447 bytes). The sender→receiver direct transmission is O(1).
    Note: total system bandwidth is O(entity × replication) across the commit and materialize
    phases. The advantage is not bandwidth elimination — it is *bottleneck relocation*: the
    sender-receiver path (often the slowest link) is reduced to a constant, and the O(entity)
@@ -866,7 +873,7 @@ LTP materialization: **pull k shards in parallel from the nearest nodes in the c
 Traditional:    S ════════════════(entire payload)════════════════> R
                   Bottleneck: sender upload × distance to receiver
 
-LTP:            S ──(1,423B sealed key)──> R
+LTP:            S ──(1,447B sealed key)──> R
                                           R <── encrypted shard from nearby Node
                                           R <── encrypted shard from nearby Node
                                           R <── encrypted shard from nearby Node
@@ -1241,7 +1248,7 @@ $\mathsf{Adv}^{\text{AUTH}}_{\text{AEAD}}$ is the AEAD authentication advantage.
 
 #### 3.3.3 Transfer Confidentiality (IND-CPA)
 
-**ML-KEM-768 Security Parameters.** The sealed lattice key's confidentiality reduces to the Module-LWE problem with parameters (k=3, q=3329, η₁=2, η₂=2), achieving NIST Security Level 3 — equivalent to AES-192 against quantum adversaries. The IND-CCA2 property is obtained via the Fujisaki-Okamoto transform applied to an IND-CPA-secure K-PKE scheme [20] (FIPS 203 §4 [24]). The recent formal verification of Signal's PQXDH protocol [21] — the first machine-checked post-quantum security proof of a real-world protocol using CryptoVerif — identified a KEM binding property requirement: the KEM ciphertext must be bound to the *receiver's encapsulation key*. **LTP's current sealed-key construction does NOT discharge this property**: the sealed lattice key binds entity_id (derived from the sender's verification key) but contains no receiver key material, so the ciphertext is not bound to the receiver's encapsulation key. A 2026-08 Verifpal symbolic analysis of the protocol (`docs/formal/`) independently found the corresponding weakness: sealed lattice keys can be replayed across sessions, because the sealed key carries no freshness or receiver binding. The planned mitigation — scheduled for a future protocol revision — is to include the receiver encapsulation-key fingerprint and the entity_id in the AEAD associated data of the sealed key, closing both findings. This mirrors the guidance in HPKE [26], which binds additional identities into the context/AAD rather than relying on the KEM alone. Protocol-level binding is necessary rather than optional here: in the X-BIND taxonomy of Cremers, Dax, and Medinger [27], ML-KEM itself provides LEAK-BIND-K-CT and LEAK-BIND-K-PK but is **not** MAL-BIND-K-CT or MAL-BIND-K-PK [28] — a maliciously generated key pair can break ciphertext binding at the primitive level, so no choice of KEM parameters alone can discharge the obligation.
+**ML-KEM-768 Security Parameters.** The sealed lattice key's confidentiality reduces to the Module-LWE problem with parameters (k=3, q=3329, η₁=2, η₂=2), achieving NIST Security Level 3 — equivalent to AES-192 against quantum adversaries. The IND-CCA2 property is obtained via the Fujisaki-Okamoto transform applied to an IND-CPA-secure K-PKE scheme [20] (FIPS 203 §4 [24]). The recent formal verification of Signal's PQXDH protocol [21] — the first machine-checked post-quantum security proof of a real-world protocol using CryptoVerif — identified a KEM binding property requirement: the KEM ciphertext must be bound to the *receiver's encapsulation key*. **As of v0.5.0, LTP discharges this property at the envelope layer**: the v2 sealed envelope's AEAD associated data is `"LTP-SEALEDBOX-v2\x00" ‖ SHA3-256(receiver_ek) ‖ SHA3-256(kem_ct)`, recomputed by the receiver from its own encapsulation key at unseal, so an envelope re-targeted at a different key, or a payload spliced onto a different encapsulation, fails tag verification. A 2026-08 Verifpal symbolic analysis of the protocol (`docs/formal/`) had independently found the corresponding weakness — sealed lattice keys replayable across sessions, with no freshness or receiver binding — and motivated the fix. Two deviations from the originally recorded mitigation are deliberate. First, the *entity_id* is not in the associated data: AAD must be presentable in cleartext at decrypt time, and carrying entity_id beside the envelope would break the sealed key's opacity (§2.2.1); entity binding is achieved inside instead, since entity_id lives in the AEAD-encrypted payload that the receiver-bound key authenticates. Second, the freshness component is a `sealed_at` stamp inside the authenticated payload plus an optional receiver-side maximum seal age — an *offline capability* cannot carry an interactive freshness value without giving up its asynchrony. What the binding does and does not close should be stated precisely: re-targeting and splicing are closed; verbatim replay of an unmodified envelope to the *same* receiver key remains possible within the configured seal-age window, bounded by the §2.2.1 materialization counting at each receiver instance. The Verifpal model has not yet been re-run against the v2 construction; until it is, the fix's symbolic status is *implemented, re-verification pending*. This mirrors the guidance in HPKE [26], which binds additional identities into the context/AAD rather than relying on the KEM alone. Protocol-level binding is necessary rather than optional here: in the X-BIND taxonomy of Cremers, Dax, and Medinger [27], ML-KEM itself provides LEAK-BIND-K-CT and LEAK-BIND-K-PK but is **not** MAL-BIND-K-CT or MAL-BIND-K-PK [28] — a maliciously generated key pair can break ciphertext binding at the primitive level, so no choice of KEM parameters alone can discharge the obligation.
 
 **Definition (TCONF game).** Transfer confidentiality is defined via an IND-CPA-style
 indistinguishability game adapted for LTP's commit-lattice-materialize structure:
@@ -1501,25 +1508,25 @@ extracted to, or mechanically linked with, `src/ltp/`. Read
 **Size-bound note (a model/implementation divergence we do not paper over).**
 `sealed_768_bounded` proves the sealed key is at most 1,300 bytes for any
 policy of at most 96 bytes; the companion `sealed_768_min` / `sealed_768_max`
-bracket the model at 1,220–1,250 bytes. The implementation produces **1,423
-bytes** (§7.4). The 203-byte gap decomposes into two independent causes:
+bracket the model at 1,220–1,250 bytes. The implementation produces **1,447
+bytes** since the v2 receiver-bound envelope (§3.3.3). The 197–227-byte gap
+decomposes into two independent causes:
 
-- **179 bytes of payload encoding.** The model assumes a compact 116-byte
-  inner payload; the implementation seals 295 bytes of JSON whose `entity_id`
+- **202 bytes of payload encoding.** The model assumes a compact 116-byte
+  inner payload; the implementation seals 318 bytes of JSON whose `entity_id`
   and `commitment_ref` are 73-character prefixed digest *strings* rather than
-  raw 32-byte values.
-- **24 bytes of envelope.** The Lean model's envelope is
-  `kem_ct(1088) + tag(16) = 1104` and has no nonce field at all; the
-  implementation's wire format is
-  `kem_ct(1088) ‖ nonce(24) ‖ ciphertext ‖ tag(16) = 1128`. The model is
-  simply missing the nonce.
+  raw 32-byte values, plus the authenticated `sealed_at` freshness stamp.
+- **25 bytes of envelope.** The Lean model's envelope is
+  `kem_ct(1088) + tag(16) = 1104` — no nonce field and no version byte; the
+  implementation's v2 wire format is
+  `version(1) ‖ kem_ct(1088) ‖ nonce(24) ‖ ciphertext ‖ tag(16) = 1129`.
 
 What the theorem establishes and the measurement confirms is the load-bearing
 claim — that sealed size does not depend on entity size. The absolute constants
 in the Lean model are stale in both respects. A compact binary encoding (the
-`canonical_bytes` path, 244 bytes, already present but not on the sealing path)
-would bring the implementation to 1,372 bytes. Aligning model and
-implementation is tracked as future work; until then, cite 1,423 bytes for the
+`canonical_bytes` path, 252 bytes, already present but not on the sealing path)
+would bring the implementation to 1,381 bytes. Aligning model and
+implementation is tracked as future work; until then, cite 1,447 bytes for the
 implementation and treat the Lean interval as a statement about the model.
 
 **Verifpal symbolic analysis** (`docs/formal/etp-protocol.vp`, Verifpal
@@ -1539,16 +1546,22 @@ replay finding independently corroborates the KEM ciphertext-binding gap
 disclosed in §3.3.3; the planned mitigation (receiver encapsulation-key
 fingerprint and entity_id in the sealed key's AEAD associated data, plus a
 freshness component) is recorded there and in `docs/formal/ANALYSIS.md`.
-Access policy (`max_materializations`, §2.2.1) is enforced as of v0.4.1 and
-partially mitigates this finding: a sealed key replayed **to the same receiver
-protocol instance** is bounded by its materialization count, atomically
-reserved and rolled back on failure. The mitigation's boundary is exactly the
-enforcement state's: counts are in-memory and per-instance, so a sealed key
-replayed after a receiver restart, or to a different receiver instance holding
-the same decapsulation key, is not counted. The full fix remains the planned
-protocol-level binding (receiver encapsulation-key fingerprint, entity_id, and
-a freshness component in the sealed key's AEAD associated data); until it
-lands, the residual replay surface is cross-instance and cross-restart only.
+Both findings now have implemented responses, layered as follows. The v2
+receiver-bound envelope (v0.5.0, §3.3.3) closes the *binding* half: the
+sealed key's AEAD associated data commits to the receiver's encapsulation
+key and the KEM ciphertext, so an envelope cannot be re-targeted or its
+payload spliced — and the authenticated `sealed_at` stamp gives receivers a
+freshness bound (`max_seal_age_seconds`) on how long a captured envelope
+stays usable. Access-policy enforcement (v0.4.1, §2.2.1) bounds the
+*counting* half: a sealed key replayed to the same receiver protocol
+instance is limited by its materialization count, atomically reserved and
+rolled back on failure. The residual surface, stated exactly: verbatim
+replay of an unmodified envelope to the same receiver key, across receiver
+instances or restarts, within the configured seal-age window — eliminating
+it entirely requires durable, shared replay state, which is deployment
+infrastructure rather than protocol. The Verifpal model has not been
+re-run against the v2 construction; its recorded verdicts describe the
+pre-binding protocol, and the re-run is pending.
 
 Current status, per artifact class: symbolic confidentiality **verified
 under stated assumptions**; symbolic authentication **failing with known,
@@ -2309,7 +2322,7 @@ would limit it to enterprises. The interface layer allows any of these.
 **Traditional**: Latency = f(distance, hops, payload_size)  
 **LTP**: Latency = f(key_transmission) + f(nearest_shard_fetch)
 
-The sealed lattice key is 1,423 bytes, of which 1,088 is the ML-KEM-768 ciphertext — the
+The sealed lattice key is 1,447 bytes, of which 1,088 is the ML-KEM-768 ciphertext — the
 honest cost of quantum resistance, against roughly 240 bytes for a comparable classical
 construction. Its transmission is near-instantaneous on any network, and we measure the
 whole LATTICE phase at 0.24 ms independent of entity size (§7.3). Shard fetching is
@@ -2323,7 +2336,7 @@ and sensitivity analysis are in §6.4.
 **Traditional**: New York → Tokyo = ~200ms RTT minimum (speed of light through fiber).  
 For a 1 GB file at 100 Mbps effective throughput: ~80 seconds, bottlenecked by the single path.
 
-**LTP**: The sender in New York transmits a 1,423-byte sealed key to the receiver in Tokyo
+**LTP**: The sender in New York transmits a 1,447-byte sealed key to the receiver in Tokyo
 (one round trip, ~200ms). The receiver then fetches k encrypted shards in parallel from
 Tokyo-local commitment nodes (~5-10ms RTT each). Materialization time is dominated by
 *local bandwidth*, not transoceanic latency.
@@ -2368,7 +2381,7 @@ The factor of $n/k$ represents the erasure coding expansion that occurs *before*
 |--------|----------------|-----|
 | Sender upload (per transfer) | $D$ | — (already committed) |
 | Sender upload (commit, once) | — | $D \cdot nr/k = D\rho$ |
-| Sender→receiver direct | $D$ | $O(1)$ (1,423 bytes) |
+| Sender→receiver direct | $D$ | $O(1)$ (1,447 bytes) |
 | Receiver download | $D$ | $D$ (k shards × $D/k$) |
 | **Total system, 1 receiver** | $D$ | $D\rho + D = D(\rho+1)$ |
 | **Total system, N receivers** | $D \cdot N$ | $D\rho + D \cdot N$ |
@@ -2387,7 +2400,7 @@ At the default parameters ($n = 64$, $k = 32$, $r = 3$): $\rho = 64 \cdot 3 / 32
 Break-even occurs at $N > 6$ receivers (not $N > 3$).
 
 For large $N$: The commit cost $D\rho$ becomes negligible. Each additional receiver costs only
-$D$ (local shard fetches) + 1,423 bytes (sealed key). Sender bandwidth is constant after commit.
+$D$ (local shard fetches) + 1,447 bytes (sealed key). Sender bandwidth is constant after commit.
 
 **Latency costs:**
 
@@ -2570,6 +2583,15 @@ PyNaCl, BLAKE3 from the `blake3` package, SHA3-256 from `hashlib`. All at NIST L
 conformant table-driven kernel of §6.5 — pure Python orchestrating C-speed byte
 primitives — not the optional non-conformant `zfec` path (§7.5).
 
+**Measurement provenance.** Timing figures are from the recorded 0.4.0 run; byte
+constants (sealed key, payloads, overheads) are re-measured against the current v2
+receiver-bound envelope (§3.3.3), whose only timing effect is two SHA3-256 digests per
+seal or unseal — measured at roughly ten microseconds, far below run-to-run noise. The two are reported
+together rather than re-timing everything because the benchmark host changed hardware
+between revisions (a uniformly ~2× slower machine, confirmed by re-running the untouched
+erasure kernel); re-timing there would misattribute host drift to the envelope change.
+Sizes are deterministic and host-independent; timings are not.
+
 ### 7.1 Cryptographic Primitives
 
 Typical latency, with the range observed across three independent runs. The host is a
@@ -2662,14 +2684,14 @@ retained in the revision history for comparison.
 
 | Parameters | Entity | COMMIT | LATTICE | MATERIALIZE | Sealed key |
 |-----------|--------|-------:|--------:|------------:|-----------:|
-| $n=8, k=4$ | 64 KiB | 3.2 ms | 0.188 ms | 1.2 ms | 1,423 B |
-| $n=8, k=4$ | 256 KiB | 6.6 ms | 0.157 ms | 2.8 ms | 1,423 B |
-| $n=8, k=4$ | 1 MiB | 20.9 ms | 0.143 ms | 9.9 ms | 1,423 B |
-| $n=8, k=4$ | 4 MiB | 79.0 ms | 0.163 ms | 48.5 ms | 1,423 B |
-| $n=64, k=32$ | 64 KiB | 9.3 ms | 0.169 ms | 4.2 ms | 1,423 B |
-| $n=64, k=32$ | 256 KiB | 23.8 ms | 0.140 ms | 11.9 ms | 1,423 B |
-| $n=64, k=32$ | 1 MiB | 88.0 ms | 0.145 ms | 42.6 ms | 1,423 B |
-| $n=64, k=32$ | 4 MiB | 357.1 ms | 0.189 ms | 183.7 ms | 1,423 B |
+| $n=8, k=4$ | 64 KiB | 3.2 ms | 0.188 ms | 1.2 ms | 1,447 B |
+| $n=8, k=4$ | 256 KiB | 6.6 ms | 0.157 ms | 2.8 ms | 1,447 B |
+| $n=8, k=4$ | 1 MiB | 20.9 ms | 0.143 ms | 9.9 ms | 1,447 B |
+| $n=8, k=4$ | 4 MiB | 79.0 ms | 0.163 ms | 48.5 ms | 1,447 B |
+| $n=64, k=32$ | 64 KiB | 9.3 ms | 0.169 ms | 4.2 ms | 1,447 B |
+| $n=64, k=32$ | 256 KiB | 23.8 ms | 0.140 ms | 11.9 ms | 1,447 B |
+| $n=64, k=32$ | 1 MiB | 88.0 ms | 0.145 ms | 42.6 ms | 1,447 B |
+| $n=64, k=32$ | 4 MiB | 357.1 ms | 0.189 ms | 183.7 ms | 1,447 B |
 
 A 256 KiB entity now completes an entire commit-lattice-materialize round trip in under
 10 ms at the implementation default — down from roughly three-quarters of a second — and a
@@ -2678,7 +2700,7 @@ the same commitment records, the same shard roots, the same sealed keys.
 
 **The LATTICE phase is constant.** Across a 64× range of entity size and an 8× range of
 $n$, it stays under 0.2 ms in every configuration (0.14–0.19 ms this run; 0.14–0.28 ms
-across all recorded runs), while the sealed key stays byte-identical at 1,423. The timing
+across all recorded runs), while the sealed key stays byte-identical at 1,447. The timing
 varies with host noise; the size does not vary at all. This is the paper's central
 structural claim — that the sender→receiver path is $O(1)$ in entity size — observed
 directly rather than argued, and it is the one headline claim these measurements actually
@@ -2719,20 +2741,20 @@ Exact, not approximate:
 
 | Artifact | Size | Composition |
 |----------|-----:|-------------|
-| Sealed lattice key (unrestricted policy) | **1,423 B** | 1,088 KEM ciphertext + 24 nonce + 16 tag + 295 encrypted payload |
-| Sealed lattice key (time-limited policy, all fields) | 1,495 B | Growth is in the policy, not the entity |
-| Constant envelope overhead | 1,128 B | Independent of payload |
+| Sealed lattice key (unrestricted policy) | **1,447 B** | 1 version byte + 1,088 KEM ciphertext + 24 nonce + 16 tag + 318 encrypted payload |
+| Sealed lattice key (time-limited policy, all fields) | 1,519 B | Growth is in the policy, not the entity |
+| Constant envelope overhead | 1,129 B | Independent of payload |
 | Commitment record | **5,824 B** | 3,309 signature + 1,952 verification key + 473 signable payload + framing |
 | — signature + verification key share | **90.3%** | The record is essentially post-quantum key material |
 | EntityID | 73 chars | `sha3-256:` + 64 hex digits |
 | ML-KEM-768 ek / dk / ciphertext | 1,184 / 2,400 / 1,088 B | FIPS 203 |
 | ML-DSA-65 vk / sk / signature | 1,952 / 4,032 / 3,309 B | FIPS 204 |
 
-The sealed key was measured at 1,423 bytes for both a 1 KiB and a 256 KiB entity — identical
+The sealed key was measured at 1,447 bytes for both a 1 KiB and a 256 KiB entity — identical
 to the byte. §6.4's $O(1)$ row is now a measurement rather than an assertion.
 
 Note the asymmetry these numbers reveal: the *commitment record* (5,824 B) is four times
-the size of the *sealed key* (1,423 B). The record is fetched once per materialization from
+the size of the *sealed key* (1,447 B). The record is fetched once per materialization from
 the log; the sealed key crosses the sender→receiver link. LTP's constant-size claim applies
 to the link that the design is trying to relieve, not to every artifact in the system.
 
@@ -2959,7 +2981,7 @@ Consolidated, so a reader does not have to reconstruct it:
 | Default replication $r=3$ (§6.4) | Defaults to $r=2$ | Same: $\rho = nr/k$ is 6 at the paper's defaults, 4 at the implementation's. Cost-model conclusions are stated in terms of $\rho$ and hold for either. |
 | §5.5 declines to specify economics | Ships a complete tokenomics engine with ~30 hard-coded parameters, and carries two conflicting sets of stake and penalty constants | Genuine divergence. §5.5's interface-only stance remains the protocol's position; the engine is one deployment's instantiation. A separate design document supersedes it with a stablecoin-collateral model that assumes no native token. |
 | §5.1.2 "requires no consensus protocol" | Ships a DAG-BFT engine | Not a contradiction — the storage layer requires no consensus, and the engine serves deployments that additionally want ordered execution. But §5.1.2 should not be read as "LTP has no consensus code." |
-| Sealed key ~1,300 B | 1,423 B | Corrected throughout this revision (§7.4). |
+| Sealed key ~1,300 B | 1,423 B at 0.3.0–0.4.2; **1,447 B** since the v2 receiver-bound envelope | Corrected in 0.3.0; v0.5.0 adds 1 version byte and the 23-byte `sealed_at` stamp (§2.2.1, §3.3.3). |
 | Commitment record ≈3.5 KB | 5,824 B | Corrected (§2.1.3, §7.4); the earlier figure omitted the inline verification key. |
 | EntityID uses BLAKE3-256 | Uses SHA3-256 (canonical lane) | Corrected throughout this revision; the dual-lane architecture is now specified in §1.3. |
 | "No X25519 or Ed25519" | Opt-in composite mode includes Ed25519 | Corrected in §8.2 and §3.4. |
@@ -3423,7 +3445,7 @@ one LTP improves, and we say so.
 *The canonical case — the one LTP is designed for.*
 
 A 50 GB dataset is committed once. Any number of receivers materialize it, each receiving a
-1,423-byte sealed lattice key. Each receiver's materialization time is dominated by local
+1,447-byte sealed lattice key. Each receiver's materialization time is dominated by local
 shard fetching from nearby nodes, not by the sender's bandwidth or availability.
 
 | | Direct transfer | LTP |
@@ -3458,7 +3480,7 @@ lattice key is opaque without the receiver's decapsulation key.
 
 **Fit: weak for typical messaging, and we would not recommend LTP for it.** Messages are
 small and usually have one recipient, so $N = 1 < \rho$: LTP moves *more* total data than
-sending the message directly, adds three round trips, and adds a 1,423-byte key to a payload
+sending the message directly, adds three round trips, and adds a 1,447-byte key to a payload
 that may be smaller than the key. It also inherits the low-entropy confidentiality problem —
 a short message drawn from a predictable set is fingerprinted by its EntityID unless ZK mode
 is used (§3.3.3), and ZK mode is not post-quantum (§3.4). The case becomes reasonable only
@@ -3608,7 +3630,7 @@ LTP inverts the data transfer paradigm. Rather than asking "how do I send this d
 asks "how do I prove this data exists, and give you the right to reconstruct it near you."
 
 The result is a protocol where:
-- **The sender→receiver path is O(1)** — a constant-size sealed key, measured at 1,423 bytes
+- **The sender→receiver path is O(1)** — a constant-size sealed key, measured at 1,447 bytes
   for entities spanning three orders of magnitude (§7.3)
 - **Total system bandwidth is higher than direct transfer** — but the bottleneck shifts from
   the sender-receiver link to receiver-local fetches, with amortized fan-out
@@ -3659,7 +3681,7 @@ Each receiver independently pulls the full payload from Earth. Total Earth uploa
   $n = 64$, $k = 32$, $r = 3$: total upload $= D \cdot nr/k = 1\text{ GB} \times 6 = 6\text{ GB}$.
   At 1 Mbps: $6\text{ GB} / 1\text{ Mbps} \approx 13.4\text{ hours}$ of Earth upload,
   paid once regardless of $N$.
-- *Lattice phase (per receiver):* 1,423-byte sealed key transmitted in $< 1\text{ s}$ +
+- *Lattice phase (per receiver):* 1,447-byte sealed key transmitted in $< 1\text{ s}$ +
   20-minute light delay.
 - *Materialize phase (per receiver):* $1\text{ GB} / 1\text{ Gbps} = 8\text{ seconds}$
   from Mars-local nodes.
@@ -3815,7 +3837,8 @@ analysis of the settlement surface (§8.4) is summarized here and argued at leng
 | 0.4.0 | 2026-08-21 | Coding-layer mathematics and performance revision. New §6.5 derives the exact cost of the coding layer — the counting identity W_enc = n·D byte-multiplications (independent of k) and W_dec = k·D; the factorization of the Vandermonde inner product into per-coefficient 256-entry byte substitutions plus carry-free big-integer XOR, which removes the interpreter from the data path while leaving every shard byte unchanged; the closed-form O(k²) Vandermonde inverse via Lagrange interpolation (master polynomial, exact synthetic division, Horner normalization) replacing O(k³) Gauss-Jordan on the decode path; and the frontier analysis (SIMD/GFNI kernels as the conformance-preserving next order of magnitude; additive-FFT ruled out as non-conformant and asymptotically capped at n ≤ 255). The reference implementation adopted both constructions: measured **100–150× erasure speedup** with byte-identical shards, gated by the §2.1.1 pinned vectors, the Lean-kernel recomputation, a randomized old-vs-new equivalence fuzz (72 parameter sets including n = 255), a Lagrange-vs-Gauss-Jordan cross-check (211 matrices), and four new permanent regression tests. §7 re-measured throughout: erasure encode now 81–106 MiB/s at (8,4) and 10.8–12.8 MiB/s at (64,32) with the sweep extended to 4 MiB; a 256 KiB three-phase transfer completes in under 10 ms (was ~740 ms); the COMMIT breakdown inverts from 99.3–99.9% erasure to 50.6% at (8,4) and 88.5% at (64,32), with the paper now noting that the absolute cost of cryptography is unchanged and that Amdahl's law caps further coder-only gains at the implementation default; the n·D law is validated by a kernel coefficient-work rate constant at 0.65–0.85 GiB/s across all sixteen configurations, replacing the scalar-era 6.4–6.8× anomaly. §7.1 ranges widened to three runs; §7.5 headroom note revised from two-plus orders of magnitude to one; §12 Open Question 8 marked substantially addressed, with the systematic-code escape hatch withdrawn. Baseline (scalar) measurements are retained in §7.2 and in this table's 0.3.0 entry for the record. |
 | 0.4.1 | 2026-08-21 | Access-policy enforcement lands. `materialize()` now enforces §2.2.1 after unsealing and before any fetch, with semantics matching `formal/lean/Ltp/Policy.lean`: time window and count checked for every policy type, `one-time` defaulting to a limit of 1, unknown or malformed policies rejected fail-closed (`minimal_is_sound`), materialization slots reserved atomically so concurrent one-time attempts admit exactly one, and failed attempts releasing their slot because the count tracks completed materializations. Twenty new tests cover the algebra (aligned to the Lean boundary semantics: inclusive window bounds, strict count bound), end-to-end exhaustion, pre-fetch denial, rollback, per-seal capability identity, and the four-thread race. The §2.2.1 'not implemented' warning is replaced by a scope statement — enforcement is receiver-side, counts are in-memory per protocol instance — and §3.3.8's sealed-key replay finding is upgraded from unmitigated to partially mitigated within exactly those limits, the residual surface being cross-instance and cross-restart replay pending the planned KEM-binding fix. Seal-time structural validation is added to `lattice()` and surfaced as a 400 at the REST gateway. The §8.6 divergence row is resolved. Demo policies that used invented types (`availability-test`, `boundary-test`, …) — which only ever worked because nothing enforced them — are corrected to conformant types. |
 | 0.4.2 | 2026-08-21 | Failure-domain-aware placement lands. `_placement` now enforces the §2.1.2 / §5.4.1.1 diversity constraint by construction: replicas of one shard index span min(r, R) distinct regions, chosen deterministically from the consistent-hash candidate sequence with a region-freshness filter, degrading to region-repeating but node-distinct selection only when every available region already hosts a replica. An exhaustive linear-scan tail closes a latent defect in the prior algorithm, whose bounded rehash sweep could in principle fail to find a viable node and silently place fewer replicas than requested. Property-checked over 4,800 randomized placements (zero diversity violations, load spread within 7% of uniform) and seven new permanent tests, including the single-region degradation, determinism across instances, and the every-shard-survives-any-single-region-failure property. The §8.6 divergence row is resolved; the §5.4.1.1 cross-region worked example now rests on an enforced invariant. What placement cannot enforce remains stated: that region labels correspond to genuinely independent failure domains (§5.4.1.2). |
+| 0.5.0 | 2026-08-22 | KEM-binding fix lands: the v2 receiver-bound sealed envelope. Wire format gains a version byte, and the AEAD associated data commits to SHA3-256(receiver_ek) and SHA3-256(kem_ct) — the protocol-level compensation for ML-KEM being neither MAL-BIND-K-PK nor MAL-BIND-K-CT, in the HPKE style the §3.3.3 disclosure planned. Two deliberate deviations from the originally recorded mitigation, both argued in §3.3.3: entity_id stays out of the associated data (cleartext AAD would break sealed-key opacity; entity binding is achieved inside the authenticated payload), and freshness is an authenticated `sealed_at` stamp plus an optional receiver-side maximum seal age rather than an interactive value an offline capability cannot carry. Legacy v1 envelopes remain unsealable by default (with a deterministic fallback for the 1-in-256 kem_ct that begins 0x02) and are rejected under LTP_SEALEDBOX_STRICT_V2=1; a v2 envelope cannot be downgraded. Constants updated throughout: sealed key 1,423 → **1,447 B** (1 version byte + 23-byte stamp), envelope overhead 1,128 → 1,129 B, inner payload 295 → 318 B, time-limited-policy seal 1,495 → 1,519 B; the O(1) invariant re-verified byte-identical across entity sizes, and the envelope's timing cost measured at roughly ten microseconds (two SHA3 digests). §3.3.8's replay analysis is restated in layers — binding closes re-targeting and splicing, counting bounds same-instance replay, the residual is verbatim replay to the same receiver key across instances within the seal-age window — and the Verifpal verdicts are explicitly marked as describing the pre-binding protocol, re-run pending. Twelve new envelope tests (splice, re-target, version tamper, v1 compatibility and collision fallback, strict mode, freshness gate, size invariance). A §7 measurement-provenance note separates deterministic byte constants (re-measured under v2) from timings (recorded 0.4.0 run), the benchmark host having changed hardware between revisions. |
 
 ---
 
-*LTP v0.4.2 — Lattice Transfer Protocol*
+*LTP v0.5.0 — Lattice Transfer Protocol*

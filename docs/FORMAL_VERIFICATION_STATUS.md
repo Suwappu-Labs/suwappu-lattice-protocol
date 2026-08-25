@@ -61,10 +61,19 @@ The confidentiality results are conditional on authentic identity-key
 distribution (the model guards the pre-protocol key exchange — the same
 assumption `ANALYSIS.md` always made in prose). The sealed-key replay
 finding corroborates the KEM ciphertext-binding gap disclosed in
-whitepaper §3.3; the planned mitigation (receiver-key fingerprint +
-entity_id in the sealed key's AEAD associated data) is recorded in
-[`formal/ANALYSIS.md`](formal/ANALYSIS.md) and the whitepaper. Full
-traces: [`formal/verifpal-run-2026-08-16.md`](formal/verifpal-run-2026-08-16.md).
+whitepaper §3.3. **Implementation status (SDK, whitepaper 0.5.0):** the
+mitigation has landed as the v2 receiver-bound sealed envelope — AEAD
+associated data committing to SHA3-256(receiver_ek) and
+SHA3-256(kem_ct), plus an authenticated `sealed_at` freshness stamp with
+an optional receiver-side maximum seal age. (entity_id is deliberately
+NOT in the associated data: cleartext AAD would break sealed-key
+opacity; it is bound inside the authenticated payload instead — see
+whitepaper §3.3.3 for the full argument and the exact residual replay
+surface.) The verdicts in the table above describe the **pre-binding**
+protocol; the model has not yet been re-run against the v2
+construction, and until it is, the fix's symbolic status is
+*implemented, re-verification pending*. Full traces:
+[`formal/verifpal-run-2026-08-16.md`](formal/verifpal-run-2026-08-16.md).
 
 ## What is NOT in scope of the symbolic model
 
