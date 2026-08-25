@@ -13,7 +13,7 @@
 
 | **Author** | **Version** | **Date** | **Status** | **Classification** |
 |:----------:|:-----------:|:--------:|:----------:|:------------------:|
-| Tsolmondorj Natsagdorj | 0.2.8 | 2026-08-25 | Public Draft — Request for Comments | Public |
+| Tsolmondorj Natsagdorj | 0.2.9 | 2026-08-25 | Public Draft — Request for Comments | Public |
 
 </div>
 
@@ -1082,6 +1082,16 @@ of the committing transforms of [42], or an explicit $H(\text{key} \| \text{nonc
 commits to its full decryption context rather than merely authenticating under whichever
 key the receiver happens to decapsulate. This requirement is recorded here so the planned
 mitigation cannot be implemented in a form that structurally cannot discharge the finding.
+A reference implementation now ships in the SDK: `src/ltp/committing_aead.py` implements
+the **CTX** transform of Chan and Rogaway [45] over XChaCha20-Poly1305 — the commitment tag
+$T^* = H(K, N, A, T)$ appended in the black-box variant that retains the legacy tag, with
+SHA3-256 as $H$, length-prefixed input framing, and the commitment verified in constant
+time *before* the non-committing Poly1305 tag is consulted. Context binding and
+misbinding rejection (a commitment tag transplanted from another key's ciphertext must not
+validate) are covered by `tests/test_committing_aead.py`; the practical abuses that motivate
+the check are catalogued in [46]. Adopting the wrapper on a wire path remains a
+protocol-revision decision — the module exists so the revision has a tested primitive to
+adopt rather than an unimplemented obligation.
 
 **Definition (TCONF game).** Transfer confidentiality is defined via an IND-CPA-style
 indistinguishability game adapted for LTP's commit-lattice-materialize structure:
@@ -2831,6 +2841,10 @@ framing in §8.7.
 
 [44] D. J. Bernstein, "Cost Analysis of Hash Collisions: Will Quantum Computers Make SHARCS Obsolete?" SHARCS '09 Workshop Record, 2009. https://cr.yp.to/hash/collisioncost-20090823.pdf
 
+[45] J. Chan, P. Rogaway, "On Committing Authenticated-Encryption," ESORICS 2022. IACR ePrint 2022/1260. https://eprint.iacr.org/2022/1260
+
+[46] A. Albertini, T. Duong, S. Gueron, S. Kölbl, A. Luykx, S. Schmieg, "How to Abuse and Fix Authenticated Encryption Without Key Commitment," 31st USENIX Security Symposium, 2022. https://www.usenix.org/conference/usenixsecurity22/presentation/albertini
+
 ---
 
 ## 9. Use Cases
@@ -2996,6 +3010,7 @@ sufficiently large receiver population (break-even: $N \geq \rho$).
 | 0.1.0-draft | 2026-02-24 | Initial draft; reviewed by external review rounds 001–003 (formal + mathematical) and 004 (research landscape), `docs/security/audits/external/whitepaper-reviews/`. |
 | 0.1.0-draft (rev) | 2026-03-29 | Post-review corrections: test-vector arithmetic, BHT collision bound (~85-bit), cost-model expansion factor ρ = nr/k, nonce-derivation invariant, TCONF log binding, ZK-mode specification, theorem-numbering note. |
 | 0.2.0 | 2026-08-17 | Publication revision: threshold-secrecy claims conditioned per §3.3.5 throughout; erasure-coding spec re-baselined to the reference implementation (consecutive evaluation points, length-prefix framing) with regenerated test vectors — the evaluation points were re-baselined from the unimplemented powers-of-α scheme to the implemented consecutive-points scheme (α_i = i+1), test vectors regenerated from the reference implementation, superseding the §2.1.1 arithmetic checked in review rounds 001–002; the `encoding_params` `eval` label string is retained verbatim for record-hash compatibility; commitment-record size corrected; KEM-binding claim corrected to a disclosed limitation with planned mitigation; normative conflicts resolved (low-entropy × quantum threat model; extension registry created; log hash primitive unified on BLAKE3-256); disclosure paragraphs for deferred wire formats, hybrid KEM, regulatory posture, forward-secrecy caveats, key-rotation gap; machine-checked verification status section added (§3.3.8) covering the 52 Lean 4 theorems — including both §2.1.1 test vectors recomputed inside the Lean kernel — and the first recorded Verifpal run (2 confidentiality queries verified, 2 authentication replay findings disclosed with planned mitigation); literature positioning updated per the 2026-08-16 research round (X-BIND KEM-binding taxonomy, NIST IR 8547 transition posture, XChaCha20-Poly1305 standardization status); bibliography unified into a single consistent numbered style (37 references, every in-text citation resolves to exactly one entry and vice versa — previously three incompatible citation conventions coexisted and two citations, Cremers–Dax–Medinger and Schmieg, were referenced in §3.3 but absent from every reference list); FIPS 203/204, RFC 9180, NIST IR 8547, and X-Wing given first-class bibliography entries; new §8.9 positions LTP's corridor quorum against Data Availability Sampling (Al-Bassam et al., Danksharding, Hall-Andersen–Simkin–Wagner); §8.4 adds Signal's Sealed Sender as the closest KEM-bound-envelope precedent, and §8.7's constant-size-capability contribution claim is rescoped accordingly to the specific bundle rather than the underlying primitive; missing §8.8 TOC entry restored. |
+| 0.2.9 | 2026-08-25 | The committing-AEAD requirement gains a reference implementation. `src/ltp/committing_aead.py` implements the CTX transform of Chan–Rogaway [45] over XChaCha20-Poly1305 in the black-box variant (commitment tag T* = SHA3-256(framed(DST, K, N, A, T)) appended, legacy tag retained because libsodium's API verifies it internally), with length-prefixed input framing per the Theorem 4 / LTP-A-022 injectivity discipline, the canonical-lane SHA3-256 deliberately fixed rather than profile-routed (commitment tags are verified cross-party), and constant-time commitment verification ordered before the non-committing Poly1305 tag. Covered by 18 new tests (`tests/test_committing_aead.py`): context binding per input, tamper rejection per region, commitment-tag transplant rejection (the misbinding move), framing injectivity at boundaries, a pinned interop vector, and constant 48-byte overhead — full suite 4,050 passing. §3.3.3 gains the reference-implementation pointer; references [45] (Chan–Rogaway) and [46] (Albertini et al., practical key-commitment abuses) added. Not wired into LTP-corridor-v1 — adoption on a wire path remains a protocol-revision decision. |
 | 0.2.8 | 2026-08-25 | Symbolic analysis of the planned sealed-key revision. New Verifpal model `docs/formal/etp-protocol-revised.vp` encoding the Theorem 9 construction (freshness nonce, receiver-fingerprint + entity_id in the sealed key's AEAD associated data, sealed commitment reference with receiver cross-checks), with runs recorded in `docs/formal/verifpal-run-2026-08-23-revised.md`: the 2026-08-16 baseline results were first reproduced exactly (Verifpal 0.27.4 rebuilt from source), then the revised model was analyzed under explicit bounds — its state space exceeds what the environment can exhaust (127.9M states in the longest run vs ~420K for the complete baseline run), so **no verification is claimed**; in the explored space the only failure found is a verbatim-relay trace against strict sealed-key delivery-authentication in which the receiver's cross-checks fail closed (no wrong entity accepted). §3.3.8 updated with the bounded-analysis status and its interpretation; FORMAL_VERIFICATION_STATUS.md updated to match. |
 | 0.2.7 | 2026-08-23 | The §5.4.1.1 correlated-failure arithmetic joins the machine-checked suite. New Lean module `formal/lean/Ltp/Availability.lean` (8 theorems, total 82 → 90): the complement identity (1−p_replica) = (1−p_d)(1−p_n) and the agreement of the section's two expressions for p_replica, proved as general polynomial identities over scaled integers (stated additively to be honest under Nat truncated subtraction), plus the review-002-verified worked figures decided in-kernel — 0.0595 at the default parameters, 595³ = 210,644,875 with the ≈ 2.1×10⁻⁴ bracketing, the ≈ 0.99979 per-shard availability bracket, the same-region ≈ 0.01012 figure — and a new sharpening: same-region colocation is at least 48× worse than cross-region placement on shard unavailability, the quantitative content behind the `minimum_regions ≥ 3` genesis rule. §5.4.1.1 gains a machine-check pointer; §3.3.8 table extended. |
 | 0.2.6 | 2026-08-23 | Concrete-security integers join the machine-checked suite; Theorem 5 assumption note. New Lean module `formal/lean/Ltp/ConcreteSecurity.lean` (9 theorems, total 73 → 82) pins §3.3.1's post-quantum arithmetic — ⌊256/3⌋ = 85 with the ~85.3 bracketing (the exact division math review 001 found misstated), 256/2 = 128, the strict collision-below-preimage post-quantum ordering, and Grover's 2¹²⁸·2¹²⁸ = 2²⁵⁶ accounting — plus the §2.1.1 nonce-collision margin (q² = 2⁶⁴ < 2⁹⁷ at q = 2³²), the §2.3.3 exponential-backoff doubling law, and Appendix A's Earth-upload figure (48,000 s, bracketed between 13 h and 13.5 h). §3.3.1 gains a pointer to the machine-checked table arithmetic. §3.3.3 (Theorem 5, Game 1): noted that the passive TCONF game needs only KEM IND-CPA for the first hop — IND-CCA is invoked because the FO transform provides it, at no tightness cost; recorded so the proof's assumption inventory is exact. |
@@ -3007,4 +3022,4 @@ sufficiently large receiver population (break-even: $N \geq \rho$).
 
 ---
 
-*LTP v0.2.8 — Lattice Transfer Protocol*
+*LTP v0.2.9 — Lattice Transfer Protocol*
