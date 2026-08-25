@@ -13,7 +13,7 @@
 
 | **Author** | **Version** | **Date** | **Status** | **Classification** |
 |:----------:|:-----------:|:--------:|:----------:|:------------------:|
-| Tsolmondorj Natsagdorj | 0.5.0 | 2026-08-22 | Public Draft — Request for Comments | Public |
+| Tsolmondorj Natsagdorj | 0.5.1 | 2026-08-22 | Public Draft — Request for Comments | Public |
 
 </div>
 
@@ -2531,7 +2531,8 @@ $O(nk)$ operations *regardless of $D$*; the per-byte work is one table lookup an
 in compiled code. The reference implementation adopted this factorization in place of the
 byte-by-byte loop, with shards verified byte-identical against the scalar definition, the
 §2.1.1 pinned vectors, and the Lean-kernel recomputation (§3.3.8). The measured effect is
-a **100–150× throughput increase** with zero conformance impact (§7.2).
+a **92–139× throughput increase** with zero conformance impact, measured same-host against the
+pre-optimization implementation (§7.2).
 
 **The decode matrix in $O(k^2)$.** Reed-Solomon decoding *is* polynomial interpolation:
 the message chunks are the coefficients of a degree-$(k{-}1)$ polynomial $p$, and the
@@ -2595,29 +2596,34 @@ PyNaCl, BLAKE3 from the `blake3` package, SHA3-256 from `hashlib`. All at NIST L
 conformant table-driven kernel of §6.5 — pure Python orchestrating C-speed byte
 primitives — not the optional non-conformant `zfec` path (§7.5).
 
-**Measurement provenance.** Timing figures are from the recorded 0.4.0 run; byte
-constants (sealed key, payloads, overheads) are re-measured against the current v2
-receiver-bound envelope (§3.3.3), whose only timing effect is two SHA3-256 digests per
-seal or unseal — measured at roughly ten microseconds, far below run-to-run noise. The two are reported
-together rather than re-timing everything because the benchmark host changed hardware
-between revisions (a uniformly ~2× slower machine, confirmed by re-running the untouched
-erasure kernel); re-timing there would misattribute host drift to the envelope change.
-Sizes are deterministic and host-independent; timings are not.
+**Measurement provenance.** Every figure in this section — timings, throughputs, and byte
+constants alike — comes from a **single run of the current implementation on a single
+host**. Earlier revisions mixed timings recorded on a previous, faster benchmark machine
+with byte constants re-measured later; that mix has been retired rather than merely
+disclosed, because three changes since those timings were taken touch measured code paths
+(region-filtered placement, §2.1.2; the access-policy check in MATERIALIZE, §2.2.1; the v2
+envelope's two SHA3-256 digests per seal, §3.3.3), so the older numbers were stale in
+substance and not only in hardware. The scalar-coder baseline in §7.2 was likewise
+re-measured on this host by checking the pre-optimization implementation out of version
+control and running both coders in the same process — a same-host, same-run comparison
+rather than a cross-machine one. Absolute times on this 4-CPU shared VM are therefore
+slower than the figures earlier revisions reported; the ratios, scaling laws, and byte
+counts are what transfer, and those are unchanged or now measured more defensibly.
 
 ### 7.1 Cryptographic Primitives
 
-Typical latency, with the range observed across three independent runs. The host is a
-shared 4-CPU VM, and sub-millisecond operations vary by tens of percent between runs; we
-give the range rather than imply a precision the measurement does not support.
+Median latency on the reference host. Sub-millisecond operations vary by tens of percent
+between runs on this shared VM, so the values are given to two decimal places and should be
+read as order-of-magnitude, not as a precision the measurement supports.
 
-| Operation | Typical latency | Observed range |
-|-----------|---------------:|---------------:|
-| ML-KEM-768 keygen | 0.07 ms | 0.061–0.071 |
-| ML-KEM-768 encapsulate | 0.07 ms | 0.057–0.109 |
-| ML-KEM-768 decapsulate | 0.08 ms | 0.071–0.092 |
-| ML-DSA-65 keygen | 0.18 ms | 0.157–0.198 |
-| ML-DSA-65 sign (473-byte record) | 0.55 ms | 0.505–0.636 |
-| ML-DSA-65 verify | 0.18 ms | 0.168–0.193 |
+| Operation | Median latency |
+|-----------|---------------:|
+| ML-KEM-768 keygen | 0.10 ms |
+| ML-KEM-768 encapsulate | 0.08 ms |
+| ML-KEM-768 decapsulate | 0.10 ms |
+| ML-DSA-65 keygen | 0.22 ms |
+| ML-DSA-65 sign (473-byte record) | 0.62 ms |
+| ML-DSA-65 verify | 0.21 ms |
 
 The precise values matter less than the order of magnitude: every post-quantum operation on
 the critical path is **sub-millisecond**, and the whole asymmetric cost of a LATTICE phase —
@@ -2627,10 +2633,10 @@ Hash throughput on 1 MiB, per lane (§1.3):
 
 | Lane | Algorithm | Throughput |
 |------|-----------|-----------:|
-| Canonical | SHA3-256 | 350–464 MiB/s |
-| Internal | BLAKE3-256 | 5,965–6,618 MiB/s |
+| Canonical | SHA3-256 | 383 MiB/s |
+| Internal | BLAKE3-256 | 5,326 MiB/s |
 
-The **14–17× gap** across runs is the quantitative justification for the dual-lane
+The **~14× gap** is the quantitative justification for the dual-lane
 split. It is also why the split is drawn where it is: the canonical lane runs once per
 commitment record, the internal lane once per (entity, shard, replica) placement decision.
 
@@ -2642,45 +2648,52 @@ earlier revisions measured), and the table-driven kernel of §6.5, which produce
 byte-identical shards. The change is pure constant-factor engineering guided by the
 algebra — no parameter, no wire byte, and no security property moved.
 
-**Baseline (scalar loop), retained for the record:**
+**Scalar baseline vs. table-driven kernel**, both measured on this host in the same
+process, on a 256 KiB entity. The pre-optimization coder was checked out of version
+control for the comparison, and the two implementations' shards were asserted
+byte-identical in the same run before timing — so this is a same-host, same-input
+measurement of two implementations of one function, not a cross-machine comparison:
 
-| Parameters | Entity | Encode | Decode | Encode throughput |
-|-----------|--------|-------:|-------:|------------------:|
-| $n=8, k=4$ | 256 KiB | 453 ms | 257 ms | 0.55 MiB/s |
-| $n=64, k=32$ | 256 KiB | 3,072 ms | 1,496 ms | 0.081 MiB/s |
+| Parameters | Encode (scalar → kernel) | Speedup | Decode (scalar → kernel) | Speedup |
+|-----------|------------------------:|--------:|-------------------------:|--------:|
+| $n=8, k=4$ | 397.1 ms → 2.85 ms | **139×** | 236.1 ms → 1.94 ms | **122×** |
+| $n=64, k=32$ | 2,647.1 ms → 26.85 ms | **99×** | 1,298.4 ms → 14.17 ms | **92×** |
 
-**Current (table-driven kernel, §6.5):**
+In throughput terms the conformant path goes from 0.63 MiB/s to 88 MiB/s at the
+implementation default, and from 0.094 MiB/s to 9.3 MiB/s at the cost-model default.
+
+**Full sweep (table-driven kernel):**
 
 | Parameters | Entity | Encode | Decode | Encode throughput | Decode throughput |
 |-----------|--------|-------:|-------:|------------------:|------------------:|
-| $n=8, k=4$ | 64 KiB | 0.59 ms | 0.42 ms | 106 MiB/s | 149 MiB/s |
-| $n=8, k=4$ | 256 KiB | 2.39 ms | 1.56 ms | 104 MiB/s | 160 MiB/s |
-| $n=8, k=4$ | 1 MiB | 11.4 ms | 6.4 ms | 88 MiB/s | 155 MiB/s |
-| $n=8, k=4$ | 4 MiB | 49.3 ms | 27.7 ms | 81 MiB/s | 145 MiB/s |
-| $n=64, k=32$ | 64 KiB | 5.8 ms | 3.3 ms | 10.8 MiB/s | 18.8 MiB/s |
-| $n=64, k=32$ | 256 KiB | 20.5 ms | 11.3 ms | 12.2 MiB/s | 22.1 MiB/s |
-| $n=64, k=32$ | 1 MiB | 83.8 ms | 42.8 ms | 11.9 MiB/s | 23.4 MiB/s |
-| $n=64, k=32$ | 4 MiB | 312.9 ms | 169.4 ms | 12.8 MiB/s | 23.6 MiB/s |
+| $n=8, k=4$ | 64 KiB | 0.75 ms | 0.49 ms | 83.7 MiB/s | 127.9 MiB/s |
+| $n=8, k=4$ | 256 KiB | 2.91 ms | 1.96 ms | 85.8 MiB/s | 127.8 MiB/s |
+| $n=8, k=4$ | 1 MiB | 13.0 ms | 7.5 ms | 76.9 MiB/s | 133.1 MiB/s |
+| $n=8, k=4$ | 4 MiB | 58.8 ms | 34.6 ms | 68.0 MiB/s | 115.5 MiB/s |
+| $n=64, k=32$ | 64 KiB | 7.6 ms | 4.3 ms | 8.3 MiB/s | 14.5 MiB/s |
+| $n=64, k=32$ | 256 KiB | 27.6 ms | 13.8 ms | 9.1 MiB/s | 18.2 MiB/s |
+| $n=64, k=32$ | 1 MiB | 105.4 ms | 53.5 ms | 9.5 MiB/s | 18.7 MiB/s |
+| $n=64, k=32$ | 4 MiB | 426.5 ms | 220.4 ms | 9.4 MiB/s | 18.2 MiB/s |
 
-The speedup is **~100–150×** at matched configurations (e.g. 453 → 2.39 ms encode at
-$n{=}8$; 3,072 → 20.5 ms at $n{=}64$), and the sweep now extends to 4 MiB where the
-baseline was impractical to run. Three predictions from §6.5 can be read off the table.
+The sweep extends to 4 MiB, where the scalar coder was impractical to run at all. Three
+predictions from §6.5 can be read off the table.
 
 **The $n \cdot D$ law, now with a stable constant.** Normalizing payload throughput by
 $n$ gives the kernel's *coefficient-work rate* — the speed at which it executes the
-underlying $n \cdot D$ byte-operations. Across every measured configuration it is nearly
-constant: $8 \times 104 \approx 830$ MiB/s at $(8,4)$ and $64 \times 12.2 \approx 780$
-MiB/s at $(64,32)$ on 256 KiB, and between 650 and 850 MiB/s over the full 64 KiB–4 MiB
-sweep. The earlier scalar measurements deviated from the predicted $8\times$ ratio by
-20% because interpreter fixed costs did not amortize uniformly; with those costs removed
-from the data path, the measured $n{=}8$ : $n{=}64$ throughput ratios (6.4–9.9 across
-sizes, centered on 8.0) bracket the prediction, and the residual variation tracks
-allocator and cache effects rather than arithmetic.
+underlying $n \cdot D$ byte-operations. Across all eight configurations it stays within a
+narrow band: $8 \times 85.8 \approx 687$ MiB/s at $(8,4)$ and $64 \times 9.1 \approx 580$
+MiB/s at $(64,32)$ on 256 KiB, and between **529 and 687 MiB/s** over the full 64 KiB–4 MiB
+sweep — a 1.3× spread across an 8× change in $n$ and a 64× change in $D$. The measured
+$n{=}8$ : $n{=}64$ throughput ratios run 7.3–10.1 against the predicted $8\times$, and the
+residual variation tracks allocator and cache effects rather than arithmetic: the ratio
+falls monotonically with entity size as the larger-$n$ configuration's smaller chunks stay
+cache-resident while the smaller-$n$ configuration's do not.
 
 **Decode:encode confirms $k : n$.** §6.5 predicts decode does $k/n = 1/2$ the work at both
-parameter sets. Measured ratios run 1.4–1.9× — the factor of 2 attenuated by the decode
-path's extra fixed costs (matrix construction, chunk reassembly), exactly the deviation a
-constant-plus-linear cost model expects at these sizes.
+parameter sets. Measured ratios run 1.48–2.00× — the factor of 2 reached exactly at
+$(64,32)$, and attenuated at $(8,4)$ by the decode path's fixed costs (matrix construction,
+chunk reassembly), which are a larger share of a smaller total. That is precisely the
+deviation a constant-plus-linear cost model predicts.
 
 **The matrix step no longer matters at any legal $k$.** With the Lagrange construction
 (§6.5) the decode matrix costs $O(k^2)$ interpreted operations — about 3,000 at $k=32$ —
@@ -2690,30 +2703,31 @@ $k$ the matrix step would have grown to rival the data path; that ceiling is gon
 ### 7.3 End-to-End Transfer
 
 Full three-phase transfer, 16-node network across 4 simulated regions, content verified
-byte-identical on materialization. These figures use the §6.5 table-driven coder; the
-pre-optimization equivalents (e.g. 479 ms and 3,099 ms COMMIT on the two 256 KiB rows) are
-retained in the revision history for comparison.
+byte-identical on materialization. Same run and host as the rest of this section, and
+including all protocol work added since the coder optimization — region-filtered placement,
+the access-policy check, and the v2 envelope:
 
 | Parameters | Entity | COMMIT | LATTICE | MATERIALIZE | Sealed key |
 |-----------|--------|-------:|--------:|------------:|-----------:|
-| $n=8, k=4$ | 64 KiB | 3.2 ms | 0.188 ms | 1.2 ms | 1,447 B |
-| $n=8, k=4$ | 256 KiB | 6.6 ms | 0.157 ms | 2.8 ms | 1,447 B |
-| $n=8, k=4$ | 1 MiB | 20.9 ms | 0.143 ms | 9.9 ms | 1,447 B |
-| $n=8, k=4$ | 4 MiB | 79.0 ms | 0.163 ms | 48.5 ms | 1,447 B |
-| $n=64, k=32$ | 64 KiB | 9.3 ms | 0.169 ms | 4.2 ms | 1,447 B |
-| $n=64, k=32$ | 256 KiB | 23.8 ms | 0.140 ms | 11.9 ms | 1,447 B |
-| $n=64, k=32$ | 1 MiB | 88.0 ms | 0.145 ms | 42.6 ms | 1,447 B |
-| $n=64, k=32$ | 4 MiB | 357.1 ms | 0.189 ms | 183.7 ms | 1,447 B |
+| $n=8, k=4$ | 64 KiB | 5.5 ms | 0.251 ms | 1.5 ms | 1,447 B |
+| $n=8, k=4$ | 256 KiB | 8.0 ms | 0.203 ms | 3.9 ms | 1,447 B |
+| $n=8, k=4$ | 1 MiB | 30.7 ms | 0.248 ms | 13.7 ms | 1,447 B |
+| $n=8, k=4$ | 4 MiB | 106.7 ms | 0.274 ms | 74.0 ms | 1,447 B |
+| $n=64, k=32$ | 64 KiB | 17.0 ms | 0.231 ms | 5.8 ms | 1,447 B |
+| $n=64, k=32$ | 256 KiB | 37.8 ms | 0.200 ms | 17.1 ms | 1,447 B |
+| $n=64, k=32$ | 1 MiB | 128.9 ms | 0.226 ms | 60.6 ms | 1,447 B |
+| $n=64, k=32$ | 4 MiB | 509.5 ms | 0.245 ms | 248.5 ms | 1,447 B |
 
-A 256 KiB entity now completes an entire commit-lattice-materialize round trip in under
-10 ms at the implementation default — down from roughly three-quarters of a second — and a
-4 MiB entity in about an eighth of a second. The optimization changed no protocol byte:
-the same commitment records, the same shard roots, the same sealed keys.
+A 256 KiB entity completes an entire commit-lattice-materialize round trip in **12.1 ms**
+at the implementation default, and a 4 MiB entity in **181 ms**. Before the §6.5
+optimization the same 256 KiB round trip took roughly three-quarters of a second on a
+faster machine; the coder change is worth far more than the hardware difference between
+hosts.
 
 **The LATTICE phase is constant.** Across a 64× range of entity size and an 8× range of
-$n$, it stays under 0.2 ms in every configuration (0.14–0.19 ms this run; 0.14–0.28 ms
-across all recorded runs), while the sealed key stays byte-identical at 1,447. The timing
-varies with host noise; the size does not vary at all. This is the paper's central
+$n$, it stays within **0.200–0.274 ms** — an 8% spread against a 64× change in payload —
+while the sealed key stays byte-identical at 1,447 B in all eight configurations. The
+timing varies with host noise; the size does not vary at all. This is the paper's central
 structural claim — that the sender→receiver path is $O(1)$ in entity size — observed
 directly rather than argued, and it is the one headline claim these measurements actually
 settle.
@@ -2721,20 +2735,21 @@ settle.
 **Where the time goes.** Decomposing COMMIT on a 256 KiB entity, before and after the
 §6.5 optimization:
 
-| Component | $n=8, k=4$ before | $n=8, k=4$ after | $n=64, k=32$ before | $n=64, k=32$ after |
-|-----------|-----------:|-----------:|-------------:|-------------:|
-| Erasure encoding | 444.9 ms (99.3%) | 2.4 ms (50.6%) | 3,242.1 ms (99.9%) | 21.0 ms (88.5%) |
-| AEAD encryption, all shards | 0.53 ms | 0.48 ms | 1.16 ms | 0.97 ms |
-| Shard hashing (canonical lane) | 1.47 ms | 1.17 ms | 1.62 ms | 1.26 ms |
-| ML-DSA-65 signature | 1.05 ms | 0.70 ms | 0.70 ms | 0.51 ms |
-| **Cryptography, total** | **0.7%** | **49.4%** | **0.1%** | **11.5%** |
+| Component | $n=8, k=4$ | $n=64, k=32$ |
+|-----------|-----------:|-------------:|
+| Erasure encoding | 2.83 ms (51.1%) | 27.13 ms (88.0%) |
+| AEAD encryption, all shards | 0.56 ms | 1.09 ms |
+| Shard hashing (canonical lane) | 1.29 ms | 1.46 ms |
+| ML-DSA-65 signature | 0.85 ms | 1.16 ms |
+| **Cryptography, total** | **48.9%** | **12.0%** |
 
-Read the after-columns carefully, because the percentages invert without the underlying
-facts changing. Cryptography did not get more expensive — its absolute cost is essentially
-unchanged (about 2.3 ms at either parameter set) — the coder got 100× cheaper, so at the
-implementation default the commit is now split roughly evenly between the coding layer and
-cryptography, and at the cost-model default the coder still dominates because its cost
-scales with $n$ while the crypto is fixed-plus-symmetric.
+Before the §6.5 optimization these same proportions were 99.3% / 0.7% and 99.9% / 0.1% —
+the coder utterly dominant. The percentages have inverted without the underlying facts
+changing: cryptography did not get more expensive (its absolute cost is ~2.7 ms at either
+parameter set, essentially unchanged), the coder got two orders of magnitude cheaper. At
+the implementation default the commit is now split roughly evenly between the coding layer
+and cryptography; at the cost-model default the coder still dominates, because its cost
+scales with $n$ while the cryptography is fixed-plus-symmetric.
 
 Two conclusions survive the optimization intact, and one sharpens. First, the
 *post-quantum asymmetric* operations remain a rounding error: the ML-DSA-65 signature is
@@ -2775,7 +2790,7 @@ to the link that the design is trying to relieve, not to every artifact in the s
 We would rather state these than have a reviewer find them.
 
 1. **The coding kernel still has headroom.** These figures use the conformant
-   table-driven coder (§6.5), which runs its byte kernel at 0.65–0.85 GiB/s — within an
+   table-driven coder (§6.5), which runs its byte kernel at 0.52–0.67 GiB/s — within an
    order of magnitude of, but not at, what a SIMD field-arithmetic kernel (ISA-L, GFNI)
    achieves on the same matrix. Absolute wall-clock is therefore still a floor on
    achievable performance, now by roughly one order of magnitude rather than two-plus
@@ -3600,7 +3615,7 @@ trade is pure cost.
    this question was opened, the conformant coder consumed over 99% of COMMIT and the only
    fast backend (`zfec`) was *systematic* — different shards, different shard roots,
    non-conformant under §2.1.1. The table-driven kernel of §6.5 has since closed most of
-   the gap in place: 100–150× faster, byte-identical shards, no new dependency, with the
+   the gap in place: 92–139× faster, byte-identical shards, no new dependency, with the
    coder now at ~50% of COMMIT at the implementation default (§7.3). What remains open is
    the final order of magnitude — a SIMD field-arithmetic kernel (ISA-L or GFNI) driving
    the *same* Vandermonde matrix — and the original systematic-code question is now
@@ -3850,7 +3865,8 @@ analysis of the settlement surface (§8.4) is summarized here and argued at leng
 | 0.4.1 | 2026-08-21 | Access-policy enforcement lands. `materialize()` now enforces §2.2.1 after unsealing and before any fetch, with semantics matching `formal/lean/Ltp/Policy.lean`: time window and count checked for every policy type, `one-time` defaulting to a limit of 1, unknown or malformed policies rejected fail-closed (`minimal_is_sound`), materialization slots reserved atomically so concurrent one-time attempts admit exactly one, and failed attempts releasing their slot because the count tracks completed materializations. Twenty new tests cover the algebra (aligned to the Lean boundary semantics: inclusive window bounds, strict count bound), end-to-end exhaustion, pre-fetch denial, rollback, per-seal capability identity, and the four-thread race. The §2.2.1 'not implemented' warning is replaced by a scope statement — enforcement is receiver-side, counts are in-memory per protocol instance — and §3.3.8's sealed-key replay finding is upgraded from unmitigated to partially mitigated within exactly those limits, the residual surface being cross-instance and cross-restart replay pending the planned KEM-binding fix. Seal-time structural validation is added to `lattice()` and surfaced as a 400 at the REST gateway. The §8.6 divergence row is resolved. Demo policies that used invented types (`availability-test`, `boundary-test`, …) — which only ever worked because nothing enforced them — are corrected to conformant types. |
 | 0.4.2 | 2026-08-21 | Failure-domain-aware placement lands. `_placement` now enforces the §2.1.2 / §5.4.1.1 diversity constraint by construction: replicas of one shard index span min(r, R) distinct regions, chosen deterministically from the consistent-hash candidate sequence with a region-freshness filter, degrading to region-repeating but node-distinct selection only when every available region already hosts a replica. An exhaustive linear-scan tail closes a latent defect in the prior algorithm, whose bounded rehash sweep could in principle fail to find a viable node and silently place fewer replicas than requested. Property-checked over 4,800 randomized placements (zero diversity violations, load spread within 7% of uniform) and seven new permanent tests, including the single-region degradation, determinism across instances, and the every-shard-survives-any-single-region-failure property. The §8.6 divergence row is resolved; the §5.4.1.1 cross-region worked example now rests on an enforced invariant. What placement cannot enforce remains stated: that region labels correspond to genuinely independent failure domains (§5.4.1.2). |
 | 0.5.0 | 2026-08-22 | KEM-binding fix lands: the v2 receiver-bound sealed envelope. Wire format gains a version byte, and the AEAD associated data commits to SHA3-256(receiver_ek) and SHA3-256(kem_ct) — the protocol-level compensation for ML-KEM being neither MAL-BIND-K-PK nor MAL-BIND-K-CT, in the HPKE style the §3.3.3 disclosure planned. Two deliberate deviations from the originally recorded mitigation, both argued in §3.3.3: entity_id stays out of the associated data (cleartext AAD would break sealed-key opacity; entity binding is achieved inside the authenticated payload), and freshness is an authenticated `sealed_at` stamp plus an optional receiver-side maximum seal age rather than an interactive value an offline capability cannot carry. Legacy v1 envelopes remain unsealable by default (with a deterministic fallback for the 1-in-256 kem_ct that begins 0x02) and are rejected under LTP_SEALEDBOX_STRICT_V2=1; a v2 envelope cannot be downgraded. Constants updated throughout: sealed key 1,423 → **1,447 B** (1 version byte + 23-byte stamp), envelope overhead 1,128 → 1,129 B, inner payload 295 → 318 B, time-limited-policy seal 1,495 → 1,519 B; the O(1) invariant re-verified byte-identical across entity sizes, and the envelope's timing cost measured at roughly ten microseconds (two SHA3 digests). §3.3.8's replay analysis is restated in layers — binding closes re-targeting and splicing, counting bounds same-instance replay, the residual is verbatim replay to the same receiver key across instances within the seal-age window — and the Verifpal verdicts are explicitly marked as describing the pre-binding protocol, re-run pending. Twelve new envelope tests (splice, re-target, version tamper, v1 compatibility and collision fallback, strict mode, freshness gate, size invariance). A §7 measurement-provenance note separates deterministic byte constants (re-measured under v2) from timings (recorded 0.4.0 run), the benchmark host having changed hardware between revisions. |
+| 0.5.1 | 2026-08-22 | §7 re-measured as a single coherent dataset. Earlier revisions mixed timings recorded on a previous, faster benchmark host with byte constants measured later; that mix is retired rather than merely disclosed, because three changes since those timings were taken touch measured code paths — region-filtered placement (§2.1.2), the access-policy check in MATERIALIZE (§2.2.1), and the v2 envelope's two SHA3-256 digests per seal (§3.3.3) — so the older figures were stale in substance, not only in hardware. Every number in §7 now comes from one run of the current implementation on one host. The §7.2 scalar baseline was re-measured properly: the pre-optimization coder was checked out of version control and run against the current kernel **in the same process on the same input**, with shards asserted byte-identical before timing — a same-host comparison replacing the previous cross-machine one. The speedup is restated as **92–139×** (139×/122× encode/decode at n=8,k=4; 99×/92× at n=64,k=32) rather than the cross-host 100–150×. Derived quantities recomputed: the kernel's coefficient-work rate is 529–687 MiB/s across all eight configurations (a 1.3× spread against an 8× change in n and 64× in D), the n=8:n=64 throughput ratio 7.3–10.1 against a predicted 8× with the residual now explained as a cache effect that falls monotonically with entity size, and decode:encode 1.48–2.00× reaching the predicted factor of 2 exactly at n=64,k=32. The LATTICE phase measures 0.200–0.274 ms — an 8% spread against a 64× payload change — with the sealed key byte-identical at 1,447 B in all eight configurations. A 256 KiB round trip is 12.1 ms; 4 MiB is 181 ms. The COMMIT breakdown is restated without before/after columns now that both halves are same-host: erasure 51.1% / 88.0%, cryptography 48.9% / 12.0%. |
 
 ---
 
-*LTP v0.5.0 — Lattice Transfer Protocol*
+*LTP v0.5.1 — Lattice Transfer Protocol*
