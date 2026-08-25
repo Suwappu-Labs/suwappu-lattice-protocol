@@ -245,7 +245,7 @@ def measure_artifacts() -> dict:
             "entity_256KiB": len(sealed_large),
             "with_time_limited_policy": len(sealed_policy),
             "inner_payload_canonical": len(inner.canonical_bytes()),
-            "constant_envelope_overhead": 1088 + 24 + 16,
+            "constant_envelope_overhead": 1 + 1088 + 24 + 16,
         },
         "commitment_record": {
             "total_bytes": record_bytes,

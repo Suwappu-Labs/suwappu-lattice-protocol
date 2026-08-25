@@ -60,6 +60,13 @@ class ProtocolConfig:
     lattice_timeout_seconds: float = 10.0
     materialize_timeout_seconds: float = 60.0
     max_retry_attempts: int = 3
+    # Maximum accepted age of a sealed lattice key, in seconds, measured
+    # against its authenticated sealed_at stamp (whitepaper §3.3.8 replay
+    # mitigation). None (default) preserves the protocol's asynchronous
+    # design — a sealed key may sit uncollected indefinitely. When set,
+    # older keys are rejected at MATERIALIZE, and a legacy key with no
+    # sealed_at stamp is rejected too (fail-closed).
+    max_seal_age_seconds: Optional[float] = None
 
 
 @dataclass
@@ -359,6 +366,25 @@ class LTPProtocol:
                 logger.warning("[MATERIALIZE] ACCESS POLICY DENIED: %s", exc)
                 return None
             self._materialization_counts[cap_id] = prior + 1
+
+        # Freshness bound (optional, fail-closed): bounds the window in
+        # which a captured sealed key can be replayed. sealed_at is inside
+        # the AEAD payload, so an attacker cannot back-date it.
+        max_age = self.config.max_seal_age_seconds
+        if max_age is not None:
+            age = policy_now - key.sealed_at
+            if key.sealed_at <= 0 or age > max_age:
+                logger.warning(
+                    "[MATERIALIZE] SEAL AGE REJECTED: sealed_at=%s age=%.0fs limit=%.0fs",
+                    key.sealed_at,
+                    age,
+                    max_age,
+                )
+                with self._policy_lock:
+                    current = self._materialization_counts.get(cap_id, 1)
+                    self._materialization_counts[cap_id] = max(0, current - 1)
+                return None
+
         logger.info(
             "[MATERIALIZE] Access policy permits (type=%s, completed=%d)",
             key.access_policy.get("type") if isinstance(key.access_policy, dict) else "?",

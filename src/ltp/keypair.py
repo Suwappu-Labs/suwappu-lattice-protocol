@@ -603,19 +603,60 @@ class SealedBox:
     Security:
       - Each seal() uses a fresh ML-KEM encapsulation (forward secrecy per message)
       - Only the holder of the corresponding dk can unseal
-      - Sealed output is indistinguishable from random bytes
+      - Sealed output is indistinguishable from random bytes (the constant
+        version byte reveals only the format version, which is public)
       - Resistant to both classical and quantum adversaries
 
-    Sealed format:
-      kem_ciphertext(1088) || nonce(AEAD.NONCE_SIZE) || aead_ciphertext(variable) || aead_tag(AEAD.TAG_SIZE)
+    Sealed format (v2, current):
+      0x02 || kem_ciphertext(1088) || nonce(NONCE_SIZE) || aead_ct || aead_tag(TAG_SIZE)
 
-    Total overhead: 1088 + NONCE_SIZE + TAG_SIZE bytes over plaintext
+    v2 binds the envelope with AEAD associated data:
+
+      aad = "LTP-SEALEDBOX-v2\x00" || SHA3-256(receiver_ek) || SHA3-256(kem_ct)
+
+    Rationale (whitepaper §3.3.3): ML-KEM is not MAL-BIND-K-PK / MAL-BIND-K-CT
+    [Cremers-Dax-Medinger; Schmieg], so the KEM alone does not bind the
+    ciphertext to the receiver's encapsulation key — a maliciously generated
+    key pair can break that binding at the primitive level. The AAD supplies
+    the binding at the protocol level, as HPKE does via its key schedule:
+    the receiver recomputes the AAD from its OWN ek and the received kem_ct,
+    so an envelope re-targeted at a different key, or a payload spliced onto
+    a different encapsulation, fails tag verification. Both digests use the
+    specification-frozen hash lane (changing them is a wire break).
+
+    What the AAD deliberately does NOT contain: the entity_id. Putting it in
+    associated data would require carrying it in cleartext beside the
+    envelope, breaking the sealed key's opacity (§2.2.1). Entity binding is
+    achieved inside instead — entity_id lives in the AEAD-encrypted payload,
+    which the receiver-bound key authenticates.
+
+    Legacy format (v1): kem_ct || nonce || aead_ct || tag, no version byte,
+    no AAD. Unsealing still accepts v1 by default so outstanding sealed keys
+    keep working; set LTP_SEALEDBOX_STRICT_V2=1 to reject v1 envelopes
+    (fail-closed deployments). Sealing always emits v2. A v2 envelope cannot
+    be downgraded to v1 — the bytes differ and the tag fails either way.
+
+    Total v2 overhead: 1 + 1088 + NONCE_SIZE + TAG_SIZE bytes over plaintext.
     """
+
+    VERSION_V2 = 0x02
+    _AAD_DOMAIN_V2 = b"LTP-SEALEDBOX-v2\x00"
+
+    @staticmethod
+    def _strict_v2() -> bool:
+        """Whether legacy (v1) envelopes are rejected at unseal."""
+        return os.environ.get("LTP_SEALEDBOX_STRICT_V2", "").lower() in {"1", "true", "yes", "on"}
+
+    @classmethod
+    def _aad_v2(cls, receiver_ek: bytes, kem_ct: bytes) -> bytes:
+        from .dual_lane.hashing import spec_hash_bytes
+
+        return cls._AAD_DOMAIN_V2 + spec_hash_bytes(receiver_ek) + spec_hash_bytes(kem_ct)
 
     @classmethod
     def seal(cls, plaintext: bytes, receiver_ek: bytes) -> bytes:
         """
-        Seal plaintext to receiver's ML-KEM encapsulation key.
+        Seal plaintext to receiver's ML-KEM encapsulation key (v2 envelope).
 
         Forward secrecy: each call generates a fresh encapsulation.
         The shared_secret is used once and then discarded.
@@ -626,25 +667,23 @@ class SealedBox:
         shared_secret, kem_ct = MLKEM.encaps(receiver_ek)
 
         nonce = os.urandom(AEAD.NONCE_SIZE)
-        ciphertext = AEAD.encrypt(shared_secret, plaintext, nonce)
+        aad = cls._aad_v2(receiver_ek, kem_ct)
+        ciphertext = AEAD.encrypt(shared_secret, plaintext, nonce, aad=aad)
         del shared_secret
 
-        return kem_ct + nonce + ciphertext
+        return bytes([cls.VERSION_V2]) + kem_ct + nonce + ciphertext
 
     @classmethod
-    def unseal(cls, sealed_data: bytes, receiver_keypair: KeyPair) -> bytes:
-        """
-        Unseal with receiver's ML-KEM decapsulation key.
+    def _unseal_at(
+        cls, sealed_data: bytes, offset: int, receiver_keypair: KeyPair, aad: bytes | None
+    ) -> bytes:
+        """Shared v1/v2 unseal body: parse from *offset*, decaps, open."""
+        kem_ct = sealed_data[offset : offset + MLKEM.CT_SIZE]
+        nonce = sealed_data[offset + MLKEM.CT_SIZE : offset + MLKEM.CT_SIZE + AEAD.NONCE_SIZE]
+        aead_ct = sealed_data[offset + MLKEM.CT_SIZE + AEAD.NONCE_SIZE :]
 
-        Raises ValueError if wrong keypair or tampered data.
-        """
-        min_len = MLKEM.CT_SIZE + AEAD.NONCE_SIZE + AEAD._tag_size()
-        if len(sealed_data) < min_len:
-            raise ValueError(f"Sealed data too short ({len(sealed_data)} < {min_len})")
-
-        kem_ct = sealed_data[: MLKEM.CT_SIZE]
-        nonce = sealed_data[MLKEM.CT_SIZE : MLKEM.CT_SIZE + AEAD.NONCE_SIZE]
-        aead_ct = sealed_data[MLKEM.CT_SIZE + AEAD.NONCE_SIZE :]
+        if aad is None:
+            aad = cls._aad_v2(receiver_keypair.ek, kem_ct)
 
         try:
             # KeyPair.decaps routes through HSM when the recipient kp is
@@ -657,9 +696,46 @@ class SealedBox:
             )
 
         try:
-            plaintext = AEAD.decrypt(shared_secret, aead_ct, nonce)
+            plaintext = AEAD.decrypt(shared_secret, aead_ct, nonce, aad=aad)
         except ValueError as e:
             raise ValueError(f"Cannot unseal — AEAD decryption failed: {e}")
 
         del shared_secret
         return plaintext
+
+    @classmethod
+    def unseal(cls, sealed_data: bytes, receiver_keypair: KeyPair) -> bytes:
+        """
+        Unseal with receiver's ML-KEM decapsulation key.
+
+        Dispatches on the envelope version: a leading 0x02 byte selects the
+        v2 (receiver-bound) parse. Because a legacy v1 envelope's first
+        kem_ct byte can also be 0x02 (1 in 256 keys), a failed v2 open falls
+        back to the v1 parse rather than failing outright — the AEAD tag
+        makes the interpretations mutually exclusive, so the fallback cannot
+        be steered by an attacker. With LTP_SEALEDBOX_STRICT_V2=1 the v1
+        path is disabled entirely.
+
+        Raises ValueError if wrong keypair or tampered data.
+        """
+        min_len = MLKEM.CT_SIZE + AEAD.NONCE_SIZE + AEAD._tag_size()
+        if len(sealed_data) < min_len:
+            raise ValueError(f"Sealed data too short ({len(sealed_data)} < {min_len})")
+
+        strict = cls._strict_v2()
+
+        if len(sealed_data) > min_len and sealed_data[0] == cls.VERSION_V2:
+            try:
+                return cls._unseal_at(sealed_data, 1, receiver_keypair, aad=None)
+            except ValueError:
+                if strict:
+                    raise
+                # Fall through: possibly a v1 envelope whose kem_ct happens
+                # to start with 0x02.
+
+        if strict:
+            raise ValueError(
+                "Cannot unseal — legacy (v1) sealed envelopes are rejected "
+                "(LTP_SEALEDBOX_STRICT_V2=1); reseal with a current sender"
+            )
+        return cls._unseal_at(sealed_data, 0, receiver_keypair, aad=b"")

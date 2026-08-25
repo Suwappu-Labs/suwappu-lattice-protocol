@@ -48,6 +48,11 @@ class LatticeKey:
     cek: bytes
     commitment_ref: str
     access_policy: dict = field(default_factory=lambda: {"type": "unrestricted"})
+    # Seal-time freshness stamp (whole seconds, set by seal()). 0 marks a
+    # legacy key sealed before the field existed. Authenticated as part of
+    # the AEAD payload; lets receivers enforce a maximum seal age
+    # (ProtocolConfig.max_seal_age_seconds) against sealed-key replay.
+    sealed_at: int = 0
 
     def _plaintext_payload(self) -> bytes:
         """Serialize the key's inner payload (before sealing)."""
@@ -57,6 +62,7 @@ class LatticeKey:
                 "cek": self.cek.hex(),
                 "commitment_ref": self.commitment_ref,
                 "access_policy": self.access_policy,
+                "sealed_at": self.sealed_at,
             },
             separators=(",", ":"),
         ).encode()
@@ -66,8 +72,13 @@ class LatticeKey:
         Seal the entire key to receiver's ML-KEM encapsulation key.
 
         Returns opaque ciphertext — only the holder of the corresponding dk
-        can unseal. Each call produces a fresh ML-KEM encapsulation.
+        can unseal. Each call produces a fresh ML-KEM encapsulation, and
+        stamps sealed_at (whole seconds — integral so the sealed size is a
+        stable constant) as the freshness component the receiver can bound.
         """
+        import time as _time
+
+        self.sealed_at = int(_time.time())
         return SealedBox.seal(self._plaintext_payload(), receiver_ek)
 
     @classmethod
@@ -80,6 +91,7 @@ class LatticeKey:
             cek=bytes.fromhex(d["cek"]),
             commitment_ref=d["commitment_ref"],
             access_policy=d["access_policy"],
+            sealed_at=int(d.get("sealed_at", 0)),
         )
 
     def canonical_bytes(self) -> bytes:
@@ -100,6 +112,7 @@ class LatticeKey:
             .length_prefixed_bytes(self.cek)
             .string(self.commitment_ref)
             .string(_json.dumps(self.access_policy, sort_keys=True, separators=(",", ":")))
+            .uint64(self.sealed_at)
             .finalize()
         )
 

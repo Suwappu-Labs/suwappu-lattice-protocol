@@ -293,11 +293,12 @@ class TestCorruptShardIdentification:
         entity = Entity(content=b"partial-corrupt", shape="x-ltp/test")
         protocol.commit(entity, alice, n=8, k=4)
 
-        target = network.nodes[0]
+        # Pick any node holding at least two shards — with failure-domain-
+        # aware placement, which node that is varies with the entity_id.
+        target = next((n for n in network.nodes if len(n.shards) >= 2), None)
+        if target is None:
+            pytest.skip("No node holds 2+ shards to test partial corruption")
         held_shards = list(target.shards.keys())
-
-        if len(held_shards) < 2:
-            pytest.skip("Need at least 2 shards to test partial corruption")
 
         # Corrupt only the first shard
         eid, idx = held_shards[0]
