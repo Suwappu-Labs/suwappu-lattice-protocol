@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
+from .access_policy import PolicyViolation, check_policy, validate_policy
 from .commitment import CommitmentNetwork, CommitmentRecord
 from .dual_lane.hashing import spec_hash_hex
 from .entity import Entity
@@ -116,6 +117,11 @@ class LTPProtocol:
         self._sessions: dict[str, TransferSession] = {}
         self._session_lock = threading.Lock()
         self._committed_entity_ids: set[str] = set()
+        # Completed materializations per sealed key (capability instance),
+        # keyed by the sealed key's digest — whitepaper §2.2.1 enforcement
+        # state. In-memory: bounds sealed-key replay at THIS receiver only.
+        self._materialization_counts: dict[str, int] = {}
+        self._policy_lock = threading.Lock()
 
     # --- Session Management ---
 
@@ -244,14 +250,20 @@ class LTPProtocol:
 
         Create a minimal lattice key and seal it to the receiver via ML-KEM.
 
-        Inner payload (~160 bytes):
-          entity_id (64B hex) + CEK (64B hex) + commitment_ref (64B hex) + policy
+        Inner payload (295 bytes with the default policy):
+          entity_id + CEK (hex) + commitment_ref + policy, compact JSON
 
-        Sealed output (~1300 bytes):
-          kem_ciphertext(1088) + nonce(16) + encrypted_payload + aead_tag(32)
+        Sealed output (1,423 bytes with the default policy):
+          kem_ciphertext(1088) + nonce(24) + encrypted_payload + aead_tag(16)
 
         Forward secrecy: each seal() generates a fresh ML-KEM encapsulation.
 
+        The access policy is structurally validated at seal time (fail-fast:
+        a malformed or unknown-type policy would produce a key no conforming
+        receiver will honor); temporal checks happen only at materialize,
+        since sealing before a not_before window opens is legitimate.
+
+        Raises: PolicyViolation on a structurally invalid access policy.
         Returns: sealed lattice key (opaque bytes)
         """
         commitment_ref = canonical_hash(record.to_bytes())
@@ -260,7 +272,7 @@ class LTPProtocol:
             entity_id=entity_id,
             cek=cek,
             commitment_ref=commitment_ref,
-            access_policy=access_policy or {"type": "unrestricted"},
+            access_policy=validate_policy(access_policy or {"type": "unrestricted"}),
         )
 
         inner_size = key.plaintext_size
@@ -294,19 +306,24 @@ class LTPProtocol:
         sealed_key: bytes,
         receiver_keypair: KeyPair,
         record: Optional[CommitmentRecord] = None,
+        now: Optional[float] = None,
     ) -> Optional[bytes]:
         """
         PHASE 3: MATERIALIZE
 
         1. Unseal lattice key with receiver's private key
-        2. Fetch commitment record from log
-        3. Verify commitment reference (hash match vs sealed ref)
-        4. Verify ML-DSA-65 signature on commitment record
-        5. Read encoding params (n, k) from record
-        6. Derive shard locations from entity_id (no shard_ids needed)
-        7. Fetch k-of-n encrypted shards; decrypt with CEK
-        8. Erasure decode → original entity content
-        9. Verify full EntityID: H(content || shape || ts || sender_vk)
+        2. Enforce access policy — abort before any fetch (whitepaper §2.3.1)
+        3. Fetch commitment record from log
+        4. Verify commitment reference (hash match vs sealed ref)
+        5. Verify ML-DSA-65 signature on commitment record
+        6. Read encoding params (n, k) from record
+        7. Derive shard locations from entity_id (no shard_ids needed)
+        8. Fetch k-of-n encrypted shards; decrypt with CEK
+        9. Erasure decode → original entity content
+        10. Verify full EntityID: H(content || shape || ts || sender_vk)
+
+        ``now`` overrides the policy-evaluation clock (testing/replay
+        analysis); default is wall-clock time.
 
         Returns: entity content bytes, or None on failure.
         """
@@ -327,7 +344,43 @@ class LTPProtocol:
         key_fp = spec_hash_hex(key.cek)[:16]
         logger.info("[MATERIALIZE]   CEK recovered: fp=%s", key_fp)
 
-        # Step 2: Fetch commitment record (or use externally-supplied record)
+        # Step 2: Enforce the access policy BEFORE any fetch (§2.3.1).
+        # The materialization slot is reserved atomically so that two
+        # concurrent attempts under a one-time key cannot both pass the
+        # count check; the slot is released again if this attempt fails,
+        # since the count tracks COMPLETED materializations.
+        cap_id = spec_hash_hex(sealed_key)
+        policy_now = _time_mod.time() if now is None else now
+        with self._policy_lock:
+            prior = self._materialization_counts.get(cap_id, 0)
+            try:
+                check_policy(key.access_policy, prior, policy_now)
+            except PolicyViolation as exc:
+                logger.warning("[MATERIALIZE] ACCESS POLICY DENIED: %s", exc)
+                return None
+            self._materialization_counts[cap_id] = prior + 1
+        logger.info(
+            "[MATERIALIZE] Access policy permits (type=%s, completed=%d)",
+            key.access_policy.get("type") if isinstance(key.access_policy, dict) else "?",
+            prior,
+        )
+
+        result = self._materialize_unsealed(key, record, label)
+        if result is None:
+            # Failed attempts do not consume a materialization.
+            with self._policy_lock:
+                current = self._materialization_counts.get(cap_id, 1)
+                self._materialization_counts[cap_id] = max(0, current - 1)
+        return result
+
+    def _materialize_unsealed(
+        self,
+        key: LatticeKey,
+        record: Optional[CommitmentRecord],
+        label: str,
+    ) -> Optional[bytes]:
+        """Steps 3-10 of MATERIALIZE, after unseal and policy enforcement."""
+        # Step 3: Fetch commitment record (or use externally-supplied record)
         if record is None:
             record = self.network.log.fetch(key.entity_id)
         if record is None:
@@ -335,14 +388,14 @@ class LTPProtocol:
             return None
         logger.info("[MATERIALIZE] Commitment record found")
 
-        # Step 3: Verify commitment reference
+        # Step 4: Verify commitment reference
         record_ref = canonical_hash(record.to_bytes())
         if record_ref != key.commitment_ref:
             logger.warning("[MATERIALIZE] Commitment reference MISMATCH (tampered?)")
             return None
         logger.info("[MATERIALIZE] Commitment reference verified")
 
-        # Step 4: Verify ML-DSA-65 signature
+        # Step 5: Verify ML-DSA-65 signature
         sender_kp = self.key_registry.get(record.sender_id)
         sender_vk: Optional[bytes] = None
         if sender_kp is not None:
@@ -358,12 +411,12 @@ class LTPProtocol:
             return None
         logger.info("[MATERIALIZE] ML-DSA-65 signature verified (sender '%s')", record.sender_id)
 
-        # Step 5: Read encoding params from record
+        # Step 6: Read encoding params from record
         n = record.encoding_params["n"]
         k = record.encoding_params["k"]
         logger.info("[MATERIALIZE] Encoding: n=%d, k=%d (from commitment record)", n, k)
 
-        # Step 6: Fetch all n shards (so AEAD can reject bad ones; erasure fills gaps)
+        # Step 7: Fetch all n shards (so AEAD can reject bad ones; erasure fills gaps)
         logger.info("[MATERIALIZE] Deriving shard locations from entity_id + index...")
         logger.info("[MATERIALIZE] Fetching up to %d encrypted shards (need %d valid)...", n, k)
 
@@ -374,7 +427,7 @@ class LTPProtocol:
             return None
         logger.info("[MATERIALIZE] Fetched %d encrypted shards", len(encrypted_shards))
 
-        # Step 7: Decrypt each shard with CEK (AEAD rejects tampered shards)
+        # Step 8: Decrypt each shard with CEK (AEAD rejects tampered shards)
         plaintext_shards: dict[int, bytes] = {}
         for i, enc_shard in encrypted_shards.items():
             try:
@@ -404,11 +457,11 @@ class LTPProtocol:
         else:
             logger.info("[MATERIALIZE]   AEAD tags verified — no shard tampering detected")
 
-        # Step 8: Erasure decode
+        # Step 9: Erasure decode
         entity_content = ErasureCoder.decode(plaintext_shards, n, k)
         logger.info("[MATERIALIZE] Entity reconstructed (%s bytes)", f"{len(entity_content):,}")
 
-        # Step 9: Verify full EntityID (end-to-end content integrity, whitepaper §2.3.1)
+        # Step 10: Verify full EntityID (end-to-end content integrity, whitepaper §2.3.1)
         # Defends against commitment record substitution attacks.
         expected_entity_id = canonical_hash(
             entity_content + record.shape.encode() + struct.pack(">d", record.timestamp) + sender_vk

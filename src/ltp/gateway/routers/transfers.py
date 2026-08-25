@@ -18,6 +18,8 @@ import logging
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 
+from src.ltp.access_policy import PolicyViolation
+
 from ..models import (
     CommitRequest,
     CommitResponse,
@@ -163,6 +165,13 @@ async def lattice_seal(req: LatticeRequest, request: Request):
             cek=cek,
             receiver_keypair=receiver_kp,
             access_policy=req.access_policy,
+        )
+    except PolicyViolation as e:
+        # Client error, not server error: the submitted access policy is
+        # malformed or of an unknown type (whitepaper §2.2.1, fail-closed).
+        return JSONResponse(
+            LatticeResponse(success=False, error=f"invalid access_policy: {e}").model_dump(),
+            status_code=400,
         )
     except Exception as e:
         logger.exception("Lattice failed")

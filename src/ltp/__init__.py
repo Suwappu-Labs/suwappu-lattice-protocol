@@ -32,6 +32,7 @@ Run demo:
   python -m ltp
 """
 
+from .access_policy import KNOWN_POLICY_TYPES, PolicyViolation, check_policy
 from .commitment import (
     CORRELATION_PENALTY_MAX,
     EVICTION_COOLDOWN_SECONDS,
@@ -199,6 +200,10 @@ __all__ = [
     # Compliance
     "set_compliance_strict",
     "get_compliance_strict",
+    # Access policy (whitepaper §2.2.1 enforcement)
+    "KNOWN_POLICY_TYPES",
+    "PolicyViolation",
+    "check_policy",
     # Primitives
     "AEAD",
     "MLKEM",

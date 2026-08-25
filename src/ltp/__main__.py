@@ -112,7 +112,7 @@ def demo_transfers(
             record,
             cek,
             bob,
-            access_policy={"type": "one-time", "expires": "2026-03-24"},
+            access_policy={"type": "one-time"},
         )
         print(f"  [LATTICE] ═══ SEALED KEY (ML-KEM-768): {len(sealed_key):,} bytes ═══")
         print("└─ ✓ Lattice key sealed\n")
@@ -173,7 +173,7 @@ def demo_shard_integrity(
         tamper_record,
         tamper_cek,
         bob,
-        access_policy={"type": "integrity-test"},
+        access_policy={"type": "unrestricted"},
     )
     print()
 
@@ -330,7 +330,7 @@ def demo_degraded_materialization(
         record,
         cek,
         bob,
-        access_policy={"type": "availability-test"},
+        access_policy={"type": "unrestricted"},
     )
 
     print()
@@ -360,7 +360,7 @@ def demo_degraded_materialization(
         record,
         cek,
         bob,
-        access_policy={"type": "availability-test"},
+        access_policy={"type": "unrestricted"},
     )
     degraded_result = protocol.materialize(sealed_key2, bob)
     if degraded_result is not None:
@@ -384,7 +384,7 @@ def demo_degraded_materialization(
         record,
         cek,
         bob,
-        access_policy={"type": "boundary-test"},
+        access_policy={"type": "unrestricted"},
     )
     boundary_result = protocol.materialize(sealed_key3, bob)
     if boundary_result is not None:
@@ -402,7 +402,7 @@ def demo_degraded_materialization(
         record,
         cek,
         bob,
-        access_policy={"type": "below-threshold"},
+        access_policy={"type": "unrestricted"},
     )
     below_result = protocol.materialize(sealed_key4, bob)
     if below_result is None:
@@ -644,7 +644,7 @@ def demo_entity_immutability(
         imm_record,
         imm_cek,
         bob,
-        access_policy={"type": "immutability-test"},
+        access_policy={"type": "unrestricted"},
     )
     imm_materialized = protocol.materialize(imm_sealed, bob)
     if imm_materialized is not None:
