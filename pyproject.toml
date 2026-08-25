@@ -224,6 +224,23 @@ python_version = "3.12"
 files = [
     "src/ltp/primitives.py",   # ML-KEM / ML-DSA primitives — must stay typed
     "src/ltp/keypair.py",      # KeyPair surface — touched by every consumer
+    # Corridor service layer + the relayer wire. Added as the follow-up sweep
+    # described above: these were written typed, they contribute zero errors
+    # under this scope today, and they are the surfaces that parse untrusted
+    # input, so a type regression here is worth catching.
+    #
+    # Be aware the lane is currently RED regardless: `mypy` reports 16 errors
+    # across the two entries above (mostly `KeyPair`'s dynamically-assigned
+    # `_hsm*` attributes). Those predate this list being extended and are not
+    # touched here, so `just typecheck` fails on them, not on the modules
+    # below. mypy is deliberately absent from CI and pre-commit, so nothing
+    # was gating on it — but it means adding files here does not enforce
+    # anything until those 16 are resolved.
+    "src/ltp/corridor/membership.py",
+    "src/ltp/corridor/enrollment.py",
+    "src/ltp/corridor/policy.py",
+    "src/ltp/corridor/session.py",
+    "src/ltp/bridge/wire.py",
 ]
 follow_imports = "silent"
 warn_return_any = true

@@ -150,7 +150,9 @@ def _uint(d: dict[str, Any], field: str, *, max_value: int = _MAX_UINT64) -> int
     except KeyError as e:
         raise BridgeWireError(f"missing field {field!r}") from e
     # bool is an int subclass; accepting it would silently turn `true` into 1.
-    if isinstance(value, bool) or not isinstance(value, int):
+    if isinstance(value, bool):
+        raise BridgeWireError(f"field {field!r} must be an integer, got bool")
+    if not isinstance(value, int):
         raise BridgeWireError(f"field {field!r} must be an integer, got {type(value).__name__}")
     if not 0 <= value <= max_value:
         raise BridgeWireError(f"field {field!r} must be in 0..{max_value}, got {value}")

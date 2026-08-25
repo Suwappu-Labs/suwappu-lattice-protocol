@@ -39,7 +39,7 @@ digest instead of an unexplained storm of rejected announcements.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Mapping, Protocol, runtime_checkable
 
@@ -117,14 +117,13 @@ class SeatAllowlist:
     """
 
     corridor_id: CorridorId
+    #: Replaced by `__post_init__` with a read-only copy. Validation runs once
+    #: at construction, so a caller holding a reference to the dict they passed
+    #: in could otherwise add a seat, duplicate a key, or swap in a
+    #: wrong-length one afterwards, with every check already behind it. Copying
+    #: breaks that alias; the proxy makes the immutability visible rather than
+    #: merely true.
     seats: Mapping[AuthorityId, bytes]
-    #: Set by `__post_init__` to a read-only snapshot of `seats`. Validation
-    #: happens once at construction, so a caller holding a reference to the
-    #: dict they passed in could otherwise add a seat, duplicate a key, or
-    #: swap in a wrong-length one afterwards and every check above would have
-    #: already run. Copying breaks that alias; the proxy makes the
-    #: immutability visible rather than merely true.
-    _frozen: Mapping[AuthorityId, bytes] = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if not 0 <= self.corridor_id <= ID_MAX:
@@ -163,10 +162,9 @@ class SeatAllowlist:
 
         object.__setattr__(
             self,
-            "_frozen",
+            "seats",
             MappingProxyType({a: bytes(k) for a, k in self.seats.items()}),
         )
-        object.__setattr__(self, "seats", self._frozen)
 
     def authorize(self, announcement: "EnrollmentAnnouncement") -> None:
         node = announcement.super_node
