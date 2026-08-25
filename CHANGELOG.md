@@ -12,6 +12,13 @@ public-surface promise and the cross-version compatibility matrix.
 ## [Unreleased]
 
 ### Added
+- Failure-domain-aware shard placement (whitepaper §2.1.2 / §5.4.1.1):
+  `CommitmentNetwork._placement` now places replicas of one shard index
+  across min(r, R) distinct regions by construction — deterministic,
+  geo-fence-compatible, degrading gracefully below R regions — and an
+  exhaustive candidate-scan tail fixes a latent defect where the bounded
+  rehash sweep could silently place fewer replicas than requested. The
+  cross-region availability model now rests on an enforced invariant.
 - Access-policy enforcement (whitepaper §2.2.1 / §2.3.1 step 2): new
   `ltp.access_policy` module (`check_policy`, `validate_policy`,
   `PolicyViolation`, exported from `ltp`), enforced in
@@ -46,6 +53,16 @@ public-surface promise and the cross-version compatibility matrix.
   LTP-A-006 (Option E independent arbiter + time-decay paths),
   LTP-A-014 (KyberSlash audit — confirmed-OK + pin tightened),
   LTP-A-022 (cross-language BLS DST pinning — confirmed-OK)
+
+### Fixed
+- Compliance `SoftwareHSM` crashed on sign/decrypt under the
+  production-default implicit-HSM key regime (LTP-A-032 Phase 4c): it
+  stored `kp.sk`/`kp.dk` — sentinels, not key material, under that
+  regime — and called raw `MLDSA.sign`/`SealedBox` on them. It now
+  retains the KeyPair and routes through `kp.sign()` / `kp.decaps()`,
+  correct under both regimes. Invisible to the test suite because
+  conftest opts out of implicit HSM; `python -m ltp` crashed in the
+  compliance demo. Regression tests now pin both regimes.
 
 ### Changed
 - Erasure coder rebuilt around a table-driven GF(256) kernel
