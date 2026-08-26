@@ -12,6 +12,41 @@ public-surface promise and the cross-version compatibility matrix.
 ## [Unreleased]
 
 ### Added
+- `ltp.ledger_durable.DurableStablecoinLedger` — the journal wired
+  underneath the ledger, as a drop-in subclass of
+  `ltp.incentives.StablecoinLedger`: same constructor keyword, same
+  methods, same return types, so the gateway, market, settlement engine
+  and deposit watcher are unchanged. Every movement is journaled as a
+  balanced double-entry transaction *before* it reaches memory, and the
+  in-memory figures are rebuilt from entries on construction — the
+  dictionaries become a cache and the journal becomes the ledger. The
+  chart of accounts is one debit-normal `assets:custody` against
+  credit-normal claims (`pool:*`, `bond:<node_id>`,
+  `customer:<customer_id>`), so solvency is the ordinary balance-sheet
+  identity. `check_solvency()` keeps its existing in-memory meaning;
+  the new `audit_solvency()` answers the same question by replaying
+  entries, which is the only version that can see a forged movement,
+  and `detect_drift()` reconciles the in-memory figures against the
+  journal. `customer_deposit()` gains an optional `external_ref`, the
+  durable replacement for the deposit watcher's in-memory seen-set.
+  A failed in-memory apply reverses its journal transaction rather than
+  deleting it, so the attempt stays visible in history.
+- Durable per-node state that is deliberately **not** double-entry:
+  `earned_claim_micro`, `audit_offense_count` and `evicted` are written
+  directly onto the account object by the settlement engine and are not
+  claims on custody — an accrued claim is money owed but not yet
+  funded, so booking it as a liability would report insolvency for any
+  network that has accrued. They persist as memos in the same database
+  (`LedgerJournal.memo_set` / `memo_get` / `memo_namespace`), because
+  losing them is not acceptable either: **a lost `evicted` flag silently
+  un-evicts a node that was expelled for cause.**
+- `LedgerJournal.posted_total()` — sums posted entries on an account,
+  narrowable by transaction counterparty and by a paired account, which
+  is what separates movements that share an account but not a meaning
+  (a bond debited into insurance is a slash; the same bond debited into
+  custody is a refund). Backed by a new nullable `counterparty` column
+  on `transactions`, added additively with an in-place migration so an
+  existing journal file is upgraded rather than rewritten.
 - `ltp.ledger_journal.LedgerJournal` — a durable double-entry journal on
   stdlib `sqlite3`, the fix for the measured defect that
   `docs/economics/BILLING_LEDGER_GAP_ANALYSIS.md` documents: with

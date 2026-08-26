@@ -212,7 +212,11 @@ CREATE TABLE IF NOT EXISTS transactions (
     -- Set on a correcting transaction; points at what it reverses.
     reverses_id   INTEGER REFERENCES transactions(id),
     -- External idempotency anchor, e.g. "<tx_hash>:<log_index>".
-    external_ref  TEXT
+    external_ref  TEXT,
+    -- The other party to the movement, when it is someone the journal
+    -- does not hold an account for -- a node being paid out, say. Lets
+    -- per-counterparty totals be a query instead of a description parse.
+    counterparty  TEXT
 );
 
 -- Double-crediting an on-chain deposit is impossible by construction,
@@ -232,6 +236,8 @@ CREATE TABLE IF NOT EXISTS entries (
 
 CREATE INDEX IF NOT EXISTS entries_account ON entries (account);
 CREATE INDEX IF NOT EXISTS entries_transaction ON entries (transaction_id);
+CREATE INDEX IF NOT EXISTS transactions_counterparty
+    ON transactions (counterparty) WHERE counterparty IS NOT NULL;
 
 -- Cached balances. Written in the SAME sql transaction as the entries,
 -- and policed by detect_drift().
@@ -258,6 +264,18 @@ CREATE TABLE IF NOT EXISTS idempotency_keys (
 );
 
 CREATE INDEX IF NOT EXISTS idempotency_created ON idempotency_keys (created_at);
+
+-- Durable state that is deliberately NOT part of the books: counters and
+-- flags that must survive a restart but are not claims on custody, and so
+-- must never appear in the solvency identity. Kept in the same database so
+-- one file is one consistent snapshot.
+CREATE TABLE IF NOT EXISTS memos (
+    namespace   TEXT NOT NULL,
+    key         TEXT NOT NULL,
+    value_json  TEXT NOT NULL,
+    updated_at  REAL NOT NULL,
+    PRIMARY KEY (namespace, key)
+);
 """
 
 
@@ -293,9 +311,29 @@ class LedgerJournal:
         # transaction on power-loss is the failure this module exists for.
         self._db.execute("PRAGMA synchronous=FULL")
         self._db.executescript(_SCHEMA)
+        self._migrate()
         self._db.commit()
         self._lock = threading.RLock()
         self.ensure_account(ASSET_CUSTODY, AccountKind.DEBIT)
+
+    def _migrate(self) -> None:
+        """Bring an older journal file up to the current schema.
+
+        ``CREATE TABLE IF NOT EXISTS`` is a no-op on a database that
+        already has the table, so a column added after a journal was
+        first written has to be added explicitly. Additive only: this
+        never drops or rewrites a column, because the whole premise of
+        the module is that written history stays written.
+        """
+        columns = {
+            row["name"] for row in self._db.execute("PRAGMA table_info(transactions)").fetchall()
+        }
+        if "counterparty" not in columns:
+            self._db.execute("ALTER TABLE transactions ADD COLUMN counterparty TEXT")
+            self._db.execute(
+                "CREATE INDEX IF NOT EXISTS transactions_counterparty "
+                "ON transactions (counterparty) WHERE counterparty IS NOT NULL"
+            )
 
     # --- Accounts ---
 
@@ -336,6 +374,7 @@ class LedgerJournal:
         external_ref: str | None = None,
         state: str = "posted",
         reverses_id: int | None = None,
+        counterparty: str | None = None,
     ) -> int:
         """Write one balanced transaction. Returns its id.
 
@@ -369,9 +408,16 @@ class LedgerJournal:
                 with self._db:  # BEGIN … COMMIT, rollback on exception
                     cur = self._db.execute(
                         "INSERT INTO transactions "
-                        "(created_at, description, currency, reverses_id, external_ref) "
-                        "VALUES (?, ?, ?, ?, ?)",
-                        (now, description, self.currency, reverses_id, external_ref),
+                        "(created_at, description, currency, reverses_id, external_ref, "
+                        " counterparty) VALUES (?, ?, ?, ?, ?, ?)",
+                        (
+                            now,
+                            description,
+                            self.currency,
+                            reverses_id,
+                            external_ref,
+                            counterparty,
+                        ),
                     )
                     txn_id = int(cur.lastrowid)
                     for p in postings:
@@ -474,6 +520,46 @@ class LedgerJournal:
                 pending_debits=totals[("pending", "debit")],
                 pending_credits=totals[("pending", "credit")],
             )
+
+    def posted_total(
+        self,
+        account: str,
+        direction: str,
+        *,
+        counterparty: str | None = None,
+        paired_with: str | None = None,
+    ) -> int:
+        """Sum posted entries on ``account`` in ``direction``.
+
+        Optionally narrowed to transactions carrying ``counterparty``,
+        and/or to those that also post to ``paired_with``. That second
+        filter is what separates movements that share an account but not
+        a meaning -- a bond debited into the insurance pool is a slash,
+        the same bond debited back into custody is a refund.
+
+        Always recomputed from ``entries``; this is a history question,
+        and the balance cache only knows totals.
+        """
+        if direction not in (AccountKind.DEBIT, AccountKind.CREDIT):
+            raise JournalError(f"bad direction: {direction!r}")
+        sql = [
+            "SELECT COALESCE(SUM(e.amount_micro), 0) AS total FROM entries e",
+            "JOIN transactions t ON t.id = e.transaction_id",
+            "WHERE e.account = ? AND e.direction = ? AND e.state = 'posted'",
+        ]
+        params: list[Any] = [account, direction]
+        if counterparty is not None:
+            sql.append("AND t.counterparty = ?")
+            params.append(counterparty)
+        if paired_with is not None:
+            sql.append(
+                "AND EXISTS (SELECT 1 FROM entries p "
+                "WHERE p.transaction_id = t.id AND p.account = ?)"
+            )
+            params.append(paired_with)
+        with self._lock:
+            row = self._db.execute(" ".join(sql), params).fetchone()
+        return int(row["total"])
 
     def accounts(self) -> list[str]:
         return [
@@ -675,6 +761,40 @@ class LedgerJournal:
         )
 
     # --- Lifecycle ---
+
+    # --- Memos ------------------------------------------------------------
+
+    def memo_set(self, namespace: str, key: str, value: Any) -> None:
+        """Store JSON-serializable durable state outside the books.
+
+        For state that must survive a restart but is not a claim on
+        custody -- an offense counter, an eviction flag. Putting such
+        things in ``entries`` would corrupt the solvency identity, and
+        leaving them in memory loses them, so they get their own table.
+        """
+        with self._lock:
+            self._db.execute(
+                "INSERT INTO memos (namespace, key, value_json, updated_at) "
+                "VALUES (?, ?, ?, ?) ON CONFLICT (namespace, key) "
+                "DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at",
+                (namespace, key, json.dumps(value, sort_keys=True), time.time()),
+            )
+            self._db.commit()
+
+    def memo_get(self, namespace: str, key: str, default: Any = None) -> Any:
+        """Read one memo, or ``default`` when it was never written."""
+        row = self._db.execute(
+            "SELECT value_json FROM memos WHERE namespace = ? AND key = ?",
+            (namespace, key),
+        ).fetchone()
+        return default if row is None else json.loads(row["value_json"])
+
+    def memo_namespace(self, namespace: str) -> dict[str, Any]:
+        """Every memo in ``namespace``, keyed as stored."""
+        rows = self._db.execute(
+            "SELECT key, value_json FROM memos WHERE namespace = ?", (namespace,)
+        ).fetchall()
+        return {row["key"]: json.loads(row["value_json"]) for row in rows}
 
     def close(self) -> None:
         with self._lock:
