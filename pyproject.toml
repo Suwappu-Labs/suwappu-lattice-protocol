@@ -45,6 +45,36 @@ classifiers = [
 # Real PQ crypto activates automatically when optional deps are installed:
 #   pqcrypto → ML-KEM-768 (FIPS 203) + ML-DSA-65 (FIPS 204)
 #   pynacl   → XChaCha20-Poly1305 (libsodium)
+#
+# pqcrypto is held at <0.5 on purpose. The <0.5 bound predates 1.0 and was
+# originally only a post-KyberSlash floor (LTP-A-014), but it is now also
+# what keeps us on PQClean, so do not relax it without reading this:
+#
+# pqcrypto 1.0.0 (2026-08-15) is not an API rename of 0.4 - it replaces the
+# implementation. 0.4.x is a CFFI binding over PQClean's C reference code,
+# and tests/security/test_attack_kyberslash.py asserts that binding is the
+# PQCLEAN_MLKEM768_CLEAN_ (reference, not AVX2) variant. 1.0.0 is a single
+# PyO3 extension built on backbone-ml-kem / backbone-ml-dsa 0.2.0, the
+# maintainer's own Rust crates, which at the time of writing had ~310
+# downloads each against 5.2M / 2.0M for the RustCrypto ml-kem / ml-dsa
+# crates they are forked from. That trades a widely reviewed reference
+# implementation for one vendor's low-adoption fork, on our KEM and
+# signature path.
+#
+# The upgrade is otherwise seamless, which is the hazard: 0.4 and 1.0 were
+# verified byte-compatible in both directions (identical FIPS 203/204 sizes,
+# each version's ciphertext decapsulates to the same shared secret under the
+# other, and each version's signatures verify under the other), so nothing
+# would fail loudly if someone bumped it. Only the security provenance
+# changes. Note also that 1.0 drops the pqcrypto._kem CFFI module, so the
+# KyberSlash provenance test cannot be expressed against it at all, and that
+# its verify() returns None on success and raises InvalidSignatureError on
+# failure where 0.4 returned a bool - an `if verify(...)` would silently
+# invert.
+#
+# If we do need to leave 0.4.x, prefer binding the RustCrypto crates that
+# suwappu-dag and suwappu-db already use, so the Rust and Python sides share
+# one reviewed crypto core.
 dependencies = []
 
 [project.urls]
@@ -64,7 +94,7 @@ performance = [
     "blake3>=0.3.0,<2.0",
 ]
 crypto = [
-    "pqcrypto>=0.4.0,<0.5",  # LTP-A-014: post-KyberSlash baseline; PQClean _CLEAN_ variant
+    "pqcrypto>=0.4.0,<0.5",  # LTP-A-014 + PQClean baseline; see the pqcrypto note above before bumping
     "pynacl>=1.5.0,<2.0",
 ]
 chain = [
@@ -94,7 +124,7 @@ rocksdb = [
     "lsm-db>=0.7.3,<1.0",
 ]
 production = [
-    "pqcrypto>=0.4.0,<0.5",  # LTP-A-014: post-KyberSlash baseline; PQClean _CLEAN_ variant
+    "pqcrypto>=0.4.0,<0.5",  # LTP-A-014 + PQClean baseline; see the pqcrypto note above before bumping
     "pynacl>=1.5.0,<2.0",
     "zfec>=1.6.0.0,<2.0",
     "blake3>=1.0.0,<2.0",
@@ -105,7 +135,7 @@ dev = [
     "pytest-cov>=6.0,<8.0",
     "hypothesis>=6.0,<7.0",
     "blake3>=0.3.0,<2.0",
-    "pqcrypto>=0.4.0,<0.5",  # LTP-A-014: post-KyberSlash baseline; PQClean _CLEAN_ variant
+    "pqcrypto>=0.4.0,<0.5",  # LTP-A-014 + PQClean baseline; see the pqcrypto note above before bumping
     "pynacl>=1.5.0,<2.0",
     "zfec>=1.6.0.0,<2.0",
     "grpcio>=1.50.0,<2.0",

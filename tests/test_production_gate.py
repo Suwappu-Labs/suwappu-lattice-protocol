@@ -85,7 +85,7 @@ class TestProtocolLayer:
             cn.register_node(f"gate-node-{i}", "test", stake=1000.0)
         protocol = LTPProtocol(cn, key_registry=kr)
 
-        original = b"Production gate closure test payload - ETP by Javier Calderon Jr"
+        original = b"Production gate closure test payload - ETP by Suwappu"
         entity = Entity(content=original, shape="application/octet-stream")
 
         # Phase 1: COMMIT

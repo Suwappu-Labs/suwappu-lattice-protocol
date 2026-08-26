@@ -1,6 +1,6 @@
 # LTP Session Roadmap — Current State to Feature-Complete
 
-**Author:** Javier Calderon Jr, CTO — Suwappu (SUWAPPU)
+**Author:** Suwappu (SUWAPPU)
 **Date:** May 11, 2026
 **Purpose:** Session-aware execution roadmap mapping every remaining spec to concrete work sessions, with dependency chains, complexity ratings, and honest caveats. Living document — update as gates are cleared.
 

@@ -91,6 +91,40 @@ def test_decaps_rejects_wrong_dk_size_before_crypto():
         MLKEM.decaps(b"\x00" * (MLKEM.DK_SIZE - 1), b"\x00" * MLKEM.CT_SIZE)
 
 
+def test_pqcrypto_is_pinned_below_1_0():
+    """Guard the ``<0.5`` pin: pqcrypto 1.0 is a different implementation.
+
+    0.4.x binds PQClean's C reference code, which is what
+    :func:`test_pqcrypto_uses_pqclean_clean_variant` above checks. 1.0.0
+    replaced that with a single PyO3 extension over ``backbone-ml-kem`` /
+    ``backbone-ml-dsa`` 0.2.0 - the maintainer's own forks of the RustCrypto
+    crates, with roughly 310 downloads each against RustCrypto's millions.
+
+    Today a stray ``pip install pqcrypto>=1`` is already caught: the backend
+    probes in ``primitives.py`` look for the 0.4 API, so 1.0 reads as "no
+    backend" and :func:`assert_real_crypto` raises at import. Nothing silently
+    downgrades to the PoC simulation.
+
+    What this test adds is a guard for the *next* step: the two versions are
+    byte-compatible in both directions, so if someone teaches the probes the
+    1.0 API to get the import working again, every functional test would keep
+    passing while the implementation underneath quietly changed vendor - and
+    the ``_kem`` CFFI module that the provenance test above relies on would be
+    gone, so that check would have to be deleted rather than fail. Relaxing
+    this pin therefore means replacing the KyberSlash provenance argument in
+    LTP-A-014, not just editing a version bound.
+    """
+    from importlib.metadata import version
+
+    raw = version("pqcrypto")
+    major, minor = (int(x) for x in raw.split(".")[:2])
+    assert (major, minor) < (0, 5), (
+        f"pqcrypto {raw} is installed, but LTP-A-014 requires <0.5. "
+        "1.x drops PQClean for backbone-ml-kem/backbone-ml-dsa; see the "
+        "pqcrypto note in pyproject.toml before changing this."
+    )
+
+
 def test_pqcrypto_uses_pqclean_clean_variant():
     """Confirm we're bound to the PQClean ``CLEAN`` reference variant,
     not an optimized AVX2/AArch64 path. KyberSlash's worst-case impact

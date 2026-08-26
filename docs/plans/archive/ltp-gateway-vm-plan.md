@@ -5,7 +5,7 @@
 
 # LTP Gateway VM Plan — POA Attestation Gateway for SUWAPPU Devnet
 
-**Author:** Javier Calderon Jr, CTO - Suwappu (SUWAPPU)
+**Author:** Suwappu (SUWAPPU)
 
 **Date:** April 30, 2026
 

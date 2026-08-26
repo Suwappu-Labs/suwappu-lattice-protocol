@@ -5,7 +5,7 @@
 
 # ETP DID Expansion Plan — Decentralized Identity via Lattice Transfer Protocol
 
-**Author:** Javier Calderon Jr, CTO — Suwappu (SUWAPPU)
+**Author:** Suwappu (SUWAPPU)
 **Date:** April 24, 2026
 **Status:** Planning
 **Scope:** `did:etp` method specification, DID/VC integration architecture, phased implementation roadmap, PQ-safe ZK cross-chain resolution path.

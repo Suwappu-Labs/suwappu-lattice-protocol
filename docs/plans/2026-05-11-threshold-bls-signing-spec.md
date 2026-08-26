@@ -1,6 +1,6 @@
 # Threshold BLS Signing (Spec C3c)
 
-**Author:** Javier Calderon Jr, CTO — Suwappu (SUWAPPU)
+**Author:** Suwappu (SUWAPPU)
 **Date:** May 11, 2026
 **Depends on:** C3b (Threshold DKG) — completed
 **Delivers:** Committees produce threshold BLS signatures over attestations, state roots, and cross-VM messages
