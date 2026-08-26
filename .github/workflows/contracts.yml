@@ -196,7 +196,7 @@ jobs:
           forge install succinctlabs/sp1-contracts
 
       - name: Slither static analysis
-        uses: crytic/slither-action@f197989dea5b53e986d0f88c60a034ddd77ec9a8  # v0.4.0
+        uses: crytic/slither-action@b52cc1cbfee9ca3e8722dd5224299d16c9a6b80f  # v0.4.2
         with:
           target: "contracts/"
           slither-config: "contracts/slither.config.json"
