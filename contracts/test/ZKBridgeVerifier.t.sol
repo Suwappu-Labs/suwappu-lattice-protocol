@@ -185,15 +185,19 @@ contract ZKBridgeVerifierTest is Test {
         challenge.finalizeWithZKProof(DIGEST_1);
     }
 
-    function test_zkVerifier_adminCanCall() public {
+    /// @dev Previously admin could call finalizeWithZKProof directly, bypassing
+    ///      ZK proof verification entirely; that bypass is now removed -- see
+    ///      OptimisticBridgeChallenge.finalizeWithZKProof: msg.sender == zkVerifier.
+    function test_zkVerifier_adminCannotBypassVerifier() public {
         vm.prank(operator);
         challenge.openWindow{value: OP_BOND}(DIGEST_1);
 
-        // Admin can also call finalizeWithZKProof
+        // Even the admin cannot finalize directly — only the verifier may.
         vm.prank(admin);
+        vm.expectRevert(OptimisticBridgeChallenge.Unauthorized.selector);
         challenge.finalizeWithZKProof(DIGEST_1);
 
-        assertTrue(challenge.isFinalized(DIGEST_1));
+        assertFalse(challenge.isFinalized(DIGEST_1));
     }
 
     // -----------------------------------------------------------------------
