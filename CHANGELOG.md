@@ -11,6 +11,71 @@ public-surface promise and the cross-version compatibility matrix.
 
 ## [Unreleased]
 
+### Added
+- `ltp.ledger_durable.DurableStablecoinLedger` — the journal wired
+  underneath the ledger, as a drop-in subclass of
+  `ltp.incentives.StablecoinLedger`: same constructor keyword, same
+  methods, same return types, so the gateway, market, settlement engine
+  and deposit watcher are unchanged. Every movement is journaled as a
+  balanced double-entry transaction *before* it reaches memory, and the
+  in-memory figures are rebuilt from entries on construction — the
+  dictionaries become a cache and the journal becomes the ledger. The
+  chart of accounts is one debit-normal `assets:custody` against
+  credit-normal claims (`pool:*`, `bond:<node_id>`,
+  `customer:<customer_id>`), so solvency is the ordinary balance-sheet
+  identity. `check_solvency()` keeps its existing in-memory meaning;
+  the new `audit_solvency()` answers the same question by replaying
+  entries, which is the only version that can see a forged movement,
+  and `detect_drift()` reconciles the in-memory figures against the
+  journal. `customer_deposit()` gains an optional `external_ref`, the
+  durable replacement for the deposit watcher's in-memory seen-set.
+  A failed in-memory apply reverses its journal transaction rather than
+  deleting it, so the attempt stays visible in history.
+- Durable per-node state that is deliberately **not** double-entry:
+  `earned_claim_micro`, `audit_offense_count` and `evicted` are written
+  directly onto the account object by the settlement engine and are not
+  claims on custody — an accrued claim is money owed but not yet
+  funded, so booking it as a liability would report insolvency for any
+  network that has accrued. They persist as memos in the same database
+  (`LedgerJournal.memo_set` / `memo_get` / `memo_namespace`), because
+  losing them is not acceptable either: **a lost `evicted` flag silently
+  un-evicts a node that was expelled for cause.**
+- `LedgerJournal.posted_total()` — sums posted entries on an account,
+  narrowable by transaction counterparty and by a paired account, which
+  is what separates movements that share an account but not a meaning
+  (a bond debited into insurance is a slash; the same bond debited into
+  custody is a refund). Backed by a new nullable `counterparty` column
+  on `transactions`, added additively with an in-place migration so an
+  existing journal file is upgraded rather than rewritten.
+- `ltp.ledger_journal.LedgerJournal` — a durable double-entry journal on
+  stdlib `sqlite3`, the fix for the measured defect that
+  `docs/economics/BILLING_LEDGER_GAP_ANALYSIS.md` documents: with
+  balances in process memory, a restart resurrected a customer's spent
+  balance and re-credited on-chain deposits while `check_solvency()`
+  reported healthy throughout, because it compared the process against
+  itself. The journal is the system of record — `accounts` /
+  `transactions` / `entries`, debits==credits asserted per transaction
+  inside the same SQL transaction that writes it, balances derived,
+  corrections by reversal so a refund is distinguishable from a
+  fabricated credit. Balances are cached as four counters written in the
+  same SQL transaction as their entries and policed by `detect_drift()`,
+  which recomputes from the journal and stops trusting any account that
+  diverges. Durable idempotency replaces the in-memory seen-id sets:
+  `(scope, key)` unique, parameter-hash comparison, the original
+  response replayed (**including stored failures**), a lock column that
+  turns concurrent duplicates into a conflict, `recovery_point` so a
+  half-finished operation resumes instead of re-charging, a reaper on a
+  documented retention window, and `abandoned_keys()` for a completer.
+  On-chain deposits dedup on `(tx_hash, log_index)` — enforced by a
+  database constraint, so double-crediting is impossible by construction
+  rather than by convention. Two bugs were found by tests written to
+  break it: `check_solvency()` read the cache and so could not see a
+  tampered journal (it audits the entries directly now), and
+  `AccountBalance.available` had an inverted sign that let a hold
+  *increase* spendable balance, hidden behind an `x or y` assertion.
+  28 tests, including restart, deliberate cache corruption, a forged
+  entry, and parallel posting with exact accounting
+
 ### Fixed
 - Inference gateway no longer routes the request's own model name into
   a log line or an error body. CodeQL flagged it as a high-severity

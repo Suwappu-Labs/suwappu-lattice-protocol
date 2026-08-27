@@ -316,6 +316,100 @@ Stated for calibration, not comfort:
   deposits rather than assigning them is correct and matches exchange
   practice.
 
+## 4.5 What has since been built
+
+`src/ltp/ledger_journal.py` implements items 1, 2 and part of 3 and 5
+below. It is a durable double-entry journal on stdlib `sqlite3`:
+`accounts` / `transactions` / `entries` with a per-transaction
+debits==credits assertion, balances **derived** rather than stored,
+corrections by reversal (never UPDATE or DELETE), a four-counter balance
+cache written in the *same* SQL transaction as its entries, a
+`detect_drift()` that recomputes from the journal and disables cache
+reads on divergence, pending/posted entry states with an `available`
+balance, a durable idempotency table (`(scope, key)` unique, parameter
+hash, cached response including failures, `locked_at`, `recovery_point`,
+reaper, and an `abandoned_keys()` feed for a completer), and
+`(tx_hash, log_index)` uniqueness enforced by a database constraint on
+the transaction itself.
+
+The measured defect at the top of this document is fixed and pinned as a
+regression test: after a restart the customer's spent balance stays
+spent, and replaying the same on-chain deposit raises
+`DuplicateExternalRef` instead of crediting again.
+
+Two findings from building it, both caught by tests written to break the
+code rather than confirm it:
+
+- `check_solvency()` originally read through the balance cache, which
+  meant it could not detect a tampered journal — the forged entry never
+  touches the cached counters, so the check reported healthy while the
+  entries said otherwise. It now audits `recompute_balance()` directly.
+  An integrity check must not trust the thing it is auditing.
+- `AccountBalance.available` had its sign inverted, so a hold *increased*
+  the spendable balance. It was hidden by a test asserting `x or y`,
+  which passes whichever way the sign goes. Both are now exact.
+
+## 4.6 The journal, wired underneath the ledger
+
+`src/ltp/ledger_durable.py` closes the swap §4.5 left open.
+`DurableStablecoinLedger` is a drop-in subclass of `StablecoinLedger`:
+same constructor keyword, same methods, same return types, so the
+gateway, market, settlement engine and deposit watcher are unchanged.
+Every movement is journaled as a balanced transaction *before* it
+touches memory, and the in-memory figures are rebuilt from entries on
+construction. The inversion is the point — **the dictionaries become a
+cache and the journal becomes the ledger**, which is the same
+relationship the journal already maintains between its `balance_cache`
+and its `entries`, one level up.
+
+The chart of accounts is one debit-normal `assets:custody` against
+credit-normal claims (`pool:operator`, `pool:insurance`,
+`pool:treasury`, `bond:<node_id>`, `customer:<customer_id>`), so
+solvency is the ordinary balance-sheet identity. `check_solvency()`
+keeps its old in-memory meaning for compatibility; the new
+`audit_solvency()` answers the same question by replaying entries, and
+only that one can see a forged movement. `detect_drift()` reconciles the
+in-memory figures against the journal, because a cache nobody audits is
+a mutable balance column with extra steps.
+
+Three things the books deliberately do not hold. `earned_claim_micro`,
+`audit_offense_count` and `evicted` are written directly onto the
+account object by the settlement engine, and none is a claim on custody:
+an accrued claim is money owed but *not yet funded*, so booking it as a
+liability would report insolvency for every network that has ever
+accrued. They are persisted as memos in the same database instead —
+because losing them is not acceptable either. **A lost `evicted` flag
+silently un-evicts a node that was expelled for cause**, which is a
+security defect, not a bookkeeping one. Persisting them without touching
+the engine needed a `__setattr__` interception on the account object;
+overriding a ledger method would not have caught writes that never go
+through one.
+
+Measured, restart-to-restart:
+
+| | in-memory ledger | wired journal |
+|---|---|---|
+| customer balance after spend + restart | resurrects | stays spent |
+| replayed on-chain deposit | credited again | `DuplicateExternalRef` |
+| accrued claim after mid-epoch restart | lost | still owed, settles |
+| node evicted for cause, after restart | **un-evicted** | still evicted |
+| forged journal entry | invisible | `audit_solvency()` is `False` |
+
+The three guards that matter were checked by breaking them: disabling
+memo write-through, pointing `audit_solvency()` at memory, and dropping
+the reversal on a failed apply each fail the suite. A failed in-memory
+apply reverses its journal transaction rather than deleting it, so the
+attempt stays visible in history.
+
+**Still open from the list below:** billing still follows handler
+completion rather than server-reported usage; deposit confirmation depth
+is still a block-count delta rather than the chain's `finalized` tag;
+the receipt log is still unbounded in memory; and the two-phase
+pending/posted primitive exists in the journal but nothing reserves
+against it yet. SQLite's single-writer ceiling is the journal's own
+limit — real, and the reason the schema is plain SQL that Postgres can
+take over.
+
 ## 5. Recommended order of work
 
 1. **Persist the ledger as entries** (`accounts` / `transactions` /
