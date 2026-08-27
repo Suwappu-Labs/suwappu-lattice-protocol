@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {OptimisticBridgeChallenge} from "./OptimisticBridgeChallenge.sol";
+import {ISP1Verifier, ISP1VerifierWithHash} from "sp1-contracts/ISP1Verifier.sol";
 
 /// @title ZKBridgeVerifier
 /// @author Suwappu (SUWAPPU)
@@ -64,6 +65,7 @@ contract ZKBridgeVerifier {
     error ProofAlreadyUsed();
     error Unauthorized();
     error SimulatedModeNotAllowedInProduction();
+    error IncompatibleSP1Verifier(address verifier);
 
     // -----------------------------------------------------------------------
     // Constructor
@@ -263,20 +265,17 @@ contract ZKBridgeVerifier {
         // Total: 80 bytes — matches SP1 circuit commit (32 + 32 + 8 + 8)
 
         // Call SP1 verifier contract: verifyProof(bytes32 vkey, bytes publicValues, bytes proof)
-        (bool success, bytes memory returnData) = sp1Verifier.staticcall(
-            abi.encodeWithSignature(
-                "verifyProof(bytes32,bytes,bytes)",
+        (bool success, ) = sp1Verifier.staticcall(
+            abi.encodeWithSelector(
+                ISP1Verifier.verifyProof.selector,
                 sp1ProgramVKey,
                 publicValues,
                 proofBytes
             )
         );
-        if (!success) return false;
-        // If verifier returns data, decode it; if it just doesn't revert, success = true
-        if (returnData.length > 0) {
-            return abi.decode(returnData, (bool));
-        }
-        return true;
+
+        return success ? true : false;
+
     }
 
     // -----------------------------------------------------------------------
@@ -308,8 +307,17 @@ contract ZKBridgeVerifier {
     }
 
     /// @notice Set the SP1 on-chain verifier contract and program verification key.
+    /// @dev Asserts the address is actually a compatible SP1 verifier at set time
+    ///      (has code, implements ISP1VerifierWithHash, returns a non-zero hash),
+    ///      rather than trying to infer compatibility from verifyProof()'s call
+    ///      outcome — verifyProof has no return value, so a compliant verifier's
+    ///      success and a no-code address are otherwise indistinguishable.
     function setSP1Verifier(address _verifier, bytes32 _vkey) external {
         if (msg.sender != admin) revert Unauthorized();
+        if (_verifier.code.length == 0) revert IncompatibleSP1Verifier(_verifier);
+        if (ISP1VerifierWithHash(_verifier).VERIFIER_HASH() == bytes32(0)) {
+            revert IncompatibleSP1Verifier(_verifier);
+        }
         sp1Verifier = _verifier;
         sp1ProgramVKey = _vkey;
         emit SP1VerifierUpdated(_verifier, _vkey);

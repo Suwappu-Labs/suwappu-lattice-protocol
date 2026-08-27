@@ -67,7 +67,30 @@ jobs:
         run: pip-audit --strict --vulnerability-service osv
 
       - name: Install Foundry (for ABI extraction)
-        uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09  # v1
+        run: |
+          # foundry-toolchain's bootstrap chain (foundry-rs/foundry -> foundry-rs/foundryup ->
+          # a GitHub release asset) has been intermittently serving a corrupted/invalid
+          # foundryup binary on fork-PR runners ("cannot execute binary file"), unrelated to
+          # which Foundry version is requested. Install directly with retries instead, so a
+          # bad download on one attempt just gets retried against a fresh CDN response.
+          set +e
+          # Pin FOUNDRY_DIR explicitly -- foundryup-init.sh otherwise installs
+          # to $XDG_CONFIG_HOME/.foundry when that's set (as it is on GitHub's
+          # runner images), not $HOME/.foundry.
+          export FOUNDRY_DIR="$HOME/.foundry"
+          for attempt in 1 2 3; do
+            echo "Foundry install attempt $attempt/3"
+            curl -L https://foundry.paradigm.xyz | bash
+            "$FOUNDRY_DIR/bin/foundryup" --install v1.7.1
+            if "$FOUNDRY_DIR/bin/forge" --version; then
+              echo "$FOUNDRY_DIR/bin" >> "$GITHUB_PATH"
+              exit 0
+            fi
+            echo "Attempt $attempt failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "::error::Failed to install Foundry after 3 attempts"
+          exit 1
 
       - name: Install Solidity dependencies
         working-directory: contracts
@@ -76,6 +99,7 @@ jobs:
           git config user.email "ci@suwappu.dev"
           forge install foundry-rs/forge-std
           forge install OpenZeppelin/openzeppelin-contracts
+          forge install succinctlabs/sp1-contracts
 
       - name: Extract contract ABIs
         run: make abi || true  # ABI target may be optional; do not block the release

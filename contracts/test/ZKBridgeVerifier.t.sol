@@ -4,6 +4,22 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "../src/OptimisticBridgeChallenge.sol";
 import "../src/ZKBridgeVerifier.sol";
+import {ISP1Verifier, ISP1VerifierWithHash} from "sp1-contracts/ISP1Verifier.sol";
+
+/// @dev Mirrors real ISP1Verifier behavior on a valid proof: verifyProof has
+///      no return type, so a compliant verifier that accepts the proof
+///      simply doesn't revert and returns zero bytes of data. Implements
+///      ISP1VerifierWithHash with a non-zero hash so it passes the
+///      setSP1Verifier compatibility check.
+contract CompliantSP1Verifier is ISP1VerifierWithHash {
+    function verifyProof(bytes32, bytes calldata, bytes calldata) external pure override {
+        // Valid proof: succeed silently, exactly like the real interface.
+    }
+
+    function VERIFIER_HASH() external pure override returns (bytes32) {
+        return keccak256("compliant-sp1-verifier");
+    }
+}
 
 contract ZKBridgeVerifierTest is Test {
     OptimisticBridgeChallenge public challenge;
@@ -414,7 +430,7 @@ contract ZKBridgeVerifierSP1Test is Test {
     }
 
     function test_setSP1Verifier_updates_storage() public {
-        address mockVerifier = address(0x1234);
+        address mockVerifier = address(new CompliantSP1Verifier());
         bytes32 mockVKey = keccak256("mock-vkey");
 
         vm.prank(admin);
@@ -433,4 +449,33 @@ contract ZKBridgeVerifierSP1Test is Test {
     function test_sp1_mode_stored() public view {
         assertEq(sp1Verifier.verificationMode(), 1); // MODE_SP1
     }
+
+    // --- Regression test for the setSP1Verifier compatibility gate ---
+    // A no-code address must be rejected at set time, not silently accepted
+    // and only discovered broken later when a real proof is submitted.
+    function test_sp1_rejects_nocode_verifier() public {
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(ZKBridgeVerifier.IncompatibleSP1Verifier.selector, address(0x1234))
+        );
+        sp1Verifier.setSP1Verifier(address(0x1234), keccak256("mock-vkey"));
+    }
+
+    // A compliant SP1 verifier's success (no revert, no return value — the
+    // interface has no return type) must be accepted. Only safe to rely on
+    // `success` alone because setSP1Verifier already rejected a no-code
+    // address at set time — otherwise (success=true, returnData="") is
+    // indistinguishable from a no-code address's trivial staticcall success.
+    function test_sp1_accepts_compliant_verifier_success() public {
+        vm.prank(operator);
+        challenge.openWindow{value: OP_BOND}(DIGEST_1);
+
+        CompliantSP1Verifier verifier = new CompliantSP1Verifier();
+        vm.prank(admin);
+        sp1Verifier.setSP1Verifier(address(verifier), keccak256("mock-vkey"));
+
+        sp1Verifier.verifyAndFinalize(DIGEST_1, new bytes(128), _inputs());
+        assertTrue(challenge.isFinalized(DIGEST_1));
+    }
+
 }

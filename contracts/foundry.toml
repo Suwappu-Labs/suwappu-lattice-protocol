@@ -9,6 +9,7 @@ via_ir = true
 evm_version = "cancun"
 remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "sp1-contracts/=lib/sp1-contracts/contracts/src/",
 ]
 
 [rpc_endpoints]
