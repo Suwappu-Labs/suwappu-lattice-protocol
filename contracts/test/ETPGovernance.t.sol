@@ -151,6 +151,25 @@ contract ETPGovernanceTest is Test {
         assertEq(gov.currentPhase(), gov.PHASE_GROWTH());
     }
 
+    /// @dev H-14: voteCount[transitionKey] is a raw counter that never decreases
+    ///      when a voting operator is later revoked. Register 4 operators (need 3
+    ///      for supermajority), vote to exactly 3, then revoke one of the 3
+    ///      voters before execution -- only 2 live authorized votes remain, so
+    ///      this must now revert instead of silently succeeding on the stale count.
+    function test_executeTransition_revokedVoterNotCounted_reverts() public {
+        _registerAndVoteSupermajority(); // VK1, VK2, VK3 vote; 3-of-4 reached
+
+        vm.prank(admin);
+        gov.revokeOperator(VK3);
+
+        bytes32 bootstrap = gov.PHASE_BOOTSTRAP();
+        bytes32 growth = gov.PHASE_GROWTH();
+        vm.expectRevert();
+        gov.executeTransition(bootstrap, growth);
+
+        assertEq(gov.currentPhase(), bootstrap);
+    }
+
     function test_executeTransition_wrongPhase_reverts() public {
         // Current phase is BOOTSTRAP, trying to transition GROWTH -> MATURITY
         bytes32 growth = gov.PHASE_GROWTH();

@@ -72,6 +72,11 @@ contract ETPGovernance {
     mapping(bytes32 => uint64) public operatorSequences;
     mapping(bytes32 => uint256) public operatorCountAtFirstVote; // Snapshot for supermajority
 
+    // H-14: voters recorded per transition, so executeTransition can recount
+    // only currently-authorized votes instead of trusting a stale counter
+    // that a revoked operator's vote still contributes to.
+    mapping(bytes32 => bytes32[]) private _voters;
+
     // -----------------------------------------------------------------------
     // Modifiers
     // -----------------------------------------------------------------------
@@ -158,6 +163,7 @@ contract ETPGovernance {
         hasVoted[transitionKey][voterVkHash] = true;
         operatorSequences[voterVkHash] = sequence;
         voteCount[transitionKey]++;
+        _voters[transitionKey].push(voterVkHash);
 
         // Snapshot operator count on first vote for this transition
         if (operatorCountAtFirstVote[transitionKey] == 0) {
@@ -189,8 +195,18 @@ contract ETPGovernance {
         uint256 snapshotCount = operatorCountAtFirstVote[transitionKey];
         if (snapshotCount == 0) snapshotCount = operatorCount; // No votes yet
         uint256 required = (snapshotCount * requiredRatio + BASIS_POINTS - 1) / BASIS_POINTS;
-        if (voteCount[transitionKey] < required) {
-            revert SupermajorityNotReached(transitionKey, voteCount[transitionKey], required);
+
+        // H-14: voteCount[transitionKey] is a raw counter that never decreases
+        // when a voting operator is later revoked -- a revoked (e.g. compromised)
+        // operator's vote would still count toward supermajority. Recount live,
+        // authorized votes instead of trusting the stale counter.
+        uint256 liveVotes;
+        bytes32[] storage voters = _voters[transitionKey];
+        for (uint256 i = 0; i < voters.length; i++) {
+            if (authorizedOperators[voters[i]]) liveVotes++;
+        }
+        if (liveVotes < required) {
+            revert SupermajorityNotReached(transitionKey, liveVotes, required);
         }
 
         // Execute transition
