@@ -44,6 +44,7 @@ contract ETPGovernance {
     error ZeroVkHash();
     error ZeroOperatorAddress();
     error NotOperatorCaller(bytes32 vkHash, address caller, address expected);
+    error InvalidRequiredRatio(uint256 ratio);
 
     // -----------------------------------------------------------------------
     // Events
@@ -87,6 +88,10 @@ contract ETPGovernance {
 
     constructor(address _admin, uint256 _requiredRatio) {
         if (_admin == address(0)) revert NotAdmin(address(0));
+        // requiredRatio > BASIS_POINTS (100%) makes `required` in
+        // executeTransition unreachable by any number of votes, permanently
+        // bricking governance. 0 is still valid -- it means "use the default".
+        if (_requiredRatio > BASIS_POINTS) revert InvalidRequiredRatio(_requiredRatio);
         admin = _admin;
         requiredRatio = _requiredRatio > 0 ? _requiredRatio : 6667; // Default 66.67%
         currentPhase = PHASE_BOOTSTRAP;
