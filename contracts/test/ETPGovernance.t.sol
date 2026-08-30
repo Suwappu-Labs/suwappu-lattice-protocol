@@ -99,11 +99,27 @@ contract ETPGovernanceTest is Test {
         _registerOperators(1);
         vm.prank(voter1);
         gov.castVote(transitionKey, VK1, 5, uint64(block.timestamp + 3600));
-        // Try voting on a different transition with lower sequence
+        // Voting again on the SAME transition with a non-increasing sequence reverts.
+        // (In practice DuplicateVote fires first since one vote per (operator,
+        // transition) is already enforced; sequence 0 is the one value that
+        // can still hit this check on an unvoted transition.)
         bytes32 otherKey = keccak256("other-transition");
         vm.prank(voter1);
-        vm.expectRevert(abi.encodeWithSelector(ETPGovernance.SequenceTooLow.selector, VK1, 3, 5));
+        vm.expectRevert(abi.encodeWithSelector(ETPGovernance.SequenceTooLow.selector, VK1, 0, 0));
+        gov.castVote(otherKey, VK1, 0, uint64(block.timestamp + 3600));
+    }
+
+    function test_castVote_sequence_scopedPerTransition() public {
+        // A high sequence on one transition must not block a lower sequence
+        // on a different, previously-unvoted transition for the same operator.
+        _registerOperators(1);
+        vm.prank(voter1);
+        gov.castVote(transitionKey, VK1, 5, uint64(block.timestamp + 3600));
+
+        bytes32 otherKey = keccak256("other-transition");
+        vm.prank(voter1);
         gov.castVote(otherKey, VK1, 3, uint64(block.timestamp + 3600));
+        assertTrue(gov.hasOperatorVoted(otherKey, VK1));
     }
 
     function test_castVote_expired_reverts() public {

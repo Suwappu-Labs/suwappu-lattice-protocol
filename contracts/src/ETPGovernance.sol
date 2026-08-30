@@ -69,7 +69,7 @@ contract ETPGovernance {
     mapping(bytes32 => address) public operatorAddress;     // vkHash → authorized caller
     mapping(bytes32 => uint256) public voteCount;
     mapping(bytes32 => mapping(bytes32 => bool)) public hasVoted;
-    mapping(bytes32 => uint64) public operatorSequences;
+    mapping(bytes32 => mapping(bytes32 => uint64)) public transitionSequences; // voterVkHash => transitionKey => last used sequence
     mapping(bytes32 => uint256) public operatorCountAtFirstVote; // Snapshot for supermajority
 
     // -----------------------------------------------------------------------
@@ -147,8 +147,12 @@ contract ETPGovernance {
         // 2. No duplicate votes
         if (hasVoted[transitionKey][voterVkHash]) revert DuplicateVote(transitionKey, voterVkHash);
 
-        // 3. Sequence must be strictly increasing
-        uint64 lastSeq = operatorSequences[voterVkHash];
+        // 3. Sequence must be strictly increasing within this transition.
+        // Scoped per (operator, transitionKey) rather than globally per
+        // operator: a global floor meant a high-sequence vote on one
+        // transition could block a lower-sequence vote on an unrelated
+        // transition that had never been voted on before.
+        uint64 lastSeq = transitionSequences[voterVkHash][transitionKey];
         if (sequence <= lastSeq) revert SequenceTooLow(voterVkHash, sequence, lastSeq);
 
         // 4. Vote must not be expired
@@ -156,7 +160,7 @@ contract ETPGovernance {
 
         // Record vote
         hasVoted[transitionKey][voterVkHash] = true;
-        operatorSequences[voterVkHash] = sequence;
+        transitionSequences[voterVkHash][transitionKey] = sequence;
         voteCount[transitionKey]++;
 
         // Snapshot operator count on first vote for this transition
