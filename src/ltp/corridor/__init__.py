@@ -89,6 +89,16 @@ from .envelope import (
     EnvelopeSizeError,
     OnChainCommitment,
 )
+from .lanes import (
+    CORRIDOR_LANES,
+    ETHEREUM_MAINNET_TO_HYPEREVM,
+    ETHEREUM_SEPOLIA_TO_HYPEREVM_TESTNET,
+    HYPEREVM_TESTNET_TO_ETHEREUM_SEPOLIA,
+    HYPEREVM_TO_ETHEREUM_MAINNET,
+    CorridorLane,
+    get_lane,
+    lane_between,
+)
 from .state_anchor import (
     GENESIS_PARENT,
     AuthScheme,
@@ -192,4 +202,13 @@ __all__ = [
     "build_state_anchor_keccak256",
     "CorridorAnchorBuild",
     "CorridorAnchorError",
+    # Corridor lanes
+    "CorridorLane",
+    "CORRIDOR_LANES",
+    "get_lane",
+    "lane_between",
+    "ETHEREUM_MAINNET_TO_HYPEREVM",
+    "HYPEREVM_TO_ETHEREUM_MAINNET",
+    "ETHEREUM_SEPOLIA_TO_HYPEREVM_TESTNET",
+    "HYPEREVM_TESTNET_TO_ETHEREUM_SEPOLIA",
 ]

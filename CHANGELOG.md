@@ -22,6 +22,16 @@ public-surface promise and the cross-version compatibility matrix.
   verified to fail with the fix reverted
 
 ### Added
+- Ethereum mainnet <> Hyperliquid HyperEVM corridor surface:
+  `src/ltp/anchor/chain_profiles.py` (built-in chain profiles — Ethereum
+  mainnet/Sepolia, HyperEVM 999/998 with HyperBFT single-slot finality,
+  plus the existing Base Sepolia / SUWAPPU Testnet deploy targets) and
+  `src/ltp/corridor/lanes.py` (named directional lanes with asymmetric
+  confirmation policy: 64 blocks — 2 PoS epochs — before attesting
+  Ethereum state, depth 1 for HyperEVM). Chain IDs are ordinary u32
+  payload values in `LTP-corridor-v1`, so this is not a wire-format
+  change. Deployment sequencing:
+  `docs/plans/2026-08-31-hyperliquid-ethereum-corridor.md`
 - `docs/economics/BILLING_LEDGER_GAP_ANALYSIS.md`: measures the shipped
   billing surface against production ledger practice (Modern Treasury
   double-entry, TigerBeetle two-phase transfers, Stripe/Brandur
