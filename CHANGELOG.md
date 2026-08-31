@@ -22,6 +22,15 @@ public-surface promise and the cross-version compatibility matrix.
   verified to fail with the fix reverted
 
 ### Added
+- HyperEVM big-block enablement: `scripts/hyperevm_enable_big_blocks.py`
+  opts the deployer into HyperEVM's big-block lane via the official
+  Hyperliquid SDK (`Exchange.use_big_blocks`). The deploy driver invokes
+  it automatically at preflight after measuring the live block gas limit —
+  necessary because the testnet's small blocks cap at a measured 3,000,000
+  gas and the batched stack deploy needs ~6.3M (big blocks: measured
+  30,000,000). Rehearsal evidence, including a deploy against a fork of the
+  live testnet at block 63,030,833, is recorded in
+  `docs/plans/2026-08-31-hyperevm-deploy-rehearsal.md`
 - HyperEVM testnet deploy driver: `scripts/deploy_hyperevm_testnet.sh`
   deploys the registry + bridge stack to Hyperliquid HyperEVM testnet
   (chain 998) and registers the bridge signer vk hash through the full

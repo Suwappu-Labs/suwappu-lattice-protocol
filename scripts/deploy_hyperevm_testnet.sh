@@ -22,12 +22,14 @@
 # HyperEVM gotchas this script accounts for:
 #   - Gas token is HYPE, not ETH. Fund the deployer via the Hyperliquid
 #     testnet faucet before running.
-#   - HyperEVM interleaves small blocks (~1s, low gas limit) with big
-#     blocks (~1min, high gas limit). Contract CREATE transactions can
-#     exceed the small-block limit — if a deploy tx sits pending or is
-#     rejected for gas, switch the deployer address to the big-block lane
-#     (Hyperliquid `evmUserModify` action, e.g. `usingBigBlocks: true`)
-#     and re-run; the script is idempotent per phase.
+#   - HyperEVM interleaves small blocks (measured 3,000,000 gas limit on
+#     testnet) with big blocks (measured 30,000,000 gas limit). The batched
+#     stack deploy needs ~6.3M gas, so the deployer must ride the big-block
+#     lane. This script measures the live small-block limit at preflight and,
+#     unless BIG_BLOCKS_READY=1, runs scripts/hyperevm_enable_big_blocks.py
+#     to opt the deployer in via the Hyperliquid SDK before deploying.
+#     After the deploy, revert with:
+#       DEPLOYER_PRIVATE_KEY=... python3 scripts/hyperevm_enable_big_blocks.py --disable
 #
 # Sequencing reference: docs/plans/2026-08-31-hyperliquid-ethereum-corridor.md
 
@@ -88,9 +90,30 @@ fi
 echo "Chain ID:  $CHAIN_ID"
 echo "Deployer:  $DEPLOYER"
 echo "Operator:  $OPERATOR"
+
+# Big-block lane: the batched stack deploy (~6.3M gas) exceeds HyperEVM's
+# small-block limit. Measure the live limit and opt the deployer into big
+# blocks unless we're on a local rehearsal or the caller asserts it's ready.
 if [ "$LOCAL_REHEARSAL" != "1" ]; then
-    echo "NOTE: contract CREATEs may need the big-block lane on HyperEVM —"
-    echo "see the header comment if deploy transactions stall."
+    BLOCK_GAS_LIMIT=$(cast rpc eth_getBlockByNumber latest false --rpc-url "$RPC" \
+        | python3 -c "import json,sys;print(int(json.load(sys.stdin)['gasLimit'],16))" 2>/dev/null || echo 0)
+    echo "Live block gas limit: $BLOCK_GAS_LIMIT (small-block lane if ~3,000,000)"
+    if [ "${BIG_BLOCKS_READY:-0}" = "1" ]; then
+        echo "BIG_BLOCKS_READY=1 — assuming the deployer is already on the big-block lane."
+    elif [ "$BLOCK_GAS_LIMIT" -ge 30000000 ] 2>/dev/null; then
+        echo "Block gas limit already >= 30M; big-block lane looks active."
+    else
+        echo "Enabling the big-block lane for the deployer via the Hyperliquid SDK..."
+        BIG_ARGS=""
+        [ "$EXPECTED_CHAIN_ID" = "999" ] && BIG_ARGS="--mainnet"
+        if ! DEPLOYER_PRIVATE_KEY="$DEPLOYER_PRIVATE_KEY" \
+             python3 "$(dirname "$0")/hyperevm_enable_big_blocks.py" $BIG_ARGS; then
+            echo "ERROR: could not enable big blocks. Enable it manually, then re-run" >&2
+            echo "with BIG_BLOCKS_READY=1:" >&2
+            echo "  DEPLOYER_PRIVATE_KEY=... python3 scripts/hyperevm_enable_big_blocks.py${BIG_ARGS:+ $BIG_ARGS}" >&2
+            exit 1
+        fi
+    fi
 fi
 
 # Extract "contractName -> address" pairs from a forge broadcast artifact.
