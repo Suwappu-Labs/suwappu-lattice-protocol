@@ -22,6 +22,15 @@ public-surface promise and the cross-version compatibility matrix.
   verified to fail with the fix reverted
 
 ### Added
+- HyperEVM testnet deploy driver: `scripts/deploy_hyperevm_testnet.sh`
+  deploys the registry + bridge stack to Hyperliquid HyperEVM testnet
+  (chain 998) and registers the bridge signer vk hash through the full
+  MultiSig → Timelock governance path, with chain-ID/balance preflights
+  and HyperEVM big-block guidance; `scripts/verify_corridor_deployment.py`
+  then runs the Python-SDK proof (HYPEREVM_TESTNET profile →
+  `AnchorClient` → on-chain anchor round-trip → `LTP-corridor-v1` lane
+  payload). Rehearsed green end-to-end against `anvil --chain-id 998`;
+  deploy simulation also passes against the live HyperEVM testnet RPC
 - Ethereum mainnet <> Hyperliquid HyperEVM corridor surface:
   `src/ltp/anchor/chain_profiles.py` (built-in chain profiles — Ethereum
   mainnet/Sepolia, HyperEVM 999/998 with HyperBFT single-slot finality,

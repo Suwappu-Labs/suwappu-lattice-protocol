@@ -50,9 +50,22 @@ new cryptography and **no wire-format change**:
 
 ### Phase 0 — staging pair (Sepolia `11155111` <> HyperEVM testnet `998`)
 
+**Deploy tooling is built and rehearsed.** `scripts/deploy_hyperevm_testnet.sh`
+drives the whole HyperEVM-side sequence env-first (chain-ID preflight, both
+deploy scripts, the full MultiSig → Timelock → `registerSigner` governance
+path, on-chain verification), and `scripts/verify_corridor_deployment.py`
+then proves the Python SDK leg (chain profile → `AnchorClient` → anchor
+round-trip → corridor-lane payload). Both were run green end-to-end against
+a local `anvil --chain-id 998` (2026-08-31), and the deploy script's
+simulation passes against the live `rpc.hyperliquid-testnet.xyz/evm`
+(chain 998, ~6.3M gas total — which confirms the big-block requirement
+below, since small blocks cap well under that). The only missing input for
+the real broadcast is a funded deployer/operator key pair holding testnet
+HYPE.
+
 1. Deploy `LTPAnchorRegistry` (UUPS), `LTPMultiSig`, `TimelockController`,
-   `OptimisticBridgeChallenge`, `ZKBridgeVerifier` on HyperEVM testnet with
-   the existing `contracts/script/` flow, and the registry set on Sepolia.
+   `OptimisticBridgeChallenge`, `ZKBridgeVerifier` on HyperEVM testnet via
+   `scripts/deploy_hyperevm_testnet.sh`, and the registry set on Sepolia.
 2. **HyperEVM gotcha:** the chain interleaves small blocks (~1s, low gas
    limit) with big blocks (~1min, high gas limit). Contract *deployment*
    transactions generally exceed the small-block gas limit — the deployer
