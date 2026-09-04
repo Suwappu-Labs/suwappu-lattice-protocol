@@ -1,109 +1,65 @@
 # Working with LTP from AI Coding Agents
 
-This page tells AI coding agents (Claude Code, Cursor, Aider, Continue, ChatGPT
-Code Interpreter / Plugins, GitHub Copilot Workspace) what to read, what to
-avoid, and how to run the test suite from inside an agent session. Following
-it gets you to a green build faster and keeps you out of the patterns that
-will get a PR rejected.
+This page tells you which file your agent reads and what is specific to
+each tool. The rules, commands, and layout are not here. They live in one
+place: [`AGENTS.md`](../AGENTS.md) at the repo root.
 
-Last updated: 2026-05-16. Pin against this date if behavior diverges.
+Last updated: 2026-09-04.
 
-## Always-read files
+## One file, every tool
 
-Before suggesting a non-trivial change, an agent should load:
+[`AGENTS.md`](../AGENTS.md) is the single source of truth. The other
+entry files are symlinks to it, so no tool can drift from another:
 
-1. **[../CONTRIBUTING.md](../CONTRIBUTING.md)** — prerequisites, test commands,
-   PR workflow.
-2. **[../CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md)** — enforcement contact
-   `core@suwappu.dev`.
-3. **[OPERATOR_RUNBOOK.md](OPERATOR_RUNBOOK.md) §13** — v7 deploy checklist.
-   If a change touches deploy paths, this is the authoritative checklist.
-4. **[SECURITY_AUDIT_2026-05-15.md](security/audits/internal/SECURITY_AUDIT_2026-05-15.md)** — every
-   open finding and remediation status. Don't propose changes that would
-   reopen a closed finding.
-5. **[STABILITY_PROMISES.md](STABILITY_PROMISES.md)** — public-surface
-   commitments and the cross-version compatibility matrix.
-6. **[visuals/README.md](visuals/README.md)** — Mermaid conventions used
-   across the repo (theme, layout, edge style).
-7. **[CORRIDOR_INTEGRATION.md](CORRIDOR_INTEGRATION.md)** — wire format
-   and on-chain ABI. Treat as normative.
+| Your tool | File it reads | What it is |
+|---|---|---|
+| Codex and any other tool that reads `AGENTS.md` | `AGENTS.md` | The canonical file |
+| Claude Code | `CLAUDE.md` | Symlink to `AGENTS.md` |
+| Cursor | `AGENTS.md` (current) or `.cursorrules` (legacy) | `.cursorrules` is a symlink to `AGENTS.md` |
+| Aider, Continue, Copilot Workspace | none automatic | Point the tool at `AGENTS.md` |
+| ChatGPT Code Interpreter | none automatic | Upload the repo and read `AGENTS.md` first |
 
-The persona pages under [personas/](personas/README.md) tell you which of
-these matter most for the task you're doing.
+This mirrors how `vercel/next.js` and `apache/airflow` ship their agent
+guidance: one `AGENTS.md`, with `CLAUDE.md` as a symlink to it.
 
-## Common gotchas surfaced during prior audits
+To change any rule, edit `AGENTS.md`. Do not edit the symlinks.
 
-These are real things the LTP audit caught that agents tend to get wrong:
-
-- **BLS DST cross-language pinning** — the domain-separation tag string
-  must be byte-identical between Python and Solidity. Don't "clean up" the
-  string (no Unicode normalization, no trim). See audit finding
-  LTP-A-022.
-- **`LTP_ENV=production` gates** — several runtime paths fail-closed when
-  `LTP_ENV=production` is set. Don't bypass these by setting
-  `LTP_ENV=development` to make a test pass.
-- **Deployed-contract addresses are immutable** — never change an address
-  in [DEPLOYED_CONTRACTS.md](DEPLOYED_CONTRACTS.md) without an upgrade
-  plan under `plans/`. CODEOWNERS will reject the PR.
-- **No `Co-Authored-By` footers** — repo convention. Strip them from
-  generated commit messages.
-- **No `git rebase`** — use `git merge` or `git pull --no-rebase`. The
-  consensus and audit tests are sensitive to commit topology.
-- **Wire-format additions require a Linear ticket** — bumping
-  `LTP-corridor-v1` to `v2` is not a refactor; it must be scoped in
-  Linear under the LTP Dev Net project.
-- **SHA-pinned GitHub Actions** — every new third-party action must be
-  pinned by commit SHA, not tag. The LTP-A-025 audit finding made this
-  mandatory.
-
-## Running the test suite from an agent
-
-The minimum-viable verification before saying "done":
-
-```bash
-make test-python           # ~1,200 Python tests
-make test-contracts        # 84 Solidity tests via forge
-make contracts-secaudit    # Slither + Echidna + invariants (slow)
-```
-
-For docs-only changes, the docs CI ([.github/workflows/docs.yml](../.github/workflows/docs.yml))
-runs link-check, markdownlint, Mermaid validation, and the pdoc artifact
-build. Reproducing locally:
-
-```bash
-make docs-api              # regenerates docs/api/python/
-npx markdownlint-cli2 'docs/**/*.md' '*.md'
-lychee --config lychee.toml 'docs/**/*.md' '*.md'
-```
-
-## Agent-specific notes
+## Tool-specific notes
 
 ### Claude Code
 
-A project-level [`CLAUDE.md`](../CLAUDE.md) lives at the repo root and is
-loaded automatically. It captures the same gotchas as this page in the
-format Claude Code expects.
+`CLAUDE.md` loads automatically. Nothing else to configure. The
+`Find it fast` table at the top of `AGENTS.md` maps tasks to sections.
 
 ### Cursor
 
-A [`.cursorrules`](../.cursorrules) file at the repo root scopes Cursor's
-suggestions. Same content, Cursor's format.
+Recent Cursor versions read `AGENTS.md` directly. Older versions read
+`.cursorrules`, which resolves to the same content.
 
 ### Aider, Continue, Copilot Workspace
 
-These tools don't have a single dotfile convention. Point them at this
-document (`docs/AI_AGENTS.md`) and the always-read list above.
+These tools have no single dotfile convention. Add `AGENTS.md` to the
+context at the start of each session. For a non-trivial change, also add
+the files listed under **References** in `AGENTS.md`.
 
-### ChatGPT Code Interpreter / Plugins
+### ChatGPT Code Interpreter and plugins
 
-Upload the repo as a zip and ensure `CONTRIBUTING.md`,
-`docs/AI_AGENTS.md`, and the file the user is asking about are all in
-context. Avoid running the contract suite — forge isn't available in the
-Code Interpreter sandbox.
+Upload the repo as a zip. Make sure `AGENTS.md`, `CONTRIBUTING.md`, and
+the file you are changing are all in context. Do not try to run the
+Solidity suite there. `forge` is not available in that sandbox.
+
+## Minimum verification before "done"
+
+```bash
+scripts/verify.sh          # all lanes; contracts lane only if forge is installed
+```
+
+Per-surface targets and the full command list are in the
+**Commands** section of `AGENTS.md`.
 
 ## Reporting agent-introduced regressions
 
-If an LLM-suggested change introduces a regression (test failure, audit
-re-finding, deploy breakage), please file a Linear issue under the
-**LTP Dev Net** project with the label `agent-regression` and link the
-commit. That data improves future agent-targeted guidance here.
+If an agent-suggested change breaks a test, reopens an audit finding, or
+breaks a deploy, file a Linear issue under the **LTP Dev Net** project
+with the label `agent-regression` and link the commit. That data improves
+the guidance in `AGENTS.md`.

@@ -145,6 +145,11 @@ public-surface promise and the cross-version compatibility matrix.
   billing completions from four threads while the poller credits
 
 ### Changed
+- `AGENTS.md` is now the single source of truth for AI coding agents;
+  `CLAUDE.md` and `.cursorrules` are symlinks to it (the pattern used by
+  `vercel/next.js` and `apache/airflow`). Stale test counts and the
+  `plans/` path were corrected; `docs/AI_AGENTS.md` now holds only
+  per-tool notes
 - `CHANGELOG.md` entries now flag breaking changes inline with `**[BREAKING]**`
 
 ### Known issues

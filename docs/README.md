@@ -13,6 +13,7 @@ you're looking for yet, start with the persona pages.
 | **Cryptographer** reviewing the protocol or the proofs | [→ Cryptographer](personas/cryptographer.md) |
 | **Compliance auditor** verifying FedRAMP / third-party audit | [→ Compliance Auditor](personas/compliance-auditor.md) |
 | **Contributor** sending a PR or filing a bug | [→ Contributor](personas/contributor.md) |
+| **AI coding agent** (Claude Code, Codex, Cursor, others) | [→ AGENTS.md](../AGENTS.md) |
 
 See [personas/README.md](personas/README.md) for the rationale and the
 Diátaxis quadrant model.
