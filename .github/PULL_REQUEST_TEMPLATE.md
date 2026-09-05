@@ -8,7 +8,7 @@
 
 ## Testing
 
-- [ ] All existing tests pass (`pytest tests/ -v`)
+- [ ] All existing tests pass (`make test-python`, and `make test-contracts` for Solidity)
 - [ ] New tests added for new functionality
 - [ ] No external dependencies added to core library
 

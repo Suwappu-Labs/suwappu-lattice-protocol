@@ -16,12 +16,13 @@ disagrees with the repo, the repo wins. Fix this file in the same PR.
 | Know which directory owns what | [Repository structure](#repository-structure) |
 | Know what you must never do | [Boundaries](#boundaries) |
 | Change Solidity under `contracts/` | [Working in contracts/](#working-in-contracts) |
-| Change Python under `src/ltp/` | [Working in srcltp](#working-in-srcltp) |
+| Change Python under `src/ltp/` | [Working in src/ltp/](#working-in-srcltp) |
 | Change docs under `docs/` or root `*.md` | [Working in docs/](#working-in-docs) |
 | Change CI under `.github/workflows/` | [Working in .github/workflows/](#working-in-githubworkflows) |
 | Open a commit or PR | [Commits and PRs](#commits-and-prs) |
 | Avoid a known trap | [Known traps](#known-traps) |
 | Report a regression you caused | [Reporting agent regressions](#reporting-agent-regressions) |
+| Look up a term or ID | [Glossary](#glossary) |
 | Find the deeper docs | [References](#references) |
 
 ## What this repository is
@@ -227,6 +228,17 @@ Follow the same flow as human contributors in `CONTRIBUTING.md`.
 - A merged PR is finished. Start follow-up work from `main`, not from the
   merged branch.
 
+### Definition of done
+
+Say "done" only when every line below is true:
+
+- [ ] The lane for your surface is green: `scripts/verify.sh <lane>`.
+- [ ] `pre-commit run --all-files` passes with no bypass.
+- [ ] Docs you touched pass `make docs-api` and markdownlint.
+- [ ] Generated files (`contracts/abi/`, `docs/api/python/`) were regenerated, not edited.
+- [ ] No rule in [Boundaries](#boundaries) is broken.
+- [ ] The PR template is filled in and `CHANGELOG.md` has an entry if behaviour changed.
+
 ## Known traps
 
 Traps that have cost time in this repo. Some were audit findings:
@@ -257,6 +269,27 @@ breaks a deploy, file a Linear issue:
 | Include | Link to the commit and the failing check |
 
 Open tracking issues: GLO-785 (license field), GLO-786 (GitBook).
+
+## Glossary
+
+Terms and IDs you will meet in this repo, with the file that defines them.
+
+| Term | Meaning | Defined in |
+|---|---|---|
+| LTP | Lattice Transfer Protocol, this project | `README.md` |
+| Anchor | An on-chain record of a data state root | `src/ltp/anchor/`, `contracts/src/LTPAnchorRegistry.sol` |
+| Corridor | Bridge layer: super-nodes sign a state root, the aggregate is anchored on-chain | `src/ltp/corridor/`, `docs/CORRIDOR_INTEGRATION.md` |
+| Super-node | A member of the 9-node corridor signer set | `docs/CORRIDOR_INTEGRATION.md` |
+| 7-of-9 | Corridor attestation quorum | `src/ltp/corridor/constants.py` |
+| DST | BLS domain-separation tag; must match byte-for-byte across languages | `src/ltp/corridor/constants.py` (`BLS_CORRIDOR_DST`), LTP-A-022 |
+| PQ / ML-KEM / ML-DSA | Post-quantum key exchange and signatures | `src/ltp/primitives.py` |
+| Hybrid | Classical plus post-quantum lane, kept separate | `src/ltp/hybrid.py`, `.semgrep/crypto-lane-separation.yml` |
+| Secaudit | Slither + Echidna + invariants gate for `contracts/` | `Makefile` target `contracts-secaudit` |
+| Lane | One stage of `scripts/verify.sh` (lint, semgrep, python, fast, contracts, secaudit, docs) | `scripts/verify.sh` |
+| `LTP-A-nnn` | Internal security audit finding ID | `docs/security/audits/internal/` |
+| `GLO-nnn` | Linear issue key, team Suwappu | Linear workspace `suwappu` |
+| `LTP-corridor-v1` | Current wire-format version | `docs/CORRIDOR_INTEGRATION.md` |
+| `LTP_ENV` | Runtime mode; `production` fails closed | `src/ltp/bls.py`, `src/ltp/hsm.py` |
 
 ## References
 

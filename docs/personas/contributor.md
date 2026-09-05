@@ -24,6 +24,9 @@ minutes if you have Python 3.10+ and Foundry installed.
    of the most welcome forms of contribution.
 5. **[plans/](../plans/)** — every roadmap and design plan. If you're
    thinking about a non-trivial change, find or open a plan first.
+6. **[AGENTS.md](../../AGENTS.md)** — if you use Claude Code, Codex,
+   Cursor, or another AI coding agent, this is the file it reads. The
+   same rules apply to you.
 
 ## Workflow in one screen
 
@@ -63,7 +66,7 @@ gh pr create
 ## What gets a PR rejected
 
 - Changing a deployed-contract address without an accompanying upgrade
-  plan in `plans/` — CODEOWNERS will catch this.
+  plan in `docs/plans/` — CODEOWNERS will catch this.
 - Skipping `make contracts-secaudit` on a contract change — required
   before review.
 - Adding a dependency without a bump-policy entry in
