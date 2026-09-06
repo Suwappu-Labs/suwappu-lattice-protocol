@@ -1,8 +1,18 @@
 # AGENTS.md
 
 This file is the single source of truth for AI coding agents working in
-this repository. `CLAUDE.md` and `.cursorrules` are symlinks to it, so every
+this repository. Every tool-specific entry file is a symlink to it, so every
 tool reads the same text. Edit this file only.
+
+| Where an agent looks | What it finds |
+|---|---|
+| `AGENTS.md` (root) | This file. Codex, Cursor, Jules, and other AGENTS.md readers |
+| `CLAUDE.md` | Symlink to this file. Claude Code |
+| `GEMINI.md` | Symlink to this file. Gemini CLI default context file |
+| `.github/copilot-instructions.md` | Symlink to this file. GitHub Copilot |
+| `.cursorrules` | Symlink to this file. Legacy Cursor |
+| `contracts/AGENTS.md`, `src/ltp/AGENTS.md`, `docs/AGENTS.md` | Short nested guides for agents working inside those trees. Each has a `CLAUDE.md` symlink |
+| `README.md`, `docs/README.md`, `docs/SUMMARY.md`, `pyproject.toml` urls | Links back here for humans and crawlers |
 
 Last verified against the tree: 2026-09-04. If a command or count here
 disagrees with the repo, the repo wins. Fix this file in the same PR.

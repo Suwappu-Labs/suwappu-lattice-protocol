@@ -148,7 +148,10 @@ public-surface promise and the cross-version compatibility matrix.
 - `AGENTS.md` is now the single source of truth for AI coding agents;
   `CLAUDE.md` and `.cursorrules` are symlinks to it (the pattern used by
   `vercel/next.js` and `apache/airflow`). Stale test counts and the
-  `plans/` path were corrected; `docs/AI_AGENTS.md` now holds only
+  `plans/` path were corrected; `GEMINI.md` and
+  `.github/copilot-instructions.md` symlinks plus nested `AGENTS.md` files
+  in `contracts/`, `src/ltp/`, and `docs/` make the guide discoverable
+  from any entry point; `docs/AI_AGENTS.md` now holds only
   per-tool notes
 - `CHANGELOG.md` entries now flag breaking changes inline with `**[BREAKING]**`
 

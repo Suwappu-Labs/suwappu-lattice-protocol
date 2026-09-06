@@ -15,12 +15,20 @@ entry files are symlinks to it, so no tool can drift from another:
 |---|---|---|
 | Codex and any other tool that reads `AGENTS.md` | `AGENTS.md` | The canonical file |
 | Claude Code | `CLAUDE.md` | Symlink to `AGENTS.md` |
+| Gemini CLI | `GEMINI.md` | Symlink to `AGENTS.md` |
+| GitHub Copilot | `.github/copilot-instructions.md` | Symlink to `AGENTS.md` |
 | Cursor | `AGENTS.md` (current) or `.cursorrules` (legacy) | `.cursorrules` is a symlink to `AGENTS.md` |
 | Aider, Continue, Copilot Workspace | none automatic | Point the tool at `AGENTS.md` |
 | ChatGPT Code Interpreter | none automatic | Upload the repo and read `AGENTS.md` first |
 
 This mirrors how `vercel/next.js` and `apache/airflow` ship their agent
 guidance: one `AGENTS.md`, with `CLAUDE.md` as a symlink to it.
+
+Agents that start inside a subdirectory find a short nested guide there:
+`contracts/AGENTS.md`, `src/ltp/AGENTS.md`, and `docs/AGENTS.md`, each with
+a `CLAUDE.md` symlink. Nested files hold only what is specific to that tree
+and link back to the root. `vercel/next.js` (`packages/next/`, `test/`) and
+`apache/airflow` (`providers/`, `dev/`) use the same layout.
 
 To change any rule, edit `AGENTS.md`. Do not edit the symlinks.
 

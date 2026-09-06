@@ -33,6 +33,14 @@
 > comment. They version independently; see
 > [`docs/STABILITY_PROMISES.md`](docs/STABILITY_PROMISES.md).
 
+## For AI coding agents
+
+Read [`AGENTS.md`](AGENTS.md) first. It is the single source of truth for
+rules, commands, and layout. `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, and
+`.github/copilot-instructions.md` are symlinks to it. Subdirectories with
+their own rules (`contracts/`, `src/ltp/`, `docs/`) carry a short nested
+`AGENTS.md` that points back to the root.
+
 ## Visuals
 
 Diagrams of LTP, SUWAPPU DAG, SUWAPPU-DB, and the ecosystem atlas live in [`docs/visuals/`](docs/visuals/README.md) — each in three forms (inline Mermaid that renders on GitHub/GitBook, standalone HTML decks, and editable Mermaid/Excalidraw sources).
