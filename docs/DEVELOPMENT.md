@@ -144,9 +144,9 @@ mypy hook to `.pre-commit-config.yaml` + a `mypy` job to
 2. Verify `python -c "import ltp"` prints nothing (no assertion error).
 3. Verify `just lint` returns green on a freshly-cloned `main`.
 4. Verify `just test-python` returns green.
-5. Read [CLAUDE.md](../CLAUDE.md) for the repo's hard rules
+5. Read [AGENTS.md](../AGENTS.md) for the repo's hard rules
    (SHA-pin actions, no rebase on shared branches, no `--no-verify`).
-6. Read [docs/AI_AGENTS.md](AI_AGENTS.md) if you'll be working with
+6. Read [docs/AI_AGENTS.md](AI_AGENTS.md) for per-tool notes if you'll be working with
    Claude Code or another AI agent on this repo.
 7. Skim [docs/STABILITY_PROMISES.md](STABILITY_PROMISES.md) to learn
    which surfaces are version-locked vs. malleable.

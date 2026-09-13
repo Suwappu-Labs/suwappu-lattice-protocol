@@ -84,7 +84,7 @@ cd contracts && forge script script/Deploy.s.sol --rpc-url http://localhost:8545
 cd .. && pytest tests/test_contract_integration.py -v
 ```
 
-All 1,251+ tests should pass. If any fail on a clean checkout, please open an issue.
+All tests should pass (about 4,000 Python and 340 Solidity). If any fail on a clean checkout, please open an issue.
 
 ## Code Style
 
@@ -137,13 +137,13 @@ All 1,251+ tests should pass. If any fail on a clean checkout, please open an is
 
 1. **Fork** the repository and create a feature branch
 2. **Write tests** for new functionality (maintain or improve coverage)
-3. **Run the full test suite** before submitting: `pytest tests/ -v` and `cd contracts && forge test -vvv`
+3. **Run the full test suite** before submitting: `make test-python` and `make test-contracts` (or `scripts/verify.sh`)
 4. **Keep PRs focused** — one feature or fix per PR
 5. **Write clear commit messages** describing the "why", not just the "what"
 
 ### PR Checklist
 
-- [ ] All 1,251+ tests pass (Python + Solidity)
+- [ ] All tests pass (`make test-python` and `make test-contracts`)
 - [ ] New code has corresponding tests
 - [ ] No external dependencies added to core library
 - [ ] Type annotations on public API

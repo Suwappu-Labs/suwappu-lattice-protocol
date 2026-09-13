@@ -81,6 +81,7 @@ dependencies = []
 Documentation  = "https://github.com/Suwappu-Labs/suwappu-lattice-protocol/tree/main/docs"
 Repository     = "https://github.com/Suwappu-Labs/suwappu-lattice-protocol"
 Changelog      = "https://github.com/Suwappu-Labs/suwappu-lattice-protocol/blob/main/CHANGELOG.md"
+"Agent Guide"  = "https://github.com/Suwappu-Labs/suwappu-lattice-protocol/blob/main/AGENTS.md"
 "Release Notes" = "https://github.com/Suwappu-Labs/suwappu-lattice-protocol/releases"
 "Issue Tracker" = "https://github.com/Suwappu-Labs/suwappu-lattice-protocol/issues"
 "Security Policy" = "https://github.com/Suwappu-Labs/suwappu-lattice-protocol/blob/main/SECURITY.md"

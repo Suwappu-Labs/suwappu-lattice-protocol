@@ -13,8 +13,9 @@
 [![Whitepaper](https://img.shields.io/badge/whitepaper-0.2.1-informational)](docs/WHITEPAPER.md)
 [![Formal](https://img.shields.io/badge/Lean_4-52_theorems-9cf)](formal/lean/README.md)
 [![Post-Quantum](https://img.shields.io/badge/crypto-post--quantum-purple)]()
-[![Claude Code](https://img.shields.io/badge/Claude_Code-supported-blueviolet)](CLAUDE.md)
-[![Cursor](https://img.shields.io/badge/Cursor-supported-black)](.cursorrules)
+[![AGENTS.md](https://img.shields.io/badge/AGENTS.md-canonical-1f6feb)](AGENTS.md)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-supported-blueviolet)](AGENTS.md)
+[![Cursor](https://img.shields.io/badge/Cursor-supported-black)](AGENTS.md)
 
 </div>
 
@@ -31,6 +32,14 @@
 > ([whitepaper](docs/WHITEPAPER.md)) is at 0.2.1 — a public draft issued for
 > comment. They version independently; see
 > [`docs/STABILITY_PROMISES.md`](docs/STABILITY_PROMISES.md).
+
+## For AI coding agents
+
+Read [`AGENTS.md`](AGENTS.md) first. It is the single source of truth for
+rules, commands, and layout. `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, and
+`.github/copilot-instructions.md` are symlinks to it. Subdirectories with
+their own rules (`contracts/`, `src/ltp/`, `docs/`) carry a short nested
+`AGENTS.md` that points back to the root.
 
 ## Visuals
 
