@@ -145,10 +145,9 @@ mypy hook to `.pre-commit-config.yaml` + a `mypy` job to
 3. Verify `just lint` returns green on a freshly-cloned `main`.
 4. Verify `just test-python` returns green.
 5. Read [AGENTS.md](../AGENTS.md) for the repo's hard rules
-   (SHA-pin actions, no rebase on shared branches, no `--no-verify`).
-6. Read [docs/AI_AGENTS.md](AI_AGENTS.md) for per-tool notes if you'll be working with
-   Claude Code or another AI agent on this repo.
-7. Skim [docs/STABILITY_PROMISES.md](STABILITY_PROMISES.md) to learn
+   (SHA-pin actions, no rebase on shared branches, no `--no-verify`) and,
+   if you're using an AI coding agent, which file it reads.
+6. Skim [docs/STABILITY_PROMISES.md](STABILITY_PROMISES.md) to learn
    which surfaces are version-locked vs. malleable.
 
 Open a PR against `main`. The `Lint` workflow plus the existing `ETP CI`
