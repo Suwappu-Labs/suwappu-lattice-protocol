@@ -193,6 +193,30 @@ contract ETPGovernanceTest is Test {
     }
 
     // -----------------------------------------------------------------------
+    // Constructor: requiredRatio bounds (M-15)
+    // -----------------------------------------------------------------------
+
+    function test_constructor_requiredRatio_aboveBasisPoints_reverts() public {
+        vm.expectRevert(abi.encodeWithSelector(ETPGovernance.InvalidRequiredRatio.selector, 10001));
+        new ETPGovernance(admin, 10001);
+    }
+
+    function test_constructor_requiredRatio_atBasisPoints_succeeds() public {
+        ETPGovernance g = new ETPGovernance(admin, 10000);
+        assertEq(g.requiredRatio(), 10000);
+    }
+
+    function test_constructor_requiredRatio_lowNonzero_succeeds() public {
+        ETPGovernance g = new ETPGovernance(admin, 1);
+        assertEq(g.requiredRatio(), 1);
+    }
+
+    function test_constructor_requiredRatio_zero_usesDefault() public {
+        ETPGovernance g = new ETPGovernance(admin, 0);
+        assertEq(g.requiredRatio(), 6667);
+    }
+
+    // -----------------------------------------------------------------------
     // Admin Transfer
     // -----------------------------------------------------------------------
 
