@@ -151,6 +151,20 @@ contract ETPGovernanceTest is Test {
         assertEq(gov.currentPhase(), gov.PHASE_GROWTH());
     }
 
+    /// @dev C3: with zero operators registered (and thus zero votes possible),
+    ///      `required` used to compute to 0 via integer division, letting any
+    ///      EOA execute a transition with no votes at all. Must now revert.
+    function test_executeTransition_zeroOperators_reverts() public {
+        assertEq(gov.operatorCount(), 0);
+        bytes32 bootstrap = gov.PHASE_BOOTSTRAP();
+        bytes32 growth = gov.PHASE_GROWTH();
+
+        vm.expectRevert(bytes("SuwappuGovernance: no operators registered"));
+        gov.executeTransition(bootstrap, growth);
+
+        assertEq(gov.currentPhase(), bootstrap);
+    }
+
     function test_executeTransition_wrongPhase_reverts() public {
         // Current phase is BOOTSTRAP, trying to transition GROWTH -> MATURITY
         bytes32 growth = gov.PHASE_GROWTH();

@@ -188,6 +188,10 @@ contract ETPGovernance {
         bytes32 transitionKey = keccak256(abi.encodePacked(fromPhase, "->", toPhase));
         uint256 snapshotCount = operatorCountAtFirstVote[transitionKey];
         if (snapshotCount == 0) snapshotCount = operatorCount; // No votes yet
+        // C3: with zero operators, `required` below computes to 0 via integer
+        // division, so `voteCount < required` (0 < 0) is false and any EOA
+        // could execute a transition with no votes at all. Reject explicitly.
+        require(snapshotCount > 0, "SuwappuGovernance: no operators registered");
         uint256 required = (snapshotCount * requiredRatio + BASIS_POINTS - 1) / BASIS_POINTS;
         if (voteCount[transitionKey] < required) {
             revert SupermajorityNotReached(transitionKey, voteCount[transitionKey], required);
