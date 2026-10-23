@@ -359,12 +359,15 @@ contract OptimisticBridgeChallenge {
         emit ZKVerifierSet(_zkVerifier);
     }
 
-    /// @notice Finalize a window via ZK proof of *validity*. Callable by admin
-    ///         or authorized ZK verifier. Skips the challenge period — instant
-    ///         finality. Returns both bonds (operator was honest; challenger
-    ///         acted in good faith and is not slashed). LTP-A-001.
+    /// @notice Finalize a window via ZK proof of *validity*. Callable only by
+    ///         the authorized ZK verifier -- admin cannot call this directly,
+    ///         since that would let admin finalize (and release bonds on) any
+    ///         window without a proof, defeating the point of the ZK path.
+    ///         Skips the challenge period — instant finality. Returns both
+    ///         bonds (operator was honest; challenger acted in good faith and
+    ///         is not slashed). LTP-A-001.
     function finalizeWithZKProof(bytes32 anchorDigest) external nonReentrant {
-        if (msg.sender != admin && msg.sender != zkVerifier) revert Unauthorized();
+        if (msg.sender != zkVerifier) revert Unauthorized();
 
         Challenge storage c = _challenges[anchorDigest];
         if (c.status != STATUS_OPEN && c.status != STATUS_CHALLENGED) revert WindowNotOpen();
