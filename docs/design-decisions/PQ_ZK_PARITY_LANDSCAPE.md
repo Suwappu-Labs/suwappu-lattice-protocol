@@ -79,7 +79,7 @@ LTP is compared publicly:
 |---|---|---|---|
 | ML-DSA verified on-chain | None | ZKNOX verifier on Sepolia, Arbitrum Sepolia, Base Sepolia (V); QRL 2.0 testnet with ML-DSA-87 accounts (V) | [ETHDILITHIUM][ethdil], [Fireblocks verifier][fb] |
 | Post-quantum quorum certificate | Classical BLS, unchecked on-chain | Lean Ethereum devnets and Tezos Quantumnet (hash-based signatures aggregated by a hash-based proof) (V); Algorand mainnet Falcon state proofs (V) | [leanSig][leansig], [leanMultisig][leanms], [go-stateproof-verification][algosp] |
-| ZK proof of ML-DSA verification | Guest written, never proven | No public SP1 or RISC Zero example found | [SP1][sp1]; nearest benchmark is [slh-dsa-stark-bench][slhbench] |
+| ZK proof of ML-DSA verification | Guest written, never proven | Two public benchmarks: Dilithium5 in SP1, ML-DSA-44 in RISC Zero (section 5.5). Neither is deployed | [dilithium5-poseidon][d5p], [kaspa-pq-zk-bench][kpq] |
 | End-to-end post-quantum proof on EVM | None | No production zkVM. All end in a BN254 pairing proof | [sol-spartan-whir][ssw] (research) |
 | Hybrid admin and account keys | ECDSA accounts | Kohaku hybrid ML-DSA + ECDSA accounts on three testnets (V); NEAR mainnet in-place key rotation (one secondary source) | [Kohaku `pq-account`][kohaku] |
 | ML-KEM transport | ML-KEM, no hybrid | Quantus (ML-KEM-768 + ML-DSA-87 handshake) (V); age v1.3 `mlkem768x25519` (V); Signal SPQR (V) | [Quantus chain][quantus], [age][age], [SPQR][spqr] |
@@ -138,7 +138,10 @@ on-chain verification, or ends in a pairing-based wrapper.
 | leanVM / leanMultisig | [leanEthereum/leanMultisig][leanms] (V) | "Not (yet) production ready" (V) | Hash-based throughout, but the EVM verifier is impractical (below) |
 
 **Direct hash-based verification on EVM** exists as research code in
-[sol-spartan-whir][ssw] (MIT). README transaction gas (V):
+[sol-spartan-whir][ssw] (MIT) and its successor [ethereum/sol-whir-p3][swp3]
+(MIT, last commit 2026-10-21), whose README repeats these figures and
+states that the contracts need a split verifier to deploy on a chain that
+enforces the code-size limit. README transaction gas (V):
 
 | Verifier | Tx gas | Note |
 |---|---|---|
@@ -252,6 +255,82 @@ deployed `main` contract. It does not cover ML-DSA-65.
 verification on Base Sepolia, and an end-to-end test with an LTP-produced
 signature.
 
+### 5.5 Proving ML-DSA verification in a zkVM
+
+A second pass cloned and read the repositories below (not built) and read
+`zkvm/` in this tree.
+
+**Public measurements.** All self-reported by their authors.
+
+| Repository | What is proven | Numbers |
+|---|---|---|
+| [gabrielemorciano/dilithium5-poseidon][d5p] (`zkvm-comparison/`; MIT per README, no licence file; last commit 2026-09-20) | Unmodified Dilithium5 verification in SP1 6.0.1, no precompile patches | 3,796,397 cycles; 124 s STARK plus 594 s Groth16 wrap; **peak 23.9 GB** on 16 cores; 208,352 gas to verify on-chain |
+| [KaspaKii/kaspa-pq-zk-bench][kpq] (MIT; last commit 2026-07-22) | ML-DSA-44 (RustCrypto `ml-dsa 0.1.1`, the crate this repo resolves to), Falcon-512 and SLH-DSA-128s as RISC Zero 3.0.5 guests | High-end GPU means: Falcon 1.91 s, ML-DSA-44 5.35 s, SLH-DSA 16.33 s. No cycle counts |
+| `kota1026/pq-wallet-sp1-ntt-gadget-` | Landing page claims ML-DSA-65 in SP1 | Repository is empty. Not a usable artefact |
+| [a16z/jolt][jolt] | No ML-DSA example | Has inline Keccak and an NTT helper for odd primes below 2^30, which covers the ML-DSA modulus |
+
+No Dilithium or Falcon verifier was found in Noir, Cairo, halo2, Plonky2/3,
+OpenVM, ZisK, Pico or Airbender, and no official Succinct or RISC Zero
+example. That is an absence of search results, not proof of absence.
+
+**Estimate for ML-DSA-65.** Derived, not measured:
+
+- One verification needs about 175 Keccak permutations (150 of them to
+  expand the 6×5 matrix) and 18 NTTs of 256 points. Dilithium5 needs about
+  311 permutations and 24 NTTs.
+- Scaling the measured 3.80M cycles for Dilithium5 gives roughly 2–4M
+  cycles unpatched, and plausibly 1–2M with the Keccak precompile in use.
+- `client.execute()` returns the real cycle count in seconds without
+  prover memory. That is the first thing to run.
+
+**Why the proof in `zkvm/` has never completed.** Four findings from the
+tree, each checked against the files:
+
+| Finding | Where | Consequence |
+|---|---|---|
+| `Cargo.toml` asks for `ml-dsa 0.1.0-rc.8` but `Cargo.lock` resolves `ml-dsa 0.1.1`, which hashes through the `shake 0.1.0` and `keccak 0.2.0` crates rather than `sha3` | `zkvm/sp1-mldsa-verifier/Cargo.lock` | SP1's Keccak precompile is reached through its patched `sha3` and `tiny-keccak` crates only (V, Succinct docs). ML-DSA's SHAKE runs in software |
+| No `[patch.crates-io]` section | `zkvm/sp1-mldsa-verifier/Cargo.toml` | Even the guest's own `SHA3-256(vk)` is unaccelerated |
+| The host uses the CPU prover and a plain `prove` call with no Groth16 or PLONK mode | `zkvm/sp1-host/src/main.rs` | It produces a core proof, which an EVM verifier cannot check |
+| 15 GB sandbox | Guest header comment | Succinct documents 16 GB or more for core and Groth16 proofs, and the executor defaults to a 24 GiB memory limit (V). The one comparable measurement peaked at 23.9 GB |
+
+Separately, the pinned `sp1-zkvm 6.3.1` falls inside advisory
+GHSA-p7v2-jjv3-8p8f (High, published 2026-10-11; native Rust verifier
+6.0.0 to 6.8.0, fixed in 6.8.1; Groth16 and PLONK verification stated
+unaffected) (V). The host's `client.verify` self-check is the affected
+path. See <https://github.com/succinctlabs/sp1/security/advisories/GHSA-p7v2-jjv3-8p8f>.
+
+**Shortest route to one real proof on Base Sepolia:**
+
+1. Run `execute` and record cycles.
+2. Move SP1 to 6.8.1 or later and re-derive the program verification key.
+3. Request a Groth16 proof in the host.
+4. Prove on a 16-core machine with at least 32 GB, or through the Succinct
+   Prover Network. No concrete network price was found.
+5. Point `ZKBridgeVerifier` at Succinct's verifier for the matching
+   version. Its Base Sepolia address was not verified in this survey.
+
+Routing ML-DSA's SHAKE to the precompile is optional for the first proof.
+No off-the-shelf patch exists for the `keccak 0.2` and `shake` crates; it
+would need a small fork modelled on the `sha3` patch, which counts as a
+new dependency source under this repository's rules.
+
+**What a proof buys here.** The guest proves one signature. Verifying
+that signature directly in Solidity (section 5.4) is post-quantum today
+with no wrapper and costs about 1.2–1.5M gas. The SP1 route costs about
+0.2–0.3M gas on-chain but ends in Groth16 over BN254. The proof route
+earns its place when many signatures or a long log-consistency statement
+are compressed into one proof, not for a single signature.
+
+**Other 2026 lattice code.** Lattice Jolt's code is on `a16z/jolt` main
+(`crates/jolt-akita`), with the commitment scheme pinned to
+`LayerZero-Labs/akita`. [a16z/hachi][hachi] is a polynomial-commitment
+library only. `nicarq/halo3` implements SuperNeo folding and labels itself
+not production-ready. `dfaranha/aggregate-falcon` (Falcon aggregated with
+LaBRADOR) has no licence file and no commits since 2024. No ML-DSA
+aggregation implementation and no lattice proof system with a Solidity
+verifier was found. EIP-7885 (an NTT precompile that lists the ML-DSA
+modulus) is Draft with no fork assigned (V).
+
 ## 6. Replacing the BLS corridor quorum
 
 ### 6.1 Threshold and multi-signature schemes
@@ -287,10 +366,10 @@ is cheap in gas (about 270k). Two cautions:
 
 - The on-chain wrapper is a BN254 pairing proof. A quantum attacker could
   forge the wrapper even though the inner signatures are post-quantum.
-- No published cycle count for ML-DSA-65 verification in any zkVM was
-  found. The only confirmed post-quantum signature benchmark is
-  [slh-dsa-stark-bench][slhbench] (SLH-DSA in RISC Zero: 8 signatures in
-  28.9 s on a high-end GPU, 222 KiB). LTP would have to measure its own.
+- No published cycle count for ML-DSA-65 itself was found. Section 5.5
+  gives the nearest measurements (Dilithium5 in SP1, ML-DSA-44 in RISC
+  Zero) and an estimate. [slh-dsa-stark-bench][slhbench] adds SLH-DSA in
+  RISC Zero: 8 signatures in 28.9 s on a high-end GPU, 222 KiB.
 
 ### 6.4 No aggregation
 
@@ -372,8 +451,10 @@ document commits none of them.
    [`PQ_ONCHAIN_VERIFICATION.md`](PQ_ONCHAIN_VERIFICATION.md) section 6
    (sign a 32-byte digest, add `ctx`) are prerequisites.
 2. **Finish one real SP1 proof and retire simulated mode.** This closes
-   the forgeable fast path. Build `zkvm/` in CI. Record the ML-DSA-65
-   cycle count; no public figure exists.
+   the forgeable fast path. Follow the route in section 5.5: measure
+   cycles with `execute`, move off the SP1 version covered by the
+   advisory, request Groth16, and prove with enough memory. Build `zkvm/`
+   in CI.
 3. **Correct the documentation claims** listed in section 2.
 4. **Add the hybrid KEM** already in the backlog (ML-KEM-768 + X25519),
    which is what age and TLS converged on.
@@ -435,6 +516,10 @@ above:
 [jolt]: https://github.com/a16z/jolt
 [ssw]: https://github.com/privacy-ethereum/sol-spartan-whir
 [slhbench]: https://github.com/remix7531/slh-dsa-stark-bench
+[swp3]: https://github.com/ethereum/sol-whir-p3
+[d5p]: https://github.com/gabrielemorciano/dilithium5-poseidon
+[kpq]: https://github.com/KaspaKii/kaspa-pq-zk-bench
+[hachi]: https://github.com/a16z/hachi
 [labrador]: https://github.com/lattice-dogs/labrador
 [lazer]: https://github.com/lazer-crypto/lazer
 [lfold]: https://github.com/NethermindEth/latticefold
