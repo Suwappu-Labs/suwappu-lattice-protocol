@@ -21,8 +21,10 @@ listed under [Rejected](#8-checked-and-rejected) with the reason.
 
 ## 1. How to read the evidence
 
-This is a desk survey. Nothing external was built or run. Each external
-claim carries a marker:
+This is a survey in two passes. The first was desk research. The second
+cloned and read the key repositories (sections 5.4, 5.5 and 6) and
+checked this tree's `zkvm/` against them. Nothing external was built or
+run in either pass. Each external claim carries a marker:
 
 | Marker | Meaning |
 |---|---|
@@ -335,13 +337,35 @@ modulus) is Draft with no fork assigned (V).
 
 ### 6.1 Threshold and multi-signature schemes
 
-| Scheme | Source | Why it does not fit 7-of-9 |
-|---|---|---|
-| Threshold ML-DSA (Celi et al.) | github.com/GuilhemN/threshold-ml-dsa (V) | Capped at 6 parties; academic proof of concept |
-| `tss-lib/v2/mldsatss` | pkg.go.dev/github.com/KarpelesLab/tss-lib/v2/mldsatss, MIT (V) | ML-DSA-44 only, n ≤ 6, trusted dealer. Output is standard FIPS 204, which is its appeal |
-| Ringtail | [daryakaviani/ringtail][ringtail], Apache-2.0 (V) | 3 commits; custom non-FIPS signature; no Solidity verifier |
-| Threshold Raccoon, TOPCOAT, Chipmunk, Squirrel, MuSig-L, DualMS | — | No confirmed public code |
-| NIST threshold call | csrc.nist.gov/Projects/threshold-cryptography (V) | Package deadline not before 2027-03-01; no code linked yet |
+A second pass cloned and read these repositories. The conclusion holds
+and is now firmer: **no open code produces a FIPS 204-verifiable threshold
+signature for n = 9, t = 7.**
+
+| Scheme | Source, licence, last commit | Parties | Standard ML-DSA output? | Assessment |
+|---|---|---|---|---|
+| Mithril threshold ML-DSA (Celi et al.) | github.com/GuilhemN/threshold-ml-dsa; no licence file; 2026-09-05 | Hard cap of 6 in the code for all three parameter sets | Yes (paper claim) | 3 rounds; "academic proof-of-concept" |
+| `tss-lib` `mldsatss` | github.com/KarpelesLab/tss-lib; 2026-05-30 | `MaxParties = 6`, ML-DSA-44 only | Yes | Port of Mithril; trusted dealer |
+| Lux `luxfi/threshold` | Read from the Go module proxy (v1.12.16); "Lux Ecosystem License", paid for commercial use outside Lux networks | 2 ≤ t ≤ n ≤ 6 for ML-DSA | Claimed | Its README: "research preview, NOT production" |
+| Ringtail | [daryakaviani/ringtail][ringtail]; Apache-2.0; 2025-04-11 | Configurable | No, custom signature | 2 rounds; trusted dealer in config; "not ready for production" |
+| Quorus | ePrint 2025/1163; artifact not fetched | Any number, but honest-majority | Yes | 7-of-9 must tolerate six colluders, which is a dishonest majority. Likely a mismatch |
+| Shamir-nonce threshold ML-DSA | arXiv 2601.20917; no repository | Claims up to 32-of-45 | Claimed | No code; 21–45% signing success rate self-reported |
+| TALUS | arXiv 2603.22109; no repository | n/a | Claimed | Key-recovery attacks published (ePrint 2026/1386). Do not use |
+| Chipmunk | github.com/GottfriedHerold/Chipmunk; MIT; Rust | Synchronized multi-signature | No | A later paper (ePrint 2026/1161) estimates about 30-bit real security against the claimed 112. Drop |
+| Squirrel | github.com/zhenfeizhang/squirrel; no licence; 2023 | n/a | No | Superseded by Chipmunk per its own README |
+| Raccoon (base scheme) | github.com/masksign/raccoon; MIT; 2023 | Single signer | No | The threshold variant's repositories do not clone |
+| Cloudflare CIRCL | BSD-style; 2026-11-16 | n/a | n/a | Its threshold directory contains RSA only |
+| NIST threshold call | csrc.nist.gov/Projects/threshold-cryptography | n/a | n/a | Package deadline not before 2027-03-01. Of the first 12 of 60 preview write-ups read, none linked code |
+
+Not found, or not searched individually: MuSig-L, DualMS, Plover, the
+two-round LWE schemes, and commercial MPC vendors' threshold libraries.
+
+A threshold signature would also lose the on-chain record of which seven
+nodes signed, which the corridor's slashing and audit paths may want.
+
+Aggregating independently produced signatures fares no better at this
+size. [Lazer][lazer] has a working Falcon aggregation demo
+(`python/agg_sig/`) with no Solidity verifier. LayerZero's Aerie
+(ePrint 2026/2501) covers Falcon only and has released no code.
 
 ### 6.2 Hash-based signatures aggregated by a proof
 
@@ -394,6 +418,76 @@ typical transaction-size limits. The newest arithmetic lives on the
 calldata branch, so adopting it for the corridor means porting the
 stored-key loading onto it.
 
+### 6.5 Cheap hash-based verification on EVM
+
+Hash-based signatures built on the EVM's native Keccak are an order of
+magnitude cheaper to verify than ML-DSA.
+
+| Source | What | Gas per verify (self-reported) | Signature |
+|---|---|---|---|
+| [nconsigny/SPHINCS-][sphm] (MIT; last commit 2026-11-19; "not audited") | Stateless SPHINCS variants tuned for the EVM | 39k–53k (leanSphincs family); 96k–105k (C7, C13); about 142k for a FIPS 205-style SLH-DSA-SHA2-128-24 | 3.7–5.7 KB |
+| `nconsigny/JARDIN` (2026-08-09; unaudited) | One SPHINCS registration, then FORS | About 60k | Not recorded |
+| `ruslan-ilesik/poqeth` (no licence; 2025) | WOTS+, XMSS, SPHINCS+ reference contracts | About 450–480k for WOTS+ (unoptimized) | Not recorded |
+
+Cautions from the SPHINCS- repository itself:
+
+- Its October 2026 review records a signer bug in one parameter set (C12)
+  that allowed forgery after about 1,000 signatures.
+- The cheap variants are not FIPS 205 parameter sets.
+- Verifiers are deployed on Sepolia. A 2-of-3 Safe prototype with
+  hash-based owners exists only on an experimental testnet.
+
+Stateful one-time keys (one Merkle leaf per epoch) would be cheaper
+still, an estimated 15–30k gas per verify. The estimate is not from any
+measured contract. A leaf reused after a restore or failover allows
+forgery, and the saving over the stateless variants is about a factor of
+two. Not recommended.
+
+### 6.6 Precedents for the design
+
+- **Lux** documents its production post-quantum lane for cross-chain
+  messages as N independent FIPS 204 signatures collected into a
+  certificate set, read from its module source. Whether that is live was
+  not confirmed. It is the same no-aggregation design as section 6.4.
+- **Kohaku** hybrid accounts require both an ECDSA and a post-quantum
+  signature. They contain no multisig or threshold logic.
+- **ERC-7913.** The ZKNOX ML-DSA and Falcon verifiers expose the
+  `verify(bytes key, bytes32 hash, bytes signature)` form. OpenZeppelin's
+  `MultiSignerERC7913` is a candidate container for a 7-of-9 policy
+  (not checked in code here).
+- **A 7-of-9 post-quantum multisig on Base Sepolia was not found.** It
+  can be assembled from the parts above; nobody ships it.
+- **Algorand state proofs** have a Go verifier only. No Solidity verifier
+  was found.
+- **No bridge** (CCIP, Wormhole, LayerZero, Hyperlane) was found with a
+  merged post-quantum signature option. The search was a single pass.
+
+### 6.7 Hybrid composition
+
+- Composite ML-DSA is reported as published in November 2026 as RFC 10073
+  (formerly `draft-ietf-lamps-pq-composite-sigs`). It pairs ML-DSA with
+  RSA, ECDSA and EdDSA. **BLS is not among the combinations**, so the
+  corridor cannot adopt a standard composite; `src/ltp/hybrid.py` (ML-DSA-65
+  + Ed25519) is within its scope.
+- Deployed practice is AND-composition: both signatures must verify.
+- For "keep BLS, add ML-DSA": require both certificates over one message
+  that commits to the root, epoch, chain ID and both key sets. Give the
+  post-quantum lane its own domain tag and leave the BLS DST byte-identical
+  (LTP-A-022).
+
+### 6.8 Ranked shortlist for the 7-of-9 certificate
+
+| Rank | Design | Built from | On-chain cost | Signer change | Drop if |
+|---|---|---|---|---|---|
+| 1 | Seven ML-DSA-65 signatures plus a signer bitmap, AND-composed with BLS | ETHDILITHIUM branches (section 5.4); a nine-key registry | About 10.8M gas execution; 23 KB of signatures; one-time key publication | None beyond signing the digest with existing keys | The chain's per-transaction gas limit is below about 12M (splitting across transactions is possible), or the branch fails ACVP vectors when run |
+| 2 | Seven stateless hash-based signatures | SPHINCS- verifiers and signers | About 0.3–0.7M gas execution; 26–29 KB | A new hash-based key per node and a second algorithm in the stack | FIPS algorithms are required (then about 142k each with the SLH-DSA-style set), or L2 calldata pricing erases the saving |
+| 3 | Seven Falcon-512 signatures | [ETHFALCON][ethfal] | About 3.1M on its experimental branch, 26.6M on `main`; about 5 KB | A new algorithm with floating-point signing | No hardened signer, or ML-DSA only is preferred |
+| 4 | Stateful one-time keys | A new assembly verifier | Estimated 0.1–0.2M | Durable per-node leaf counter | Single use cannot be guaranteed across failover. Dropped by default |
+
+Rank 1 is the only option that adds no new algorithm and no new keys.
+Rank 2 is roughly twenty times cheaper on-chain and is the one to revisit
+if gas, not stack simplicity, becomes the constraint.
+
 ## 7. Transport, hybrid KEM and libraries
 
 | System | Source | Hybrid construction |
@@ -431,7 +525,7 @@ pin.
 | Solana L1 | Falcon code in clients, not activated (U). A Winternitz vault program exists as a contract-level pattern |
 | Aptos, Sui, Hedera, Starknet, Zcash | Proposals or roadmaps; no shipped PQ signature path confirmed (U) |
 | Project Eleven | Open tooling and a registry, not a chain |
-| Neo, SuperNeo, Hachi, Cyclo | Paper only, or no licence |
+| Neo, Cyclo | Paper only, or no licence. Hachi and a SuperNeo implementation have code (section 5.5) but nothing deployable |
 | Shamir-nonce threshold ML-DSA preprint | No repository linked |
 | LayerZero Aerie | Large aggregation numbers in press; no code released |
 | Wormhole, Hyperlane, Axelar, IBC | No post-quantum quorum code or roadmap found |
@@ -445,8 +539,8 @@ document commits none of them.
 
 1. **Verify ML-DSA on-chain with no aggregation.** Each super-node signs
    the state root with ML-DSA-65; the contract checks seven signatures.
-   Start from the ZKNOX experimental branch or a port of the Fireblocks
-   verifier. Keep BLS alongside as a hybrid until a verifier is audited.
+   Start from the ZKNOX branches described in section 5.4 with keys held
+   in a stored blob. Section 6.8 ranks the alternatives. Keep BLS alongside as a hybrid until a verifier is audited.
    Both LTP to-dos already listed in
    [`PQ_ONCHAIN_VERIFICATION.md`](PQ_ONCHAIN_VERIFICATION.md) section 6
    (sign a 32-byte digest, add `ctx`) are prerequisites.
