@@ -32,6 +32,7 @@
 * [Cross-Deployment Federation](design-decisions/CROSS_DEPLOYMENT_FEDERATION.md)
 * [Commitment Network Options](design-decisions/COMMITMENT_NETWORK_OPTIONS.md)
 * [On-Chain PQ Verification (EIP/ERC Strategy)](design-decisions/PQ_ONCHAIN_VERIFICATION.md)
+* [Post-Quantum and ZK Parity Landscape](design-decisions/PQ_ZK_PARITY_LANDSCAPE.md)
 * [Standards Work](eips/README.md)
 * [Deferred-Token Architecture](economics/DEFERRED_TOKEN_ARCHITECTURE.md)
 * [Validator Compute Incentives](economics/VALIDATOR_COMPUTE_INCENTIVES.md)

@@ -59,6 +59,7 @@ New to LTP? Read in this order:
 | | [Cross-Deployment Federation](design-decisions/CROSS_DEPLOYMENT_FEDERATION.md) | Network discovery, trust levels, federation |
 | | [Commitment Network Options](design-decisions/COMMITMENT_NETWORK_OPTIONS.md) | Custom L1 vs Ethereum L1/L2 analysis |
 | | [On-Chain PQ Verification](design-decisions/PQ_ONCHAIN_VERIFICATION.md) | Why ML-DSA can't be verified on-chain today, and the EIP/ERC path out |
+| | [Post-Quantum and ZK Parity Landscape](design-decisions/PQ_ZK_PARITY_LANDSCAPE.md) | Who else ships PQ and ZK with live networks and public code, and where LTP stands |
 | | [Standards Work](eips/README.md) | Draft ERCs and prepared EIP feedback |
 | | [Deferred-Token Architecture](economics/DEFERRED_TOKEN_ARCHITECTURE.md) | Stablecoin-native security, no premined token |
 | | [Validator Compute Incentives](economics/VALIDATOR_COMPUTE_INCENTIVES.md) | Compute in, proofs up, stablecoins out — the operator payment loop |
