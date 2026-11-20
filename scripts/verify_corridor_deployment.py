@@ -39,6 +39,7 @@ from src.ltp.anchor.chain_profiles import HYPEREVM_TESTNET
 from src.ltp.anchor.state import EntityState
 from src.ltp.anchor.submission import AnchorSubmission
 from src.ltp.corridor.lanes import get_lane
+from src.ltp.entropy import secure_random_bytes
 
 
 def main() -> int:
@@ -67,8 +68,8 @@ def main() -> int:
     print(f"[2] live config OK: {rpc_url} is chain {config.chain_id}, registry {registry} has code")
 
     # 3. Anchor a fresh digest under the registered signer
-    digest = os.urandom(32)
-    state_root = os.urandom(32)
+    digest = secure_random_bytes(32)
+    state_root = secure_random_bytes(32)
     sequence = client.signer_sequence(vk_hash) + 1
     submission = AnchorSubmission(
         anchor_digest=digest,
