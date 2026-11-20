@@ -16,7 +16,6 @@
 * [Quick Start](../CONTRIBUTING.md)
 * [Code of Conduct](../CODE_OF_CONDUCT.md)
 * [Agent Guide (AGENTS.md)](../AGENTS.md)
-* [Working with AI Agents](AI_AGENTS.md)
 * [Stability Promises](STABILITY_PROMISES.md)
 * [Changelog](../CHANGELOG.md)
 

@@ -11,10 +11,11 @@ tool reads the same text. Edit this file only.
 | `GEMINI.md` | Symlink to this file. Gemini CLI default context file |
 | `.github/copilot-instructions.md` | Symlink to this file. GitHub Copilot |
 | `.cursorrules` | Symlink to this file. Legacy Cursor |
-| `contracts/AGENTS.md`, `src/ltp/AGENTS.md`, `docs/AGENTS.md` | Short nested guides for agents working inside those trees. Each has a `CLAUDE.md` symlink |
+| Aider, Continue, Copilot Workspace | No automatic file. Add this file to context at the start of a session |
+| ChatGPT Code Interpreter | No automatic file. Upload the repo and read this file first. `forge` is not available in that sandbox |
 | `README.md`, `docs/README.md`, `docs/SUMMARY.md`, `pyproject.toml` urls | Links back here for humans and crawlers |
 
-Last verified against the tree: 2026-09-04. If a command or count here
+Last verified against the tree: 2026-09-13. If a command or count here
 disagrees with the repo, the repo wins. Fix this file in the same PR.
 
 ## Find it fast
@@ -255,15 +256,17 @@ Traps that have cost time in this repo. Some were audit findings:
 
 | Trap | What happens | Do this instead |
 |---|---|---|
-| Import on a stock interpreter | `import ltp` asserts on missing PQ backends | `pip install -e '.[production]'` |
-| Normalizing the BLS DST | Python and Solidity signatures diverge (LTP-A-022) | Copy bytes exactly |
-| Overriding `LTP_ENV` | Fail-closed paths silently open | Fix the test or the code |
 | Python 3.14 + pdoc | `make docs-api` skips most submodules (ForwardRef bug) | Use 3.10 to 3.13 |
-| Tag-pinned action | Audit re-finding LTP-A-025 | Pin the commit SHA |
-| `git rebase` on a shared branch | Topology-sensitive tests break | `git merge` |
 | Editing `docs/api/python/` or `contracts/abi/` by hand | Next regeneration overwrites it | Run `make docs-api` or `make abi` |
 | Running `pytest tests/` including integration | Needs a live anvil | `make test-python` skips it; `make test-integration` runs it |
 | Stale test counts in docs | Reviewers lose trust | Count with `grep -rE 'def test_' tests/ \| wc -l` |
+
+The other traps that used to live in this table — importing without the
+`production` extra, normalizing the BLS DST, overriding `LTP_ENV`,
+tag-pinning an action, rebasing a shared branch — are each one bullet in
+[Boundaries](#boundaries) or [Environment setup](#environment-setup)
+already. Read those; this table only holds traps that aren't stated
+anywhere else.
 
 ## Reporting agent regressions
 
@@ -294,8 +297,6 @@ Terms and IDs you will meet in this repo, with the file that defines them.
 | DST | BLS domain-separation tag; must match byte-for-byte across languages | `src/ltp/corridor/constants.py` (`BLS_CORRIDOR_DST`), LTP-A-022 |
 | PQ / ML-KEM / ML-DSA | Post-quantum key exchange and signatures | `src/ltp/primitives.py` |
 | Hybrid | Classical plus post-quantum lane, kept separate | `src/ltp/hybrid.py`, `.semgrep/crypto-lane-separation.yml` |
-| Secaudit | Slither + Echidna + invariants gate for `contracts/` | `Makefile` target `contracts-secaudit` |
-| Lane | One stage of `scripts/verify.sh` (lint, semgrep, python, fast, contracts, secaudit, docs) | `scripts/verify.sh` |
 | `LTP-A-nnn` | Internal security audit finding ID | `docs/security/audits/internal/` |
 | `GLO-nnn` | Linear issue key, team Suwappu | Linear workspace `suwappu` |
 | `LTP-corridor-v1` | Current wire-format version | `docs/CORRIDOR_INTEGRATION.md` |
@@ -316,8 +317,6 @@ Read in this order for a non-trivial change:
    (normative).
 6. `docs/OPERATOR_RUNBOOK.md` section 13 — deploy checklist.
 7. `docs/visuals/README.md` — Mermaid conventions.
-8. `docs/AI_AGENTS.md` — per-tool notes (Claude Code, Cursor, Copilot,
-   Aider, ChatGPT).
 
 For protocol questions: `docs/WHITEPAPER.md`, then `docs/THREAT_MODEL.md`,
 then `docs/FORMAL_VERIFICATION_STATUS.md`. For operations:
