@@ -53,6 +53,7 @@
 * [Threshold BLS Signing Plan](plans/2026-05-12-threshold-bls-signing-plan.md)
 * [Gate 5 + Gate 6 Closure (2026-05-15)](plans/2026-05-15-gate-5-6-closure.md)
 * [Research Round (2026-08-16)](plans/2026-08-16-research-round.md)
+* [Research Round: Agent Communication (2026-09-06)](plans/2026-09-06-research-agent-communication.md)
 
 ## Security
 
