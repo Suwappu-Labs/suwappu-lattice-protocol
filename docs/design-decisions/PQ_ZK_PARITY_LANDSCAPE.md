@@ -172,7 +172,7 @@ All verifiers below are unaudited by their own statements.
 
 | Verifier | Source | Gas (self-reported) | Deployed |
 |---|---|---|---|
-| ZKNOX ETHDILITHIUM | [ZKNoxHQ/ETHDILITHIUM][ethdil], MIT (V) | Main: 8.1M (FIPS 204), 4.9M (EVM-tuned variant). Branch `exp/packed-verifier`: about 1.2M for ML-DSA-44, **1.54M for ML-DSA-65** (V) | ML-DSA-44 verifier `0x092c5d82069de997E34Ce2505CA7D5042f3721ef` on Sepolia, Arbitrum Sepolia and Base Sepolia (V, Kohaku deployment file; contract source-verified on Sepolia) |
+| ZKNOX ETHDILITHIUM | [ZKNoxHQ/ETHDILITHIUM][ethdil], MIT (V) | See section 5.4; depends on branch | ML-DSA-44 verifier `0x092c5d82069de997E34Ce2505CA7D5042f3721ef` on Sepolia, Arbitrum Sepolia and Base Sepolia (V, Kohaku deployment file; contract source-verified on Sepolia; contract code confirmed present on Base Sepolia by `eth_getCode`) |
 | Fireblocks ML-DSA-44 | [fireblocks-labs/evm-ml-dsa-verifier][fb], MIT (V) | 1,226,311 per verify, plus about 4.11M once per key (V) | None |
 | ZKNOX ETHFALCON | [ZKNoxHQ/ETHFALCON][ethfal], MIT (V) | Falcon 3.8M; EVM-tuned 1.4M (V) | Sepolia, Arbitrum Sepolia (V) |
 | Kohaku `pq-account` | [ethereum/kohaku][kohaku] (V) | n/a | Hybrid ML-DSA + ECDSA ERC-4337 account factories on the same three testnets (V) |
@@ -194,6 +194,63 @@ was written (all fetched from eips.ethereum.org):
 No fork-inclusion status was found for any of them. The unposted review
 in [`eip-8051-ltp-feedback.md`](../eips/eip-8051-ltp-feedback.md) should be
 re-read against EIP-8355 before it is sent anywhere.
+
+### 5.4 What the verifier code says when read
+
+Both ML-DSA verifier repositories were cloned and read on 2026-11-20.
+Nothing was built: Foundry is not installed in the survey environment, so
+every gas figure is still the repository's own.
+
+**ZKNOX ETHDILITHIUM** (MIT, 7 contributors, about 370 commits per
+branch). The useful work is on branches, not `main`:
+
+| Branch | Last commit | What it has | Gas per verify (README) |
+|---|---|---|---|
+| `main` | 2026-09-16 | ML-DSA-44, unpacked arithmetic. This is what is deployed | 8.1M |
+| `exp/packed-verifier` | 2026-09-09 | ML-DSA-44 packed; ML-DSA-65; key in a stored blob | 1.19M (44), 1.54M (65) |
+| `mldsa65-calldata` | 2026-10-21 | ML-DSA-44 and -65, key passed in calldata | 1.01M + 0.31M calldata (44); 1.20M + 0.54M calldata (65) |
+| `mldsa87` | 2026-10-30 | All three sets, key in calldata. NIST KAT and ACVP `sigVer` vectors pass per README | As above, plus 1.63M + 0.93M calldata (87) |
+
+Interface of the ML-DSA-65 verifier on `mldsa87`
+(`src/ZKNOX_dilithium65.sol`):
+
+- `verify(bytes pk, bytes m, bytes signature, bytes ctx)` forms
+  `M' = 0x00 || len(ctx) || ctx || M` as FIPS 204 specifies. `ctx` may be
+  up to 255 bytes. The message is arbitrary length.
+- `verify(bytes pk, bytes32 m, bytes signature)` is the fixed-digest form
+  with an empty context.
+- `signature` is the standard 3,309-byte FIPS 204 encoding.
+- `pk` is **not** the 1,952-byte FIPS key. It is a 38,112-byte expanded
+  key (the matrix and `t1` in the NTT domain, then `tr`) passed in
+  calldata on every call. Nothing is stored; the caller must bind the
+  blob to a signer by `keccak256`. A JavaScript helper derives it from
+  the standard key.
+- It depends on one shared Keccak-f[1600] helper contract per chain
+  (about 4.32M gas to deploy, bound by code hash). The EVM hashing opcode
+  cannot produce SHAKE.
+
+**Fit with LTP.** `MLDSA.sign` in `src/ltp/primitives.py` takes no context
+argument, so LTP signs with an empty context. A standard LTP ML-DSA-65
+signature should therefore verify unmodified through the four-argument
+form with `ctx = ""`, or with a real context once the signing side gains
+one. Both objections recorded against EIP-8051 in
+[`PQ_ONCHAIN_VERIFICATION.md`](PQ_ONCHAIN_VERIFICATION.md) (fixed 32-byte
+message, no `ctx`) do not apply to this verifier. This is a reading of the
+interface, not a test: no LTP signature has been run through it.
+
+**Fireblocks** (MIT, one commit, 2026-09-02). ML-DSA-44 only; empty
+context is hard-wired. `verify(address pkBlob, bytes message, bytes
+signature)` reads a prepared 20,545-byte key from a per-key data contract.
+Runtime size is 24,032 bytes against the 24,576-byte limit. It is the
+best-checked of the two: 320 tests including ACVP and Wycheproof, 62 Z3
+properties, 64 Lean theorems on the arithmetic, and a mutation campaign.
+Its README says it restores two FIPS 204 checks that the ZKNOX baseline
+omitted, which is a reason to prefer the newer ZKNOX branches over the
+deployed `main` contract. It does not cover ML-DSA-65.
+
+**Not done:** an independent gas measurement, an explorer check of source
+verification on Base Sepolia, and an end-to-end test with an LTP-produced
+signature.
 
 ## 6. Replacing the BLS corridor quorum
 
@@ -240,14 +297,23 @@ is cheap in gas (about 270k). Two cautions:
 With nine signers, the lowest-risk path that runs today is to verify seven
 individual ML-DSA signatures in Solidity.
 
-| Parameter set | Per verify | Seven signatures | Calldata |
+| Option | Per verify | Seven signatures | Calldata for seven |
 |---|---|---|---|
-| ML-DSA-44 (Fireblocks) | about 1.23M gas | about 8.6M gas | about 17 KB |
-| ML-DSA-65 (ZKNOX experimental branch) | about 1.54M gas | about 10.8M gas | about 23 KB |
+| ML-DSA-44, Fireblocks, key in a data contract | about 1.23M gas | about 8.6M gas | about 17 KB of signatures |
+| ML-DSA-65, ZKNOX `exp/packed-verifier`, key in a stored blob | about 1.54M gas | about 10.8M gas | about 23 KB of signatures |
+| ML-DSA-65, ZKNOX `mldsa87`, key in calldata | 1.20M execution + 0.54M calldata | about 12.2M gas | about 290 KB (seven 38 KB keys plus signatures) |
 
 These totals are arithmetic on the self-reported per-verify figures, not
 measurements. They are acceptable on an L2 or the SUWAPPU testnet and
 expensive on L1.
+
+For a fixed set of nine known keys, the stored-key layout is the better
+fit: each key is published once and the per-epoch transaction carries only
+signatures. The calldata layout is designed for accounts whose keys are
+not known in advance; at about 290 KB per transaction it would also exceed
+typical transaction-size limits. The newest arithmetic lives on the
+calldata branch, so adopting it for the corridor means porting the
+stored-key loading onto it.
 
 ## 7. Transport, hybrid KEM and libraries
 
