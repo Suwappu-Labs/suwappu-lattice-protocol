@@ -94,6 +94,19 @@ The canonical wire is hex-string-encoded bytes, sorted integer signer lists, and
 
 If you're consuming this from a Rust serializer that defaults to byte-array JSON (lists of `u8` numbers rather than hex strings), use the `*_from_serde_default_dict` helpers in `src/ltp/corridor/wire.py` instead. They mirror serde-default behavior.
 
+## Registered corridor lanes
+
+`source_chain` / `target_chain` are ordinary u32 payload values — registering a new lane is **not** a wire-format change. The named lanes live in [`src/ltp/corridor/lanes.py`](../src/ltp/corridor/lanes.py), with per-chain finality facts in [`src/ltp/anchor/chain_profiles.py`](../src/ltp/anchor/chain_profiles.py):
+
+| Lane | Source → Target | Min source confirmations |
+|---|---|---|
+| `eth-mainnet:hyperevm` | Ethereum mainnet (1) → Hyperliquid HyperEVM (999) | 64 (2 PoS epochs, `finalized`) |
+| `hyperevm:eth-mainnet` | Hyperliquid HyperEVM (999) → Ethereum mainnet (1) | 1 (HyperBFT single-slot finality) |
+| `eth-sepolia:hyperevm-testnet` | Sepolia (11155111) → HyperEVM testnet (998) | 64 |
+| `hyperevm-testnet:eth-sepolia` | HyperEVM testnet (998) → Sepolia (11155111) | 1 |
+
+`min_source_confirmations` is corridor signing *policy* (checked via `CorridorLane.is_attestable`), not a wire field — the payload carries only the observed height. Deployment sequencing for the Hyperliquid corridor is in [`plans/2026-08-31-hyperliquid-ethereum-corridor.md`](plans/2026-08-31-hyperliquid-ethereum-corridor.md).
+
 ## On-chain handoff
 
 After the corridor produces a verified `CorridorAttestation`, the natural next step is on-chain submission via the registry's `anchor(...)` function. See:

@@ -22,6 +22,34 @@ public-surface promise and the cross-version compatibility matrix.
   verified to fail with the fix reverted
 
 ### Added
+- HyperEVM big-block enablement: `scripts/hyperevm_enable_big_blocks.py`
+  opts the deployer into HyperEVM's big-block lane via the official
+  Hyperliquid SDK (`Exchange.use_big_blocks`). The deploy driver invokes
+  it automatically at preflight after measuring the live block gas limit —
+  necessary because the testnet's small blocks cap at a measured 3,000,000
+  gas and the batched stack deploy needs ~6.3M (big blocks: measured
+  30,000,000). Rehearsal evidence, including a deploy against a fork of the
+  live testnet at block 63,030,833, is recorded in
+  `docs/plans/2026-08-31-hyperevm-deploy-rehearsal.md`
+- HyperEVM testnet deploy driver: `scripts/deploy_hyperevm_testnet.sh`
+  deploys the registry + bridge stack to Hyperliquid HyperEVM testnet
+  (chain 998) and registers the bridge signer vk hash through the full
+  MultiSig → Timelock governance path, with chain-ID/balance preflights
+  and HyperEVM big-block guidance; `scripts/verify_corridor_deployment.py`
+  then runs the Python-SDK proof (HYPEREVM_TESTNET profile →
+  `AnchorClient` → on-chain anchor round-trip → `LTP-corridor-v1` lane
+  payload). Rehearsed green end-to-end against `anvil --chain-id 998`;
+  deploy simulation also passes against the live HyperEVM testnet RPC
+- Ethereum mainnet <> Hyperliquid HyperEVM corridor surface:
+  `src/ltp/anchor/chain_profiles.py` (built-in chain profiles — Ethereum
+  mainnet/Sepolia, HyperEVM 999/998 with HyperBFT single-slot finality,
+  plus the existing Base Sepolia / SUWAPPU Testnet deploy targets) and
+  `src/ltp/corridor/lanes.py` (named directional lanes with asymmetric
+  confirmation policy: 64 blocks — 2 PoS epochs — before attesting
+  Ethereum state, depth 1 for HyperEVM). Chain IDs are ordinary u32
+  payload values in `LTP-corridor-v1`, so this is not a wire-format
+  change. Deployment sequencing:
+  `docs/plans/2026-08-31-hyperliquid-ethereum-corridor.md`
 - `docs/economics/BILLING_LEDGER_GAP_ANALYSIS.md`: measures the shipped
   billing surface against production ledger practice (Modern Treasury
   double-entry, TigerBeetle two-phase transfers, Stripe/Brandur

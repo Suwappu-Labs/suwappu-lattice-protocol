@@ -68,6 +68,11 @@ exclude = [
     # this exact Rev5 SSP playbook path now 404s and no confidently-live
     # equivalent could be found. See docs/compliance/fedramp-high/README.md.
     "^https?://www\\.fedramp\\.gov/docs/rev5/playbook/csp/authorization/ssp/",
+    # cacrnet.org.cn (Chinese Association for Cryptologic Research) returns
+    # 444 (connection closed, no response) to GitHub-runner CIDR ranges —
+    # the site geoblocks non-CN egress. Cited in WHITEPAPER.md ref [33] as
+    # the PQC competition source; link is stable for human readers.
+    "^https?://(www\\.)?cacrnet\\.org\\.cn/",
 ]
 
 # --- Internal-link strictness -------------------------------------------

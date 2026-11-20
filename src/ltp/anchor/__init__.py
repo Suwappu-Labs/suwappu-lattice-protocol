@@ -12,6 +12,13 @@ Reference: SUWAPPU_PRE_BLOCKCHAIN_ROADMAP.md §2.9-2.10
 """
 
 from .chain_config import ChainConfig, create_anchor_client
+from .chain_profiles import (
+    CHAIN_PROFILES,
+    ChainProfile,
+    FinalityModel,
+    get_chain_profile,
+    profile_for_chain_id,
+)
 from .state import VALID_TRANSITIONS, EntityState, validate_transition
 from .submission import AnchorSubmission
 
@@ -22,6 +29,11 @@ __all__ = [
     "AnchorSubmission",
     "ChainConfig",
     "create_anchor_client",
+    "ChainProfile",
+    "FinalityModel",
+    "CHAIN_PROFILES",
+    "get_chain_profile",
+    "profile_for_chain_id",
 ]
 
 
