@@ -83,8 +83,8 @@ LTP is compared publicly:
 | Post-quantum quorum certificate | Classical BLS, unchecked on-chain | Lean Ethereum devnets and Tezos Quantumnet (hash-based signatures aggregated by a hash-based proof) (V); Algorand mainnet Falcon state proofs (V) | [leanSig][leansig], [leanMultisig][leanms], [go-stateproof-verification][algosp] |
 | ZK proof of ML-DSA verification | Guest written, never proven | Two public benchmarks: Dilithium5 in SP1, ML-DSA-44 in RISC Zero (section 5.5). Neither is deployed | [dilithium5-poseidon][d5p], [kaspa-pq-zk-bench][kpq] |
 | End-to-end post-quantum proof on EVM | None | No production zkVM. All end in a BN254 pairing proof | [sol-spartan-whir][ssw] (research) |
-| Hybrid admin and account keys | ECDSA accounts | Kohaku hybrid ML-DSA + ECDSA accounts on three testnets (V); NEAR mainnet in-place key rotation (one secondary source) | [Kohaku `pq-account`][kohaku] |
-| ML-KEM transport | ML-KEM, no hybrid | Quantus (ML-KEM-768 + ML-DSA-87 handshake) (V); age v1.3 `mlkem768x25519` (V); Signal SPQR (V) | [Quantus chain][quantus], [age][age], [SPQR][spqr] |
+| Hybrid admin and account keys | ECDSA accounts | Kohaku hybrid ML-DSA + ECDSA accounts on three testnets (V); NEAR mainnet ML-DSA-65 access keys with in-place rotation (read in code) | [Kohaku `pq-account`][kohaku] |
+| ML-KEM transport | ML-KEM, no hybrid | Quantus (ML-KEM-768 + ML-DSA-87 handshake) (V); Tidecoin (ML-KEM-512 node transport); age v1.3 `mlkem768x25519` (V); Signal SPQR (V) | [Quantus chain][quantus], [age][age], [SPQR][spqr] |
 | Key migration from classical | Not applicable yet | NEAR, Algorand (rotate in place); Tezos (deadline plus ZK seed-phrase recovery) (V) | Design reference only |
 
 ## 4. Post-quantum chains with running code
@@ -94,30 +94,68 @@ LTP is compared publicly:
 | Project | Source | Network | PQ primitives | ZK, and is it PQ | Worth borrowing |
 |---|---|---|---|---|---|
 | QRL 2.0 (Zond) | [theQRL/go-zond][zond], LGPL/GPL-3.0, Go; [go-qrllib][qrllib], MIT (V) | Public PoS Testnet V2, 2026-03-31; mainnet gated on audits (V) | ML-DSA-87 for transactions and validators (V) | None found | Closest EVM analogue: a go-ethereum fork with ML-DSA accounts, plus a dependency-free Go ML-DSA library |
-| Algorand | [algorand/go-algorand][algo], AGPL-3.0, Go (V) | Mainnet. Falcon state proofs since 2022 (V); Falcon accounts in 2026 (V, exact date U) | Falcon-1024. Consensus and VRF still classical (V) | None | Falcon-signed compact state proofs are the nearest prior art to a PQ-attested state root |
-| NEAR | near/nearcore (U, not fetched) | Mainnet upgrade 2.13, 2026-07-20 (one secondary source) | ML-DSA-65 as an access-key type | n/a | Migration model: one key-rotation transaction, same address |
+| Algorand | [algorand/go-algorand][algo], AGPL-3.0, Go (V) | Mainnet. Falcon state proofs since 2022 (V); native Falcon-1024 accounts in `v5.0.0-stable` (`ConsensusV42`), active on mainnet per the reported consensus version (read in checkout and RPC) | Falcon-1024; `falcon_verify` opcode for contracts. Consensus and VRF still classical (V) | None | Falcon-signed compact state proofs are the nearest prior art to a PQ-attested state root |
+| NEAR | near/nearcore; ML-DSA-65 via `aws-lc-rs` in `core/crypto/src/signature.rs` (read in checkout) | **Mainnet.** Stabilised at protocol version 85 (PR 15878, release 2.13.0); the mainnet RPC reported protocol 88 on 2026-11-20 | ML-DSA-65 for access keys and transactions; an `ml_dsa_verify` host function for contracts from version 87. Validator keys unchanged | n/a | In-place key rotation; the chain stores a SHA3-256 hash of the key, not the key |
 | Quantus | [Quantus-Network/chain][quantus], MIT, Rust/Substrate (V) | PoW mainnet 2026-09-09 (U) | ML-DSA-87 transactions; ML-DSA-87 identity + ML-KEM-768 transport in an extended Noise handshake (V, whitepaper) | Plonky2 recursive aggregation, hash-based (V) | The only project verified shipping LTP's exact pair, ML-KEM transport with ML-DSA identity |
-| BTQ Bitcoin Quantum | [btq-ag/btq-core][btq], MIT, C++ (V) | Public testnet 2026-01-12 (U) | ML-DSA replacing ECDSA; parameter set unconfirmed (U) | None | Baseline for the cost of no aggregation (64 MiB blocks, U) |
+| BTQ Bitcoin Quantum | [btq-ag/btq-core][btq], MIT, C++, last commit 2026-11-11 (read in checkout) | Public testnet; no mainnet | Default is Dilithium2, that is ML-DSA-44 (`src/crypto/dilithium_key.h`) | None | Baseline for the cost of no aggregation (64 MiB blocks, U) |
 | Nervos CKB lock script | [cryptape/quantum-resistant-lock-script][ckb], MIT (V) | CKB mainnet and testnet; code hashes in README (V) | All 12 FIPS 205 SLH-DSA sets (V) | None | Published verification-cost table per parameter set |
 | Abelian | [pqabelian/abec][abec], Go, **no licence file** (V) | PoW mainnet since 2022 (U) | Lattice linkable ring signatures and commitments, not the NIST schemes (V) | Lattice range and balance proofs (U) | Only live lattice-privacy chain. Read; do not copy |
 | Cellframe | [demlabs-cellframe/cellframe-node][cell], LGPL-3.0 (V) | "Backbone" mainnet plus testnets (V) | Dilithium wallet type (V); other claims U | None found | Multi-scheme agility; thin docs |
 | Lean Ethereum | [leanSig][leansig], [leanMultisig][leanms], Apache-2.0/MIT, Rust (V) | **Devnets only**, pq-devnet-0 to -5, eight clients, 1,024 validators (V, survey) | XMSS-style hash-based signatures over Poseidon; unaudited (V) | leanVM, hash-based, "not production ready" (V) | Reference design for PQ signature aggregation. See section 6.2 |
-| Tezos Quantumnet | gitlab.com/tezos/tezos (U, not fetched) | Experimental public testnet 2026-09-24 (V) | ML-DSA-44 accounts; XMSS attestations (V) | Lean-style STARK aggregation (V) | ZK proof of seed-phrase knowledge as a recovery path for stragglers |
+| Tezos Quantumnet | gitlab.com/tezos/tezos; ML-DSA-44 in `src/lib_crypto/mldsa44.ml` backed by libcrux (read in checkout) | Experimental public testnet 2026-09-24 (V). `tz5` accounts are in protocol 025 but disabled in mainnet constants. The XMSS attestation work sits in unmerged branches | ML-DSA-44 accounts; XMSS attestations | Lean-style STARK aggregation (V) | ZK proof of seed-phrase knowledge as a recovery path for stragglers |
 
 ### 4.2 What the chain survey says about parity
 
 - **Parameter choice is splitting three ways.** ML-DSA-87 (QRL, Quantus),
-  ML-DSA-65 (NEAR), ML-DSA-44 (Tezos). Falcon where size dominates
-  (Algorand). SLH-DSA as the conservative vault option (CKB). LTP's
-  ML-DSA-65 default sits in the middle and matches the only ML-DSA-65
-  Solidity verifier found.
-- **ML-KEM is rare.** Only Quantus was verified using it for transport.
-  LTP's ML-KEM data-transfer lane is a differentiator, not table stakes.
+  ML-DSA-65 (NEAR, Sui, Cosmos SDK), ML-DSA-44 (Tezos, BTQ). Falcon where
+  size dominates (Algorand, Miden, Tidecoin). SLH-DSA as the conservative
+  option (CKB, Aptos). LTP's ML-DSA-65 default is the most common choice
+  among general-purpose chains and matches the ML-DSA-65 Solidity verifier.
+- **ML-KEM is rare.** Only Quantus and Tidecoin were found using it, both
+  for node transport. No storage, data-availability or transfer network
+  checked ships ML-KEM payload encryption with on-chain anchoring
+  (section 7). LTP's data-transfer lane is a differentiator, not table
+  stakes.
+- **Chains store a hash of the post-quantum key, not the key.** NEAR and
+  Miden both do this; NEAR uses SHA3-256, the same hash LTP uses on
+  settlement paths.
 - **Aggregation is the open problem.** Nobody aggregates ML-DSA natively.
   Live answers are hash-based signatures plus proof aggregation, recursive
   FRI proofs, or bigger blocks.
 - **Migration converges on in-place key rotation**, with a deadline and a
   ZK fallback in the most developed design.
+
+### 4.3 Second pass: additions and corrections
+
+A second pass shallow-cloned repositories and read the code. "Read in
+checkout" below means the primitive was seen in source, not that the
+network was exercised.
+
+| Project | Source, licence, last commit | Network | PQ primitives | Worth borrowing |
+|---|---|---|---|---|
+| Miden | `0xMiden/miden-base`, MIT, 2026-11-20; `0xMiden/crypto`, Apache-2.0 | Public testnet (V); partner mainnet reported (U) | Falcon-512 with an algebraic hash for account authentication. Proofs are hash-based STARKs | Store a key commitment, not the key; swap the hash for a circuit-friendly one where proofs matter |
+| Neptune Cash | `Neptune-Crypto/neptune-core`, Apache-2.0, 2026-11-08 | README refers to mainnet; launch date not confirmed | A lattice KEM encrypts the notification that is placed on-chain; hash-lock spending; STARK proofs (Triton VM) | **Closest design analogue to LTP**: a KEM ciphertext wraps a symmetric key and is anchored on-chain. Payments only |
+| Tidecoin | `tidecoin/tidecoin`, MIT, 2026-11-15 | Mainnet since 2020 (README) | Falcon-512 from genesis; ML-DSA-44/65/87 added later; ML-KEM-512 on node transport | A second project, with Quantus, shipping ML-KEM on transport |
+| Cosmos SDK | cosmos/cosmos-sdk, `crypto/keys/mldsa65` | In SDK v0.55; no public chain confirmed to have enabled it | ML-DSA-65 account keys | Reference key-type integration |
+| Sui | MystenLabs/sui | PR "Enable ML-DSA-65 account signatures on testnet" merged 2026-11-16; mainnet targeted 2027 (U) | ML-DSA-65 accounts | Watch |
+| Aptos | aptos-labs/aptos-core | AIP-137 accepted and code merged; activation on any network not confirmed | SLH-DSA-SHA2-128s | Watch |
+| Quip Network | `QuipNetwork/hashsigs-rs`, AGPL-3.0-or-later, 2026-11-19 | Testnet reported (U) | WOTS+ and a stateful-cheap, stateless-fallback hash scheme | The stateful/stateless split for signer keys. Licence is copyleft |
+| Mochimo | `mochimodev/mochimo`, custom non-OSI licence | Mainnet | WOTS+ | Read only; the licence forbids reuse |
+
+Checked in code and found not live or not post-quantum:
+
+| Project | Finding |
+|---|---|
+| Solana | The Falcon proposal and the Firedancer change were closed unmerged. No Falcon code in the client repositories and no feature gate. The first pass's "Falcon code in both clients" was wrong |
+| XRPL | No ML-DSA in the default branch; the quantum AlphaNet change was closed unmerged |
+| Hedera | PQ transaction-signature change closed unmerged |
+| Starknet | Contract-level only: experimental, unaudited Cairo Falcon verifiers |
+| Tron | Testnet Falcon claim is press only; nothing in the default branch |
+| Kaspa, Nockchain, Iron Fish, DERO, Penumbra, Namada, Kadena, Qubic, Zenon, Besu | No post-quantum signature scheme in code |
+| Circle Arc | Docs say SLH-DSA verification is live; no source repository is linked |
+| TzEL (Tezos rollup) | ML-KEM-768 memos with in-proof WOTS+, but "All rights reserved" |
+| Zcash, Polkadot, Arbitrum, Optimism, Base | Plans or forum posts only |
+| Cardano, Avalanche, Stellar, Monad, Quranium, Tectonic, QDay, Hyperliquid, Sei, Aleo, Mina, Aztec, Anoma | Nothing confirmed. Not assessed, rather than confirmed absent |
 
 ## 5. Zero-knowledge and on-chain verification
 
@@ -498,7 +536,27 @@ if gas, not stack simplicity, becomes the constraint.
 | Rosenpass | [rosenpass/rosenpass][rosen], Apache-2.0/MIT (V) | Feeds a rotating pre-shared key to WireGuard (V) |
 | Quantus p2p | [Quantus-Network/chain][quantus] (V) | ML-KEM-768 inside an extended Noise handshake (V) |
 
-No libp2p post-quantum Noise implementation was found.
+No libp2p post-quantum Noise implementation was found. Two libp2p
+specification pull requests are open (a hybrid X25519 + ML-KEM-768 Noise
+handshake, and ML-DSA peer identities); neither is merged.
+
+**Storage, data-availability and transfer networks.** Default branches
+were searched for post-quantum primitives:
+
+| Project | Finding |
+|---|---|
+| Filecoin, Arweave, Walrus, Celestia, EigenDA, Avail, Sia | None |
+| Storj | None; a request has been open since 2023 |
+| Nym | ML-KEM-768 plus Classic McEliece feeding a Noise pre-shared key, in code (Apache-2.0). Rollout not confirmed |
+| Session | Not in the default branch; a redesign is reported in press |
+| xx network | No post-quantum code in the chain repository; the consensus claim is not backed by code |
+| Tailscale | A recent capability version mentions hybrid post-quantum handshakes; the KEM is not named |
+| croc, magic-wormhole, Anyone | None |
+| Lit, Nillion, Tide | Repositories not located |
+
+No project checked combines ML-KEM payload encryption with on-chain
+anchoring of commitments. The nearest are Neptune Cash (lattice KEM
+ciphertexts on-chain, payments only) and TzEL (closed licence).
 
 Libraries:
 
@@ -522,14 +580,14 @@ pin.
 | Monolythium | Node source private until mainnet (V) |
 | QANplatform | SDKs and docs only; no node source seen (V) |
 | Bitcoin BIP-360 | Draft; specifies no PQ signature; running code only in BTQ's fork (V) |
-| Solana L1 | Falcon code in clients, not activated (U). A Winternitz vault program exists as a contract-level pattern |
-| Aptos, Sui, Hedera, Starknet, Zcash | Proposals or roadmaps; no shipped PQ signature path confirmed (U) |
+| Solana L1 | See section 4.3: proposals closed unmerged. A Winternitz vault program exists as a contract-level pattern |
+| Aptos, Sui, Hedera, Starknet, Zcash | See section 4.3 for the per-project status read from code |
 | Project Eleven | Open tooling and a registry, not a chain |
 | Neo, Cyclo | Paper only, or no licence. Hachi and a SuperNeo implementation have code (section 5.5) but nothing deployable |
 | Shamir-nonce threshold ML-DSA preprint | No repository linked |
 | LayerZero Aerie | Large aggregation numbers in press; no code released |
 | Wormhole, Hyperlane, Axelar, IBC | No post-quantum quorum code or roadmap found |
-| Quranium, Tectonic, Sei, Tron, Mina, Aztec, Besu | Searches returned nothing usable. Not assessed, rather than confirmed absent |
+| Komodo, Hyperledger Fabric, IOTA | Too thin: one optional build line, one open pull request, and identity-layer docs respectively |
 
 ## 9. Recommendation
 
