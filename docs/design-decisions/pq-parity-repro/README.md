@@ -48,11 +48,13 @@ cp $REPRO/LTPCompat.t.sol $REPRO/LTPQuorum.t.sol test/
 ```
 
 ```bash
-FOUNDRY_FFI=false forge test --match-path "test/LTP*.t.sol" -vv
+forge test --match-path "test/LTP*.t.sol" -vv
 ```
 
-The verifier repository enables FFI in its `foundry.toml`. These tests do
-not need it, so the last command turns it off.
+The verifier repository enables FFI in its `foundry.toml`, and its test
+helper uses it to `cat` the Keccak helper bytecode (`test/f1600_170.hex`).
+These tests therefore run with FFI on. That one `cat` is the only FFI
+call they reach.
 
 ## Environment of the recorded run
 
