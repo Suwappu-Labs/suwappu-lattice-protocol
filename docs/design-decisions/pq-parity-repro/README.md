@@ -17,6 +17,8 @@ that has had no review.
 | `ltp_expand.mjs` | Converts each 1,952-byte public key to the verifier's 38,112-byte expanded form, using the verifier repository's own helper |
 | `LTPCompat.t.sol` | Verifies LTP signatures; checks four rejection cases |
 | `LTPQuorum.t.sol` | `QuorumProto`: 7-of-9 with keys stored as contract code |
+| `LTPQuorumAnchor.sol` | State-changing version: verifies seven signatures, records the signer bitmap for the root, emits an event |
+| `DeployLTPQuorum.s.sol` | Deploys the Keccak helper, the verifier and the anchor, registers nine keys, anchors one root |
 
 ## Steps
 
@@ -67,3 +69,37 @@ call they reach.
 
 Keys and the long message are random per run, so gas varies by a few
 thousand between runs.
+
+## Deploying to a testnet
+
+Not yet broadcast to any public network. The script below was run on
+2026-11-21 against a local fork of Base Sepolia (chain 84532), where all
+14 transactions succeeded:
+
+| Transaction | Gas used |
+|---|---|
+| Deploy Keccak helper | 4,716,322 |
+| Deploy ML-DSA-65 verifier | 5,094,537 |
+| Deploy `LTPQuorumAnchor` | 852,376 |
+| `registerKey`, nine times | about 8,357,000 each |
+| `sealKeys` | 43,385 |
+| `anchorQuorum`, seven of nine | 9,620,050 |
+| Total | 95,537,903 |
+
+From the verifier checkout, after the steps above:
+
+```bash
+cp $REPRO/LTPQuorumAnchor.sol src/ && cp $REPRO/DeployLTPQuorum.s.sol script/
+```
+
+```bash
+python3 -c "d=open('test/f1600_170.hex').read().strip(); open('test/KAT/f1600_170.hex','w').write(d if d.startswith('0x') else '0x'+d)"
+```
+
+```bash
+FOUNDRY_FFI=false forge script script/DeployLTPQuorum.s.sol:DeployLTPQuorum --rpc-url "$BASE_SEPOLIA_RPC_URL" --private-key "$DEPLOYER_KEY" --broadcast --slow
+```
+
+The deploy script reads its inputs with `vm.readFile` and does not use
+FFI. The deployer needs about 0.003 testnet ETH. `LTPQuorumAnchor` is
+unreviewed test code: do not point anything of value at it.
