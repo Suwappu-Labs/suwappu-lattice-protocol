@@ -4,8 +4,9 @@ Historical incident: **Ronin Bridge exploit, 23 March 2022, ~$625M.**
 
 ## Primary sources
 
-- **Ronin Network post-mortem** (Sky Mavis) —
-  https://roninblockchain.substack.com/p/community-alert-ronin-validators
+- **Ronin Network post-mortem** (Sky Mavis). The original post was taken
+  down from Substack; linking the Wayback Machine capture instead —
+  http://web.archive.org/web/20230401061939/https://roninblockchain.substack.com/p/community-alert-ronin-validators
 - **Patch PRs** removing the Axie DAO gas-relayer trust and
   rotating all 9 validator keys.
 

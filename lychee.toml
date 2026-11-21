@@ -68,6 +68,11 @@ exclude = [
     # this exact Rev5 SSP playbook path now 404s and no confidently-live
     # equivalent could be found. See docs/compliance/fedramp-high/README.md.
     "^https?://www\\.fedramp\\.gov/docs/rev5/playbook/csp/authorization/ssp/",
+    # cacrnet.org.cn returns HTTP 444 (connection dropped, no response) to
+    # both HTTP and HTTPS requests from US/CI-datacenter egress -- a common
+    # deliberate block on .cn sites against non-domestic bot traffic, not
+    # evidence the page itself is gone. Cited in WHITEPAPER.md.
+    "^https?://(www\\.)?cacrnet\\.org\\.cn/",
 ]
 
 # --- Internal-link strictness -------------------------------------------

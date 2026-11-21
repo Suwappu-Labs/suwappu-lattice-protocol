@@ -152,7 +152,8 @@ public-surface promise and the cross-version compatibility matrix.
 
 ### Known issues
 - LICENSE discrepancy: repo file declares Elastic 2.0 while `pyproject.toml`
-  declares MIT — resolution pending in Linear GLO-785
+  declares MIT — resolution pending; no corresponding Linear ticket could
+  be confirmed under this workspace's `SUW` team as of 2026-11-21
 
 ## [5.0.0] - 2026-03-25
 

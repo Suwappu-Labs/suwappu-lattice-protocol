@@ -668,5 +668,7 @@ release procedure. Summary:
 
 GPG signing is deferred — pipeline will be extended once the ops team
 provisions a release-signing key (HSM-backed; see §1 KMS setup).
-PyPI publishing is blocked on Linear `GLO-785` (LICENSE / pyproject
-mismatch).
+PyPI publishing is blocked on the LICENSE / `pyproject.toml` mismatch
+(the repo's `LICENSE` file declares Elastic License 2.0; `pyproject.toml`
+declares MIT). No corresponding Linear ticket could be confirmed under
+this workspace's `SUW` team as of 2026-11-21 — file one before resolving.

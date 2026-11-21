@@ -163,14 +163,14 @@ the PR rejected. Each carries its tracking ID so you can grep for it.
 - **Never propose a change under `contracts/`** unless
   `make contracts-secaudit` is green on your branch.
 - **Never touch the `license` field in `pyproject.toml`.** Resolution is
-  pending in Linear GLO-785.
+  pending; ask before touching it.
 - **Never "clean up" a BLS domain-separation tag (DST) string.** It must
   be byte-identical in Python and Solidity. No Unicode normalization, no
   trim. Audit finding LTP-A-022.
 - **Never set `LTP_ENV=development` to make a test pass.**
   `LTP_ENV=production` fails closed on purpose.
 - **Never bump the wire format** (`LTP-corridor-v1` to `v2`) as a refactor.
-  It needs a Linear ticket under the LTP Dev Net project first.
+  It needs a Linear ticket (team `SUW`) first.
 - **Never reopen a closed audit finding.** Check
   `docs/security/audits/internal/SECURITY_AUDIT_2026-05-15.md` before you
   change crypto, key handling, or deploy paths.
@@ -276,12 +276,13 @@ breaks a deploy, file a Linear issue:
 | Field | Value |
 |---|---|
 | Workspace | `suwappu` |
-| Team | Suwappu (key `GLO`) |
-| Project | LTP Dev Net |
-| Label | `agent-regression` |
+| Team | Suwappu (key `SUW`) |
+| Label | `Bug`, plus `documentation` if the regression is in this file |
 | Include | Link to the commit and the failing check |
 
-Open tracking issues: GLO-785 (license field), GLO-786 (GitBook).
+This repo has no dedicated Linear project — "Lattice"/LTP work is filed
+under whichever existing project fits (e.g. SOC 2 Type II Readiness for
+a compliance-relevant finding), or left unassigned to a project.
 
 ## Glossary
 
@@ -298,7 +299,7 @@ Terms and IDs you will meet in this repo, with the file that defines them.
 | PQ / ML-KEM / ML-DSA | Post-quantum key exchange and signatures | `src/ltp/primitives.py` |
 | Hybrid | Classical plus post-quantum lane, kept separate | `src/ltp/hybrid.py`, `.semgrep/crypto-lane-separation.yml` |
 | `LTP-A-nnn` | Internal security audit finding ID | `docs/security/audits/internal/` |
-| `GLO-nnn` | Linear issue key, team Suwappu | Linear workspace `suwappu` |
+| `SUW-nnn` | Linear issue key, team Suwappu | Linear workspace `suwappu` |
 | `LTP-corridor-v1` | Current wire-format version | `docs/CORRIDOR_INTEGRATION.md` |
 | `LTP_ENV` | Runtime mode; `production` fails closed | `src/ltp/bls.py`, `src/ltp/hsm.py` |
 
